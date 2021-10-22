@@ -1,0 +1,11 @@
+{
+    "name": "teide",
+    "version": "0.0.0",
+    "dependencies": [
+        {
+            "name": "sdl2",
+            "version>=": "2.0.16"
+        }
+    ],
+    "builtin-baseline": "2a31089e777fc187f1cc05338250b8e1810cfb52"
+}
