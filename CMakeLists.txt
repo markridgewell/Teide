@@ -7,6 +7,7 @@ project(Teide VERSION 0.0.0
 
 add_executable(Teide src/main.cpp)
 target_compile_features(Teide PUBLIC cxx_std_20)
+target_compile_definitions(Teide PRIVATE VULKAN_HPP_NO_STRUCT_CONSTRUCTORS VULKAN_HPP_NO_EXCEPTIONS)
 
 find_package(Vulkan REQUIRED)
 target_link_libraries(Teide PRIVATE Vulkan::Vulkan)
