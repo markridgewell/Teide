@@ -6,6 +6,14 @@
             "name": "sdl2",
             "version>=": "2.0.16",
             "features": [ "vulkan" ]
+        },
+        {
+            "name": "spdlog",
+            "version>=": "1.9.2"
+        },
+        {
+            "name": "glslang",
+            "version>=": "11.5.0"
         }
     ],
     "builtin-baseline": "2a31089e777fc187f1cc05338250b8e1810cfb52"
