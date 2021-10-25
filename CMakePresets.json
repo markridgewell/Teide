@@ -16,7 +16,7 @@
             "strategy": "external"
           },
          "cacheVariables": {
-            "CMAKE_CXX_FLAGS": "/W4 /WX /EHsc /external:W0 /analyze:external- /external:anglebrackets /external:templates-",
+            "CMAKE_CXX_FLAGS": "/W4 /WX /EHsc /permissive- /external:W0 /analyze:external- /external:anglebrackets /external:templates-",
             "CMAKE_CONFIGURATION_TYPES": "Debug;Release",
             "CMAKE_TOOLCHAIN_FILE": {
                "value": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
