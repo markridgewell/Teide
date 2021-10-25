@@ -26,23 +26,14 @@ namespace
 constexpr std::string_view TriangleVertexShader = R"--(
 #version 450
 
-layout(location = 0) out vec3 fragColor;
+layout(location = 0) in vec2 inPosition;
+layout(location = 1) in vec3 inColor;
 
-vec2 positions[3] = vec2[](
-    vec2(0.0, -0.5),
-    vec2(0.5, 0.5),
-    vec2(-0.5, 0.5)
-);
-
-vec3 colors[3] = vec3[](
-    vec3(1.0, 0.0, 0.0),
-    vec3(0.0, 1.0, 0.0),
-    vec3(0.0, 0.0, 1.0)
-);
+layout(location = 0) out vec3 outColor;
 
 void main() {
-    gl_Position = vec4(positions[gl_VertexIndex], 0.0, 1.0);
-    fragColor = colors[gl_VertexIndex];
+    gl_Position = vec4(inPosition, 0.0, 1.0);
+    outColor = inColor;
 })--";
 
 constexpr std::string_view TrianglePixelShader = R"--(
@@ -54,6 +45,49 @@ layout(location = 0) out vec4 outColor;
 void main() {
     outColor = vec4(fragColor, 1.0);
 })--";
+
+struct Vector3
+{
+	float x, y, z;
+};
+
+struct Vector2
+{
+	float x, y;
+};
+
+struct TriangleVertex
+{
+	Vector2 position;
+	Vector3 color;
+};
+
+constexpr auto TriangleVertices = std::array<TriangleVertex, 3>{{
+    {{0.0f, -0.5f}, {1.0f, 0.0f, 0.0f}},
+    {{0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}},
+    {{-0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}},
+}};
+
+constexpr auto TriangleVertexBindingDescription = vk::VertexInputBindingDescription{
+    .binding = 0,
+    .stride = sizeof(TriangleVertex),
+    .inputRate = vk::VertexInputRate::eVertex,
+};
+
+constexpr auto TriangleVertexAttributeDescriptions = std::array<vk::VertexInputAttributeDescription, 2>{{
+    {
+        .location = 0,
+        .binding = 0,
+        .format = vk::Format::eR32G32Sfloat,
+        .offset = offsetof(TriangleVertex, position),
+    },
+    {
+        .location = 1,
+        .binding = 0,
+        .format = vk::Format::eR32G32B32Sfloat,
+        .offset = offsetof(TriangleVertex, color),
+    },
+}};
 
 constexpr auto ShaderLang = ShaderLanguage::Glsl;
 
@@ -314,6 +348,21 @@ CreateDevice(vk::PhysicalDevice physicalDevice, std::span<const uint32_t> queueF
 	return physicalDevice.createDeviceUnique(deviceCreateInfo, s_allocator);
 }
 
+uint32_t FindMemoryType(vk::PhysicalDevice physicalDevice, uint32_t typeFilter, vk::MemoryPropertyFlags flags)
+{
+	const auto memoryProperties = physicalDevice.getMemoryProperties();
+
+	for (uint32_t i = 0; i < memoryProperties.memoryTypeCount; i++)
+	{
+		if ((typeFilter & (1 << i) && (memoryProperties.memoryTypes[i].propertyFlags & flags) == flags))
+		{
+			return i;
+		}
+	}
+
+	throw CustomError("Failed to find suitable memory type");
+}
+
 vk::SurfaceFormatKHR ChooseSurfaceFormat(std::span<const vk::SurfaceFormatKHR> availableFormats)
 {
 	const auto preferredFormat = vk::SurfaceFormatKHR{vk::Format::eB8G8R8A8Srgb, vk::ColorSpaceKHR::eSrgbNonlinear};
@@ -445,6 +494,71 @@ CreateShaderModule(std::string_view shaderSource, ShaderStage stage, ShaderLangu
 	return device.createShaderModuleUnique(createInfo, s_allocator);
 }
 
+vk::UniqueDeviceMemory CreateDeviceMemory(
+    vk::Device device, vk::PhysicalDevice physicalDevice, const vk::MemoryRequirements& memoryRequirements,
+    vk::MemoryPropertyFlags flags)
+{
+	const auto allocInfo = vk::MemoryAllocateInfo{
+	    .allocationSize = memoryRequirements.size,
+	    .memoryTypeIndex = FindMemoryType(physicalDevice, memoryRequirements.memoryTypeBits, flags),
+	};
+
+	return device.allocateMemoryUnique(allocInfo);
+}
+
+vk::UniqueBuffer CreateBuffer(vk::Device device, vk::DeviceSize size, vk::BufferUsageFlags usage)
+{
+	const auto createInfo = vk::BufferCreateInfo{
+	    .size = size,
+	    .usage = usage,
+	    .sharingMode = vk::SharingMode::eExclusive,
+	};
+	return device.createBufferUnique(createInfo, s_allocator);
+}
+
+template <size_t Extent>
+void SetBufferData(vk::Device device, vk::DeviceMemory bufferMemory, std::span<const std::byte, Extent> data)
+{
+	void* mappedData = device.mapMemory(bufferMemory, 0, data.size());
+	memcpy(mappedData, data.data(), data.size());
+	device.unmapMemory(bufferMemory);
+}
+
+template <class T>
+	requires std::is_trivially_copyable_v<typename T::value_type> && std::is_standard_layout_v<typename T::value_type>
+void SetBufferData(vk::Device device, vk::DeviceMemory bufferMemory, const T& data)
+{
+	SetBufferData(device, bufferMemory, std::as_bytes(std::span(data)));
+}
+
+void CopyBuffer(
+    vk::Device device, vk::CommandPool commandPool, vk::Queue queue, vk::Buffer source, vk::Buffer destination,
+    vk::DeviceSize size)
+{
+	const auto allocInfo = vk::CommandBufferAllocateInfo{
+	    .commandPool = commandPool,
+	    .level = vk::CommandBufferLevel::ePrimary,
+	    .commandBufferCount = 1,
+	};
+	const auto cmdBuffers = device.allocateCommandBuffersUnique(allocInfo);
+	const auto cmdBuffer = cmdBuffers.front().get();
+
+	cmdBuffer.begin({.flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit});
+
+	const auto copyRegion = vk::BufferCopy{
+	    .srcOffset = 0,
+	    .dstOffset = 0,
+	    .size = size,
+	};
+	cmdBuffer.copyBuffer(source, destination, copyRegion);
+
+	cmdBuffer.end();
+
+	const auto submitInfo = vk::SubmitInfo{}.setCommandBuffers(cmdBuffer);
+	queue.submit(submitInfo);
+	queue.waitIdle();
+}
+
 vk::UniquePipeline CreateGraphicsPipeline(
     vk::ShaderModule vertexShader, vk::ShaderModule pixelShader, vk::PipelineLayout layout, vk::RenderPass renderPass,
     vk::Extent2D surfaceExtent, vk::Device device)
@@ -454,12 +568,9 @@ vk::UniquePipeline CreateGraphicsPipeline(
 	    vk::PipelineShaderStageCreateInfo{.stage = vk::ShaderStageFlagBits::eFragment, .module = pixelShader, .pName = "main"},
 	};
 
-	const auto vertexInput = vk::PipelineVertexInputStateCreateInfo{
-	    .vertexBindingDescriptionCount = 0,
-	    .pVertexBindingDescriptions = nullptr,
-	    .vertexAttributeDescriptionCount = 0,
-	    .pVertexAttributeDescriptions = nullptr,
-	};
+	const auto vertexInput = vk::PipelineVertexInputStateCreateInfo{}
+	                             .setVertexBindingDescriptions(TriangleVertexBindingDescription)
+	                             .setVertexAttributeDescriptions(TriangleVertexAttributeDescriptions);
 
 	const auto inputAssembly = vk::PipelineInputAssemblyStateCreateInfo{
 	    .topology = vk::PrimitiveTopology::eTriangleList,
@@ -627,48 +738,6 @@ std::vector<vk::UniqueFramebuffer> CreateFramebuffers(
 	return framebuffers;
 }
 
-std::vector<vk::UniqueCommandBuffer> CreateCommandBuffers(
-    vk::CommandPool commandPool, std::span<const vk::UniqueFramebuffer> framebuffers, vk::RenderPass renderPass,
-    vk::Extent2D surfaceExtent, vk::Pipeline pipeline, vk::Device device)
-{
-	const auto allocateInfo = vk::CommandBufferAllocateInfo{
-	    .commandPool = commandPool,
-	    .level = vk::CommandBufferLevel::ePrimary,
-	    .commandBufferCount = static_cast<uint32_t>(framebuffers.size()),
-	};
-
-	auto commandBuffers = device.allocateCommandBuffersUnique(allocateInfo);
-
-	for (const size_t i : std::views::iota(0u, commandBuffers.size()))
-	{
-		const auto& commandBuffer = commandBuffers[i].get();
-
-		commandBuffer.begin(vk::CommandBufferBeginInfo{});
-
-		const auto clearColor = std::array{0.0f, 0.0f, 0.0f, 1.0f};
-		const auto clearValue = vk::ClearValue{clearColor};
-
-		const auto renderPassBegin = vk::RenderPassBeginInfo{
-		    .renderPass = renderPass,
-		    .framebuffer = framebuffers[i].get(),
-		    .renderArea = {.offset = {0, 0}, .extent = surfaceExtent},
-		    .clearValueCount = 1,
-		    .pClearValues = &clearValue,
-		};
-
-		commandBuffer.beginRenderPass(renderPassBegin, vk::SubpassContents::eInline);
-
-		commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, pipeline);
-		commandBuffer.draw(3, 1, 0, 0);
-
-		commandBuffer.endRenderPass();
-
-		commandBuffer.end();
-	}
-
-	return commandBuffers;
-}
-
 } // namespace
 
 class VulkanApp
@@ -834,16 +903,77 @@ private:
 		m_imagesInFlight.resize(m_swapchainImages.size());
 
 		m_renderPass = CreateRenderPass(m_device.get(), surfaceFormat.format);
+		m_swapchainFramebuffers
+		    = CreateFramebuffers(m_swapchainImageViews, m_renderPass.get(), surfaceExtent, m_device.get());
 
 		m_pipeline = CreateGraphicsPipeline(
 		    m_vertexShader.get(), m_pixelShader.get(), m_pipelineLayout.get(), m_renderPass.get(), surfaceExtent,
 		    m_device.get());
 
-		m_swapchainFramebuffers
-		    = CreateFramebuffers(m_swapchainImageViews, m_renderPass.get(), surfaceExtent, m_device.get());
-		m_commandBuffers = CreateCommandBuffers(
-		    m_graphicsCommandPool.get(), m_swapchainFramebuffers, m_renderPass.get(), surfaceExtent, m_pipeline.get(),
-		    m_device.get());
+		const auto vertexBufferSize = TriangleVertices.size() * sizeof(TriangleVertex);
+
+		// Create staging buffer
+		const auto stagingBuffer = CreateBuffer(m_device.get(), vertexBufferSize, vk::BufferUsageFlagBits::eTransferSrc);
+		const auto stagingMemory = CreateDeviceMemory(
+		    m_device.get(), m_physicalDevice, m_device->getBufferMemoryRequirements(stagingBuffer.get()),
+		    vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
+		m_device->bindBufferMemory(stagingBuffer.get(), stagingMemory.get(), 0);
+		SetBufferData(m_device.get(), stagingMemory.get(), TriangleVertices);
+
+		// Create vertex buffer
+		m_vertexBuffer = CreateBuffer(
+		    m_device.get(), vertexBufferSize, vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eTransferDst);
+		m_deviceMemory = CreateDeviceMemory(
+		    m_device.get(), m_physicalDevice, m_device->getBufferMemoryRequirements(m_vertexBuffer.get()),
+		    vk::MemoryPropertyFlagBits::eDeviceLocal);
+		m_device->bindBufferMemory(m_vertexBuffer.get(), m_deviceMemory.get(), 0);
+		CopyBuffer(
+		    m_device.get(), m_graphicsCommandPool.get(), m_graphicsQueue, stagingBuffer.get(), m_vertexBuffer.get(),
+		    vertexBufferSize);
+
+		CreateCommandBuffers(surfaceExtent);
+	}
+
+	void DrawFrame(vk::CommandBuffer commandBuffer, vk::Framebuffer framebuffer, vk::Extent2D surfaceExtent)
+	{
+		commandBuffer.begin(vk::CommandBufferBeginInfo{});
+
+		const auto clearColor = std::array{0.0f, 0.0f, 0.0f, 1.0f};
+		const auto clearValue = vk::ClearValue{clearColor};
+
+		const auto renderPassBegin = vk::RenderPassBeginInfo{
+		    .renderPass = m_renderPass.get(),
+		    .framebuffer = framebuffer,
+		    .renderArea = {.offset = {0, 0}, .extent = surfaceExtent},
+		    .clearValueCount = 1,
+		    .pClearValues = &clearValue,
+		};
+
+		commandBuffer.beginRenderPass(renderPassBegin, vk::SubpassContents::eInline);
+
+		commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, m_pipeline.get());
+		commandBuffer.bindVertexBuffers(0, m_vertexBuffer.get(), vk::DeviceSize{0});
+		commandBuffer.draw(static_cast<uint32_t>(TriangleVertices.size()), 1, 0, 0);
+
+		commandBuffer.endRenderPass();
+
+		commandBuffer.end();
+	}
+
+	void CreateCommandBuffers(vk::Extent2D surfaceExtent)
+	{
+		const auto allocateInfo = vk::CommandBufferAllocateInfo{
+		    .commandPool = m_graphicsCommandPool.get(),
+		    .level = vk::CommandBufferLevel::ePrimary,
+		    .commandBufferCount = static_cast<uint32_t>(m_swapchainFramebuffers.size()),
+		};
+
+		m_commandBuffers = m_device->allocateCommandBuffersUnique(allocateInfo);
+
+		for (const size_t i : std::views::iota(0u, m_commandBuffers.size()))
+		{
+			DrawFrame(m_commandBuffers[i].get(), m_swapchainFramebuffers[i].get(), surfaceExtent);
+		}
 	}
 
 	void RecreateSwapchain()
@@ -875,6 +1005,8 @@ private:
 	vk::UniquePipeline m_pipeline;
 	vk::UniqueRenderPass m_renderPass;
 	vk::UniquePipelineLayout m_pipelineLayout;
+	vk::UniqueDeviceMemory m_deviceMemory;
+	vk::UniqueBuffer m_vertexBuffer;
 	std::vector<vk::UniqueFramebuffer> m_swapchainFramebuffers;
 	std::vector<vk::UniqueCommandBuffer> m_commandBuffers;
 
