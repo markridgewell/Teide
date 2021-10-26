@@ -23,7 +23,7 @@ VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE;
 
 namespace
 {
-constexpr std::string_view TriangleVertexShader = R"--(
+constexpr std::string_view VertexShader = R"--(
 #version 450
 
 layout(location = 0) in vec2 inPosition;
@@ -36,7 +36,7 @@ void main() {
     outColor = inColor;
 })--";
 
-constexpr std::string_view TrianglePixelShader = R"--(
+constexpr std::string_view PixelShader = R"--(
 #version 450
 
 layout(location = 0) in vec3 fragColor;
@@ -56,36 +56,39 @@ struct Vector2
 	float x, y;
 };
 
-struct TriangleVertex
+struct Vertex
 {
 	Vector2 position;
 	Vector3 color;
 };
 
-constexpr auto TriangleVertices = std::array<TriangleVertex, 3>{{
-    {{0.0f, -0.5f}, {1.0f, 0.0f, 0.0f}},
-    {{0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}},
-    {{-0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}},
+constexpr auto QuadVertices = std::array<Vertex, 4>{{
+    {{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}},
+    {{0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}},
+    {{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}},
+    {{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}},
 }};
 
-constexpr auto TriangleVertexBindingDescription = vk::VertexInputBindingDescription{
+constexpr auto QuadIndices = std::array<uint16_t, 6>{{0, 1, 2, 2, 3, 0}};
+
+constexpr auto VertexBindingDescription = vk::VertexInputBindingDescription{
     .binding = 0,
-    .stride = sizeof(TriangleVertex),
+    .stride = sizeof(Vertex),
     .inputRate = vk::VertexInputRate::eVertex,
 };
 
-constexpr auto TriangleVertexAttributeDescriptions = std::array<vk::VertexInputAttributeDescription, 2>{{
+constexpr auto VertexAttributeDescriptions = std::array<vk::VertexInputAttributeDescription, 2>{{
     {
         .location = 0,
         .binding = 0,
         .format = vk::Format::eR32G32Sfloat,
-        .offset = offsetof(TriangleVertex, position),
+        .offset = offsetof(Vertex, position),
     },
     {
         .location = 1,
         .binding = 0,
         .format = vk::Format::eR32G32B32Sfloat,
-        .offset = offsetof(TriangleVertex, color),
+        .offset = offsetof(Vertex, color),
     },
 }};
 
@@ -569,8 +572,8 @@ vk::UniquePipeline CreateGraphicsPipeline(
 	};
 
 	const auto vertexInput = vk::PipelineVertexInputStateCreateInfo{}
-	                             .setVertexBindingDescriptions(TriangleVertexBindingDescription)
-	                             .setVertexAttributeDescriptions(TriangleVertexAttributeDescriptions);
+	                             .setVertexBindingDescriptions(VertexBindingDescription)
+	                             .setVertexAttributeDescriptions(VertexAttributeDescriptions);
 
 	const auto inputAssembly = vk::PipelineInputAssemblyStateCreateInfo{
 	    .topology = vk::PrimitiveTopology::eTriangleList,
@@ -773,8 +776,8 @@ public:
 
 		m_pipelineLayout = CreateGraphicsPipelineLayout(m_device.get());
 
-		m_vertexShader = CreateShaderModule(TriangleVertexShader, ShaderStage::Vertex, ShaderLang, m_device.get());
-		m_pixelShader = CreateShaderModule(TrianglePixelShader, ShaderStage::Pixel, ShaderLang, m_device.get());
+		m_vertexShader = CreateShaderModule(VertexShader, ShaderStage::Vertex, ShaderLang, m_device.get());
+		m_pixelShader = CreateShaderModule(PixelShader, ShaderStage::Pixel, ShaderLang, m_device.get());
 
 		Init();
 
@@ -910,26 +913,50 @@ private:
 		    m_vertexShader.get(), m_pixelShader.get(), m_pipelineLayout.get(), m_renderPass.get(), surfaceExtent,
 		    m_device.get());
 
-		const auto vertexBufferSize = TriangleVertices.size() * sizeof(TriangleVertex);
+		{
+			const auto bufferSize = QuadVertices.size() * sizeof(Vertex);
 
-		// Create staging buffer
-		const auto stagingBuffer = CreateBuffer(m_device.get(), vertexBufferSize, vk::BufferUsageFlagBits::eTransferSrc);
-		const auto stagingMemory = CreateDeviceMemory(
-		    m_device.get(), m_physicalDevice, m_device->getBufferMemoryRequirements(stagingBuffer.get()),
-		    vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
-		m_device->bindBufferMemory(stagingBuffer.get(), stagingMemory.get(), 0);
-		SetBufferData(m_device.get(), stagingMemory.get(), TriangleVertices);
+			// Create staging buffer for vertices
+			const auto stagingBuffer = CreateBuffer(m_device.get(), bufferSize, vk::BufferUsageFlagBits::eTransferSrc);
+			const auto stagingMemory = CreateDeviceMemory(
+			    m_device.get(), m_physicalDevice, m_device->getBufferMemoryRequirements(stagingBuffer.get()),
+			    vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
+			m_device->bindBufferMemory(stagingBuffer.get(), stagingMemory.get(), 0);
+			SetBufferData(m_device.get(), stagingMemory.get(), QuadVertices);
 
-		// Create vertex buffer
-		m_vertexBuffer = CreateBuffer(
-		    m_device.get(), vertexBufferSize, vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eTransferDst);
-		m_deviceMemory = CreateDeviceMemory(
-		    m_device.get(), m_physicalDevice, m_device->getBufferMemoryRequirements(m_vertexBuffer.get()),
-		    vk::MemoryPropertyFlagBits::eDeviceLocal);
-		m_device->bindBufferMemory(m_vertexBuffer.get(), m_deviceMemory.get(), 0);
-		CopyBuffer(
-		    m_device.get(), m_graphicsCommandPool.get(), m_graphicsQueue, stagingBuffer.get(), m_vertexBuffer.get(),
-		    vertexBufferSize);
+			// Create vertex buffer
+			m_vertexBuffer = CreateBuffer(
+			    m_device.get(), bufferSize, vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eTransferDst);
+			m_vertexBufferMemory = CreateDeviceMemory(
+			    m_device.get(), m_physicalDevice, m_device->getBufferMemoryRequirements(m_vertexBuffer.get()),
+			    vk::MemoryPropertyFlagBits::eDeviceLocal);
+			m_device->bindBufferMemory(m_vertexBuffer.get(), m_vertexBufferMemory.get(), 0);
+			CopyBuffer(
+			    m_device.get(), m_graphicsCommandPool.get(), m_graphicsQueue, stagingBuffer.get(), m_vertexBuffer.get(),
+			    bufferSize);
+		}
+		{
+			const auto bufferSize = QuadIndices.size() * sizeof(decltype(QuadIndices)::value_type);
+
+			// Create staging buffer for vertices
+			const auto stagingBuffer = CreateBuffer(m_device.get(), bufferSize, vk::BufferUsageFlagBits::eTransferSrc);
+			const auto stagingMemory = CreateDeviceMemory(
+			    m_device.get(), m_physicalDevice, m_device->getBufferMemoryRequirements(stagingBuffer.get()),
+			    vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
+			m_device->bindBufferMemory(stagingBuffer.get(), stagingMemory.get(), 0);
+			SetBufferData(m_device.get(), stagingMemory.get(), QuadIndices);
+
+			// Create index buffer
+			m_indexBuffer = CreateBuffer(
+			    m_device.get(), bufferSize, vk::BufferUsageFlagBits::eIndexBuffer | vk::BufferUsageFlagBits::eTransferDst);
+			m_indexBufferMemory = CreateDeviceMemory(
+			    m_device.get(), m_physicalDevice, m_device->getBufferMemoryRequirements(m_indexBuffer.get()),
+			    vk::MemoryPropertyFlagBits::eDeviceLocal);
+			m_device->bindBufferMemory(m_indexBuffer.get(), m_indexBufferMemory.get(), 0);
+			CopyBuffer(
+			    m_device.get(), m_graphicsCommandPool.get(), m_graphicsQueue, stagingBuffer.get(), m_indexBuffer.get(),
+			    bufferSize);
+		}
 
 		CreateCommandBuffers(surfaceExtent);
 	}
@@ -953,7 +980,8 @@ private:
 
 		commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, m_pipeline.get());
 		commandBuffer.bindVertexBuffers(0, m_vertexBuffer.get(), vk::DeviceSize{0});
-		commandBuffer.draw(static_cast<uint32_t>(TriangleVertices.size()), 1, 0, 0);
+		commandBuffer.bindIndexBuffer(m_indexBuffer.get(), vk::DeviceSize{0}, vk::IndexType::eUint16);
+		commandBuffer.drawIndexed(static_cast<uint32_t>(QuadIndices.size()), 1, 0, 0, 0);
 
 		commandBuffer.endRenderPass();
 
@@ -1005,8 +1033,10 @@ private:
 	vk::UniquePipeline m_pipeline;
 	vk::UniqueRenderPass m_renderPass;
 	vk::UniquePipelineLayout m_pipelineLayout;
-	vk::UniqueDeviceMemory m_deviceMemory;
 	vk::UniqueBuffer m_vertexBuffer;
+	vk::UniqueDeviceMemory m_vertexBufferMemory;
+	vk::UniqueBuffer m_indexBuffer;
+	vk::UniqueDeviceMemory m_indexBufferMemory;
 	std::vector<vk::UniqueFramebuffer> m_swapchainFramebuffers;
 	std::vector<vk::UniqueCommandBuffer> m_commandBuffers;
 
