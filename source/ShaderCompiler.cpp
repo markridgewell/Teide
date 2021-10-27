@@ -133,15 +133,14 @@ std::vector<uint32_t> Compile(std::string_view shaderSource, EShLanguage stage, 
 
 	if (!shader.parse(&DefaultTBuiltInResource, 110, false, EShMsgDefault))
 	{
-		// throw CustomError("Error compiling shader");
-		return {};
+		throw CompileError(shader.getInfoLog());
 	}
 
 	auto program = glslang::TProgram();
 	program.addShader(&shader);
 	if (!program.link(EShMsgDefault))
 	{
-		return {};
+		throw CompileError(program.getInfoLog());
 	}
 
 	std::vector<uint32_t> spirv;

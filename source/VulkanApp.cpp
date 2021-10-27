@@ -1,5 +1,7 @@
 
 #include "Definitions.h"
+#include "GeoLib/Matrix.h"
+#include "GeoLib/Vector.h"
 #include "ShaderCompiler.h"
 
 #include <SDL.h>
@@ -31,35 +33,31 @@ layout(location = 1) in vec3 inColor;
 
 layout(location = 0) out vec3 outColor;
 
+layout(binding = 0) uniform UniformBufferObject {
+    mat4 model;
+    mat4 view;
+    mat4 proj;
+} ubo;
+
 void main() {
-    gl_Position = vec4(inPosition, 0.0, 1.0);
+    gl_Position = ubo.proj * ubo.view * ubo.model * vec4(inPosition, 0.0, 1.0);
     outColor = inColor;
 })--";
 
 constexpr std::string_view PixelShader = R"--(
 #version 450
 
-layout(location = 0) in vec3 fragColor;
+layout(location = 0) in vec3 inColor;
 layout(location = 0) out vec4 outColor;
 
 void main() {
-    outColor = vec4(fragColor, 1.0);
+    outColor = vec4(inColor, 1.0);
 })--";
-
-struct Vector3
-{
-	float x, y, z;
-};
-
-struct Vector2
-{
-	float x, y;
-};
 
 struct Vertex
 {
-	Vector2 position;
-	Vector3 color;
+	Geo::Vector2 position;
+	Geo::Vector3 color;
 };
 
 constexpr auto QuadVertices = std::array<Vertex, 4>{{
@@ -91,6 +89,13 @@ constexpr auto VertexAttributeDescriptions = std::array<vk::VertexInputAttribute
         .offset = offsetof(Vertex, color),
     },
 }};
+
+struct UniformBufferObject
+{
+	Geo::Matrix4 model;
+	Geo::Matrix4 view;
+	Geo::Matrix4 proj;
+};
 
 constexpr auto ShaderLang = ShaderLanguage::Glsl;
 
@@ -528,10 +533,28 @@ void SetBufferData(vk::Device device, vk::DeviceMemory bufferMemory, std::span<c
 }
 
 template <class T>
-	requires std::is_trivially_copyable_v<typename T::value_type> && std::is_standard_layout_v<typename T::value_type>
+concept Span = requires(T t)
+{
+	{std::span{t}};
+};
+
+template <class T>
+concept TrivialSpan
+    = Span<T> && std::is_trivially_copyable_v<typename T::value_type> && std::is_standard_layout_v<typename T::value_type>;
+
+template <class T>
+concept TrivalObject = !Span<T> && std::is_trivially_copyable_v<T> && std::is_standard_layout_v<T>;
+
+template <TrivialSpan T>
 void SetBufferData(vk::Device device, vk::DeviceMemory bufferMemory, const T& data)
 {
 	SetBufferData(device, bufferMemory, std::as_bytes(std::span(data)));
+}
+
+template <TrivalObject T>
+void SetBufferData(vk::Device device, vk::DeviceMemory bufferMemory, const T& data)
+{
+	SetBufferData(device, bufferMemory, std::as_bytes(std::span(&data, 1)));
 }
 
 void CopyBuffer(
@@ -560,6 +583,39 @@ void CopyBuffer(
 	const auto submitInfo = vk::SubmitInfo{}.setCommandBuffers(cmdBuffer);
 	queue.submit(submitInfo);
 	queue.waitIdle();
+}
+
+vk::UniqueDescriptorPool CreateDescriptorPool(vk::Device device, uint32_t numUniformBuffers)
+{
+	const auto uboSize = vk::DescriptorPoolSize{
+	    .type = vk::DescriptorType::eUniformBuffer,
+	    .descriptorCount = numUniformBuffers,
+	};
+
+	const auto createInfo = vk::DescriptorPoolCreateInfo{
+	    .maxSets = numUniformBuffers,
+	    .poolSizeCount = 1,
+	    .pPoolSizes = &uboSize,
+	};
+
+	return device.createDescriptorPoolUnique(createInfo, s_allocator);
+}
+
+vk::UniqueDescriptorSetLayout CreateDescriptorSetLayout(vk::Device device)
+{
+	const auto uboLayoutBinding = vk::DescriptorSetLayoutBinding{
+	    .binding = 0,
+	    .descriptorType = vk::DescriptorType::eUniformBuffer,
+	    .descriptorCount = 1,
+	    .stageFlags = vk::ShaderStageFlagBits::eVertex,
+	};
+
+	const auto createInfo = vk::DescriptorSetLayoutCreateInfo{
+	    .bindingCount = 1,
+	    .pBindings = &uboLayoutBinding,
+	};
+
+	return device.createDescriptorSetLayoutUnique(createInfo, s_allocator);
 }
 
 vk::UniquePipeline CreateGraphicsPipeline(
@@ -664,11 +720,11 @@ vk::UniquePipeline CreateGraphicsPipeline(
 	return std::move(pipeline);
 }
 
-vk::UniquePipelineLayout CreateGraphicsPipelineLayout(vk::Device device)
+vk::UniquePipelineLayout CreateGraphicsPipelineLayout(vk::Device device, vk::DescriptorSetLayout setLayout)
 {
 	const auto createInfo = vk::PipelineLayoutCreateInfo{
-	    .setLayoutCount = 0,
-	    .pSetLayouts = nullptr,
+	    .setLayoutCount = 1,
+	    .pSetLayouts = &setLayout,
 	    .pushConstantRangeCount = 0,
 	    .pPushConstantRanges = nullptr,
 	};
@@ -774,12 +830,20 @@ public:
 		std::ranges::generate(m_renderFinished, [this] { return CreateSemaphore(m_device.get()); });
 		std::ranges::generate(m_inFlightFences, [this] { return CreateFence(m_device.get()); });
 
-		m_pipelineLayout = CreateGraphicsPipelineLayout(m_device.get());
+		m_descriptorSetLayout = CreateDescriptorSetLayout(m_device.get());
+		m_pipelineLayout = CreateGraphicsPipelineLayout(m_device.get(), m_descriptorSetLayout.get());
 
 		m_vertexShader = CreateShaderModule(VertexShader, ShaderStage::Vertex, ShaderLang, m_device.get());
 		m_pixelShader = CreateShaderModule(PixelShader, ShaderStage::Pixel, ShaderLang, m_device.get());
 
-		Init();
+		CreateSwapchainAndImages();
+
+		CreateVertexBuffer();
+		CreateIndexBuffer();
+		CreateUniformBuffers();
+		CreateDescriptorSets();
+
+		CreateCommandBuffers();
 
 		spdlog::info("Vulkan initialised successfully");
 	}
@@ -808,6 +872,21 @@ public:
 			spdlog::error("Couldn't acquire swapchain image");
 			return;
 		}
+
+		// Update uniforms
+		const auto currentTime = std::chrono::high_resolution_clock::now();
+		const float timeSeconds
+		    = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - m_startTime).count();
+		const float aspectRatio = static_cast<float>(m_surfaceExtent.width) / static_cast<float>(m_surfaceExtent.height);
+
+		using namespace Geo::Literals;
+		const auto ubo = UniformBufferObject{
+		    .model = Geo::Matrix4::RotationZ(timeSeconds * 90.0_deg),
+		    .view = Geo::Matrix4::LookAt({2.0f, 2.0f, 2.0f}, {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 1.0f}),
+		    .proj = Geo::Matrix4::Perspective(45.0_deg, aspectRatio, 0.1f, 10.0f),
+		};
+
+		SetBufferData(m_device.get(), m_uniformBuffersMemory[imageIndex].get(), ubo);
 
 		// Check if a previous frame is using this image (i.e. there is its fence to wait on)
 		if (m_imagesInFlight[imageIndex])
@@ -842,15 +921,19 @@ public:
 		    .pImageIndices = &imageIndex,
 		};
 
-		const auto presentResult = m_graphicsQueue.presentKHR(presentInfo);
-		if (presentResult == vk::Result::eErrorOutOfDateKHR || presentResult == vk::Result::eSuboptimalKHR || m_windowResized)
+		try
+		{
+			const auto presentResult = m_graphicsQueue.presentKHR(presentInfo);
+			if (presentResult == vk::Result::eSuboptimalKHR || m_windowResized)
+			{
+				m_windowResized = false;
+				RecreateSwapchain();
+			}
+		}
+		catch (const vk::Error&)
 		{
 			m_windowResized = false;
 			RecreateSwapchain();
-		}
-		if (presentResult != vk::Result::eSuccess)
-		{
-			spdlog::error("Couldn't present");
 		}
 
 		m_currentFrame = (m_currentFrame + 1) % MaxFramesInFlight;
@@ -893,75 +976,125 @@ public:
 	}
 
 private:
-	void Init()
+	void CreateSwapchainAndImages()
 	{
 		const auto surfaceCapabilities = m_physicalDevice.getSurfaceCapabilitiesKHR(m_surface.get());
 		const auto surfaceFormat = ChooseSurfaceFormat(m_physicalDevice.getSurfaceFormatsKHR(m_surface.get()));
-		const auto surfaceExtent = ChooseSwapExtent(surfaceCapabilities, m_window);
+		m_surfaceExtent = ChooseSwapExtent(surfaceCapabilities, m_window);
 		const auto queueFamilyIndices = std::array{m_graphicsQueueFamily, m_presentQueueFamily};
 		m_swapchain = CreateSwapchain(
-		    m_physicalDevice, queueFamilyIndices, m_surface.get(), surfaceFormat, surfaceExtent, m_device.get());
+		    m_physicalDevice, queueFamilyIndices, m_surface.get(), surfaceFormat, m_surfaceExtent, m_device.get());
 		m_swapchainImages = m_device->getSwapchainImagesKHR(m_swapchain.get());
 		m_swapchainImageViews = CreateSwapchainImageViews(surfaceFormat.format, m_swapchainImages, m_device.get());
 		m_imagesInFlight.resize(m_swapchainImages.size());
 
 		m_renderPass = CreateRenderPass(m_device.get(), surfaceFormat.format);
 		m_swapchainFramebuffers
-		    = CreateFramebuffers(m_swapchainImageViews, m_renderPass.get(), surfaceExtent, m_device.get());
+		    = CreateFramebuffers(m_swapchainImageViews, m_renderPass.get(), m_surfaceExtent, m_device.get());
 
+		m_descriptorPool = CreateDescriptorPool(m_device.get(), static_cast<uint32_t>(m_swapchainImages.size()));
 		m_pipeline = CreateGraphicsPipeline(
-		    m_vertexShader.get(), m_pixelShader.get(), m_pipelineLayout.get(), m_renderPass.get(), surfaceExtent,
+		    m_vertexShader.get(), m_pixelShader.get(), m_pipelineLayout.get(), m_renderPass.get(), m_surfaceExtent,
 		    m_device.get());
-
-		{
-			const auto bufferSize = QuadVertices.size() * sizeof(Vertex);
-
-			// Create staging buffer for vertices
-			const auto stagingBuffer = CreateBuffer(m_device.get(), bufferSize, vk::BufferUsageFlagBits::eTransferSrc);
-			const auto stagingMemory = CreateDeviceMemory(
-			    m_device.get(), m_physicalDevice, m_device->getBufferMemoryRequirements(stagingBuffer.get()),
-			    vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
-			m_device->bindBufferMemory(stagingBuffer.get(), stagingMemory.get(), 0);
-			SetBufferData(m_device.get(), stagingMemory.get(), QuadVertices);
-
-			// Create vertex buffer
-			m_vertexBuffer = CreateBuffer(
-			    m_device.get(), bufferSize, vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eTransferDst);
-			m_vertexBufferMemory = CreateDeviceMemory(
-			    m_device.get(), m_physicalDevice, m_device->getBufferMemoryRequirements(m_vertexBuffer.get()),
-			    vk::MemoryPropertyFlagBits::eDeviceLocal);
-			m_device->bindBufferMemory(m_vertexBuffer.get(), m_vertexBufferMemory.get(), 0);
-			CopyBuffer(
-			    m_device.get(), m_graphicsCommandPool.get(), m_graphicsQueue, stagingBuffer.get(), m_vertexBuffer.get(),
-			    bufferSize);
-		}
-		{
-			const auto bufferSize = QuadIndices.size() * sizeof(decltype(QuadIndices)::value_type);
-
-			// Create staging buffer for vertices
-			const auto stagingBuffer = CreateBuffer(m_device.get(), bufferSize, vk::BufferUsageFlagBits::eTransferSrc);
-			const auto stagingMemory = CreateDeviceMemory(
-			    m_device.get(), m_physicalDevice, m_device->getBufferMemoryRequirements(stagingBuffer.get()),
-			    vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
-			m_device->bindBufferMemory(stagingBuffer.get(), stagingMemory.get(), 0);
-			SetBufferData(m_device.get(), stagingMemory.get(), QuadIndices);
-
-			// Create index buffer
-			m_indexBuffer = CreateBuffer(
-			    m_device.get(), bufferSize, vk::BufferUsageFlagBits::eIndexBuffer | vk::BufferUsageFlagBits::eTransferDst);
-			m_indexBufferMemory = CreateDeviceMemory(
-			    m_device.get(), m_physicalDevice, m_device->getBufferMemoryRequirements(m_indexBuffer.get()),
-			    vk::MemoryPropertyFlagBits::eDeviceLocal);
-			m_device->bindBufferMemory(m_indexBuffer.get(), m_indexBufferMemory.get(), 0);
-			CopyBuffer(
-			    m_device.get(), m_graphicsCommandPool.get(), m_graphicsQueue, stagingBuffer.get(), m_indexBuffer.get(),
-			    bufferSize);
-		}
-
-		CreateCommandBuffers(surfaceExtent);
 	}
 
-	void DrawFrame(vk::CommandBuffer commandBuffer, vk::Framebuffer framebuffer, vk::Extent2D surfaceExtent)
+	void CreateVertexBuffer()
+	{
+		const auto bufferSize = QuadVertices.size() * sizeof(Vertex);
+
+		// Create staging buffer for vertices
+		const auto stagingBuffer = CreateBuffer(m_device.get(), bufferSize, vk::BufferUsageFlagBits::eTransferSrc);
+		const auto stagingMemory = CreateDeviceMemory(
+		    m_device.get(), m_physicalDevice, m_device->getBufferMemoryRequirements(stagingBuffer.get()),
+		    vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
+		m_device->bindBufferMemory(stagingBuffer.get(), stagingMemory.get(), 0);
+		SetBufferData(m_device.get(), stagingMemory.get(), QuadVertices);
+
+		// Create vertex buffer
+		m_vertexBuffer = CreateBuffer(
+		    m_device.get(), bufferSize, vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eTransferDst);
+		m_vertexBufferMemory = CreateDeviceMemory(
+		    m_device.get(), m_physicalDevice, m_device->getBufferMemoryRequirements(m_vertexBuffer.get()),
+		    vk::MemoryPropertyFlagBits::eDeviceLocal);
+		m_device->bindBufferMemory(m_vertexBuffer.get(), m_vertexBufferMemory.get(), 0);
+		CopyBuffer(
+		    m_device.get(), m_graphicsCommandPool.get(), m_graphicsQueue, stagingBuffer.get(), m_vertexBuffer.get(),
+		    bufferSize);
+	}
+
+	void CreateIndexBuffer()
+	{
+		const auto bufferSize = QuadIndices.size() * sizeof(decltype(QuadIndices)::value_type);
+
+		// Create staging buffer for vertices
+		const auto stagingBuffer = CreateBuffer(m_device.get(), bufferSize, vk::BufferUsageFlagBits::eTransferSrc);
+		const auto stagingMemory = CreateDeviceMemory(
+		    m_device.get(), m_physicalDevice, m_device->getBufferMemoryRequirements(stagingBuffer.get()),
+		    vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
+		m_device->bindBufferMemory(stagingBuffer.get(), stagingMemory.get(), 0);
+		SetBufferData(m_device.get(), stagingMemory.get(), QuadIndices);
+
+		// Create index buffer
+		m_indexBuffer = CreateBuffer(
+		    m_device.get(), bufferSize, vk::BufferUsageFlagBits::eIndexBuffer | vk::BufferUsageFlagBits::eTransferDst);
+		m_indexBufferMemory = CreateDeviceMemory(
+		    m_device.get(), m_physicalDevice, m_device->getBufferMemoryRequirements(m_indexBuffer.get()),
+		    vk::MemoryPropertyFlagBits::eDeviceLocal);
+		m_device->bindBufferMemory(m_indexBuffer.get(), m_indexBufferMemory.get(), 0);
+		CopyBuffer(
+		    m_device.get(), m_graphicsCommandPool.get(), m_graphicsQueue, stagingBuffer.get(), m_indexBuffer.get(),
+		    bufferSize);
+	}
+
+	void CreateUniformBuffers()
+	{
+		const auto bufferSize = sizeof(UniformBufferObject);
+
+		m_uniformBuffers.resize(m_swapchainImages.size());
+		m_uniformBuffersMemory.resize(m_swapchainImages.size());
+		for (size_t i = 0; i < m_swapchainImages.size(); i++)
+		{
+			m_uniformBuffers[i] = CreateBuffer(m_device.get(), bufferSize, vk::BufferUsageFlagBits::eUniformBuffer);
+			m_uniformBuffersMemory[i] = CreateDeviceMemory(
+			    m_device.get(), m_physicalDevice, m_device->getBufferMemoryRequirements(m_uniformBuffers[i].get()),
+			    vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
+			m_device->bindBufferMemory(m_uniformBuffers[i].get(), m_uniformBuffersMemory[i].get(), 0);
+		}
+	}
+
+	void CreateDescriptorSets()
+	{
+		const auto layouts = std::vector<vk::DescriptorSetLayout>(m_swapchainImages.size(), m_descriptorSetLayout.get());
+		const auto allocInfo = vk::DescriptorSetAllocateInfo{
+		    .descriptorPool = m_descriptorPool.get(),
+		    .descriptorSetCount = static_cast<uint32_t>(layouts.size()),
+		    .pSetLayouts = layouts.data(),
+		};
+
+		m_descriptorSets = m_device->allocateDescriptorSetsUnique(allocInfo);
+
+		for (size_t i = 0; i < layouts.size(); i++)
+		{
+			const auto bufferInfo = vk::DescriptorBufferInfo{
+			    .buffer = m_uniformBuffers[i].get(),
+			    .offset = 0,
+			    .range = sizeof(UniformBufferObject),
+			};
+
+			const auto descriptorWrite = vk::WriteDescriptorSet{
+			    .dstSet = m_descriptorSets[i].get(),
+			    .dstBinding = 0,
+			    .dstArrayElement = 0,
+			    .descriptorCount = 1,
+			    .descriptorType = vk::DescriptorType::eUniformBuffer,
+			    .pBufferInfo = &bufferInfo,
+			};
+
+			m_device->updateDescriptorSets(descriptorWrite, {});
+		}
+	}
+
+	void DrawObjects(vk::CommandBuffer commandBuffer, vk::Framebuffer framebuffer, vk::Extent2D surfaceExtent, size_t imageIndex)
 	{
 		commandBuffer.begin(vk::CommandBufferBeginInfo{});
 
@@ -976,11 +1109,14 @@ private:
 		    .pClearValues = &clearValue,
 		};
 
+		const auto descriptorSet = m_descriptorSets[imageIndex].get();
+
 		commandBuffer.beginRenderPass(renderPassBegin, vk::SubpassContents::eInline);
 
 		commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, m_pipeline.get());
 		commandBuffer.bindVertexBuffers(0, m_vertexBuffer.get(), vk::DeviceSize{0});
 		commandBuffer.bindIndexBuffer(m_indexBuffer.get(), vk::DeviceSize{0}, vk::IndexType::eUint16);
+		commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, m_pipelineLayout.get(), 0, descriptorSet, {});
 		commandBuffer.drawIndexed(static_cast<uint32_t>(QuadIndices.size()), 1, 0, 0, 0);
 
 		commandBuffer.endRenderPass();
@@ -988,7 +1124,7 @@ private:
 		commandBuffer.end();
 	}
 
-	void CreateCommandBuffers(vk::Extent2D surfaceExtent)
+	void CreateCommandBuffers()
 	{
 		const auto allocateInfo = vk::CommandBufferAllocateInfo{
 		    .commandPool = m_graphicsCommandPool.get(),
@@ -1000,7 +1136,7 @@ private:
 
 		for (const size_t i : std::views::iota(0u, m_commandBuffers.size()))
 		{
-			DrawFrame(m_commandBuffers[i].get(), m_swapchainFramebuffers[i].get(), surfaceExtent);
+			DrawObjects(m_commandBuffers[i].get(), m_swapchainFramebuffers[i].get(), m_surfaceExtent, i);
 		}
 	}
 
@@ -1008,11 +1144,16 @@ private:
 	{
 		m_device->waitIdle();
 		m_commandBuffers.clear();
-		Init();
+		CreateSwapchainAndImages();
+		CreateUniformBuffers();
+		CreateCommandBuffers();
 	}
 
 	SDL_Window* m_window;
 	bool m_windowResized = false;
+	vk::Extent2D m_surfaceExtent;
+
+	std::chrono::high_resolution_clock::time_point m_startTime = std::chrono::high_resolution_clock::now();
 
 	vk::UniqueInstance m_instance;
 	vk::PhysicalDevice m_physicalDevice;
@@ -1026,10 +1167,12 @@ private:
 	std::vector<vk::Image> m_swapchainImages;
 	std::vector<vk::UniqueImageView> m_swapchainImageViews;
 	vk::UniqueCommandPool m_graphicsCommandPool;
+	vk::UniqueDescriptorPool m_descriptorPool;
 
 	// Triangle setup
 	vk::UniqueShaderModule m_vertexShader;
 	vk::UniqueShaderModule m_pixelShader;
+	vk::UniqueDescriptorSetLayout m_descriptorSetLayout;
 	vk::UniquePipeline m_pipeline;
 	vk::UniqueRenderPass m_renderPass;
 	vk::UniquePipelineLayout m_pipelineLayout;
@@ -1037,6 +1180,9 @@ private:
 	vk::UniqueDeviceMemory m_vertexBufferMemory;
 	vk::UniqueBuffer m_indexBuffer;
 	vk::UniqueDeviceMemory m_indexBufferMemory;
+	std::vector<vk::UniqueBuffer> m_uniformBuffers;
+	std::vector<vk::UniqueDeviceMemory> m_uniformBuffersMemory;
+	std::vector<vk::UniqueDescriptorSet> m_descriptorSets;
 	std::vector<vk::UniqueFramebuffer> m_swapchainFramebuffers;
 	std::vector<vk::UniqueCommandBuffer> m_commandBuffers;
 
@@ -1069,11 +1215,10 @@ int Run()
 		return 1;
 	}
 
+	std::optional<VulkanApp> vulkan;
 	try
 	{
-		auto vulkan = VulkanApp(window.get());
-
-		vulkan.MainLoop();
+		vulkan.emplace(window.get());
 	}
 	catch (const vk::Error& e)
 	{
@@ -1082,6 +1227,15 @@ int Run()
 		SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Error", message.c_str(), window.get());
 		return 1;
 	}
+	catch (const CompileError& e)
+	{
+		spdlog::critical("Shader compilation error: {}", e.what());
+		std::string message = std::format("The following error occurred when compiling shaders:\n{}", e.what());
+		SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Error", message.c_str(), window.get());
+		return 1;
+	}
+
+	vulkan->MainLoop();
 
 	return 0;
 }
