@@ -992,7 +992,6 @@ private:
 		m_swapchainFramebuffers
 		    = CreateFramebuffers(m_swapchainImageViews, m_renderPass.get(), m_surfaceExtent, m_device.get());
 
-		m_descriptorPool = CreateDescriptorPool(m_device.get(), static_cast<uint32_t>(m_swapchainImages.size()));
 		m_pipeline = CreateGraphicsPipeline(
 		    m_vertexShader.get(), m_pixelShader.get(), m_pipelineLayout.get(), m_renderPass.get(), m_surfaceExtent,
 		    m_device.get());
@@ -1064,14 +1063,16 @@ private:
 
 	void CreateDescriptorSets()
 	{
+		auto descriptorPool = CreateDescriptorPool(m_device.get(), static_cast<uint32_t>(m_swapchainImages.size()));
+
 		const auto layouts = std::vector<vk::DescriptorSetLayout>(m_swapchainImages.size(), m_descriptorSetLayout.get());
 		const auto allocInfo = vk::DescriptorSetAllocateInfo{
-		    .descriptorPool = m_descriptorPool.get(),
+		    .descriptorPool = descriptorPool.get(),
 		    .descriptorSetCount = static_cast<uint32_t>(layouts.size()),
 		    .pSetLayouts = layouts.data(),
 		};
 
-		m_descriptorSets = m_device->allocateDescriptorSetsUnique(allocInfo);
+		m_descriptorSets = m_device->allocateDescriptorSets(allocInfo);
 
 		for (size_t i = 0; i < layouts.size(); i++)
 		{
@@ -1082,7 +1083,7 @@ private:
 			};
 
 			const auto descriptorWrite = vk::WriteDescriptorSet{
-			    .dstSet = m_descriptorSets[i].get(),
+			    .dstSet = m_descriptorSets[i],
 			    .dstBinding = 0,
 			    .dstArrayElement = 0,
 			    .descriptorCount = 1,
@@ -1092,6 +1093,8 @@ private:
 
 			m_device->updateDescriptorSets(descriptorWrite, {});
 		}
+
+		m_descriptorPool = std::move(descriptorPool);
 	}
 
 	void DrawObjects(vk::CommandBuffer commandBuffer, vk::Framebuffer framebuffer, vk::Extent2D surfaceExtent, size_t imageIndex)
@@ -1109,7 +1112,7 @@ private:
 		    .pClearValues = &clearValue,
 		};
 
-		const auto descriptorSet = m_descriptorSets[imageIndex].get();
+		const auto descriptorSet = m_descriptorSets[imageIndex];
 
 		commandBuffer.beginRenderPass(renderPassBegin, vk::SubpassContents::eInline);
 
@@ -1146,6 +1149,7 @@ private:
 		m_commandBuffers.clear();
 		CreateSwapchainAndImages();
 		CreateUniformBuffers();
+		CreateDescriptorSets();
 		CreateCommandBuffers();
 	}
 
@@ -1182,7 +1186,7 @@ private:
 	vk::UniqueDeviceMemory m_indexBufferMemory;
 	std::vector<vk::UniqueBuffer> m_uniformBuffers;
 	std::vector<vk::UniqueDeviceMemory> m_uniformBuffersMemory;
-	std::vector<vk::UniqueDescriptorSet> m_descriptorSets;
+	std::vector<vk::DescriptorSet> m_descriptorSets;
 	std::vector<vk::UniqueFramebuffer> m_swapchainFramebuffers;
 	std::vector<vk::UniqueCommandBuffer> m_commandBuffers;
 

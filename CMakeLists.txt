@@ -16,6 +16,7 @@ set(sources
 )
 
 add_executable(Teide WIN32 ${sources})
+source_group(TREE source PREFIX Source FILES ${sources})
 target_compile_features(Teide PUBLIC cxx_std_23)
 target_compile_definitions(Teide PRIVATE VULKAN_HPP_NO_STRUCT_CONSTRUCTORS VULKAN_HPP_DISPATCH_LOADER_DYNAMIC=1)
 set_property(TARGET Teide PROPERTY VS_DPI_AWARE "PerMonitor")
