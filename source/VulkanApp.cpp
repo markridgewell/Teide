@@ -32,9 +32,11 @@ constexpr std::string_view VertexShader = R"--(
 #version 450
 
 layout(location = 0) in vec2 inPosition;
-layout(location = 1) in vec3 inColor;
+layout(location = 1) in vec2 inTexCoord;
+layout(location = 2) in vec3 inColor;
 
-layout(location = 0) out vec3 outColor;
+layout(location = 0) out vec2 outTexCoord;
+layout(location = 1) out vec3 outColor;
 
 layout(binding = 0) uniform UniformBufferObject {
     mat4 model;
@@ -44,30 +46,35 @@ layout(binding = 0) uniform UniformBufferObject {
 
 void main() {
     gl_Position = ubo.proj * ubo.view * ubo.model * vec4(inPosition, 0.0, 1.0);
+    outTexCoord = inTexCoord;
     outColor = inColor;
 })--";
 
 constexpr std::string_view PixelShader = R"--(
 #version 450
 
-layout(location = 0) in vec3 inColor;
+layout(location = 0) in vec2 inTexCoord;
+layout(location = 1) in vec3 inColor;
 layout(location = 0) out vec4 outColor;
 
+layout(binding = 1) uniform sampler2D texSampler;
+
 void main() {
-    outColor = vec4(inColor, 1.0);
+    outColor = texture(texSampler, inTexCoord);
 })--";
 
 struct Vertex
 {
 	Geo::Vector2 position;
+	Geo::Vector2 texCoord;
 	Geo::Vector3 color;
 };
 
 constexpr auto QuadVertices = std::array<Vertex, 4>{{
-    {{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}},
-    {{0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}},
-    {{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}},
-    {{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}},
+    {{-0.5f, -0.5f}, {0.0f, 0.0f}, {1.0f, 0.0f, 0.0f}},
+    {{0.5f, -0.5f}, {1.0f, 0.0f}, {0.0f, 1.0f, 0.0f}},
+    {{0.5f, 0.5f}, {1.0f, 1.0f}, {0.0f, 0.0f, 1.0f}},
+    {{-0.5f, 0.5f}, {0.0f, 1.0f}, {1.0f, 1.0f, 1.0f}},
 }};
 
 constexpr auto QuadIndices = std::array<uint16_t, 6>{{0, 1, 2, 2, 3, 0}};
@@ -78,20 +85,26 @@ constexpr auto VertexBindingDescription = vk::VertexInputBindingDescription{
     .inputRate = vk::VertexInputRate::eVertex,
 };
 
-constexpr auto VertexAttributeDescriptions = std::array<vk::VertexInputAttributeDescription, 2>{{
-    {
+constexpr auto VertexAttributeDescriptions = std::array{
+    vk::VertexInputAttributeDescription{
         .location = 0,
         .binding = 0,
         .format = vk::Format::eR32G32Sfloat,
         .offset = offsetof(Vertex, position),
     },
-    {
+    vk::VertexInputAttributeDescription{
         .location = 1,
+        .binding = 0,
+        .format = vk::Format::eR32G32B32Sfloat,
+        .offset = offsetof(Vertex, texCoord),
+    },
+    vk::VertexInputAttributeDescription{
+        .location = 2,
         .binding = 0,
         .format = vk::Format::eR32G32B32Sfloat,
         .offset = offsetof(Vertex, color),
     },
-}};
+};
 
 struct UniformBufferObject
 {
@@ -199,12 +212,16 @@ VKAPI_ATTR VkBool32 VKAPI_CALL DebugCallback(
 	return VK_FALSE;
 }
 
-constexpr auto DebugCreateInfo = vk::DebugUtilsMessengerCreateInfoEXT{
-    .messageSeverity = vk::DebugUtilsMessageSeverityFlagBitsEXT::eError
-        | vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning | vk::DebugUtilsMessageSeverityFlagBitsEXT::eInfo,
-    .messageType = vk::DebugUtilsMessageTypeFlagBitsEXT::eGeneral | vk::DebugUtilsMessageTypeFlagBitsEXT::eValidation
-        | vk::DebugUtilsMessageTypeFlagBitsEXT::ePerformance,
-    .pfnUserCallback = DebugCallback};
+constexpr auto DebugCreateInfo = [] {
+	using enum vk::DebugUtilsMessageSeverityFlagBitsEXT;
+	using enum vk::DebugUtilsMessageTypeFlagBitsEXT;
+
+	return vk::DebugUtilsMessengerCreateInfoEXT{
+	    .messageSeverity = eError | eWarning | eInfo,
+	    .messageType = eGeneral | eValidation | ePerformance,
+	    .pfnUserCallback = DebugCallback,
+	};
+}();
 
 vk::UniqueInstance CreateInstance(SDL_Window* window)
 {
@@ -223,17 +240,39 @@ vk::UniqueInstance CreateInstance(SDL_Window* window)
 	{
 		EnableOptionalVulkanLayer(layers, availableLayers, "VK_LAYER_KHRONOS_validation");
 		EnableRequiredVulkanExtension(extensions, availableExtensions, "VK_EXT_debug_utils");
+
+		const auto enabledFeatures = std::array{
+		    vk::ValidationFeatureEnableEXT::eSynchronizationValidation,
+		    // vk::ValidationFeatureEnableEXT::eBestPractices,
+		};
+
+		const auto createInfo = vk::StructureChain{
+		    vk::InstanceCreateInfo{
+		        .pApplicationInfo = &applicationInfo,
+		        .enabledLayerCount = static_cast<uint32_t>(layers.size()),
+		        .ppEnabledLayerNames = layers.data(),
+		        .enabledExtensionCount = static_cast<uint32_t>(extensions.size()),
+		        .ppEnabledExtensionNames = extensions.data()},
+		    vk::ValidationFeaturesEXT{
+		        .enabledValidationFeatureCount = static_cast<uint32_t>(enabledFeatures.size()),
+		        .pEnabledValidationFeatures = enabledFeatures.data(),
+		    },
+		    DebugCreateInfo,
+		};
+
+		return vk::createInstanceUnique(createInfo.get<vk::InstanceCreateInfo>(), s_allocator);
 	}
+	else
+	{
+		const auto createInfo = vk::InstanceCreateInfo{
+		    .pApplicationInfo = &applicationInfo,
+		    .enabledLayerCount = static_cast<uint32_t>(layers.size()),
+		    .ppEnabledLayerNames = layers.data(),
+		    .enabledExtensionCount = static_cast<uint32_t>(extensions.size()),
+		    .ppEnabledExtensionNames = extensions.data()};
 
-	const auto createInfo = vk::InstanceCreateInfo{
-	    .pNext = &DebugCreateInfo,
-	    .pApplicationInfo = &applicationInfo,
-	    .enabledLayerCount = static_cast<uint32_t>(layers.size()),
-	    .ppEnabledLayerNames = layers.data(),
-	    .enabledExtensionCount = static_cast<uint32_t>(extensions.size()),
-	    .ppEnabledExtensionNames = extensions.data()};
-
-	return vk::createInstanceUnique(createInfo, s_allocator);
+		return vk::createInstanceUnique(createInfo, s_allocator);
+	}
 }
 
 struct QueueFamilyIndices
@@ -301,6 +340,13 @@ vk::PhysicalDevice FindPhysicalDevice(vk::Instance instance, vk::SurfaceKHR surf
 			return false;
 		}
 
+		// Check all required features are supported
+		const auto supportedFeatures = device.getFeatures();
+		if (!supportedFeatures.samplerAnisotropy)
+		{
+			return false;
+		}
+
 		// Check for adequate swap chain support
 		if (device.getSurfaceFormatsKHR(surface).empty())
 		{
@@ -339,7 +385,9 @@ CreateDevice(vk::PhysicalDevice physicalDevice, std::span<const uint32_t> queueF
 		}
 	}
 
-	const auto deviceFeatures = vk::PhysicalDeviceFeatures{};
+	const auto deviceFeatures = vk::PhysicalDeviceFeatures{
+	    .samplerAnisotropy = true,
+	};
 
 	const auto availableLayers = physicalDevice.enumerateDeviceLayerProperties();
 	const auto availableExtensions = physicalDevice.enumerateDeviceExtensionProperties();
@@ -638,35 +686,45 @@ void TransitionImageLayout(
 	cmdBuffer.pipelineBarrier(srcStageMask, dstStageMask, {}, {}, {}, barrier);
 }
 
-vk::UniqueDescriptorPool CreateDescriptorPool(vk::Device device, uint32_t numUniformBuffers)
+vk::UniqueDescriptorPool CreateDescriptorPool(vk::Device device, uint32_t numSwapchainImages)
 {
-	const auto uboSize = vk::DescriptorPoolSize{
-	    .type = vk::DescriptorType::eUniformBuffer,
-	    .descriptorCount = numUniformBuffers,
+	const auto poolSizes = std::array{
+	    vk::DescriptorPoolSize{
+	        .type = vk::DescriptorType::eUniformBuffer,
+	        .descriptorCount = numSwapchainImages,
+	    },
+	    vk::DescriptorPoolSize{
+	        .type = vk::DescriptorType::eCombinedImageSampler,
+	        .descriptorCount = numSwapchainImages,
+	    },
 	};
 
 	const auto createInfo = vk::DescriptorPoolCreateInfo{
-	    .maxSets = numUniformBuffers,
-	    .poolSizeCount = 1,
-	    .pPoolSizes = &uboSize,
-	};
+	    .maxSets = numSwapchainImages,
+	}.setPoolSizes(poolSizes);
 
 	return device.createDescriptorPoolUnique(createInfo, s_allocator);
 }
 
 vk::UniqueDescriptorSetLayout CreateDescriptorSetLayout(vk::Device device)
 {
-	const auto uboLayoutBinding = vk::DescriptorSetLayoutBinding{
-	    .binding = 0,
-	    .descriptorType = vk::DescriptorType::eUniformBuffer,
-	    .descriptorCount = 1,
-	    .stageFlags = vk::ShaderStageFlagBits::eVertex,
+	const auto layoutBindings = std::array{
+	    vk::DescriptorSetLayoutBinding{
+	        .binding = 0,
+	        .descriptorType = vk::DescriptorType::eUniformBuffer,
+	        .descriptorCount = 1,
+	        .stageFlags = vk::ShaderStageFlagBits::eVertex,
+	    },
+	    vk::DescriptorSetLayoutBinding{
+	        .binding = 1,
+	        .descriptorType = vk::DescriptorType::eCombinedImageSampler,
+	        .descriptorCount = 1,
+	        .stageFlags = vk::ShaderStageFlagBits::eFragment,
+	        .pImmutableSamplers = nullptr,
+	    },
 	};
 
-	const auto createInfo = vk::DescriptorSetLayoutCreateInfo{
-	    .bindingCount = 1,
-	    .pBindings = &uboLayoutBinding,
-	};
+	const auto createInfo = vk::DescriptorSetLayoutCreateInfo{}.setBindings(layoutBindings);
 
 	return device.createDescriptorSetLayoutUnique(createInfo, s_allocator);
 }
@@ -863,7 +921,10 @@ public:
 		m_instance = CreateInstance(window);
 		VULKAN_HPP_DEFAULT_DISPATCHER.init(m_instance.get());
 
-		const auto debugMessenger = m_instance->createDebugUtilsMessengerEXTUnique(DebugCreateInfo, s_allocator);
+		if constexpr (IsDebugBuild)
+		{
+			m_debugMessenger = m_instance->createDebugUtilsMessengerEXTUnique(DebugCreateInfo, s_allocator);
+		}
 
 		m_surface = CreateVulkanSurface(window, m_instance.get());
 
@@ -894,8 +955,9 @@ public:
 		CreateVertexBuffer();
 		CreateIndexBuffer();
 		CreateUniformBuffers();
-		CreateDescriptorSets();
 		CreateTextureImage(imageFilename);
+		CreateTextureSampler();
+		CreateDescriptorSets();
 
 		CreateCommandBuffers();
 
@@ -1066,6 +1128,7 @@ private:
 
 		return OneShot(*this);
 	}
+
 	void CreateSwapchainAndImages()
 	{
 		const auto surfaceCapabilities = m_physicalDevice.getSurfaceCapabilitiesKHR(m_surface.get());
@@ -1168,16 +1231,32 @@ private:
 			    .range = sizeof(UniformBufferObject),
 			};
 
-			const auto descriptorWrite = vk::WriteDescriptorSet{
-			    .dstSet = m_descriptorSets[i],
-			    .dstBinding = 0,
-			    .dstArrayElement = 0,
-			    .descriptorCount = 1,
-			    .descriptorType = vk::DescriptorType::eUniformBuffer,
-			    .pBufferInfo = &bufferInfo,
+			const auto imageInfo = vk::DescriptorImageInfo{
+			    .sampler = m_textureSampler.get(),
+			    .imageView = m_textureImageView.get(),
+			    .imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal,
 			};
 
-			m_device->updateDescriptorSets(descriptorWrite, {});
+			const auto descriptorWrites = std::array{
+			    vk::WriteDescriptorSet{
+			        .dstSet = m_descriptorSets[i],
+			        .dstBinding = 0,
+			        .dstArrayElement = 0,
+			        .descriptorCount = 1,
+			        .descriptorType = vk::DescriptorType::eUniformBuffer,
+			        .pBufferInfo = &bufferInfo,
+			    },
+			    vk::WriteDescriptorSet{
+			        .dstSet = m_descriptorSets[i],
+			        .dstBinding = 1,
+			        .dstArrayElement = 0,
+			        .descriptorCount = 1,
+			        .descriptorType = vk::DescriptorType::eCombinedImageSampler,
+			        .pImageInfo = &imageInfo,
+			    },
+			};
+
+			m_device->updateDescriptorSets(descriptorWrites, {});
 		}
 
 		m_descriptorPool = std::move(descriptorPool);
@@ -1238,6 +1317,37 @@ private:
 		    cmdBuffer, m_textureImage.get(), imageInfo.format, vk::ImageLayout::eTransferDstOptimal,
 		    vk::ImageLayout::eShaderReadOnlyOptimal, vk::PipelineStageFlagBits::eTransfer,
 		    vk::PipelineStageFlagBits::eFragmentShader);
+
+		// Create image view
+		const auto viewInfo = vk::ImageViewCreateInfo{
+			.image = m_textureImage.get(),
+			.viewType = vk::ImageViewType::e2D,
+			.format = imageInfo.format,
+			.subresourceRange = {
+				.aspectMask = vk::ImageAspectFlagBits::eColor,
+				.baseMipLevel = 0,
+				.levelCount = 1,
+				.baseArrayLayer = 0,
+				.layerCount = 1,
+			},
+		};
+		m_textureImageView = m_device->createImageViewUnique(viewInfo, s_allocator);
+	}
+
+	void CreateTextureSampler()
+	{
+		const auto samplerInfo = vk::SamplerCreateInfo{
+		    .magFilter = vk::Filter::eLinear,
+		    .minFilter = vk::Filter::eLinear,
+		    .mipmapMode = vk::SamplerMipmapMode::eLinear,
+		    .addressModeU = vk::SamplerAddressMode::eRepeat,
+		    .addressModeV = vk::SamplerAddressMode::eRepeat,
+		    .addressModeW = vk::SamplerAddressMode::eRepeat,
+		    .anisotropyEnable = true,
+		    .maxAnisotropy = m_physicalDevice.getProperties().limits.maxSamplerAnisotropy,
+		};
+
+		m_textureSampler = m_device->createSamplerUnique(samplerInfo, s_allocator);
 	}
 
 	void DrawObjects(vk::CommandBuffer commandBuffer, vk::Framebuffer framebuffer, vk::Extent2D surfaceExtent, size_t imageIndex)
@@ -1303,6 +1413,7 @@ private:
 	std::chrono::high_resolution_clock::time_point m_startTime = std::chrono::high_resolution_clock::now();
 
 	vk::UniqueInstance m_instance;
+	vk::UniqueDebugUtilsMessengerEXT m_debugMessenger;
 	vk::PhysicalDevice m_physicalDevice;
 	vk::UniqueDevice m_device;
 	vk::UniqueSurfaceKHR m_surface;
@@ -1316,7 +1427,7 @@ private:
 	vk::UniqueCommandPool m_graphicsCommandPool;
 	vk::UniqueDescriptorPool m_descriptorPool;
 
-	// Triangle setup
+	// Object setup
 	vk::UniqueShaderModule m_vertexShader;
 	vk::UniqueShaderModule m_pixelShader;
 	vk::UniqueDescriptorSetLayout m_descriptorSetLayout;
@@ -1329,13 +1440,15 @@ private:
 	vk::UniqueDeviceMemory m_indexBufferMemory;
 	vk::UniqueImage m_textureImage;
 	vk::UniqueDeviceMemory m_textureMemory;
+	vk::UniqueImageView m_textureImageView;
+	vk::UniqueSampler m_textureSampler;
 	std::vector<vk::UniqueBuffer> m_uniformBuffers;
 	std::vector<vk::UniqueDeviceMemory> m_uniformBuffersMemory;
 	std::vector<vk::DescriptorSet> m_descriptorSets;
 	std::vector<vk::UniqueFramebuffer> m_swapchainFramebuffers;
 	std::vector<vk::UniqueCommandBuffer> m_commandBuffers;
 
-	// Triangle rendering
+	// Rendering
 	int m_currentFrame = 0;
 	static constexpr int MaxFramesInFlight = 2;
 	std::array<vk::UniqueSemaphore, MaxFramesInFlight> m_imageAvailable;
