@@ -997,9 +997,9 @@ public:
 
 		using namespace Geo::Literals;
 		const auto ubo = UniformBufferObject{
-		    .model = Geo::Matrix4::RotationZ(timeSeconds * 90.0_deg),
+		    .model = Geo::Matrix4::RotationZ(timeSeconds * 90.0_degf),
 		    .view = Geo::Matrix4::LookAt({2.0f, 2.0f, 2.0f}, {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 1.0f}),
-		    .proj = Geo::Matrix4::Perspective(45.0_deg, aspectRatio, 0.1f, 10.0f),
+		    .proj = Geo::Matrix4::Perspective(45.0_degf, aspectRatio, 0.1f, 10.0f),
 		};
 
 		SetBufferData(m_device.get(), m_uniformBuffersMemory[imageIndex].get(), ubo);

@@ -32,7 +32,7 @@ struct Matrix<T, 4, 4>
 {
 	Vector<T, 4, VectorTag> x, y, z, w;
 
-	static Matrix<T, 4, 4> RotationX(Angle angle) noexcept
+	static Matrix<T, 4, 4> RotationX(Angle<T> angle) noexcept
 	{
 		return {
 		    {1, 0, 0, 0},
@@ -42,7 +42,7 @@ struct Matrix<T, 4, 4>
 		};
 	}
 
-	static Matrix<T, 4, 4> RotationY(Angle angle) noexcept
+	static Matrix<T, 4, 4> RotationY(Angle<T> angle) noexcept
 	{
 		return {
 		    {Cos(angle), 0, -Sin(angle), 0},
@@ -52,7 +52,7 @@ struct Matrix<T, 4, 4>
 		};
 	}
 
-	static Matrix<T, 4, 4> RotationZ(Angle angle) noexcept
+	static Matrix<T, 4, 4> RotationZ(Angle<T> angle) noexcept
 	{
 		return {
 		    {Cos(angle), Sin(angle), 0, 0},
@@ -80,9 +80,9 @@ struct Matrix<T, 4, 4>
 		};
 	}
 
-	static Matrix<T, 4, 4> Perspective(Angle fovy, T aspect, T near, T far) noexcept
+	static Matrix<T, 4, 4> Perspective(Angle<T> fovy, T aspect, T near, T far) noexcept
 	{
-		T const tanHalfFovy = tan(fovy / static_cast<T>(2));
+		T const tanHalfFovy = Tan(fovy / static_cast<T>(2));
 
 		return {
 		    {T{1} / (aspect * tanHalfFovy), 0, 0, 0},
