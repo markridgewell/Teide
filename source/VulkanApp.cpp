@@ -28,6 +28,12 @@ VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE;
 
 namespace
 {
+template <class T>
+uint32_t size32(const T& cont)
+{
+	return static_cast<uint32_t>(size(cont));
+}
+
 constexpr std::string_view VertexShader = R"--(
 #version 450
 
@@ -259,13 +265,13 @@ vk::UniqueInstance CreateInstance(SDL_Window* window)
 		const auto createInfo = vk::StructureChain{
 		    vk::InstanceCreateInfo{
 		        .pApplicationInfo = &applicationInfo,
-		        .enabledLayerCount = static_cast<uint32_t>(layers.size()),
-		        .ppEnabledLayerNames = layers.data(),
-		        .enabledExtensionCount = static_cast<uint32_t>(extensions.size()),
+		        .enabledLayerCount = size32(layers),
+		        .ppEnabledLayerNames = data(layers),
+		        .enabledExtensionCount = size32(extensions),
 		        .ppEnabledExtensionNames = extensions.data()},
 		    vk::ValidationFeaturesEXT{
-		        .enabledValidationFeatureCount = static_cast<uint32_t>(enabledFeatures.size()),
-		        .pEnabledValidationFeatures = enabledFeatures.data(),
+		        .enabledValidationFeatureCount = size32(enabledFeatures),
+		        .pEnabledValidationFeatures = data(enabledFeatures),
 		    },
 		    DebugCreateInfo,
 		};
@@ -276,10 +282,11 @@ vk::UniqueInstance CreateInstance(SDL_Window* window)
 	{
 		const auto createInfo = vk::InstanceCreateInfo{
 		    .pApplicationInfo = &applicationInfo,
-		    .enabledLayerCount = static_cast<uint32_t>(layers.size()),
-		    .ppEnabledLayerNames = layers.data(),
-		    .enabledExtensionCount = static_cast<uint32_t>(extensions.size()),
-		    .ppEnabledExtensionNames = extensions.data()};
+		    .enabledLayerCount = size32(layers),
+		    .ppEnabledLayerNames = data(layers),
+		    .enabledExtensionCount = size32(extensions),
+		    .ppEnabledExtensionNames = data(extensions),
+		};
 
 		return vk::createInstanceUnique(createInfo, s_allocator);
 	}
@@ -409,12 +416,12 @@ CreateDevice(vk::PhysicalDevice physicalDevice, std::span<const uint32_t> queueF
 	}
 
 	const auto deviceCreateInfo = vk::DeviceCreateInfo{
-	    .queueCreateInfoCount = static_cast<uint32_t>(queueCreateInfos.size()),
-	    .pQueueCreateInfos = queueCreateInfos.data(),
-	    .enabledLayerCount = static_cast<uint32_t>(layers.size()),
-	    .ppEnabledLayerNames = layers.data(),
-	    .enabledExtensionCount = static_cast<uint32_t>(extensions.size()),
-	    .ppEnabledExtensionNames = extensions.data(),
+	    .queueCreateInfoCount = size32(queueCreateInfos),
+	    .pQueueCreateInfos = data(queueCreateInfos),
+	    .enabledLayerCount = size32(layers),
+	    .ppEnabledLayerNames = data(layers),
+	    .enabledExtensionCount = size32(extensions),
+	    .ppEnabledExtensionNames = data(extensions),
 	    .pEnabledFeatures = &deviceFeatures};
 
 	return physicalDevice.createDeviceUnique(deviceCreateInfo, s_allocator);
@@ -506,8 +513,8 @@ vk::UniqueSwapchainKHR CreateSwapchain(
 	    .imageArrayLayers = 1,
 	    .imageUsage = vk::ImageUsageFlagBits::eColorAttachment,
 	    .imageSharingMode = sharingMode,
-	    .queueFamilyIndexCount = static_cast<uint32_t>(uniqueQueueFamilies.size()),
-	    .pQueueFamilyIndices = uniqueQueueFamilies.data(),
+	    .queueFamilyIndexCount = size32(uniqueQueueFamilies),
+	    .pQueueFamilyIndices = data(uniqueQueueFamilies),
 	    .preTransform = surfaceCapabilities.currentTransform,
 	    .compositeAlpha = vk::CompositeAlphaFlagBitsKHR::eOpaque,
 	    .presentMode = mode,
@@ -624,7 +631,7 @@ template <size_t Extent>
 void SetBufferData(vk::Device device, vk::DeviceMemory bufferMemory, std::span<const std::byte, Extent> data)
 {
 	void* mappedData = device.mapMemory(bufferMemory, 0, data.size());
-	memcpy(mappedData, data.data(), data.size());
+	memcpy(mappedData, data(data), data.size());
 	device.unmapMemory(bufferMemory);
 }
 
@@ -865,8 +872,8 @@ vk::UniquePipeline CreateGraphicsPipeline(
 	    .depthTestEnable = true,
 	    .depthWriteEnable = true,
 	    .depthCompareOp = vk::CompareOp::eLess,
-		.depthBoundsTestEnable = false,
-		.stencilTestEnable = false,
+	    .depthBoundsTestEnable = false,
+	    .stencilTestEnable = false,
 	};
 
 	const auto colorBlendAttachment = vk::PipelineColorBlendAttachmentState{
@@ -888,8 +895,8 @@ vk::UniquePipeline CreateGraphicsPipeline(
 	};
 
 	const auto createInfo = vk::GraphicsPipelineCreateInfo{
-	    .stageCount = static_cast<uint32_t>(shaderStages.size()),
-	    .pStages = shaderStages.data(),
+	    .stageCount = size32(shaderStages),
+	    .pStages = data(shaderStages),
 	    .pVertexInputState = &vertexInput,
 	    .pInputAssemblyState = &inputAssembly,
 	    .pViewportState = &viewportState,
@@ -975,8 +982,8 @@ vk::UniqueRenderPass CreateRenderPass(vk::Device device, vk::Format surfaceForma
 	};
 
 	const auto createInfo = vk::RenderPassCreateInfo{
-	    .attachmentCount = static_cast<uint32_t>(attachments.size()),
-	    .pAttachments = attachments.data(),
+	    .attachmentCount = size32(attachments),
+	    .pAttachments = data(attachments),
 	    .subpassCount = 1,
 	    .pSubpasses = &subpass,
 	    .dependencyCount = 1,
@@ -997,8 +1004,8 @@ std::vector<vk::UniqueFramebuffer> CreateFramebuffers(
 		const auto attachments = std::array{imageViews[i].get(), depthImageView};
 		const auto createInfo = vk::FramebufferCreateInfo{
 		    .renderPass = renderPass,
-		    .attachmentCount = static_cast<uint32_t>(attachments.size()),
-		    .pAttachments = attachments.data(),
+		    .attachmentCount = size32(attachments),
+		    .pAttachments = data(attachments),
 		    .width = surfaceExtent.width,
 		    .height = surfaceExtent.height,
 		    .layers = 1,
@@ -1368,8 +1375,8 @@ private:
 		const auto layouts = std::vector<vk::DescriptorSetLayout>(m_swapchainImages.size(), m_descriptorSetLayout.get());
 		const auto allocInfo = vk::DescriptorSetAllocateInfo{
 		    .descriptorPool = descriptorPool.get(),
-		    .descriptorSetCount = static_cast<uint32_t>(layouts.size()),
-		    .pSetLayouts = layouts.data(),
+		    .descriptorSetCount = size32(layouts),
+		    .pSetLayouts = data(layouts),
 		};
 
 		m_descriptorSets = m_device->allocateDescriptorSets(allocInfo);
@@ -1516,8 +1523,8 @@ private:
 		    .renderPass = m_renderPass.get(),
 		    .framebuffer = framebuffer,
 		    .renderArea = {.offset = {0, 0}, .extent = surfaceExtent},
-		    .clearValueCount = static_cast<uint32_t>(clearValues.size()),
-		    .pClearValues = clearValues.data(),
+		    .clearValueCount = size32(clearValues),
+		    .pClearValues = data(clearValues),
 		};
 
 		const auto descriptorSet = m_descriptorSets[imageIndex];
@@ -1528,7 +1535,7 @@ private:
 		commandBuffer.bindVertexBuffers(0, m_vertexBuffer.get(), vk::DeviceSize{0});
 		commandBuffer.bindIndexBuffer(m_indexBuffer.get(), vk::DeviceSize{0}, vk::IndexType::eUint16);
 		commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, m_pipelineLayout.get(), 0, descriptorSet, {});
-		commandBuffer.drawIndexed(static_cast<uint32_t>(QuadIndices.size()), 1, 0, 0, 0);
+		commandBuffer.drawIndexed(size32(QuadIndices), 1, 0, 0, 0);
 
 		commandBuffer.endRenderPass();
 
@@ -1540,7 +1547,7 @@ private:
 		const auto allocateInfo = vk::CommandBufferAllocateInfo{
 		    .commandPool = m_graphicsCommandPool.get(),
 		    .level = vk::CommandBufferLevel::ePrimary,
-		    .commandBufferCount = static_cast<uint32_t>(m_swapchainFramebuffers.size()),
+		    .commandBufferCount = size32(m_swapchainFramebuffers),
 		};
 
 		m_commandBuffers = m_device->allocateCommandBuffersUnique(allocateInfo);
