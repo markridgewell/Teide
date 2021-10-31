@@ -631,7 +631,7 @@ template <size_t Extent>
 void SetBufferData(vk::Device device, vk::DeviceMemory bufferMemory, std::span<const std::byte, Extent> data)
 {
 	void* mappedData = device.mapMemory(bufferMemory, 0, data.size());
-	memcpy(mappedData, data(data), data.size());
+	memcpy(mappedData, data.data(), data.size());
 	device.unmapMemory(bufferMemory);
 }
 
