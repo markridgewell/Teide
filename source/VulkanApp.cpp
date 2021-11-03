@@ -213,6 +213,9 @@ VKAPI_ATTR VkBool32 VKAPI_CALL DebugCallback(
 		using enum vk::DebugUtilsMessageSeverityFlagBitsEXT;
 
 		case eVerbose:
+			spdlog::debug("{}{}", prefix, pCallbackData->pMessage);
+			break;
+
 		case eInfo:
 			spdlog::info("{}{}", prefix, pCallbackData->pMessage);
 			break;
@@ -246,7 +249,9 @@ vk::UniqueInstance CreateInstance(SDL_Window* window)
 	auto extensions = std::vector<const char*>(extensionCount);
 	SDL_Vulkan_GetInstanceExtensions(window, &extensionCount, extensions.data());
 
-	vk::ApplicationInfo applicationInfo{};
+	vk::ApplicationInfo applicationInfo{
+	    .apiVersion = VK_API_VERSION_1_0,
+	};
 
 	const auto availableLayers = vk::enumerateInstanceLayerProperties();
 	const auto availableExtensions = vk::enumerateInstanceExtensionProperties();
@@ -268,7 +273,7 @@ vk::UniqueInstance CreateInstance(SDL_Window* window)
 		        .enabledLayerCount = size32(layers),
 		        .ppEnabledLayerNames = data(layers),
 		        .enabledExtensionCount = size32(extensions),
-		        .ppEnabledExtensionNames = extensions.data()},
+		        .ppEnabledExtensionNames = data(extensions)},
 		    vk::ValidationFeaturesEXT{
 		        .enabledValidationFeatureCount = size32(enabledFeatures),
 		        .pEnabledValidationFeatures = data(enabledFeatures),
@@ -427,6 +432,38 @@ CreateDevice(vk::PhysicalDevice physicalDevice, std::span<const uint32_t> queueF
 	return physicalDevice.createDeviceUnique(deviceCreateInfo, s_allocator);
 }
 
+class OneShotCommandBuffer
+{
+public:
+	explicit OneShotCommandBuffer(vk::Device device, vk::CommandPool commandPool, vk::Queue queue) : m_queue{queue}
+	{
+		const auto allocInfo = vk::CommandBufferAllocateInfo{
+		    .commandPool = commandPool,
+		    .level = vk::CommandBufferLevel::ePrimary,
+		    .commandBufferCount = 1,
+		};
+		auto cmdBuffers = device.allocateCommandBuffersUnique(allocInfo);
+		m_cmdBuffer = std::move(cmdBuffers.front());
+
+		m_cmdBuffer->begin({.flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit});
+	}
+
+	~OneShotCommandBuffer()
+	{
+		m_cmdBuffer->end();
+
+		const auto submitInfo = vk::SubmitInfo{}.setCommandBuffers(m_cmdBuffer.get());
+		m_queue.submit(submitInfo);
+		m_queue.waitIdle();
+	}
+
+	operator vk::CommandBuffer() const { return m_cmdBuffer.get(); }
+
+private:
+	vk::UniqueCommandBuffer m_cmdBuffer;
+	vk::Queue m_queue;
+};
+
 uint32_t FindMemoryType(vk::PhysicalDevice physicalDevice, uint32_t typeFilter, vk::MemoryPropertyFlags flags)
 {
 	const auto memoryProperties = physicalDevice.getMemoryProperties();
@@ -490,7 +527,7 @@ vk::Extent2D ChooseSwapExtent(const vk::SurfaceCapabilitiesKHR& capabilities, SD
 
 vk::UniqueSwapchainKHR CreateSwapchain(
     vk::PhysicalDevice physicalDevice, std::span<const uint32_t> queueFamilyIndices, vk::SurfaceKHR surface,
-    vk::SurfaceFormatKHR surfaceFormat, vk::Extent2D surfaceExtent, vk::Device device)
+    vk::SurfaceFormatKHR surfaceFormat, vk::Extent2D surfaceExtent, vk::Device device, vk::SwapchainKHR oldSwapchain)
 {
 	const auto surfaceCapabilities = physicalDevice.getSurfaceCapabilitiesKHR(surface);
 
@@ -519,6 +556,7 @@ vk::UniqueSwapchainKHR CreateSwapchain(
 	    .compositeAlpha = vk::CompositeAlphaFlagBitsKHR::eOpaque,
 	    .presentMode = mode,
 	    .clipped = true,
+	    .oldSwapchain = oldSwapchain,
 	};
 
 	return device.createSwapchainKHRUnique(createInfo, s_allocator);
@@ -627,14 +665,6 @@ vk::UniqueBuffer CreateBuffer(vk::Device device, vk::DeviceSize size, vk::Buffer
 	return device.createBufferUnique(createInfo, s_allocator);
 }
 
-template <size_t Extent>
-void SetBufferData(vk::Device device, vk::DeviceMemory bufferMemory, std::span<const std::byte, Extent> data)
-{
-	void* mappedData = device.mapMemory(bufferMemory, 0, data.size());
-	memcpy(mappedData, data.data(), data.size());
-	device.unmapMemory(bufferMemory);
-}
-
 template <class T>
 concept Span = requires(T t)
 {
@@ -646,18 +676,44 @@ concept TrivialSpan
     = Span<T> && std::is_trivially_copyable_v<typename T::value_type> && std::is_standard_layout_v<typename T::value_type>;
 
 template <class T>
-concept TrivalObject = !Span<T> && std::is_trivially_copyable_v<T> && std::is_standard_layout_v<T>;
+concept TrivialObject
+    = !Span<T> && std::is_trivially_copyable_v<T> && std::is_standard_layout_v<T> && !std::is_pointer_v<T>;
 
-template <TrivialSpan T>
-void SetBufferData(vk::Device device, vk::DeviceMemory bufferMemory, const T& data)
+class BytesView
 {
-	SetBufferData(device, bufferMemory, std::as_bytes(std::span(data)));
-}
+public:
+	BytesView() = default;
+	BytesView(const BytesView&) = default;
+	BytesView(BytesView&&) = default;
+	BytesView& operator=(const BytesView&) = default;
+	BytesView& operator=(BytesView&&) = default;
 
-template <TrivalObject T>
-void SetBufferData(vk::Device device, vk::DeviceMemory bufferMemory, const T& data)
+	BytesView(std::span<const std::byte> bytes) : m_span{bytes} {}
+
+	template <TrivialSpan T>
+	BytesView(const T& data) : m_span{std::as_bytes(std::span(data))}
+	{}
+
+	template <TrivialObject T>
+	BytesView(const T& data) : m_span{std::as_bytes(std::span(&data, 1))}
+	{}
+
+	auto data() const { return m_span.data(); }
+	auto size() const { return m_span.size(); }
+	auto begin() const { return m_span.begin(); }
+	auto end() const { return m_span.end(); }
+	auto rbegin() const { return m_span.rbegin(); }
+	auto rend() const { return m_span.rend(); }
+
+private:
+	std::span<const std::byte> m_span;
+};
+
+void SetBufferData(vk::Device device, vk::DeviceMemory bufferMemory, BytesView data)
 {
-	SetBufferData(device, bufferMemory, std::as_bytes(std::span(&data, 1)));
+	void* mappedData = device.mapMemory(bufferMemory, 0, data.size());
+	memcpy(mappedData, data.data(), data.size());
+	device.unmapMemory(bufferMemory);
 }
 
 void CopyBuffer(vk::CommandBuffer cmdBuffer, vk::Buffer source, vk::Buffer destination, vk::DeviceSize size)
@@ -686,6 +742,37 @@ void CopyBufferToImage(vk::CommandBuffer cmdBuffer, vk::Buffer source, vk::Image
 		.imageExtent = extent,
 	};
 	cmdBuffer.copyBufferToImage(source, destination, vk::ImageLayout::eTransferDstOptimal, copyRegion);
+}
+
+struct BufferWithMemory
+{
+	vk::UniqueBuffer buffer;
+	vk::UniqueDeviceMemory memory;
+};
+
+BufferWithMemory CreateBufferWithData(
+    vk::Device device, vk::PhysicalDevice physicalDevice, vk::CommandPool commandPool, vk::Queue queue, BytesView data,
+    vk::BufferUsageFlags usage)
+{
+	BufferWithMemory ret{};
+
+	// Create staging buffer
+	const auto stagingBuffer = CreateBuffer(device, data.size(), vk::BufferUsageFlagBits::eTransferSrc);
+	const auto stagingMemory = CreateDeviceMemory(
+	    device, physicalDevice, device.getBufferMemoryRequirements(stagingBuffer.get()),
+	    vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
+	device.bindBufferMemory(stagingBuffer.get(), stagingMemory.get(), 0);
+	SetBufferData(device, stagingMemory.get(), data);
+
+	// Create vertex buffer
+	ret.buffer = CreateBuffer(device, data.size(), usage | vk::BufferUsageFlagBits::eTransferDst);
+	ret.memory = CreateDeviceMemory(
+	    device, physicalDevice, device.getBufferMemoryRequirements(ret.buffer.get()),
+	    vk::MemoryPropertyFlagBits::eDeviceLocal);
+	device.bindBufferMemory(ret.buffer.get(), ret.memory.get(), 0);
+	CopyBuffer(OneShotCommandBuffer(device, commandPool, queue), stagingBuffer.get(), ret.buffer.get(), data.size());
+
+	return ret;
 }
 
 struct TransitionAccessMasks
@@ -1022,7 +1109,7 @@ std::vector<vk::UniqueFramebuffer> CreateFramebuffers(
 class VulkanApp
 {
 public:
-	explicit VulkanApp(SDL_Window* window, const char* imageFilename) : m_window{window}
+	explicit VulkanApp(SDL_Window* window, const char* imageFilename, const char* modelFilename) : m_window{window}
 	{
 		vk::DynamicLoader dl;
 		VULKAN_HPP_DEFAULT_DISPATCHER.init(dl.getProcAddress<PFN_vkGetInstanceProcAddr>("vkGetInstanceProcAddr"));
@@ -1061,8 +1148,7 @@ public:
 
 		CreateSwapchainAndImages();
 
-		CreateVertexBuffer();
-		CreateIndexBuffer();
+		CreateMesh(modelFilename);
 		CreateUniformBuffers();
 		CreateTextureImage(imageFilename);
 		CreateTextureSampler();
@@ -1164,7 +1250,7 @@ public:
 		m_currentFrame = (m_currentFrame + 1) % MaxFramesInFlight;
 	}
 
-	void OnResize() { m_windowResized = true; }
+	void OnResize() { RecreateSwapchain(); }
 
 	bool OnEvent(const SDL_Event& event)
 	{
@@ -1173,9 +1259,13 @@ public:
 			case SDL_QUIT:
 				return false;
 
-			case SDL_WINDOWEVENT_RESIZED:
-				OnResize();
-				break;
+			case SDL_WINDOWEVENT:
+				switch (event.window.event)
+				{
+					case SDL_WINDOWEVENT_SIZE_CHANGED:
+						OnResize();
+						break;
+				}
 		}
 		return true;
 	}
@@ -1184,10 +1274,10 @@ public:
 
 	void MainLoop()
 	{
-		SDL_Event event;
 		bool running = true;
 		while (running)
 		{
+			SDL_Event event;
 			while (SDL_PollEvent(&event))
 			{
 				running &= OnEvent(event);
@@ -1201,41 +1291,9 @@ public:
 	}
 
 private:
-	auto OneShotCommandBuffer()
+	auto OneShotCommands()
 	{
-		class OneShot
-		{
-		public:
-			explicit OneShot(VulkanApp& vulkan) : m_queue{vulkan.m_graphicsQueue}
-			{
-				const auto allocInfo = vk::CommandBufferAllocateInfo{
-				    .commandPool = vulkan.m_graphicsCommandPool.get(),
-				    .level = vk::CommandBufferLevel::ePrimary,
-				    .commandBufferCount = 1,
-				};
-				auto cmdBuffers = vulkan.m_device->allocateCommandBuffersUnique(allocInfo);
-				m_cmdBuffer = std::move(cmdBuffers.front());
-
-				m_cmdBuffer->begin({.flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit});
-			}
-
-			~OneShot()
-			{
-				m_cmdBuffer->end();
-
-				const auto submitInfo = vk::SubmitInfo{}.setCommandBuffers(m_cmdBuffer.get());
-				m_queue.submit(submitInfo);
-				m_queue.waitIdle();
-			}
-
-			operator vk::CommandBuffer() const { return m_cmdBuffer.get(); }
-
-		private:
-			vk::UniqueCommandBuffer m_cmdBuffer;
-			vk::Queue m_queue;
-		};
-
-		return OneShot(*this);
+		return OneShotCommandBuffer(m_device.get(), m_graphicsCommandPool.get(), m_graphicsQueue);
 	}
 
 	void CreateSwapchainAndImages()
@@ -1245,7 +1303,8 @@ private:
 		m_surfaceExtent = ChooseSwapExtent(surfaceCapabilities, m_window);
 		const auto queueFamilyIndices = std::array{m_graphicsQueueFamily, m_presentQueueFamily};
 		m_swapchain = CreateSwapchain(
-		    m_physicalDevice, queueFamilyIndices, m_surface.get(), surfaceFormat, m_surfaceExtent, m_device.get());
+		    m_physicalDevice, queueFamilyIndices, m_surface.get(), surfaceFormat, m_surfaceExtent, m_device.get(),
+		    m_swapchain.get());
 		m_swapchainImages = m_device->getSwapchainImagesKHR(m_swapchain.get());
 		m_swapchainImageViews = CreateSwapchainImageViews(surfaceFormat.format, m_swapchainImages, m_device.get());
 		m_imagesInFlight.resize(m_swapchainImages.size());
@@ -1288,7 +1347,7 @@ private:
 		    vk::MemoryPropertyFlagBits::eDeviceLocal);
 		m_device->bindImageMemory(m_depthImage.get(), m_depthMemory.get(), 0);
 		TransitionImageLayout(
-		    OneShotCommandBuffer(), m_depthImage.get(), imageInfo.format, vk::ImageLayout::eUndefined,
+		    OneShotCommands(), m_depthImage.get(), imageInfo.format, vk::ImageLayout::eUndefined,
 		    vk::ImageLayout::eDepthStencilAttachmentOptimal, vk::PipelineStageFlagBits::eTopOfPipe,
 		    vk::PipelineStageFlagBits::eEarlyFragmentTests);
 
@@ -1310,46 +1369,27 @@ private:
 
 	void CreateVertexBuffer()
 	{
-		const auto bufferSize = QuadVertices.size() * sizeof(Vertex);
-
-		// Create staging buffer for vertices
-		const auto stagingBuffer = CreateBuffer(m_device.get(), bufferSize, vk::BufferUsageFlagBits::eTransferSrc);
-		const auto stagingMemory = CreateDeviceMemory(
-		    m_device.get(), m_physicalDevice, m_device->getBufferMemoryRequirements(stagingBuffer.get()),
-		    vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
-		m_device->bindBufferMemory(stagingBuffer.get(), stagingMemory.get(), 0);
-		SetBufferData(m_device.get(), stagingMemory.get(), QuadVertices);
-
-		// Create vertex buffer
-		m_vertexBuffer = CreateBuffer(
-		    m_device.get(), bufferSize, vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eTransferDst);
-		m_vertexBufferMemory = CreateDeviceMemory(
-		    m_device.get(), m_physicalDevice, m_device->getBufferMemoryRequirements(m_vertexBuffer.get()),
-		    vk::MemoryPropertyFlagBits::eDeviceLocal);
-		m_device->bindBufferMemory(m_vertexBuffer.get(), m_vertexBufferMemory.get(), 0);
-		CopyBuffer(OneShotCommandBuffer(), stagingBuffer.get(), m_vertexBuffer.get(), bufferSize);
+		auto result = CreateBufferWithData(
+		    m_device.get(), m_physicalDevice, m_graphicsCommandPool.get(), m_graphicsQueue, QuadVertices,
+		    vk::BufferUsageFlagBits::eVertexBuffer);
+		m_vertexBuffer = std::move(result.buffer);
+		m_vertexBufferMemory = std::move(result.memory);
 	}
 
 	void CreateIndexBuffer()
 	{
-		const auto bufferSize = QuadIndices.size() * sizeof(decltype(QuadIndices)::value_type);
+		auto result = CreateBufferWithData(
+		    m_device.get(), m_physicalDevice, m_graphicsCommandPool.get(), m_graphicsQueue, QuadIndices,
+		    vk::BufferUsageFlagBits::eIndexBuffer);
+		m_indexBuffer = std::move(result.buffer);
+		m_indexBufferMemory = std::move(result.memory);
+	}
 
-		// Create staging buffer
-		const auto stagingBuffer = CreateBuffer(m_device.get(), bufferSize, vk::BufferUsageFlagBits::eTransferSrc);
-		const auto stagingMemory = CreateDeviceMemory(
-		    m_device.get(), m_physicalDevice, m_device->getBufferMemoryRequirements(stagingBuffer.get()),
-		    vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
-		m_device->bindBufferMemory(stagingBuffer.get(), stagingMemory.get(), 0);
-		SetBufferData(m_device.get(), stagingMemory.get(), QuadIndices);
-
-		// Create index buffer
-		m_indexBuffer = CreateBuffer(
-		    m_device.get(), bufferSize, vk::BufferUsageFlagBits::eIndexBuffer | vk::BufferUsageFlagBits::eTransferDst);
-		m_indexBufferMemory = CreateDeviceMemory(
-		    m_device.get(), m_physicalDevice, m_device->getBufferMemoryRequirements(m_indexBuffer.get()),
-		    vk::MemoryPropertyFlagBits::eDeviceLocal);
-		m_device->bindBufferMemory(m_indexBuffer.get(), m_indexBufferMemory.get(), 0);
-		CopyBuffer(OneShotCommandBuffer(), stagingBuffer.get(), m_indexBuffer.get(), bufferSize);
+	void CreateMesh(const char* filename)
+	{
+		(void)filename;
+		CreateVertexBuffer();
+		CreateIndexBuffer();
 	}
 
 	void CreateUniformBuffers()
@@ -1466,7 +1506,7 @@ private:
 		    m_device.get(), m_physicalDevice, m_device->getImageMemoryRequirements(m_textureImage.get()),
 		    vk::MemoryPropertyFlagBits::eDeviceLocal);
 		m_device->bindImageMemory(m_textureImage.get(), m_textureMemory.get(), 0);
-		const auto cmdBuffer = OneShotCommandBuffer();
+		const auto cmdBuffer = OneShotCommands();
 		TransitionImageLayout(
 		    cmdBuffer, m_textureImage.get(), imageInfo.format, imageInfo.initialLayout, vk::ImageLayout::eTransferDstOptimal,
 		    vk::PipelineStageFlagBits::eTopOfPipe, vk::PipelineStageFlagBits::eTransfer);
@@ -1632,7 +1672,8 @@ using UniqueSDLWindow = std::unique_ptr<SDL_Window, SDLWindowDeleter>;
 
 int Run(int argc, char* argv[])
 {
-	const char* const imageFilename = (argc >= 2) ? argv[1] : "";
+	const char* const imageFilename = (argc >= 2) ? argv[1] : nullptr;
+	const char* const modelFilename = (argc >= 3) ? argv[2] : nullptr;
 
 	const auto windowFlags = SDL_WINDOW_VULKAN | SDL_WINDOW_ALLOW_HIGHDPI | SDL_WINDOW_RESIZABLE;
 	const auto window = UniqueSDLWindow(
@@ -1645,10 +1686,11 @@ int Run(int argc, char* argv[])
 		return 1;
 	}
 
+
 	std::optional<VulkanApp> vulkan;
 	try
 	{
-		vulkan.emplace(window.get(), imageFilename);
+		vulkan.emplace(window.get(), imageFilename, modelFilename);
 	}
 	catch (const vk::Error& e)
 	{

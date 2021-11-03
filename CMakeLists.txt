@@ -5,6 +5,13 @@ project(Teide VERSION 0.0.0
               DESCRIPTION "Vulkan-based 3D renderer"
               LANGUAGES CXX)
 
+find_package(Vulkan REQUIRED)
+find_package(SDL2 CONFIG REQUIRED)
+find_package(spdlog CONFIG REQUIRED)
+find_package(glslang CONFIG REQUIRED)
+find_package(assimp CONFIG REQUIRED)
+find_path(STB_INCLUDE_DIRS "stb.h")
+
 set(sources
     source/VulkanApp.cpp
     source/ShaderCompiler.h
@@ -22,17 +29,11 @@ target_compile_definitions(Teide PRIVATE VULKAN_HPP_NO_STRUCT_CONSTRUCTORS VULKA
 set_property(TARGET Teide PROPERTY VS_DPI_AWARE "PerMonitor")
 set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT Teide)
 
-find_package(Vulkan REQUIRED)
-target_link_libraries(Teide PRIVATE Vulkan::Vulkan)
-
-find_package(SDL2 CONFIG REQUIRED)
-target_link_libraries(Teide PRIVATE SDL2::SDL2 SDL2::SDL2main)
-
-find_package(spdlog CONFIG REQUIRED)
-target_link_libraries(Teide PRIVATE spdlog::spdlog)
-
-find_package(glslang CONFIG REQUIRED)
-target_link_libraries(Teide PRIVATE HLSL SPIRV glslang OGLCompiler)
-
-find_path(STB_INCLUDE_DIRS "stb.h")
+target_link_libraries(Teide PRIVATE
+    Vulkan::Vulkan
+    SDL2::SDL2 SDL2::SDL2main
+    spdlog::spdlog
+    HLSL SPIRV glslang OGLCompiler
+    assimp::assimp
+)
 target_include_directories(Teide PRIVATE ${STB_INCLUDE_DIRS})
