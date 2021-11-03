@@ -822,7 +822,7 @@ vk::ImageAspectFlags GetAspectMask(vk::Format format)
 }
 
 void TransitionImageLayout(
-    vk::CommandBuffer cmdBuffer, vk::Image image, vk::Format format, vk::ImageLayout oldLayout,
+    vk::CommandBuffer cmdBuffer, vk::Image image, vk::Format format, uint32_t mipLevelCount, vk::ImageLayout oldLayout,
     vk::ImageLayout newLayout, vk::PipelineStageFlagBits srcStageMask, vk::PipelineStageFlagBits dstStageMask)
 {
 	const auto accessMasks = GetTransitionAccessMasks(oldLayout, newLayout);
@@ -838,13 +838,96 @@ void TransitionImageLayout(
 	    .subresourceRange = {
 	        .aspectMask = GetAspectMask(format),
 	        .baseMipLevel = 0,
-	        .levelCount = 1,
+	        .levelCount = mipLevelCount,
 	        .baseArrayLayer = 0,
 	        .layerCount = 1,
 	    },
 	};
 
 	cmdBuffer.pipelineBarrier(srcStageMask, dstStageMask, {}, {}, {}, barrier);
+}
+
+void GenerateMipmaps(vk::CommandBuffer cmdBuffer, vk::Image image, uint32_t width, uint32_t height, uint32_t mipLevelCount)
+{
+	const auto makeBarrier = [&](vk::AccessFlags srcAccessMask, vk::AccessFlags dstAccessMask,
+	                             vk::ImageLayout oldLayout, vk::ImageLayout newLayout, uint32_t mipLevel) {
+		return vk::ImageMemoryBarrier{
+		    .srcAccessMask = srcAccessMask,
+		    .dstAccessMask = dstAccessMask,
+		    .oldLayout = oldLayout,
+		    .newLayout = newLayout,
+		    .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+		    .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+		    .image = image,
+		    .subresourceRange = {
+		        .aspectMask = vk::ImageAspectFlagBits::eColor,
+		        .baseMipLevel = mipLevel,
+		        .levelCount = 1,
+		        .baseArrayLayer = 0,
+		        .layerCount = 1,
+		    }};
+	};
+
+	const auto origin = vk::Offset3D{0, 0, 0};
+	auto prevMipSize = vk::Offset3D{static_cast<int32_t>(width), static_cast<int32_t>(height), 1};
+
+	// Iterate all mip levels starting at 1
+	for (uint32_t i = 1; i < mipLevelCount; i++)
+	{
+		const auto currMipSize = vk::Offset3D{
+		    prevMipSize.x > 1 ? prevMipSize.x / 2 : 1,
+		    prevMipSize.y > 1 ? prevMipSize.y / 2 : 1,
+		    prevMipSize.z > 1 ? prevMipSize.z / 2 : 1,
+		};
+
+		// Transition previous mip level to be a transfer source
+		const auto beforeBarrier = makeBarrier(
+		    vk::AccessFlagBits::eTransferWrite, vk::AccessFlagBits::eTransferRead, vk::ImageLayout::eTransferDstOptimal,
+		    vk::ImageLayout::eTransferSrcOptimal, i - 1);
+
+		cmdBuffer.pipelineBarrier(
+		    vk::PipelineStageFlagBits::eTransfer, vk::PipelineStageFlagBits::eTransfer, {}, {}, {}, beforeBarrier);
+
+		// Blit previous mip to current mip
+		const auto blit = vk::ImageBlit{
+		    .srcSubresource = {
+		        .aspectMask = vk::ImageAspectFlagBits::eColor,
+		        .mipLevel = i - 1,
+		        .baseArrayLayer = 0,
+		        .layerCount = 1,
+		    },
+		    .srcOffsets = {{origin, prevMipSize}},
+		    .dstSubresource = {
+		        .aspectMask = vk::ImageAspectFlagBits::eColor,
+		        .mipLevel = i,
+		        .baseArrayLayer = 0,
+		        .layerCount = 1,
+		    },
+		    .dstOffsets = {{origin, currMipSize}},
+		};
+
+		cmdBuffer.blitImage(
+		    image, vk::ImageLayout::eTransferSrcOptimal, image, vk::ImageLayout::eTransferDstOptimal, blit,
+		    vk::Filter::eLinear);
+
+		// Transition previous mip level to be ready for reading in shader
+		const auto afterBarrier = makeBarrier(
+		    vk::AccessFlagBits::eTransferRead, vk::AccessFlagBits::eShaderRead, vk::ImageLayout::eTransferSrcOptimal,
+		    vk::ImageLayout::eShaderReadOnlyOptimal, i - 1);
+
+		cmdBuffer.pipelineBarrier(
+		    vk::PipelineStageFlagBits::eTransfer, vk::PipelineStageFlagBits::eFragmentShader, {}, {}, {}, afterBarrier);
+
+		prevMipSize = currMipSize;
+	}
+
+	// Transition final mip level to be ready for reading in shader
+	const auto finalBarrier = makeBarrier(
+	    vk::AccessFlagBits::eTransferWrite, vk::AccessFlagBits::eShaderRead, vk::ImageLayout::eTransferDstOptimal,
+	    vk::ImageLayout::eShaderReadOnlyOptimal, mipLevelCount - 1);
+
+	cmdBuffer.pipelineBarrier(
+	    vk::PipelineStageFlagBits::eTransfer, vk::PipelineStageFlagBits::eFragmentShader, {}, {}, {}, finalBarrier);
 }
 
 vk::UniqueDescriptorPool CreateDescriptorPool(vk::Device device, uint32_t numSwapchainImages)
@@ -1342,7 +1425,7 @@ private:
 		    vk::MemoryPropertyFlagBits::eDeviceLocal);
 		m_device->bindImageMemory(m_depthImage.get(), m_depthMemory.get(), 0);
 		TransitionImageLayout(
-		    OneShotCommands(), m_depthImage.get(), imageInfo.format, vk::ImageLayout::eUndefined,
+		    OneShotCommands(), m_depthImage.get(), imageInfo.format, 1, vk::ImageLayout::eUndefined,
 		    vk::ImageLayout::eDepthStencilAttachmentOptimal, vk::PipelineStageFlagBits::eTopOfPipe,
 		    vk::PipelineStageFlagBits::eEarlyFragmentTests);
 
@@ -1535,7 +1618,8 @@ private:
 			throw CustomError(std::format("Error loading texture '{}'", filename));
 		}
 
-		vk::DeviceSize imageSize = width * height * 4;
+		const vk::DeviceSize imageSize = width * height * 4;
+		const auto mipLevelCount = static_cast<uint32_t>(std::floor(std::log2(std::max(width, height)))) + 1;
 
 		// Create staging buffer
 		const auto stagingBuffer = CreateBuffer(m_device.get(), imageSize, vk::BufferUsageFlagBits::eTransferSrc);
@@ -1551,11 +1635,12 @@ private:
 		    .imageType = vk::ImageType::e2D,
 		    .format = vk::Format::eR8G8B8A8Srgb,
 		    .extent = imageExtent,
-		    .mipLevels = 1,
+		    .mipLevels = mipLevelCount,
 		    .arrayLayers = 1,
 		    .samples = vk::SampleCountFlagBits::e1,
 		    .tiling = vk::ImageTiling::eOptimal,
-		    .usage = vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled,
+		    .usage = vk::ImageUsageFlagBits::eTransferSrc | vk::ImageUsageFlagBits::eTransferDst
+		        | vk::ImageUsageFlagBits::eSampled,
 		    .sharingMode = vk::SharingMode::eExclusive,
 		    .initialLayout = vk::ImageLayout::eUndefined,
 		};
@@ -1567,13 +1652,12 @@ private:
 		m_device->bindImageMemory(m_textureImage.get(), m_textureMemory.get(), 0);
 		const auto cmdBuffer = OneShotCommands();
 		TransitionImageLayout(
-		    cmdBuffer, m_textureImage.get(), imageInfo.format, imageInfo.initialLayout, vk::ImageLayout::eTransferDstOptimal,
-		    vk::PipelineStageFlagBits::eTopOfPipe, vk::PipelineStageFlagBits::eTransfer);
+		    cmdBuffer, m_textureImage.get(), imageInfo.format, mipLevelCount, imageInfo.initialLayout,
+		    vk::ImageLayout::eTransferDstOptimal, vk::PipelineStageFlagBits::eTopOfPipe,
+		    vk::PipelineStageFlagBits::eTransfer);
 		CopyBufferToImage(cmdBuffer, stagingBuffer.get(), m_textureImage.get(), imageExtent);
-		TransitionImageLayout(
-		    cmdBuffer, m_textureImage.get(), imageInfo.format, vk::ImageLayout::eTransferDstOptimal,
-		    vk::ImageLayout::eShaderReadOnlyOptimal, vk::PipelineStageFlagBits::eTransfer,
-		    vk::PipelineStageFlagBits::eFragmentShader);
+
+		GenerateMipmaps(cmdBuffer, m_textureImage.get(), width, height, mipLevelCount);
 
 		// Create image view
 		const auto viewInfo = vk::ImageViewCreateInfo{
@@ -1583,7 +1667,7 @@ private:
 			.subresourceRange = {
 				.aspectMask = vk::ImageAspectFlagBits::eColor,
 				.baseMipLevel = 0,
-				.levelCount = 1,
+				.levelCount = mipLevelCount,
 				.baseArrayLayer = 0,
 				.layerCount = 1,
 			},
