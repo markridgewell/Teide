@@ -6,6 +6,10 @@
 
 #include <SDL.h>
 #include <SDL_vulkan.h>
+#include <assimp/Importer.hpp>
+#include <assimp/mesh.h>
+#include <assimp/postprocess.h>
+#include <assimp/scene.h>
 #include <spdlog/sinks/msvc_sink.h>
 #include <spdlog/spdlog.h>
 #include <vulkan/vulkan.hpp>
@@ -31,6 +35,7 @@ namespace
 template <class T>
 uint32_t size32(const T& cont)
 {
+	using std::size;
 	return static_cast<uint32_t>(size(cont));
 }
 
@@ -76,24 +81,14 @@ struct Vertex
 	Geo::Vector3 color;
 };
 
-constexpr auto QuadVertices = std::array<Vertex, 12>{{
-    {{-0.5f, -0.5f, 0.5f}, {0.0f, 0.0f}, {1.0f, 0.0f, 0.0f}},
-    {{0.5f, -0.5f, 0.5f}, {1.0f, 0.0f}, {0.0f, 1.0f, 0.0f}},
-    {{0.5f, 0.5f, 0.5f}, {1.0f, 1.0f}, {0.0f, 0.0f, 1.0f}},
-    {{-0.5f, 0.5f, 0.5f}, {0.0f, 1.0f}, {1.0f, 1.0f, 1.0f}},
-
+constexpr auto QuadVertices = std::array<Vertex, 4>{{
     {{-0.5f, -0.5f, 0.0f}, {0.0f, 0.0f}, {1.0f, 0.0f, 0.0f}},
     {{0.5f, -0.5f, 0.0f}, {1.0f, 0.0f}, {0.0f, 1.0f, 0.0f}},
     {{0.5f, 0.5f, 0.0f}, {1.0f, 1.0f}, {0.0f, 0.0f, 1.0f}},
     {{-0.5f, 0.5f, 0.0f}, {0.0f, 1.0f}, {1.0f, 1.0f, 1.0f}},
-
-    {{-0.5f, -0.5f, -0.5f}, {0.0f, 0.0f}, {1.0f, 0.0f, 0.0f}},
-    {{0.5f, -0.5f, -0.5f}, {1.0f, 0.0f}, {0.0f, 1.0f, 0.0f}},
-    {{0.5f, 0.5f, -0.5f}, {1.0f, 1.0f}, {0.0f, 0.0f, 1.0f}},
-    {{-0.5f, 0.5f, -0.5f}, {0.0f, 1.0f}, {1.0f, 1.0f, 1.0f}},
 }};
 
-constexpr auto QuadIndices = std::array<uint16_t, 18>{{0, 1, 2, 2, 3, 0, 4, 5, 6, 6, 7, 4, 8, 9, 10, 10, 11, 8}};
+constexpr auto QuadIndices = std::array<uint16_t, 6>{{0, 1, 2, 2, 3, 0}};
 
 constexpr auto VertexBindingDescription = vk::VertexInputBindingDescription{
     .binding = 0,
@@ -1367,29 +1362,93 @@ private:
 		m_depthImageView = m_device->createImageViewUnique(viewInfo, s_allocator);
 	}
 
-	void CreateVertexBuffer()
+	void CreateVertexBuffer(BytesView data)
 	{
 		auto result = CreateBufferWithData(
-		    m_device.get(), m_physicalDevice, m_graphicsCommandPool.get(), m_graphicsQueue, QuadVertices,
+		    m_device.get(), m_physicalDevice, m_graphicsCommandPool.get(), m_graphicsQueue, data,
 		    vk::BufferUsageFlagBits::eVertexBuffer);
 		m_vertexBuffer = std::move(result.buffer);
 		m_vertexBufferMemory = std::move(result.memory);
 	}
 
-	void CreateIndexBuffer()
+	void CreateIndexBuffer(std::span<const uint16_t> data)
 	{
 		auto result = CreateBufferWithData(
-		    m_device.get(), m_physicalDevice, m_graphicsCommandPool.get(), m_graphicsQueue, QuadIndices,
+		    m_device.get(), m_physicalDevice, m_graphicsCommandPool.get(), m_graphicsQueue, data,
 		    vk::BufferUsageFlagBits::eIndexBuffer);
 		m_indexBuffer = std::move(result.buffer);
 		m_indexBufferMemory = std::move(result.memory);
+		m_indexCount = size32(data);
 	}
 
 	void CreateMesh(const char* filename)
 	{
-		(void)filename;
-		CreateVertexBuffer();
-		CreateIndexBuffer();
+		if (filename == nullptr)
+		{
+			CreateVertexBuffer(QuadVertices);
+			CreateIndexBuffer(QuadIndices);
+		}
+		else
+		{
+			Assimp::Importer importer;
+
+			const auto importFlags = aiProcess_CalcTangentSpace | aiProcess_Triangulate
+			    | aiProcess_JoinIdenticalVertices | aiProcess_SortByPType | aiProcess_RemoveComponent
+			    | aiProcess_RemoveRedundantMaterials | aiProcess_OptimizeMeshes | aiProcess_OptimizeGraph;
+
+			const aiScene* scene = importer.ReadFile(filename, importFlags);
+			if (!scene)
+			{
+				throw CustomError(importer.GetErrorString());
+			}
+
+			if (scene->mNumMeshes == 0)
+			{
+				throw CustomError(std::format("Model file '{}' contains no meshes"));
+			}
+			if (scene->mNumMeshes > 1)
+			{
+				throw CustomError(std::format("Model file '{}' contains too many meshes"));
+			}
+
+			const aiMesh& mesh = **scene->mMeshes;
+
+			std::vector<Vertex> vertices;
+			vertices.reserve(mesh.mNumVertices);
+
+			for (unsigned int i = 0; i < mesh.mNumVertices; i++)
+			{
+				const auto pos = mesh.mVertices[i];
+				const auto uv = mesh.HasTextureCoords(0) ? mesh.mTextureCoords[0][i] : aiVector3D{};
+				const auto color = mesh.HasVertexColors(0) ? mesh.mColors[0][i] : aiColor4D{1, 1, 1, 1};
+				vertices.push_back(Vertex{
+				    .position = {pos.x, pos.y, pos.z},
+				    .texCoord = {uv.x, 1.0f - uv.y},
+				    .color = {color.r, color.g, color.b},
+				});
+			}
+
+			CreateVertexBuffer(vertices);
+
+			std::vector<uint16_t> indices;
+			indices.reserve(mesh.mNumFaces * 3);
+
+			for (unsigned int i = 0; i < mesh.mNumFaces; i++)
+			{
+				const auto& face = mesh.mFaces[i];
+				assert(face.mNumIndices == 3);
+				for (int j = 0; j < 3; j++)
+				{
+					if (face.mIndices[j] > std::numeric_limits<uint16_t>::max())
+					{
+						throw CustomError("Too many vertices for 16-bit indices");
+					}
+					indices.push_back(static_cast<uint16_t>(face.mIndices[j]));
+				}
+			}
+
+			CreateIndexBuffer(indices);
+		}
 	}
 
 	void CreateUniformBuffers()
@@ -1575,7 +1634,7 @@ private:
 		commandBuffer.bindVertexBuffers(0, m_vertexBuffer.get(), vk::DeviceSize{0});
 		commandBuffer.bindIndexBuffer(m_indexBuffer.get(), vk::DeviceSize{0}, vk::IndexType::eUint16);
 		commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, m_pipelineLayout.get(), 0, descriptorSet, {});
-		commandBuffer.drawIndexed(size32(QuadIndices), 1, 0, 0, 0);
+		commandBuffer.drawIndexed(m_indexCount, 1, 0, 0, 0);
 
 		commandBuffer.endRenderPass();
 
@@ -1643,6 +1702,7 @@ private:
 	vk::UniqueBuffer m_vertexBuffer;
 	vk::UniqueDeviceMemory m_vertexBufferMemory;
 	vk::UniqueBuffer m_indexBuffer;
+	uint32_t m_indexCount;
 	vk::UniqueDeviceMemory m_indexBufferMemory;
 	vk::UniqueImage m_textureImage;
 	vk::UniqueDeviceMemory m_textureMemory;
