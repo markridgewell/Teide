@@ -12,81 +12,48 @@ struct Vector;
 template <class T, class Tag>
 struct Vector<T, 2, Tag>
 {
-	T x, y;
+	T x{}, y{};
 
-	constexpr T& operator[](int i)
+	constexpr T& operator[](int i) { return this->*Members()[i]; }
+	constexpr T operator[](int i) const { return this->*Members()[i]; }
+
+private:
+	static constexpr auto& Members()
 	{
-		if (i == 0)
-			return x;
-		else if (i == 1)
-			return y;
-		Unreachable();
-	}
-	constexpr T operator[](int i) const
-	{
-		if (i == 0)
-			return x;
-		else if (i == 1)
-			return y;
-		Unreachable();
+		static constexpr auto members = std::array{&Vector::x, &Vector::y};
+		return members;
 	}
 };
 
 template <class T, class Tag>
 struct Vector<T, 3, Tag>
 {
-	T x, y, z;
+	T x{}, y{}, z{};
 
-	constexpr T& operator[](int i)
+	constexpr T& operator[](int i) { return this->*Members()[i]; }
+	constexpr T operator[](int i) const { return this->*Members()[i]; }
+
+private:
+	static constexpr auto& Members()
 	{
-		if (i == 0)
-			return x;
-		else if (i == 1)
-			return y;
-		else if (i == 2)
-			return z;
-		Unreachable();
-	}
-	constexpr T operator[](int i) const
-	{
-		if (i == 0)
-			return x;
-		else if (i == 1)
-			return y;
-		else if (i == 2)
-			return z;
-		Unreachable();
+		static constexpr auto members = std::array{&Vector::x, &Vector::y, &Vector::z};
+		return members;
 	}
 };
 
 template <class T, class Tag>
 struct Vector<T, 4, Tag>
 {
-	T x, y, z, w;
+	T x{}, y{}, z{}, w{};
 
-	constexpr T& operator[](int i)
+	constexpr T& operator[](int i) { return this->*Members()[i]; }
+	constexpr T operator[](int i) const { return this->*Members()[i]; }
+
+private:
+	static constexpr auto& Members()
 	{
-		if (i == 0)
-			return x;
-		else if (i == 1)
-			return y;
-		else if (i == 2)
-			return z;
-		else if (i == 3)
-			return w;
-		Unreachable();
-	}
-	constexpr T operator[](int i) const
-	{
-		if (i == 0)
-			return x;
-		else if (i == 1)
-			return y;
-		else if (i == 2)
-			return z;
-		else if (i == 3)
-			return w;
-		Unreachable();
+		static constexpr auto members = std::array{&Vector::x, &Vector::y, &Vector::z, &Vector::w};
+		return members;
 	}
 };
 
@@ -132,12 +99,24 @@ constexpr Vector<T, N, VectorTag> operator+(const Vector<T, N, VectorTag>& a, co
 {
 	return Impl::Add<VectorTag>(a, b);
 }
+template <class T, int N>
+constexpr Vector<T, N, VectorTag>& operator+=(Vector<T, N, VectorTag>& a, const Vector<T, N, VectorTag>& b) noexcept
+{
+	a = Impl::Add<VectorTag>(a, b);
+	return a;
+}
 
 // Point + Vector = Point
 template <class T, int N>
 constexpr Vector<T, N, PointTag> operator+(const Vector<T, N, PointTag>& a, const Vector<T, N, VectorTag>& b) noexcept
 {
 	return Impl::Add<PointTag>(a, b);
+}
+template <class T, int N>
+constexpr Vector<T, N, PointTag>& operator+=(Vector<T, N, PointTag>& a, const Vector<T, N, VectorTag>& b) noexcept
+{
+	a = Impl::Add<PointTag>(a, b);
+	return a;
 }
 
 // Vector + Point = Point
@@ -153,12 +132,24 @@ constexpr Vector<T, N, VectorTag> operator-(const Vector<T, N, VectorTag>& a, co
 {
 	return Impl::Subtract<VectorTag>(a, b);
 }
+template <class T, int N>
+constexpr Vector<T, N, VectorTag>& operator-=(Vector<T, N, VectorTag>& a, const Vector<T, N, VectorTag>& b) noexcept
+{
+	a = Impl::Subtract<VectorTag>(a, b);
+	return a;
+}
 
 // Point - Vector = Point
 template <class T, int N>
 constexpr Vector<T, N, PointTag> operator-(const Vector<T, N, PointTag>& a, const Vector<T, N, VectorTag>& b) noexcept
 {
 	return Impl::Subtract<PointTag>(a, b);
+}
+template <class T, int N>
+constexpr Vector<T, N, PointTag>& operator-=(Vector<T, N, PointTag>& a, const Vector<T, N, VectorTag>& b) noexcept
+{
+	a = Impl::Subtract<PointTag>(a, b);
+	return a;
 }
 
 // Point - Point = Vector

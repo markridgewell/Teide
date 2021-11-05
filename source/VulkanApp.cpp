@@ -30,6 +30,8 @@
 
 VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE;
 
+using namespace Geo::Literals;
+
 namespace
 {
 template <class T>
@@ -1187,6 +1189,10 @@ std::vector<vk::UniqueFramebuffer> CreateFramebuffers(
 class VulkanApp
 {
 public:
+	static constexpr Geo::Angle CameraRotateSpeed = 0.1_deg;
+	static constexpr float CameraZoomSpeed = 0.002f;
+	static constexpr float CameraMoveSpeed = 0.001f;
+
 	explicit VulkanApp(SDL_Window* window, const char* imageFilename, const char* modelFilename) : m_window{window}
 	{
 		vk::DynamicLoader dl;
@@ -1268,11 +1274,19 @@ public:
 		    = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - m_startTime).count();
 		const float aspectRatio = static_cast<float>(m_surfaceExtent.width) / static_cast<float>(m_surfaceExtent.height);
 
-		using namespace Geo::Literals;
+		const Geo::Matrix4 rotation = Geo::Matrix4::RotationZ(m_cameraYaw) * Geo::Matrix4::RotationX(m_cameraPitch);
+		const Geo::Vector4 cameraDir4 = rotation * Geo::Vector4{0.0f, 1.0f, 0.0f, 0.0f};
+		const Geo::Vector3 cameraDirection = Geo::Normalise(Geo::Vector3{cameraDir4.x, cameraDir4.y, cameraDir4.z});
+		const Geo::Vector4 cameraUp4 = rotation * Geo::Vector4{0.0f, 0.0f, 1.0f, 0.0f};
+		const Geo::Vector3 cameraUp = Geo::Normalise(Geo::Vector3{cameraUp4.x, cameraUp4.y, cameraUp4.z});
+
+		const Geo::Point3 cameraPosition = m_cameraTarget - cameraDirection * m_cameraDistance;
+		spdlog::info("m_cameraDistance = {}", m_cameraDistance);
+
 		const auto ubo = UniformBufferObject{
-		    .model = Geo::Matrix4::RotationZ(timeSeconds * 90.0_degf),
-		    .view = Geo::Matrix4::LookAt({2.0f, 2.0f, 2.0f}, {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 1.0f}),
-		    .proj = Geo::Matrix4::Perspective(45.0_degf, aspectRatio, 0.1f, 10.0f),
+		    .model = Geo::Matrix4::Identity(),
+		    .view = Geo::LookAt(cameraPosition, m_cameraTarget, cameraUp),
+		    .proj = Geo::Perspective(45.0_deg, aspectRatio, 0.1f, 10.0f),
 		};
 
 		SetBufferData(m_device.get(), m_uniformBuffersMemory[imageIndex].get(), ubo);
@@ -1344,6 +1358,30 @@ public:
 						OnResize();
 						break;
 				}
+
+			case SDL_MOUSEMOTION:
+				if (event.motion.state & SDL_BUTTON_LMASK)
+				{
+					m_cameraYaw += static_cast<float>(event.motion.xrel) * CameraRotateSpeed;
+					m_cameraPitch += static_cast<float>(event.motion.yrel) * CameraRotateSpeed;
+				}
+				if (event.motion.state & SDL_BUTTON_RMASK)
+				{
+					m_cameraDistance -= static_cast<float>(event.motion.xrel) * CameraZoomSpeed;
+				}
+				if (event.motion.state & SDL_BUTTON_MMASK)
+				{
+					const auto rotation = Geo::Matrix4::RotationZ(m_cameraYaw) * Geo::Matrix4::RotationX(m_cameraPitch);
+					const auto cameraDir4 = rotation * Geo::Vector4{0.0f, 1.0f, 0.0f, 0.0f};
+					const auto cameraDirection = Geo::Normalise(Geo::Vector3{cameraDir4.x, cameraDir4.y, cameraDir4.z});
+					const auto cameraUp4 = rotation * Geo::Vector4{0.0f, 0.0f, 1.0f, 0.0f};
+					const auto cameraUp = Geo::Normalise(Geo::Vector3{cameraUp4.x, cameraUp4.y, cameraUp4.z});
+					const auto cameraRight = Geo::Normalise(Geo::Cross(cameraUp, cameraDirection));
+
+					m_cameraTarget += cameraRight * static_cast<float>(-event.motion.xrel) * CameraMoveSpeed;
+					m_cameraTarget += cameraUp * static_cast<float>(event.motion.yrel) * CameraMoveSpeed;
+				}
+				break;
 		}
 		return true;
 	}
@@ -1477,7 +1515,8 @@ private:
 
 			const auto importFlags = aiProcess_CalcTangentSpace | aiProcess_Triangulate
 			    | aiProcess_JoinIdenticalVertices | aiProcess_SortByPType | aiProcess_RemoveComponent
-			    | aiProcess_RemoveRedundantMaterials | aiProcess_OptimizeMeshes | aiProcess_OptimizeGraph;
+			    | aiProcess_RemoveRedundantMaterials | aiProcess_OptimizeMeshes | aiProcess_OptimizeGraph
+			    | aiProcess_ConvertToLeftHanded | aiProcess_FlipWindingOrder;
 
 			const aiScene* scene = importer.ReadFile(filename, importFlags);
 			if (!scene)
@@ -1506,7 +1545,7 @@ private:
 				const auto color = mesh.HasVertexColors(0) ? mesh.mColors[0][i] : aiColor4D{1, 1, 1, 1};
 				vertices.push_back(Vertex{
 				    .position = {pos.x, pos.y, pos.z},
-				    .texCoord = {uv.x, 1.0f - uv.y},
+				    .texCoord = {uv.x, uv.y},
 				    .color = {color.r, color.g, color.b},
 				});
 			}
@@ -1798,6 +1837,12 @@ private:
 	std::vector<vk::UniqueFramebuffer> m_swapchainFramebuffers;
 	std::vector<vk::UniqueCommandBuffer> m_commandBuffers;
 
+	// Camera
+	Geo::Point3 m_cameraTarget = {0.0f, 0.0f, 0.0f};
+	Geo::Angle m_cameraYaw = 45.0_deg;
+	Geo::Angle m_cameraPitch = 45.0_deg;
+	float m_cameraDistance = 3.0f;
+
 	// Rendering
 	int m_currentFrame = 0;
 	static constexpr int MaxFramesInFlight = 2;
@@ -1830,6 +1875,7 @@ int Run(int argc, char* argv[])
 		return 1;
 	}
 
+	SDL_SetHintWithPriority(SDL_HINT_MOUSE_RELATIVE_MODE_WARP, "1", SDL_HINT_OVERRIDE);
 
 	std::optional<VulkanApp> vulkan;
 	try

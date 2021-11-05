@@ -7,56 +7,82 @@
 namespace Geo
 {
 template <class T>
-class Angle
+class AngleT
 {
 public:
-	static constexpr Angle Radians(T radians) { return Angle(radians); }
-	static constexpr Angle Degrees(T degrees)
+	AngleT() = default;
+
+	static constexpr AngleT Radians(T radians) { return AngleT(radians); }
+	static constexpr AngleT Degrees(T degrees)
 	{
-		return Angle(static_cast<T>(degrees * std::numbers::pi_v<long double> / 180.0));
+		return AngleT(static_cast<T>(degrees * std::numbers::pi_v<long double> / 180.0));
 	}
 
 	constexpr T AsRadians() const { return m_radians; }
 	constexpr T AsDegrees() const { return m_radians / std::numbers::pi_v<T> * 180.0f; }
 
-	friend constexpr Angle operator*(Angle a, T b) { return Angle(a.m_radians * b); }
-	friend constexpr Angle operator/(Angle a, T b) { return Angle(a.m_radians / b); }
-	friend constexpr Angle operator*(T a, Angle b) { return Angle(a * b.m_radians); }
+	friend constexpr AngleT operator*(AngleT a, T b) { return {a.m_radians * b}; }
+	friend constexpr AngleT operator/(AngleT a, T b) { return {a.m_radians / b}; }
+	friend constexpr AngleT operator*(T a, AngleT b) { return {a * b.m_radians}; }
+	friend constexpr AngleT operator+(AngleT a, AngleT b) { return {a.m_radians + b.m_radians}; }
+	friend constexpr AngleT operator-(AngleT a, AngleT b) { return {a.m_radians - b.m_radians}; }
+	friend constexpr AngleT operator-(AngleT a) { return {-a.m_radians}; }
+
+	friend constexpr AngleT& operator+=(AngleT& a, AngleT b)
+	{
+		a.m_radians += b.m_radians;
+		return a;
+	}
+	friend constexpr AngleT& operator-=(AngleT& a, AngleT b)
+	{
+		a.m_radians -= b.m_radians;
+		return a;
+	}
+	friend constexpr AngleT& operator*=(AngleT& a, T b)
+	{
+		a.m_radians *= b;
+		return a;
+	}
+	friend constexpr AngleT& operator/=(AngleT& a, T b)
+	{
+		a.m_radians /= b;
+		return a;
+	}
 
 private:
-	constexpr Angle(T r) : m_radians{r} {}
+	constexpr AngleT(T r) : m_radians{r} {}
 
-	T m_radians;
+	T m_radians{};
 };
 
-using Anglef = Angle<float>;
-using Angled = Angle<double>;
+using Angle = AngleT<float>;
+using Angled = AngleT<double>;
 
 template <class T>
-inline T Sin(Angle<T> a) noexcept
+inline T Sin(AngleT<T> a) noexcept
 {
 	return std::sin(a.AsRadians());
 }
 
 template <class T>
-inline T Cos(Angle<T> a) noexcept
+inline T Cos(AngleT<T> a) noexcept
 {
 	return std::cos(a.AsRadians());
 }
 
 template <class T>
-inline T Tan(Angle<T> a) noexcept
+inline T Tan(AngleT<T> a) noexcept
 {
 	return std::tan(a.AsRadians());
 }
 
 inline namespace Literals
 {
-	consteval Angled operator"" _rad(long double x) { return Angled::Radians(static_cast<double>(x)); }
-	consteval Angled operator"" _deg(long double x) { return Angled::Degrees(static_cast<double>(x)); }
+	consteval Angled operator"" _radd(long double x) { return Angled::Radians(static_cast<double>(x)); }
+	consteval Angled operator"" _degd(long double x) { return Angled::Degrees(static_cast<double>(x)); }
 
-	consteval Anglef operator"" _radf(long double x) { return Anglef::Radians(static_cast<float>(x)); }
-	consteval Anglef operator"" _degf(long double x) { return Anglef::Degrees(static_cast<float>(x)); }
+	consteval Angle operator"" _rad(long double x) { return Angle::Radians(static_cast<float>(x)); }
+	consteval Angle operator"" _deg(long double x) { return Angle::Degrees(static_cast<float>(x)); }
 
 } // namespace Literals
 
