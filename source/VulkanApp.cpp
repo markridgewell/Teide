@@ -1281,7 +1281,6 @@ public:
 		const Geo::Vector3 cameraUp = Geo::Normalise(Geo::Vector3{cameraUp4.x, cameraUp4.y, cameraUp4.z});
 
 		const Geo::Point3 cameraPosition = m_cameraTarget - cameraDirection * m_cameraDistance;
-		spdlog::info("m_cameraDistance = {}", m_cameraDistance);
 
 		const auto ubo = UniformBufferObject{
 		    .model = Geo::Matrix4::Identity(),
@@ -1358,35 +1357,57 @@ public:
 						OnResize();
 						break;
 				}
+				break;
 
-			case SDL_MOUSEMOTION:
-				if (event.motion.state & SDL_BUTTON_LMASK)
-				{
-					m_cameraYaw += static_cast<float>(event.motion.xrel) * CameraRotateSpeed;
-					m_cameraPitch += static_cast<float>(event.motion.yrel) * CameraRotateSpeed;
-				}
-				if (event.motion.state & SDL_BUTTON_RMASK)
-				{
-					m_cameraDistance -= static_cast<float>(event.motion.xrel) * CameraZoomSpeed;
-				}
-				if (event.motion.state & SDL_BUTTON_MMASK)
-				{
-					const auto rotation = Geo::Matrix4::RotationZ(m_cameraYaw) * Geo::Matrix4::RotationX(m_cameraPitch);
-					const auto cameraDir4 = rotation * Geo::Vector4{0.0f, 1.0f, 0.0f, 0.0f};
-					const auto cameraDirection = Geo::Normalise(Geo::Vector3{cameraDir4.x, cameraDir4.y, cameraDir4.z});
-					const auto cameraUp4 = rotation * Geo::Vector4{0.0f, 0.0f, 1.0f, 0.0f};
-					const auto cameraUp = Geo::Normalise(Geo::Vector3{cameraUp4.x, cameraUp4.y, cameraUp4.z});
-					const auto cameraRight = Geo::Normalise(Geo::Cross(cameraUp, cameraDirection));
+			case SDL_MOUSEBUTTONDOWN:
+				SDL_CaptureMouse(SDL_TRUE);
+				spdlog::info("Capturing mouse");
+				break;
 
-					m_cameraTarget += cameraRight * static_cast<float>(-event.motion.xrel) * CameraMoveSpeed;
-					m_cameraTarget += cameraUp * static_cast<float>(event.motion.yrel) * CameraMoveSpeed;
-				}
+			case SDL_MOUSEBUTTONUP:
+				SDL_CaptureMouse(SDL_FALSE);
+				spdlog::info("Releasing mouse");
 				break;
 		}
 		return true;
 	}
 
-	bool OnUpdate() { return true; }
+	bool OnUpdate()
+	{
+		int currMouseX, currMouseY;
+		const uint32_t mouseButtonMask = SDL_GetMouseState(&currMouseX, &currMouseY);
+		static int lastMouseX = currMouseX, lastMouseY = currMouseY;
+
+		int mouseX = currMouseX - lastMouseX;
+		int mouseY = currMouseY - lastMouseY;
+		SDL_GetRelativeMouseState(&mouseX, &mouseY);
+
+		lastMouseX = currMouseX;
+		lastMouseY = currMouseY;
+
+		if (mouseButtonMask & SDL_BUTTON_LMASK)
+		{
+			m_cameraYaw += static_cast<float>(mouseX) * CameraRotateSpeed;
+			m_cameraPitch += static_cast<float>(mouseY) * CameraRotateSpeed;
+		}
+		if (mouseButtonMask & SDL_BUTTON_RMASK)
+		{
+			m_cameraDistance -= static_cast<float>(mouseX) * CameraZoomSpeed;
+		}
+		if (mouseButtonMask & SDL_BUTTON_MMASK)
+		{
+			const auto rotation = Geo::Matrix4::RotationZ(m_cameraYaw) * Geo::Matrix4::RotationX(m_cameraPitch);
+			const auto cameraDir4 = rotation * Geo::Vector4{0.0f, 1.0f, 0.0f, 0.0f};
+			const auto cameraDirection = Geo::Normalise(Geo::Vector3{cameraDir4.x, cameraDir4.y, cameraDir4.z});
+			const auto cameraUp4 = rotation * Geo::Vector4{0.0f, 0.0f, 1.0f, 0.0f};
+			const auto cameraUp = Geo::Normalise(Geo::Vector3{cameraUp4.x, cameraUp4.y, cameraUp4.z});
+			const auto cameraRight = Geo::Normalise(Geo::Cross(cameraUp, cameraDirection));
+
+			m_cameraTarget += cameraRight * static_cast<float>(-mouseX) * CameraMoveSpeed;
+			m_cameraTarget += cameraUp * static_cast<float>(mouseY) * CameraMoveSpeed;
+		}
+		return true;
+	}
 
 	void MainLoop()
 	{
