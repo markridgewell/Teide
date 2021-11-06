@@ -34,6 +34,9 @@ using namespace Geo::Literals;
 
 namespace
 {
+constexpr bool UseMSAA = true;
+constexpr vk::DeviceSize MemoryBlockSize = 64 * 1024 * 1024;
+
 template <class T>
 uint32_t size32(const T& cont)
 {
@@ -261,7 +264,7 @@ vk::UniqueInstance CreateInstance(SDL_Window* window)
 
 		const auto enabledFeatures = std::array{
 		    vk::ValidationFeatureEnableEXT::eSynchronizationValidation,
-		    // vk::ValidationFeatureEnableEXT::eBestPractices,
+		    vk::ValidationFeatureEnableEXT::eBestPractices,
 		};
 
 		const auto createInfo = vk::StructureChain{
@@ -640,18 +643,6 @@ CreateShaderModule(std::string_view shaderSource, ShaderStage stage, ShaderLangu
 	return device.createShaderModuleUnique(createInfo, s_allocator);
 }
 
-vk::UniqueDeviceMemory CreateDeviceMemory(
-    vk::Device device, vk::PhysicalDevice physicalDevice, const vk::MemoryRequirements& memoryRequirements,
-    vk::MemoryPropertyFlags flags)
-{
-	const auto allocInfo = vk::MemoryAllocateInfo{
-	    .allocationSize = memoryRequirements.size,
-	    .memoryTypeIndex = FindMemoryType(physicalDevice, memoryRequirements.memoryTypeBits, flags),
-	};
-
-	return device.allocateMemoryUnique(allocInfo);
-}
-
 vk::UniqueBuffer CreateBuffer(vk::Device device, vk::DeviceSize size, vk::BufferUsageFlags usage)
 {
 	const auto createInfo = vk::BufferCreateInfo{
@@ -661,6 +652,96 @@ vk::UniqueBuffer CreateBuffer(vk::Device device, vk::DeviceSize size, vk::Buffer
 	};
 	return device.createBufferUnique(createInfo, s_allocator);
 }
+
+struct MemoryAllocation
+{
+	vk::DeviceMemory memory;
+	vk::DeviceSize offset;
+};
+
+// The world's simplest memory allocator
+class MemoryAllocator
+{
+public:
+	explicit MemoryAllocator(vk::Device device, vk::PhysicalDevice physicalDevice) :
+	    m_device{device}, m_physicalDevice{physicalDevice}
+	{}
+
+	MemoryAllocation Allocate(const vk::MemoryRequirements& requirements, vk::MemoryPropertyFlags flags)
+	{
+		const uint32_t memoryType = FindMemoryType(m_physicalDevice, requirements.memoryTypeBits, flags);
+
+		MemoryBlock& block = FindMemoryBlock(memoryType, requirements.size, requirements.alignment);
+		const auto offset = (((block.consumedSize - 1) / requirements.alignment) + 1) * requirements.alignment;
+		if (offset + requirements.size > block.capacity)
+		{
+			throw CustomError("Out of memory!");
+		}
+		block.consumedSize = offset + requirements.size;
+		return {block.memory.get(), offset};
+	}
+
+	void DeallocateAll()
+	{
+		for (MemoryBlock& block : m_memoryBlocks)
+		{
+			block.consumedSize = 0;
+		}
+	}
+
+private:
+	struct MemoryBlock
+	{
+		vk::DeviceSize capacity;
+		vk::DeviceSize consumedSize;
+		uint32_t memoryType;
+		vk::UniqueDeviceMemory memory;
+	};
+
+	MemoryBlock& FindMemoryBlock(uint32_t memoryType, vk::DeviceSize availableSize, vk::DeviceSize alignment)
+	{
+		const auto it = std::ranges::find_if(m_memoryBlocks, [=](const MemoryBlock& block) {
+			if (block.memoryType != memoryType)
+			{
+				return false;
+			}
+
+			// Check if the block has enough space for the allocation
+			const auto offset = (((block.consumedSize - 1) / alignment) + 1) * alignment;
+			return offset + availableSize <= block.capacity;
+		});
+
+		if (it == m_memoryBlocks.end())
+		{
+			// No compatible memory block found; create a new one
+
+			// Make sure the new block has at least enough space for the allocation
+			const auto newBlockSize = std::max(MemoryBlockSize, availableSize);
+
+			const auto allocInfo = vk::MemoryAllocateInfo{
+			    .allocationSize = newBlockSize,
+			    .memoryTypeIndex = memoryType,
+			};
+
+			spdlog::info("Allocating {} bytes of memory in memory type {}", allocInfo.allocationSize, allocInfo.memoryTypeIndex);
+
+			m_memoryBlocks.push_back({
+			    .capacity = newBlockSize,
+			    .consumedSize = 0,
+			    .memoryType = memoryType,
+			    .memory = m_device.allocateMemoryUnique(allocInfo),
+			});
+
+			return m_memoryBlocks.back();
+		}
+		return *it;
+	}
+
+	vk::Device m_device;
+	vk::PhysicalDevice m_physicalDevice;
+	std::vector<MemoryBlock> m_memoryBlocks;
+};
+
 
 template <class T>
 concept Span = requires(T t)
@@ -706,11 +787,11 @@ private:
 	std::span<const std::byte> m_span;
 };
 
-void SetBufferData(vk::Device device, vk::DeviceMemory bufferMemory, BytesView data)
+void SetBufferData(vk::Device device, MemoryAllocation allocation, BytesView data)
 {
-	void* mappedData = device.mapMemory(bufferMemory, 0, data.size());
+	void* mappedData = device.mapMemory(allocation.memory, allocation.offset, data.size());
 	memcpy(mappedData, data.data(), data.size());
-	device.unmapMemory(bufferMemory);
+	device.unmapMemory(allocation.memory);
 }
 
 void CopyBuffer(vk::CommandBuffer cmdBuffer, vk::Buffer source, vk::Buffer destination, vk::DeviceSize size)
@@ -741,32 +822,32 @@ void CopyBufferToImage(vk::CommandBuffer cmdBuffer, vk::Buffer source, vk::Image
 	cmdBuffer.copyBufferToImage(source, destination, vk::ImageLayout::eTransferDstOptimal, copyRegion);
 }
 
-struct BufferWithMemory
+struct BufferWithAllocation
 {
 	vk::UniqueBuffer buffer;
-	vk::UniqueDeviceMemory memory;
+	MemoryAllocation allocation;
 };
 
-BufferWithMemory CreateBufferWithData(
-    vk::Device device, vk::PhysicalDevice physicalDevice, vk::CommandPool commandPool, vk::Queue queue, BytesView data,
+BufferWithAllocation CreateBufferWithData(
+    vk::Device device, MemoryAllocator& allocator, vk::CommandPool commandPool, vk::Queue queue, BytesView data,
     vk::BufferUsageFlags usage)
 {
-	BufferWithMemory ret{};
+	BufferWithAllocation ret{};
 
 	// Create staging buffer
 	const auto stagingBuffer = CreateBuffer(device, data.size(), vk::BufferUsageFlagBits::eTransferSrc);
-	const auto stagingMemory = CreateDeviceMemory(
-	    device, physicalDevice, device.getBufferMemoryRequirements(stagingBuffer.get()),
+	const auto stagingAlloc = allocator.Allocate(
+	    device.getBufferMemoryRequirements(stagingBuffer.get()),
 	    vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
-	device.bindBufferMemory(stagingBuffer.get(), stagingMemory.get(), 0);
-	SetBufferData(device, stagingMemory.get(), data);
+	device.bindBufferMemory(stagingBuffer.get(), stagingAlloc.memory, stagingAlloc.offset);
+	SetBufferData(device, stagingAlloc, data);
 
 	// Create vertex buffer
 	ret.buffer = CreateBuffer(device, data.size(), usage | vk::BufferUsageFlagBits::eTransferDst);
-	ret.memory = CreateDeviceMemory(
-	    device, physicalDevice, device.getBufferMemoryRequirements(ret.buffer.get()),
-	    vk::MemoryPropertyFlagBits::eDeviceLocal);
-	device.bindBufferMemory(ret.buffer.get(), ret.memory.get(), 0);
+	ret.allocation = allocator.Allocate(
+	    device.getBufferMemoryRequirements(ret.buffer.get()),
+	    vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
+	device.bindBufferMemory(ret.buffer.get(), ret.allocation.memory, ret.allocation.offset);
 	CopyBuffer(OneShotCommandBuffer(device, commandPool, queue), stagingBuffer.get(), ret.buffer.get(), data.size());
 
 	return ret;
@@ -977,7 +1058,7 @@ vk::UniqueDescriptorSetLayout CreateDescriptorSetLayout(vk::Device device)
 
 vk::UniquePipeline CreateGraphicsPipeline(
     vk::ShaderModule vertexShader, vk::ShaderModule pixelShader, vk::PipelineLayout layout, vk::RenderPass renderPass,
-    vk::Extent2D surfaceExtent, vk::Device device)
+    vk::Extent2D surfaceExtent, vk::SampleCountFlagBits sampleCount, vk::Device device)
 {
 	const auto shaderStages = std::array{
 	    vk::PipelineShaderStageCreateInfo{.stage = vk::ShaderStageFlagBits::eVertex, .module = vertexShader, .pName = "main"},
@@ -1027,7 +1108,7 @@ vk::UniquePipeline CreateGraphicsPipeline(
 	};
 
 	const auto multisampleState = vk::PipelineMultisampleStateCreateInfo{
-	    .rasterizationSamples = vk::SampleCountFlagBits::e1,
+	    .rasterizationSamples = sampleCount,
 	    .sampleShadingEnable = false,
 	    .minSampleShading = 1.0f,
 	    .pSampleMask = nullptr,
@@ -1097,22 +1178,25 @@ vk::UniquePipelineLayout CreateGraphicsPipelineLayout(vk::Device device, vk::Des
 	return device.createPipelineLayoutUnique(createInfo, s_allocator);
 }
 
-vk::UniqueRenderPass CreateRenderPass(vk::Device device, vk::Format surfaceFormat, vk::Format depthFormat)
+vk::UniqueRenderPass
+CreateRenderPass(vk::Device device, vk::Format surfaceFormat, vk::Format depthFormat, vk::SampleCountFlagBits sampleCount)
 {
+	const bool msaa = sampleCount != vk::SampleCountFlagBits::e1;
+
 	const auto attachments = std::array{
 	    vk::AttachmentDescription{
 	        // color
 	        .format = surfaceFormat,
-	        .samples = vk::SampleCountFlagBits::e1,
+	        .samples = sampleCount,
 	        .loadOp = vk::AttachmentLoadOp::eClear,
-	        .storeOp = vk::AttachmentStoreOp::eStore,
+	        .storeOp = msaa ? vk::AttachmentStoreOp::eDontCare : vk::AttachmentStoreOp::eStore,
 	        .initialLayout = vk::ImageLayout::eUndefined,
-	        .finalLayout = vk::ImageLayout::ePresentSrcKHR,
+	        .finalLayout = msaa ? vk::ImageLayout::eColorAttachmentOptimal : vk::ImageLayout::ePresentSrcKHR,
 	    },
 	    vk::AttachmentDescription{
 	        // depth
 	        .format = depthFormat,
-	        .samples = vk::SampleCountFlagBits::e1,
+	        .samples = sampleCount,
 	        .loadOp = vk::AttachmentLoadOp::eClear,
 	        .storeOp = vk::AttachmentStoreOp::eDontCare,
 	        .stencilLoadOp = vk::AttachmentLoadOp::eDontCare,
@@ -1120,7 +1204,17 @@ vk::UniqueRenderPass CreateRenderPass(vk::Device device, vk::Format surfaceForma
 	        .initialLayout = vk::ImageLayout::eUndefined,
 	        .finalLayout = vk::ImageLayout::eDepthStencilAttachmentOptimal,
 	    },
+	    vk::AttachmentDescription{
+	        // color resolved
+	        .format = surfaceFormat,
+	        .samples = vk::SampleCountFlagBits::e1,
+	        .loadOp = vk::AttachmentLoadOp::eDontCare,
+	        .storeOp = vk::AttachmentStoreOp::eStore,
+	        .initialLayout = vk::ImageLayout::eUndefined,
+	        .finalLayout = vk::ImageLayout::ePresentSrcKHR,
+	    },
 	};
+	const uint32_t numAttachments = msaa ? 3 : 2;
 
 	const auto colorAttachmentRef = vk::AttachmentReference{
 	    .attachment = 0,
@@ -1132,10 +1226,16 @@ vk::UniqueRenderPass CreateRenderPass(vk::Device device, vk::Format surfaceForma
 	    .layout = vk::ImageLayout::eDepthStencilAttachmentOptimal,
 	};
 
+	const auto colorResolveAttachmentRef = vk::AttachmentReference{
+	    .attachment = 2,
+	    .layout = vk::ImageLayout::eColorAttachmentOptimal,
+	};
+
 	const auto subpass = vk::SubpassDescription{
 	    .pipelineBindPoint = vk::PipelineBindPoint::eGraphics,
 	    .colorAttachmentCount = 1,
 	    .pColorAttachments = &colorAttachmentRef,
+	    .pResolveAttachments = msaa ? &colorResolveAttachmentRef : nullptr,
 	    .pDepthStencilAttachment = &depthAttachmentRef,
 	};
 
@@ -1149,7 +1249,7 @@ vk::UniqueRenderPass CreateRenderPass(vk::Device device, vk::Format surfaceForma
 	};
 
 	const auto createInfo = vk::RenderPassCreateInfo{
-	    .attachmentCount = size32(attachments),
+	    .attachmentCount = numAttachments,
 	    .pAttachments = data(attachments),
 	    .subpassCount = 1,
 	    .pSubpasses = &subpass,
@@ -1161,14 +1261,19 @@ vk::UniqueRenderPass CreateRenderPass(vk::Device device, vk::Format surfaceForma
 }
 
 std::vector<vk::UniqueFramebuffer> CreateFramebuffers(
-    std::span<const vk::UniqueImageView> imageViews, vk::ImageView depthImageView, vk::RenderPass renderPass,
-    vk::Extent2D surfaceExtent, vk::Device device)
+    std::span<const vk::UniqueImageView> imageViews, vk::ImageView colorImageView, vk::ImageView depthImageView,
+    vk::RenderPass renderPass, vk::Extent2D surfaceExtent, vk::Device device)
 {
 	auto framebuffers = std::vector<vk::UniqueFramebuffer>(imageViews.size());
 
 	for (const size_t i : std::views::iota(0u, imageViews.size()))
 	{
-		const auto attachments = std::array{imageViews[i].get(), depthImageView};
+		const auto msaaAttachments = std::array{colorImageView, depthImageView, imageViews[i].get()};
+		const auto nonMsaattachments = std::array{imageViews[i].get(), depthImageView};
+
+		const auto attachments = colorImageView ? std::span<const vk::ImageView>(msaaAttachments)
+		                                        : std::span<const vk::ImageView>(nonMsaattachments);
+
 		const auto createInfo = vk::FramebufferCreateInfo{
 		    .renderPass = renderPass,
 		    .attachmentCount = size32(attachments),
@@ -1211,6 +1316,15 @@ public:
 		std::array deviceExtensions = {"VK_KHR_swapchain"};
 
 		m_physicalDevice = FindPhysicalDevice(m_instance.get(), m_surface.get(), deviceExtensions);
+
+		if (UseMSAA)
+		{
+			const auto deviceLimits = m_physicalDevice.getProperties().limits;
+			const auto supportedSampleCounts
+			    = deviceLimits.framebufferColorSampleCounts & deviceLimits.framebufferDepthSampleCounts;
+			m_msaaSampleCount = vk::SampleCountFlagBits{std::bit_floor(static_cast<uint32_t>(supportedSampleCounts))};
+		}
+
 		const auto queueFamilies = FindQueueFamilies(m_physicalDevice, m_surface.get());
 		m_graphicsQueueFamily = queueFamilies.graphicsFamily.value();
 		m_presentQueueFamily = queueFamilies.presentFamily.value();
@@ -1218,6 +1332,8 @@ public:
 		m_device = CreateDevice(m_physicalDevice, queueFamilyIndices, deviceExtensions);
 		m_graphicsQueue = m_device->getQueue(m_graphicsQueueFamily, 0);
 		m_presentQueue = m_device->getQueue(m_presentQueueFamily, 0);
+		m_generalAllocator.emplace(m_device.get(), m_physicalDevice);
+		m_swapchainAllocator.emplace(m_device.get(), m_physicalDevice);
 
 		m_graphicsCommandPool = CreateCommandPool(m_graphicsQueueFamily, m_device.get());
 		std::ranges::generate(m_imageAvailable, [this] { return CreateSemaphore(m_device.get()); });
@@ -1288,7 +1404,7 @@ public:
 		    .proj = Geo::Perspective(45.0_deg, aspectRatio, 0.1f, 10.0f),
 		};
 
-		SetBufferData(m_device.get(), m_uniformBuffersMemory[imageIndex].get(), ubo);
+		SetBufferData(m_device.get(), m_uniformBuffersMemory[imageIndex], ubo);
 
 		// Check if a previous frame is using this image (i.e. there is its fence to wait on)
 		if (m_imagesInFlight[imageIndex])
@@ -1360,13 +1476,11 @@ public:
 				break;
 
 			case SDL_MOUSEBUTTONDOWN:
-				SDL_CaptureMouse(SDL_TRUE);
-				spdlog::info("Capturing mouse");
+				SDL_SetRelativeMouseMode(SDL_TRUE);
 				break;
 
 			case SDL_MOUSEBUTTONUP:
-				SDL_CaptureMouse(SDL_FALSE);
-				spdlog::info("Releasing mouse");
+				SDL_SetRelativeMouseMode(SDL_FALSE);
 				break;
 		}
 		return true;
@@ -1374,16 +1488,8 @@ public:
 
 	bool OnUpdate()
 	{
-		int currMouseX, currMouseY;
-		const uint32_t mouseButtonMask = SDL_GetMouseState(&currMouseX, &currMouseY);
-		static int lastMouseX = currMouseX, lastMouseY = currMouseY;
-
-		int mouseX = currMouseX - lastMouseX;
-		int mouseY = currMouseY - lastMouseY;
-		SDL_GetRelativeMouseState(&mouseX, &mouseY);
-
-		lastMouseX = currMouseX;
-		lastMouseY = currMouseY;
+		int mouseX{}, mouseY{};
+		const uint32_t mouseButtonMask = SDL_GetRelativeMouseState(&mouseX, &mouseY);
 
 		if (mouseButtonMask & SDL_BUTTON_LMASK)
 		{
@@ -1446,15 +1552,62 @@ private:
 		m_swapchainImageViews = CreateSwapchainImageViews(surfaceFormat.format, m_swapchainImages, m_device.get());
 		m_imagesInFlight.resize(m_swapchainImages.size());
 
+		if (UseMSAA)
+		{
+			CreateColorBuffer(surfaceFormat.format);
+		}
 		CreateDepthBuffer();
 
-		m_renderPass = CreateRenderPass(m_device.get(), surfaceFormat.format, m_depthFormat);
+		m_renderPass = CreateRenderPass(m_device.get(), surfaceFormat.format, m_depthFormat, m_msaaSampleCount);
 		m_swapchainFramebuffers = CreateFramebuffers(
-		    m_swapchainImageViews, m_depthImageView.get(), m_renderPass.get(), m_surfaceExtent, m_device.get());
+		    m_swapchainImageViews, m_colorImageView.get(), m_depthImageView.get(), m_renderPass.get(), m_surfaceExtent,
+		    m_device.get());
 
 		m_pipeline = CreateGraphicsPipeline(
 		    m_vertexShader.get(), m_pixelShader.get(), m_pipelineLayout.get(), m_renderPass.get(), m_surfaceExtent,
-		    m_device.get());
+		    m_msaaSampleCount, m_device.get());
+	}
+
+	void CreateColorBuffer(vk::Format format)
+	{
+		// Create image
+		const auto imageInfo = vk::ImageCreateInfo{
+		    .imageType = vk::ImageType::e2D,
+		    .format = format,
+		    .extent = {m_surfaceExtent.width, m_surfaceExtent.height, 1},
+		    .mipLevels = 1,
+		    .arrayLayers = 1,
+		    .samples = m_msaaSampleCount,
+		    .tiling = vk::ImageTiling::eOptimal,
+		    .usage = vk::ImageUsageFlagBits::eTransientAttachment | vk::ImageUsageFlagBits::eColorAttachment,
+		    .sharingMode = vk::SharingMode::eExclusive,
+		    .initialLayout = vk::ImageLayout::eUndefined,
+		};
+
+		m_colorImage = m_device->createImageUnique(imageInfo, s_allocator);
+		const auto allocation = m_swapchainAllocator->Allocate(
+		    m_device->getImageMemoryRequirements(m_colorImage.get()), vk::MemoryPropertyFlagBits::eDeviceLocal);
+		m_device->bindImageMemory(m_colorImage.get(), allocation.memory, allocation.offset);
+
+		TransitionImageLayout(
+		    OneShotCommands(), m_colorImage.get(), imageInfo.format, 1, vk::ImageLayout::eUndefined,
+		    vk::ImageLayout::eColorAttachmentOptimal, vk::PipelineStageFlagBits::eTopOfPipe,
+		    vk::PipelineStageFlagBits::eEarlyFragmentTests);
+
+		// Create image view
+		const auto viewInfo = vk::ImageViewCreateInfo{
+			.image = m_colorImage.get(),
+			.viewType = vk::ImageViewType::e2D,
+			.format = imageInfo.format,
+			.subresourceRange = {
+				.aspectMask = vk::ImageAspectFlagBits::eColor,
+				.baseMipLevel = 0,
+				.levelCount = 1,
+				.baseArrayLayer = 0,
+				.layerCount = 1,
+			},
+		};
+		m_colorImageView = m_device->createImageViewUnique(viewInfo, s_allocator);
 	}
 
 	void CreateDepthBuffer()
@@ -1471,7 +1624,7 @@ private:
 		    .extent = {m_surfaceExtent.width, m_surfaceExtent.height, 1},
 		    .mipLevels = 1,
 		    .arrayLayers = 1,
-		    .samples = vk::SampleCountFlagBits::e1,
+		    .samples = m_msaaSampleCount,
 		    .tiling = vk::ImageTiling::eOptimal,
 		    .usage = vk::ImageUsageFlagBits::eDepthStencilAttachment,
 		    .sharingMode = vk::SharingMode::eExclusive,
@@ -1479,10 +1632,9 @@ private:
 		};
 
 		m_depthImage = m_device->createImageUnique(imageInfo, s_allocator);
-		m_depthMemory = CreateDeviceMemory(
-		    m_device.get(), m_physicalDevice, m_device->getImageMemoryRequirements(m_depthImage.get()),
-		    vk::MemoryPropertyFlagBits::eDeviceLocal);
-		m_device->bindImageMemory(m_depthImage.get(), m_depthMemory.get(), 0);
+		const auto allocation = m_swapchainAllocator->Allocate(
+		    m_device->getImageMemoryRequirements(m_depthImage.get()), vk::MemoryPropertyFlagBits::eDeviceLocal);
+		m_device->bindImageMemory(m_depthImage.get(), allocation.memory, allocation.offset);
 		TransitionImageLayout(
 		    OneShotCommands(), m_depthImage.get(), imageInfo.format, 1, vk::ImageLayout::eUndefined,
 		    vk::ImageLayout::eDepthStencilAttachmentOptimal, vk::PipelineStageFlagBits::eTopOfPipe,
@@ -1507,19 +1659,19 @@ private:
 	void CreateVertexBuffer(BytesView data)
 	{
 		auto result = CreateBufferWithData(
-		    m_device.get(), m_physicalDevice, m_graphicsCommandPool.get(), m_graphicsQueue, data,
+		    m_device.get(), m_generalAllocator.value(), m_graphicsCommandPool.get(), m_graphicsQueue, data,
 		    vk::BufferUsageFlagBits::eVertexBuffer);
 		m_vertexBuffer = std::move(result.buffer);
-		m_vertexBufferMemory = std::move(result.memory);
+		m_vertexBufferMemory = std::move(result.allocation);
 	}
 
 	void CreateIndexBuffer(std::span<const uint16_t> data)
 	{
 		auto result = CreateBufferWithData(
-		    m_device.get(), m_physicalDevice, m_graphicsCommandPool.get(), m_graphicsQueue, data,
+		    m_device.get(), m_generalAllocator.value(), m_graphicsCommandPool.get(), m_graphicsQueue, data,
 		    vk::BufferUsageFlagBits::eIndexBuffer);
 		m_indexBuffer = std::move(result.buffer);
-		m_indexBufferMemory = std::move(result.memory);
+		m_indexBufferMemory = std::move(result.allocation);
 		m_indexCount = size32(data);
 	}
 
@@ -1603,10 +1755,11 @@ private:
 		for (size_t i = 0; i < m_swapchainImages.size(); i++)
 		{
 			m_uniformBuffers[i] = CreateBuffer(m_device.get(), bufferSize, vk::BufferUsageFlagBits::eUniformBuffer);
-			m_uniformBuffersMemory[i] = CreateDeviceMemory(
-			    m_device.get(), m_physicalDevice, m_device->getBufferMemoryRequirements(m_uniformBuffers[i].get()),
+			m_uniformBuffersMemory[i] = m_generalAllocator->Allocate(
+			    m_device->getBufferMemoryRequirements(m_uniformBuffers[i].get()),
 			    vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
-			m_device->bindBufferMemory(m_uniformBuffers[i].get(), m_uniformBuffersMemory[i].get(), 0);
+			m_device->bindBufferMemory(
+			    m_uniformBuffers[i].get(), m_uniformBuffersMemory[i].memory, m_uniformBuffersMemory[i].offset);
 		}
 	}
 
@@ -1683,11 +1836,11 @@ private:
 
 		// Create staging buffer
 		const auto stagingBuffer = CreateBuffer(m_device.get(), imageSize, vk::BufferUsageFlagBits::eTransferSrc);
-		const auto stagingMemory = CreateDeviceMemory(
-		    m_device.get(), m_physicalDevice, m_device->getBufferMemoryRequirements(stagingBuffer.get()),
+		const auto stagingAlloc = m_generalAllocator->Allocate(
+		    m_device->getBufferMemoryRequirements(stagingBuffer.get()),
 		    vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
-		m_device->bindBufferMemory(stagingBuffer.get(), stagingMemory.get(), 0);
-		SetBufferData(m_device.get(), stagingMemory.get(), std::span(pixels.get(), imageSize));
+		m_device->bindBufferMemory(stagingBuffer.get(), stagingAlloc.memory, stagingAlloc.offset);
+		SetBufferData(m_device.get(), stagingAlloc, std::span(pixels.get(), imageSize));
 
 		// Create image
 		const auto imageExtent = vk::Extent3D{static_cast<uint32_t>(width), static_cast<uint32_t>(height), 1};
@@ -1706,10 +1859,9 @@ private:
 		};
 
 		m_textureImage = m_device->createImageUnique(imageInfo, s_allocator);
-		m_textureMemory = CreateDeviceMemory(
-		    m_device.get(), m_physicalDevice, m_device->getImageMemoryRequirements(m_textureImage.get()),
-		    vk::MemoryPropertyFlagBits::eDeviceLocal);
-		m_device->bindImageMemory(m_textureImage.get(), m_textureMemory.get(), 0);
+		m_textureMemory = m_generalAllocator->Allocate(
+		    m_device->getImageMemoryRequirements(m_textureImage.get()), vk::MemoryPropertyFlagBits::eDeviceLocal);
+		m_device->bindImageMemory(m_textureImage.get(), m_textureMemory.memory, m_textureMemory.offset);
 		const auto cmdBuffer = OneShotCommands();
 		TransitionImageLayout(
 		    cmdBuffer, m_textureImage.get(), imageInfo.format, mipLevelCount, imageInfo.initialLayout,
@@ -1803,6 +1955,8 @@ private:
 
 	void RecreateSwapchain()
 	{
+		m_swapchainAllocator->DeallocateAll();
+
 		m_device->waitIdle();
 		m_commandBuffers.clear();
 		CreateSwapchainAndImages();
@@ -1821,6 +1975,10 @@ private:
 	vk::UniqueDebugUtilsMessengerEXT m_debugMessenger;
 	vk::PhysicalDevice m_physicalDevice;
 	vk::UniqueDevice m_device;
+
+	std::optional<MemoryAllocator> m_generalAllocator; // Allocator for objects that live a long time
+	std::optional<MemoryAllocator> m_swapchainAllocator; // Allocator for objects that need to be recreated with the swapchain
+
 	vk::UniqueSurfaceKHR m_surface;
 	uint32_t m_graphicsQueueFamily;
 	uint32_t m_presentQueueFamily;
@@ -1829,9 +1987,13 @@ private:
 	vk::UniqueSwapchainKHR m_swapchain;
 	std::vector<vk::Image> m_swapchainImages;
 	std::vector<vk::UniqueImageView> m_swapchainImageViews;
+	vk::SampleCountFlagBits m_msaaSampleCount = vk::SampleCountFlagBits::e1;
+	vk::UniqueImage m_colorImage;
+	MemoryAllocation m_colorMemory;
+	vk::UniqueImageView m_colorImageView;
 	vk::Format m_depthFormat;
 	vk::UniqueImage m_depthImage;
-	vk::UniqueDeviceMemory m_depthMemory;
+	MemoryAllocation m_depthMemory;
 	vk::UniqueImageView m_depthImageView;
 	vk::UniqueCommandPool m_graphicsCommandPool;
 	vk::UniqueDescriptorPool m_descriptorPool;
@@ -1844,16 +2006,16 @@ private:
 	vk::UniqueRenderPass m_renderPass;
 	vk::UniquePipelineLayout m_pipelineLayout;
 	vk::UniqueBuffer m_vertexBuffer;
-	vk::UniqueDeviceMemory m_vertexBufferMemory;
+	MemoryAllocation m_vertexBufferMemory;
 	vk::UniqueBuffer m_indexBuffer;
 	uint32_t m_indexCount;
-	vk::UniqueDeviceMemory m_indexBufferMemory;
+	MemoryAllocation m_indexBufferMemory;
 	vk::UniqueImage m_textureImage;
-	vk::UniqueDeviceMemory m_textureMemory;
+	MemoryAllocation m_textureMemory;
 	vk::UniqueImageView m_textureImageView;
 	vk::UniqueSampler m_textureSampler;
 	std::vector<vk::UniqueBuffer> m_uniformBuffers;
-	std::vector<vk::UniqueDeviceMemory> m_uniformBuffersMemory;
+	std::vector<MemoryAllocation> m_uniformBuffersMemory;
 	std::vector<vk::DescriptorSet> m_descriptorSets;
 	std::vector<vk::UniqueFramebuffer> m_swapchainFramebuffers;
 	std::vector<vk::UniqueCommandBuffer> m_commandBuffers;
@@ -1895,8 +2057,6 @@ int Run(int argc, char* argv[])
 		SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Error", message.c_str(), window.get());
 		return 1;
 	}
-
-	SDL_SetHintWithPriority(SDL_HINT_MOUSE_RELATIVE_MODE_WARP, "1", SDL_HINT_OVERRIDE);
 
 	std::optional<VulkanApp> vulkan;
 	try

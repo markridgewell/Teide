@@ -17,6 +17,7 @@
           },
          "cacheVariables": {
             "CMAKE_CXX_FLAGS": "/W4 /WX /EHsc /permissive- /external:W0 /analyze:external- /external:anglebrackets /external:templates-",
+            "CMAKE_CXX_FLAGS_DEBUG": "/Zi /Od /Ob0 /JMC",
             "CMAKE_CONFIGURATION_TYPES": "Debug;Release",
             "CMAKE_TOOLCHAIN_FILE": {
                "value": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
@@ -29,7 +30,7 @@
          "name": "msvc-asan",
          "inherits": "msvc",
          "cacheVariables": {
-            "CMAKE_CXX_FLAGS_DEBUG": "/Zi /Od /Ob0 /fsanitize=address",
+            "CMAKE_CXX_FLAGS_DEBUG": "/Zi /Od /Ob0 /JMC /fsanitize=address",
             "CMAKE_EXE_LINKER_FLAGS_DEBUG": "/DEBUG /INCREMENTAL:NO"
          }
       }
