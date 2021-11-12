@@ -1421,8 +1421,7 @@ public:
 
 		// Update global uniforms
 		const Geo::Matrix4 lightRotation = Geo::Matrix4::RotationZ(m_lightYaw) * Geo::Matrix4::RotationX(m_lightPitch);
-		const Geo::Vector4 lightDir4 = lightRotation * Geo::Vector4{0.0f, 1.0f, 0.0f, 0.0f};
-		const Geo::Vector3 lightDirection = Geo::Normalise(Geo::Vector3{lightDir4.x, lightDir4.y, lightDir4.z});
+		const Geo::Vector3 lightDirection = Geo::Normalise(lightRotation * Geo::Vector3{0.0f, 1.0f, 0.0f});
 		const auto globalUniforms = GlobalUniforms{
 		    .lightDir = Geo::Normalise(lightDirection),
 		};
@@ -1435,10 +1434,8 @@ public:
 		const float aspectRatio = static_cast<float>(m_surfaceExtent.width) / static_cast<float>(m_surfaceExtent.height);
 
 		const Geo::Matrix4 rotation = Geo::Matrix4::RotationZ(m_cameraYaw) * Geo::Matrix4::RotationX(m_cameraPitch);
-		const Geo::Vector4 cameraDir4 = rotation * Geo::Vector4{0.0f, 1.0f, 0.0f, 0.0f};
-		const Geo::Vector3 cameraDirection = Geo::Normalise(Geo::Vector3{cameraDir4.x, cameraDir4.y, cameraDir4.z});
-		const Geo::Vector4 cameraUp4 = rotation * Geo::Vector4{0.0f, 0.0f, 1.0f, 0.0f};
-		const Geo::Vector3 cameraUp = Geo::Normalise(Geo::Vector3{cameraUp4.x, cameraUp4.y, cameraUp4.z});
+		const Geo::Vector3 cameraDirection = Geo::Normalise(rotation * Geo::Vector3{0.0f, 1.0f, 0.0f});
+		const Geo::Vector3 cameraUp = Geo::Normalise(rotation * Geo::Vector3{0.0f, 0.0f, 1.0f});
 
 		const Geo::Point3 cameraPosition = m_cameraTarget - cameraDirection * m_cameraDistance;
 
@@ -1557,10 +1554,8 @@ public:
 			if (mouseButtonMask & SDL_BUTTON_MMASK)
 			{
 				const auto rotation = Geo::Matrix4::RotationZ(m_cameraYaw) * Geo::Matrix4::RotationX(m_cameraPitch);
-				const auto cameraDir4 = rotation * Geo::Vector4{0.0f, 1.0f, 0.0f, 0.0f};
-				const auto cameraDirection = Geo::Normalise(Geo::Vector3{cameraDir4.x, cameraDir4.y, cameraDir4.z});
-				const auto cameraUp4 = rotation * Geo::Vector4{0.0f, 0.0f, 1.0f, 0.0f};
-				const auto cameraUp = Geo::Normalise(Geo::Vector3{cameraUp4.x, cameraUp4.y, cameraUp4.z});
+				const auto cameraDirection = Geo::Normalise(rotation * Geo::Vector3{0.0f, 1.0f, 0.0f});
+				const auto cameraUp = Geo::Normalise(rotation * Geo::Vector3{0.0f, 0.0f, 1.0f});
 				const auto cameraRight = Geo::Normalise(Geo::Cross(cameraUp, cameraDirection));
 
 				m_cameraTarget += cameraRight * static_cast<float>(-mouseX) * CameraMoveSpeed;

@@ -161,6 +161,20 @@ Vector<T, M, VectorTag> operator*(const Matrix<T, M, M>& a, const Vector<T, M, V
 	return ret;
 }
 
+template <class T>
+Vector<T, 3, VectorTag> operator*(const Matrix<T, 4, 4>& a, const Vector<T, 3, VectorTag>& b)
+{
+	const auto ret = a * Vector<T, 4, VectorTag>(b.x, b.y, b.z, T{0});
+	return {ret.x, ret.y, ret.z};
+}
+
+template <class T>
+Vector<T, 3, PointTag> operator*(const Matrix<T, 4, 4>& a, const Vector<T, 3, PointTag>& b)
+{
+	const auto ret = a * Vector<T, 4, VectorTag>(b.x, b.y, b.z, T{1});
+	return {ret.x / ret.w, ret.y / ret.w, ret.z / ret.w};
+}
+
 template <class T, int M, int N>
 Matrix<T, N, M> Transpose(const Matrix<T, M, N>& m)
 {

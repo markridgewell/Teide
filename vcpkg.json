@@ -22,6 +22,10 @@
         {
             "name": "assimp",
             "version>=": "5.0.1"
+        },
+        {
+            "name": "gtest",
+            "version>=": "1.11.0"
         }
     ],
     "builtin-baseline": "2a31089e777fc187f1cc05338250b8e1810cfb52"
