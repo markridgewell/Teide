@@ -81,10 +81,15 @@ layout(set = 1, binding = 1) uniform sampler2D texSampler;
 
 layout(set = 0, binding = 0) uniform GlobalUniforms {
     vec3 lightDir;
+    vec3 lightColor;
+    vec3 ambientColorTop;
+    vec3 ambientColorBottom;
 } ubo;
 
 void main() {
-    float lighting = clamp(dot(inNormal, -ubo.lightDir), 0.0, 1.0);
+    vec3 dirLight = clamp(dot(inNormal, -ubo.lightDir), 0.0, 1.0) * ubo.lightColor;
+    vec3 ambLight = mix(ubo.ambientColorBottom, ubo.ambientColorTop, inNormal.z * 0.5 + 0.5);
+	vec3 lighting = dirLight + ambLight;
     vec3 color = lighting * texture(texSampler, inTexCoord).rgb;
     outColor = vec4(color, 1.0);
 })--";
@@ -142,6 +147,13 @@ constexpr auto VertexAttributeDescriptions = std::array{
 struct GlobalUniforms
 {
 	Geo::Vector3 lightDir;
+	float pad0 [[maybe_unused]];
+	Geo::Vector3 lightColor;
+	float pad1 [[maybe_unused]];
+	Geo::Vector3 ambientColorTop;
+	float pad2 [[maybe_unused]];
+	Geo::Vector3 ambientColorBottom;
+	float pad3 [[maybe_unused]];
 };
 
 struct PerObjectUniforms
@@ -1368,10 +1380,10 @@ public:
 		m_generalAllocator.emplace(m_device.get(), m_physicalDevice);
 		m_swapchainAllocator.emplace(m_device.get(), m_physicalDevice);
 
-		m_graphicsCommandPool = CreateCommandPool(m_graphicsQueueFamily, m_device.get());
 		std::ranges::generate(m_imageAvailable, [this] { return CreateSemaphore(m_device.get()); });
 		std::ranges::generate(m_renderFinished, [this] { return CreateSemaphore(m_device.get()); });
 		std::ranges::generate(m_inFlightFences, [this] { return CreateFence(m_device.get()); });
+		std::ranges::generate(m_commandPools, [this] { return CreateCommandPool(m_graphicsQueueFamily, m_device.get()); });
 
 		m_globalDescriptorSetLayout = CreateDescriptorSetLayout(m_device.get(), GlobalBindings);
 		m_perObjectDescriptorSetLayout = CreateDescriptorSetLayout(m_device.get(), PerObjectBindings);
@@ -1387,9 +1399,19 @@ public:
 		CreateUniformBuffers();
 		CreateTextureImage(imageFilename);
 		CreateTextureSampler();
+		CreateShadowMap();
 		CreateDescriptorSets();
 
-		CreateCommandBuffers();
+		for (size_t i = 0; i < MaxFramesInFlight; i++)
+		{
+			const auto allocateInfo = vk::CommandBufferAllocateInfo{
+			    .commandPool = m_commandPools[i].get(),
+			    .level = vk::CommandBufferLevel::ePrimary,
+			    .commandBufferCount = 1,
+			};
+
+			m_commandBuffers[i] = std::move(m_device->allocateCommandBuffersUnique(allocateInfo).front());
+		}
 
 		spdlog::info("Vulkan initialised successfully");
 	}
@@ -1424,6 +1446,9 @@ public:
 		const Geo::Vector3 lightDirection = Geo::Normalise(lightRotation * Geo::Vector3{0.0f, 1.0f, 0.0f});
 		const auto globalUniforms = GlobalUniforms{
 		    .lightDir = Geo::Normalise(lightDirection),
+		    .lightColor = {1.0f, 1.0f, 1.0f},
+		    .ambientColorTop = {0.08f, 0.1f, 0.1f},
+		    .ambientColorBottom = {0.003f, 0.003f, 0.002f},
 		};
 		SetBufferData(m_device.get(), m_globalUniformBuffersMemory[imageIndex], globalUniforms);
 
@@ -1456,6 +1481,10 @@ public:
 		// Mark the image as in flight
 		m_imagesInFlight[imageIndex] = m_inFlightFences[m_currentFrame].get();
 
+		// Draw scene
+		m_device->resetCommandPool(m_commandPools[m_currentFrame].get());
+		DrawObjects(m_commandBuffers[m_currentFrame].get(), m_swapchainFramebuffers[imageIndex].get(), m_surfaceExtent, imageIndex);
+
 		// Submit the command buffer
 		const vk::PipelineStageFlags waitStage = vk::PipelineStageFlagBits::eColorAttachmentOutput;
 		const auto submitInfo = vk::SubmitInfo{
@@ -1463,7 +1492,7 @@ public:
 		    .pWaitSemaphores = &m_imageAvailable[m_currentFrame].get(),
 		    .pWaitDstStageMask = &waitStage,
 		    .commandBufferCount = 1,
-		    .pCommandBuffers = &m_commandBuffers[imageIndex].get(),
+		    .pCommandBuffers = &m_commandBuffers[m_currentFrame].get(),
 		    .signalSemaphoreCount = 1,
 		    .pSignalSemaphores = &m_renderFinished[m_currentFrame].get(),
 		};
@@ -1586,7 +1615,7 @@ public:
 private:
 	auto OneShotCommands()
 	{
-		return OneShotCommandBuffer(m_device.get(), m_graphicsCommandPool.get(), m_graphicsQueue);
+		return OneShotCommandBuffer(m_device.get(), m_commandPools[m_currentFrame].get(), m_graphicsQueue);
 	}
 
 	void CreateSwapchainAndImages()
@@ -1709,7 +1738,7 @@ private:
 	void CreateVertexBuffer(BytesView data)
 	{
 		auto result = CreateBufferWithData(
-		    m_device.get(), m_generalAllocator.value(), m_graphicsCommandPool.get(), m_graphicsQueue, data,
+		    m_device.get(), m_generalAllocator.value(), m_commandPools[m_currentFrame].get(), m_graphicsQueue, data,
 		    vk::BufferUsageFlagBits::eVertexBuffer);
 		m_vertexBuffer = std::move(result.buffer);
 		m_vertexBufferMemory = std::move(result.allocation);
@@ -1718,7 +1747,7 @@ private:
 	void CreateIndexBuffer(std::span<const uint16_t> data)
 	{
 		auto result = CreateBufferWithData(
-		    m_device.get(), m_generalAllocator.value(), m_graphicsCommandPool.get(), m_graphicsQueue, data,
+		    m_device.get(), m_generalAllocator.value(), m_commandPools[m_currentFrame].get(), m_graphicsQueue, data,
 		    vk::BufferUsageFlagBits::eIndexBuffer);
 		m_indexBuffer = std::move(result.buffer);
 		m_indexBufferMemory = std::move(result.allocation);
@@ -2006,6 +2035,54 @@ private:
 		m_textureSampler = m_device->createSamplerUnique(samplerInfo, s_allocator);
 	}
 
+	void CreateShadowMap()
+	{
+		constexpr uint32_t shadowMapSize = 1024;
+
+		const auto formatCandidates = std::array{
+		    vk::Format::eD16Unorm, vk::Format::eD32Sfloat, vk::Format::eD32SfloatS8Uint, vk::Format::eD24UnormS8Uint};
+		m_shadowMapFormat = FindSupportedFormat(
+		    m_physicalDevice, formatCandidates, vk::ImageTiling::eOptimal, vk::FormatFeatureFlagBits::eDepthStencilAttachment);
+
+		// Create image
+		const auto imageInfo = vk::ImageCreateInfo{
+		    .imageType = vk::ImageType::e2D,
+		    .format = m_shadowMapFormat,
+		    .extent = {shadowMapSize, shadowMapSize, 1},
+		    .mipLevels = 1,
+		    .arrayLayers = 1,
+		    .samples = vk::SampleCountFlagBits::e1,
+		    .tiling = vk::ImageTiling::eOptimal,
+		    .usage = vk::ImageUsageFlagBits::eDepthStencilAttachment,
+		    .sharingMode = vk::SharingMode::eExclusive,
+		    .initialLayout = vk::ImageLayout::eUndefined,
+		};
+
+		m_shadowMap = m_device->createImageUnique(imageInfo, s_allocator);
+		m_shadowMapMemory = m_generalAllocator->Allocate(
+		    m_device->getImageMemoryRequirements(m_shadowMap.get()), vk::MemoryPropertyFlagBits::eDeviceLocal);
+		m_device->bindImageMemory(m_shadowMap.get(), m_shadowMapMemory.memory, m_shadowMapMemory.offset);
+		TransitionImageLayout(
+		    OneShotCommands(), m_shadowMap.get(), imageInfo.format, 1, vk::ImageLayout::eUndefined,
+		    vk::ImageLayout::eDepthStencilAttachmentOptimal, vk::PipelineStageFlagBits::eTopOfPipe,
+		    vk::PipelineStageFlagBits::eEarlyFragmentTests);
+
+		// Create image view
+		const auto viewInfo = vk::ImageViewCreateInfo{
+			.image = m_shadowMap.get(),
+			.viewType = vk::ImageViewType::e2D,
+			.format = imageInfo.format,
+			.subresourceRange = {
+				.aspectMask = vk::ImageAspectFlagBits::eDepth,
+				.baseMipLevel = 0,
+				.levelCount = 1,
+				.baseArrayLayer = 0,
+				.layerCount = 1,
+			},
+		};
+		m_shadowMapView = m_device->createImageViewUnique(viewInfo, s_allocator);
+	}
+
 	void DrawObjects(vk::CommandBuffer commandBuffer, vk::Framebuffer framebuffer, vk::Extent2D surfaceExtent, size_t imageIndex)
 	{
 		commandBuffer.begin(vk::CommandBufferBeginInfo{});
@@ -2040,32 +2117,14 @@ private:
 		commandBuffer.end();
 	}
 
-	void CreateCommandBuffers()
-	{
-		const auto allocateInfo = vk::CommandBufferAllocateInfo{
-		    .commandPool = m_graphicsCommandPool.get(),
-		    .level = vk::CommandBufferLevel::ePrimary,
-		    .commandBufferCount = size32(m_swapchainFramebuffers),
-		};
-
-		m_commandBuffers = m_device->allocateCommandBuffersUnique(allocateInfo);
-
-		for (const size_t i : std::views::iota(0u, m_commandBuffers.size()))
-		{
-			DrawObjects(m_commandBuffers[i].get(), m_swapchainFramebuffers[i].get(), m_surfaceExtent, i);
-		}
-	}
-
 	void RecreateSwapchain()
 	{
 		m_swapchainAllocator->DeallocateAll();
 
 		m_device->waitIdle();
-		m_commandBuffers.clear();
 		CreateSwapchainAndImages();
 		CreateUniformBuffers();
 		CreateDescriptorSets();
-		CreateCommandBuffers();
 	}
 
 	SDL_Window* m_window;
@@ -2098,7 +2157,6 @@ private:
 	vk::UniqueImage m_depthImage;
 	MemoryAllocation m_depthMemory;
 	vk::UniqueImageView m_depthImageView;
-	vk::UniqueCommandPool m_graphicsCommandPool;
 	vk::UniqueDescriptorPool m_descriptorPool;
 
 	// Object setup
@@ -2125,11 +2183,14 @@ private:
 	std::vector<vk::DescriptorSet> m_globalDescriptorSets;
 	std::vector<vk::DescriptorSet> m_perObjectDescriptorSets;
 	std::vector<vk::UniqueFramebuffer> m_swapchainFramebuffers;
-	std::vector<vk::UniqueCommandBuffer> m_commandBuffers;
 
 	// Lights
 	Geo::Angle m_lightYaw = -45.0_deg;
 	Geo::Angle m_lightPitch = 45.0_deg;
+	vk::UniqueImage m_shadowMap;
+	vk::Format m_shadowMapFormat;
+	MemoryAllocation m_shadowMapMemory;
+	vk::UniqueImageView m_shadowMapView;
 
 	// Camera
 	Geo::Point3 m_cameraTarget = {0.0f, 0.0f, 0.0f};
@@ -2143,6 +2204,9 @@ private:
 	std::array<vk::UniqueSemaphore, MaxFramesInFlight> m_imageAvailable;
 	std::array<vk::UniqueSemaphore, MaxFramesInFlight> m_renderFinished;
 	std::array<vk::UniqueFence, MaxFramesInFlight> m_inFlightFences;
+	std::array<vk::UniqueCommandPool, MaxFramesInFlight> m_commandPools;
+	std::array<vk::UniqueCommandBuffer, MaxFramesInFlight> m_commandBuffers;
+
 	std::vector<vk::Fence> m_imagesInFlight;
 };
 
