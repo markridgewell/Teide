@@ -4,6 +4,8 @@
 #include "Angle.h"
 #include "Vector.h"
 
+#include <array>
+
 namespace Geo
 {
 template <class T, int M, int N>
@@ -16,6 +18,8 @@ struct Matrix<T, M, 2>
 
 	constexpr auto& operator[](int i) { return this->*Members()[i]; }
 	constexpr auto operator[](int i) const { return this->*Members()[i]; }
+
+	friend auto operator<=>(const Matrix& a, const Matrix& b) = default;
 
 	static Matrix<T, M, 2> Identity()
 	{
@@ -40,6 +44,8 @@ struct Matrix<T, M, 3>
 
 	constexpr auto& operator[](int i) { return this->*Members()[i]; }
 	constexpr auto operator[](int i) const { return this->*Members()[i]; }
+
+	friend auto operator<=>(const Matrix& a, const Matrix& b) = default;
 
 	static Matrix<T, M, 3> Identity()
 	{
@@ -68,6 +74,8 @@ struct Matrix<T, M, 4>
 
 	constexpr auto& operator[](int i) { return this->*Members()[i]; }
 	constexpr auto operator[](int i) const { return this->*Members()[i]; }
+
+	friend auto operator<=>(const Matrix& a, const Matrix& b) = default;
 
 	static Matrix<T, M, 4> Identity()
 	{
@@ -219,6 +227,28 @@ Matrix<T, 4, 4> Perspective(AngleT<T> fovy, T aspect, T near, T far) noexcept
 	    {0, T{-1} / (tanHalfFovy), 0, 0},
 	    {0, 0, (far + near) / (far - near), T{1}},
 	    {0, 0, -(T{2} * far * near) / (far - near), 0},
+	};
+}
+
+template <class T>
+Matrix<T, 4, 4> Orthographic(T width, T height) noexcept
+{
+	return {
+	    {T{2} / width, 0, 0, T{-1}},
+	    {0, T{2} / height, 0, T{-1}},
+	    {0, 0, T{1}, 0},
+	    {0, 0, 0, T{1}},
+	};
+}
+
+template <class T>
+Matrix<T, 4, 4> Orthographic(T left, T right, T bottom, T top, T nclip, T fclip) noexcept
+{
+	return {
+	    {T{2} / (right - left), 0, 0, -(right + left) / (right - left)},
+	    {0, T{2} / (top - bottom), 0, -(top + bottom) / (top - bottom)},
+	    {0, 0, T{1} / (fclip - nclip), -(nclip) / (fclip - nclip)},
+	    {0, 0, 0, T{1}},
 	};
 }
 

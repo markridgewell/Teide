@@ -34,6 +34,7 @@ target_compile_features(GeoLib INTERFACE cxx_std_23)
 # ----- GeoLibTest -----
 
 set(sources
+    test/GeoLib/MatrixTest.cpp
     test/GeoLib/VectorTest.cpp
 )
 

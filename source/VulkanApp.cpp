@@ -53,19 +53,23 @@ layout(location = 2) in vec3 inNormal;
 layout(location = 3) in vec3 inColor;
 
 layout(location = 0) out vec2 outTexCoord;
-layout(location = 1) out vec3 outNormal;
-layout(location = 2) out vec3 outColor;
+layout(location = 1) out vec3 outPosition;
+layout(location = 2) out vec3 outNormal;
+layout(location = 3) out vec3 outColor;
 
-layout(set = 1, binding = 0) uniform PerObjectUniforms {
+layout(set = 1, binding = 0) uniform ViewUniforms {
+    mat4 viewProj;
+} view;
+
+layout(set = 2, binding = 0) uniform ObjectUniforms {
     mat4 model;
-    mat4 view;
-    mat4 proj;
-} ubo;
+} object;
 
 void main() {
-    gl_Position = ubo.proj * ubo.view * ubo.model * vec4(inPosition, 1.0);
+    outPosition = (object.model * vec4(inPosition, 1.0)).xyz;
+    gl_Position = view.viewProj * vec4(outPosition, 1.0);
     outTexCoord = inTexCoord;
-    outNormal = (ubo.model * vec4(inNormal, 0)).xyz;
+    outNormal = (object.model * vec4(inNormal, 0.0)).xyz;
     outColor = inColor;
 })--";
 
@@ -73,23 +77,32 @@ constexpr std::string_view PixelShader = R"--(
 #version 450
 
 layout(location = 0) in vec2 inTexCoord;
-layout(location = 1) in vec3 inNormal;
-layout(location = 2) in vec3 inColor;
+layout(location = 1) in vec3 inPosition;
+layout(location = 2) in vec3 inNormal;
+layout(location = 3) in vec3 inColor;
 layout(location = 0) out vec4 outColor;
 
-layout(set = 1, binding = 1) uniform sampler2D texSampler;
+layout(set = 1, binding = 1) uniform sampler2DShadow shadowMapSampler;
+layout(set = 2, binding = 1) uniform sampler2D texSampler;
 
 layout(set = 0, binding = 0) uniform GlobalUniforms {
     vec3 lightDir;
     vec3 lightColor;
     vec3 ambientColorTop;
     vec3 ambientColorBottom;
+    mat4 shadowMatrix;
 } ubo;
 
 void main() {
+    vec4 shadowCoord = ubo.shadowMatrix * vec4(inPosition, 1.0);
+    shadowCoord /= shadowCoord.w;
+    shadowCoord.xy = shadowCoord.xy * 0.5 + 0.5;
+    float lit = texture(shadowMapSampler, shadowCoord.xyz).r;
+
     vec3 dirLight = clamp(dot(inNormal, -ubo.lightDir), 0.0, 1.0) * ubo.lightColor;
     vec3 ambLight = mix(ubo.ambientColorBottom, ubo.ambientColorTop, inNormal.z * 0.5 + 0.5);
-	vec3 lighting = dirLight + ambLight;
+    vec3 lighting = lit * dirLight + ambLight;
+
     vec3 color = lighting * texture(texSampler, inTexCoord).rgb;
     outColor = vec4(color, 1.0);
 })--";
@@ -154,13 +167,17 @@ struct GlobalUniforms
 	float pad2 [[maybe_unused]];
 	Geo::Vector3 ambientColorBottom;
 	float pad3 [[maybe_unused]];
+	Geo::Matrix4 shadowMatrix;
 };
 
-struct PerObjectUniforms
+struct ViewUniforms
+{
+	Geo::Matrix4 viewProj;
+};
+
+struct ObjectUniforms
 {
 	Geo::Matrix4 model;
-	Geo::Matrix4 view;
-	Geo::Matrix4 proj;
 };
 
 constexpr auto ShaderLang = ShaderLanguage::Glsl;
@@ -887,6 +904,98 @@ BufferWithAllocation CreateBufferWithData(
 	return ret;
 }
 
+struct UniformBuffer
+{
+	std::vector<vk::UniqueBuffer> buffers;
+	std::vector<MemoryAllocation> memory;
+	vk::DeviceSize size;
+};
+
+UniformBuffer CreateUniformBuffer(size_t swapchainSize, size_t bufferSize, vk::Device device, MemoryAllocator& allocator)
+{
+	UniformBuffer ret;
+	ret.buffers.resize(swapchainSize);
+	ret.memory.resize(swapchainSize);
+	ret.size = bufferSize;
+	for (size_t i = 0; i < swapchainSize; i++)
+	{
+		ret.buffers[i] = CreateBuffer(device, bufferSize, vk::BufferUsageFlagBits::eUniformBuffer);
+		ret.memory[i] = allocator.Allocate(
+		    device.getBufferMemoryRequirements(ret.buffers[i].get()),
+		    vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
+		device.bindBufferMemory(ret.buffers[i].get(), ret.memory[i].memory, ret.memory[i].offset);
+	}
+	return ret;
+}
+
+struct DescriptorSet
+{
+	std::vector<vk::DescriptorSet> sets;
+};
+
+struct ImageView
+{
+	vk::ImageView view;
+	vk::Sampler sampler;
+	vk::ImageLayout layout;
+};
+
+DescriptorSet CreateDescriptorSet(
+    size_t swapchainSize, vk::DescriptorSetLayout layout, vk::DescriptorPool descriptorPool, vk::Device device,
+    const UniformBuffer& uniformBuffer, std::span<const ImageView> images = {})
+{
+	const auto layouts = std::vector<vk::DescriptorSetLayout>(swapchainSize, layout);
+	const auto allocInfo = vk::DescriptorSetAllocateInfo{
+	    .descriptorPool = descriptorPool,
+	    .descriptorSetCount = size32(layouts),
+	    .pSetLayouts = data(layouts),
+	};
+
+	DescriptorSet descriptorSets = {device.allocateDescriptorSets(allocInfo)};
+
+	for (size_t i = 0; i < layouts.size(); i++)
+	{
+		const auto bufferInfo = vk::DescriptorBufferInfo{
+		    .buffer = uniformBuffer.buffers[i].get(),
+		    .offset = 0,
+		    .range = uniformBuffer.size,
+		};
+
+		std::vector<vk::WriteDescriptorSet> descriptorWrites = {{
+		    .dstSet = descriptorSets.sets[i],
+		    .dstBinding = 0,
+		    .dstArrayElement = 0,
+		    .descriptorCount = 1,
+		    .descriptorType = vk::DescriptorType::eUniformBuffer,
+		    .pBufferInfo = &bufferInfo,
+		}};
+
+		std::vector<vk::DescriptorImageInfo> imageInfos;
+		imageInfos.resize(images.size());
+		for (const auto& image : images)
+		{
+			imageInfos.push_back({
+			    .sampler = image.sampler,
+			    .imageView = image.view,
+			    .imageLayout = image.layout,
+			});
+
+			descriptorWrites.push_back({
+			    .dstSet = descriptorSets.sets[i],
+			    .dstBinding = 1,
+			    .dstArrayElement = 0,
+			    .descriptorCount = 1,
+			    .descriptorType = vk::DescriptorType::eCombinedImageSampler,
+			    .pImageInfo = &imageInfos.back(),
+			});
+		}
+
+		device.updateDescriptorSets(descriptorWrites, {});
+	}
+
+	return descriptorSets;
+}
+
 struct TransitionAccessMasks
 {
 	vk::AccessFlags source;
@@ -906,12 +1015,40 @@ TransitionAccessMasks GetTransitionAccessMasks(vk::ImageLayout oldLayout, vk::Im
 	{
 		return {Access::eTransferWrite, Access::eShaderRead};
 	}
+	else if (oldLayout == eUndefined && newLayout == eColorAttachmentOptimal)
+	{
+		return {{}, Access::eColorAttachmentRead | Access::eColorAttachmentWrite};
+	}
 	else if (oldLayout == eUndefined && newLayout == eDepthAttachmentOptimal)
 	{
 		return {{}, Access::eDepthStencilAttachmentRead | Access::eDepthStencilAttachmentWrite};
 	}
+	else if (oldLayout == eUndefined && newLayout == eStencilAttachmentOptimal)
+	{
+		return {{}, Access::eDepthStencilAttachmentRead | Access::eDepthStencilAttachmentWrite};
+	}
+	else if (oldLayout == eUndefined && newLayout == eDepthStencilAttachmentOptimal)
+	{
+		return {{}, Access::eDepthStencilAttachmentRead | Access::eDepthStencilAttachmentWrite};
+	}
+	else if (oldLayout == eColorAttachmentOptimal && newLayout == eShaderReadOnlyOptimal)
+	{
+		return {Access::eColorAttachmentWrite, Access::eShaderRead};
+	}
+	else if (oldLayout == eDepthStencilAttachmentOptimal && newLayout == eShaderReadOnlyOptimal)
+	{
+		return {Access::eDepthStencilAttachmentWrite, Access::eShaderRead};
+	}
+	else if (oldLayout == eDepthAttachmentOptimal && newLayout == eShaderReadOnlyOptimal)
+	{
+		return {Access::eDepthStencilAttachmentRead, Access::eShaderRead};
+	}
+	else if (oldLayout == eStencilAttachmentOptimal && newLayout == eShaderReadOnlyOptimal)
+	{
+		return {Access::eDepthStencilAttachmentRead, Access::eShaderRead};
+	}
 
-	assert("Unsupported image transition");
+	assert(false && "Unsupported image transition");
 	return {};
 }
 
@@ -1047,34 +1184,30 @@ void GenerateMipmaps(vk::CommandBuffer cmdBuffer, vk::Image image, uint32_t widt
 	    vk::PipelineStageFlagBits::eTransfer, vk::PipelineStageFlagBits::eFragmentShader, {}, {}, {}, finalBarrier);
 }
 
-vk::UniqueDescriptorPool CreateDescriptorPool(vk::Device device, uint32_t numSwapchainImages)
-{
-	const auto poolSizes = std::array{
-	    vk::DescriptorPoolSize{
-	        .type = vk::DescriptorType::eUniformBuffer,
-	        .descriptorCount = numSwapchainImages,
-	    },
-	    vk::DescriptorPoolSize{
-	        .type = vk::DescriptorType::eCombinedImageSampler,
-	        .descriptorCount = numSwapchainImages,
-	    },
-	};
-
-	const auto createInfo = vk::DescriptorPoolCreateInfo{
-	    .maxSets = numSwapchainImages,
-	}.setPoolSizes(poolSizes);
-
-	return device.createDescriptorPoolUnique(createInfo, s_allocator);
-}
-
 constexpr auto GlobalBindings = std::array{vk::DescriptorSetLayoutBinding{
     .binding = 0,
     .descriptorType = vk::DescriptorType::eUniformBuffer,
     .descriptorCount = 1,
-    .stageFlags = vk::ShaderStageFlagBits::eFragment,
+    .stageFlags = vk::ShaderStageFlagBits::eAllGraphics,
 }};
 
-constexpr auto PerObjectBindings = std::array{
+constexpr auto ViewBindings = std::array{
+    vk::DescriptorSetLayoutBinding{
+        .binding = 0,
+        .descriptorType = vk::DescriptorType::eUniformBuffer,
+        .descriptorCount = 1,
+        .stageFlags = vk::ShaderStageFlagBits::eAllGraphics,
+    },
+    vk::DescriptorSetLayoutBinding{
+        .binding = 1,
+        .descriptorType = vk::DescriptorType::eCombinedImageSampler,
+        .descriptorCount = 1,
+        .stageFlags = vk::ShaderStageFlagBits::eFragment,
+        .pImmutableSamplers = nullptr,
+    },
+};
+
+constexpr auto ObjectBindings = std::array{
     vk::DescriptorSetLayoutBinding{
         .binding = 0,
         .descriptorType = vk::DescriptorType::eUniformBuffer,
@@ -1103,12 +1236,18 @@ CreateDescriptorSetLayout(vk::Device device, std::span<const vk::DescriptorSetLa
 
 vk::UniquePipeline CreateGraphicsPipeline(
     vk::ShaderModule vertexShader, vk::ShaderModule pixelShader, vk::PipelineLayout layout, vk::RenderPass renderPass,
-    vk::Extent2D surfaceExtent, vk::SampleCountFlagBits sampleCount, vk::Device device)
+    vk::Extent2D extent, vk::SampleCountFlagBits sampleCount, vk::Device device, float depthBiasConstant = 0.0f,
+    float depthBiasSlope = 0.0f)
 {
-	const auto shaderStages = std::array{
-	    vk::PipelineShaderStageCreateInfo{.stage = vk::ShaderStageFlagBits::eVertex, .module = vertexShader, .pName = "main"},
-	    vk::PipelineShaderStageCreateInfo{.stage = vk::ShaderStageFlagBits::eFragment, .module = pixelShader, .pName = "main"},
-	};
+	std::vector<vk::PipelineShaderStageCreateInfo> shaderStages;
+	if (vertexShader)
+	{
+		shaderStages.push_back({.stage = vk::ShaderStageFlagBits::eVertex, .module = vertexShader, .pName = "main"});
+	}
+	if (pixelShader)
+	{
+		shaderStages.push_back({.stage = vk::ShaderStageFlagBits::eFragment, .module = pixelShader, .pName = "main"});
+	}
 
 	const auto vertexInput = vk::PipelineVertexInputStateCreateInfo{}
 	                             .setVertexBindingDescriptions(VertexBindingDescription)
@@ -1122,14 +1261,14 @@ vk::UniquePipeline CreateGraphicsPipeline(
 	const auto viewport = vk::Viewport{
 	    .x = 0.0f,
 	    .y = 0.0f,
-	    .width = static_cast<float>(surfaceExtent.width),
-	    .height = static_cast<float>(surfaceExtent.height),
+	    .width = static_cast<float>(extent.width),
+	    .height = static_cast<float>(extent.height),
 	    .minDepth = 0.0f,
 	    .maxDepth = 1.0f};
 
 	const auto scissor = vk::Rect2D{
 	    .offset = {0, 0},
-	    .extent = surfaceExtent,
+	    .extent = extent,
 	};
 
 	const auto viewportState = vk::PipelineViewportStateCreateInfo{
@@ -1143,12 +1282,12 @@ vk::UniquePipeline CreateGraphicsPipeline(
 	    .depthClampEnable = false,
 	    .rasterizerDiscardEnable = false,
 	    .polygonMode = vk::PolygonMode::eFill,
-	    .cullMode = vk::CullModeFlagBits::eBack,
+	    .cullMode = vk::CullModeFlagBits::eNone,
 	    .frontFace = vk::FrontFace::eClockwise,
-	    .depthBiasEnable = false,
-	    .depthBiasConstantFactor = 0.0f,
+	    .depthBiasEnable = depthBiasConstant != 0.0f || depthBiasSlope != 0.0f,
+	    .depthBiasConstantFactor = depthBiasConstant,
 	    .depthBiasClamp = 0.0f,
-	    .depthBiasSlopeFactor = 0.0f,
+	    .depthBiasSlopeFactor = depthBiasSlope,
 	    .lineWidth = 1.0f,
 	};
 
@@ -1196,7 +1335,7 @@ vk::UniquePipeline CreateGraphicsPipeline(
 	    .pRasterizationState = &rasterizationState,
 	    .pMultisampleState = &multisampleState,
 	    .pDepthStencilState = &depthStencilState,
-	    .pColorBlendState = &colorBlendState,
+	    .pColorBlendState = pixelShader ? &colorBlendState : nullptr,
 	    .pDynamicState = nullptr,
 	    .layout = layout,
 	    .renderPass = renderPass,
@@ -1305,6 +1444,64 @@ CreateRenderPass(vk::Device device, vk::Format surfaceFormat, vk::Format depthFo
 	return device.createRenderPassUnique(createInfo, s_allocator);
 }
 
+vk::UniqueRenderPass CreateShadowRenderPass(vk::Device device, vk::Format format)
+{
+	const auto attachment = vk::AttachmentDescription{
+	    .format = format,
+	    .samples = vk::SampleCountFlagBits::e1,
+	    .loadOp = vk::AttachmentLoadOp::eClear,
+	    .storeOp = vk::AttachmentStoreOp::eStore,
+	    .stencilLoadOp = vk::AttachmentLoadOp::eDontCare,
+	    .stencilStoreOp = vk::AttachmentStoreOp::eDontCare,
+	    .initialLayout = vk::ImageLayout::eUndefined,
+	    .finalLayout = vk::ImageLayout::eDepthStencilReadOnlyOptimal,
+	};
+
+	const auto attachmentRef = vk::AttachmentReference{
+	    .attachment = 0,
+	    .layout = vk::ImageLayout::eDepthStencilAttachmentOptimal,
+	};
+
+	const auto subpass = vk::SubpassDescription{
+	    .pipelineBindPoint = vk::PipelineBindPoint::eGraphics,
+	    .colorAttachmentCount = 0,
+	    .pColorAttachments = nullptr,
+	    .pResolveAttachments = nullptr,
+	    .pDepthStencilAttachment = &attachmentRef,
+	};
+
+	const auto dependencies = std::array{
+	    vk::SubpassDependency{
+	        .srcSubpass = VK_SUBPASS_EXTERNAL,
+	        .dstSubpass = 0,
+	        .srcStageMask = vk::PipelineStageFlagBits::eFragmentShader,
+	        .dstStageMask = vk::PipelineStageFlagBits::eEarlyFragmentTests,
+	        .srcAccessMask = vk::AccessFlagBits::eShaderRead,
+	        .dstAccessMask = vk::AccessFlagBits::eDepthStencilAttachmentWrite,
+	        .dependencyFlags = vk::DependencyFlagBits::eByRegion,
+	    },
+	    vk::SubpassDependency{
+	        .srcSubpass = 0,
+	        .dstSubpass = VK_SUBPASS_EXTERNAL,
+	        .srcStageMask = vk::PipelineStageFlagBits::eLateFragmentTests,
+	        .dstStageMask = vk::PipelineStageFlagBits::eFragmentShader,
+	        .srcAccessMask = vk::AccessFlagBits::eDepthStencilAttachmentWrite,
+	        .dstAccessMask = vk::AccessFlagBits::eShaderRead,
+	        .dependencyFlags = vk::DependencyFlagBits::eByRegion,
+	    }};
+
+	const auto createInfo = vk::RenderPassCreateInfo{
+	    .attachmentCount = 1,
+	    .pAttachments = &attachment,
+	    .subpassCount = 1,
+	    .pSubpasses = &subpass,
+	    .dependencyCount = size32(dependencies),
+	    .pDependencies = data(dependencies),
+	};
+
+	return device.createRenderPassUnique(createInfo, s_allocator);
+}
+
 std::vector<vk::UniqueFramebuffer> CreateFramebuffers(
     std::span<const vk::UniqueImageView> imageViews, vk::ImageView colorImageView, vk::ImageView depthImageView,
     vk::RenderPass renderPass, vk::Extent2D surfaceExtent, vk::Device device)
@@ -1386,8 +1583,10 @@ public:
 		std::ranges::generate(m_commandPools, [this] { return CreateCommandPool(m_graphicsQueueFamily, m_device.get()); });
 
 		m_globalDescriptorSetLayout = CreateDescriptorSetLayout(m_device.get(), GlobalBindings);
-		m_perObjectDescriptorSetLayout = CreateDescriptorSetLayout(m_device.get(), PerObjectBindings);
-		const auto layouts = std::array{m_globalDescriptorSetLayout.get(), m_perObjectDescriptorSetLayout.get()};
+		m_viewDescriptorSetLayout = CreateDescriptorSetLayout(m_device.get(), ViewBindings);
+		m_objectDescriptorSetLayout = CreateDescriptorSetLayout(m_device.get(), ObjectBindings);
+		const auto layouts = std::array{
+		    m_globalDescriptorSetLayout.get(), m_viewDescriptorSetLayout.get(), m_objectDescriptorSetLayout.get()};
 		m_pipelineLayout = CreateGraphicsPipelineLayout(m_device.get(), layouts);
 
 		m_vertexShader = CreateShaderModule(VertexShader, ShaderStage::Vertex, ShaderLang, m_device.get());
@@ -1441,36 +1640,38 @@ public:
 			return;
 		}
 
-		// Update global uniforms
+		static constexpr float ShadowCamDistance = 5.0f;
+		static constexpr float ShadowCamDepth = 10.0f;
+		static constexpr float ShadowCamWidth = 5.0f;
+
 		const Geo::Matrix4 lightRotation = Geo::Matrix4::RotationZ(m_lightYaw) * Geo::Matrix4::RotationX(m_lightPitch);
 		const Geo::Vector3 lightDirection = Geo::Normalise(lightRotation * Geo::Vector3{0.0f, 1.0f, 0.0f});
+		const Geo::Vector3 lightUp = Geo::Normalise(lightRotation * Geo::Vector3{0.0f, 0.0f, 1.0f});
+		const Geo::Point3 shadowCameraPosition = Geo::Point3{} - lightDirection * ShadowCamDistance;
+
+		const float border = ShadowCamWidth * 0.5f;
+
+		const auto shadowCamView = Geo::LookAt(shadowCameraPosition, Geo::Point3{}, lightUp);
+		const auto shadowCamProj = Geo::Orthographic(-border, border, border, -border, 0.0f, ShadowCamDepth);
+
+		m_shadowMatrix = shadowCamView * shadowCamProj;
+
+		// Update global uniforms
 		const auto globalUniforms = GlobalUniforms{
 		    .lightDir = Geo::Normalise(lightDirection),
 		    .lightColor = {1.0f, 1.0f, 1.0f},
 		    .ambientColorTop = {0.08f, 0.1f, 0.1f},
 		    .ambientColorBottom = {0.003f, 0.003f, 0.002f},
+		    .shadowMatrix = m_shadowMatrix,
 		};
-		SetBufferData(m_device.get(), m_globalUniformBuffersMemory[imageIndex], globalUniforms);
+		SetBufferData(m_device.get(), m_globalUniformBuffer.memory[imageIndex], globalUniforms);
 
 		// Update object uniforms
-		const auto currentTime = std::chrono::high_resolution_clock::now();
-		const float timeSeconds
-		    = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - m_startTime).count();
-		const float aspectRatio = static_cast<float>(m_surfaceExtent.width) / static_cast<float>(m_surfaceExtent.height);
-
-		const Geo::Matrix4 rotation = Geo::Matrix4::RotationZ(m_cameraYaw) * Geo::Matrix4::RotationX(m_cameraPitch);
-		const Geo::Vector3 cameraDirection = Geo::Normalise(rotation * Geo::Vector3{0.0f, 1.0f, 0.0f});
-		const Geo::Vector3 cameraUp = Geo::Normalise(rotation * Geo::Vector3{0.0f, 0.0f, 1.0f});
-
-		const Geo::Point3 cameraPosition = m_cameraTarget - cameraDirection * m_cameraDistance;
-
-		const auto objectUniforms = PerObjectUniforms{
+		const auto objectUniforms = ObjectUniforms{
 		    .model = Geo::Matrix4::RotationX(180.0_deg),
-		    .view = Geo::LookAt(cameraPosition, m_cameraTarget, cameraUp),
-		    .proj = Geo::Perspective(45.0_deg, aspectRatio, 0.1f, 10.0f),
 		};
 
-		SetBufferData(m_device.get(), m_perObjectUniformBuffersMemory[imageIndex], objectUniforms);
+		SetBufferData(m_device.get(), m_objectUniformBuffer.memory[imageIndex], objectUniforms);
 
 		// Check if a previous frame is using this image (i.e. there is its fence to wait on)
 		if (m_imagesInFlight[imageIndex])
@@ -1481,9 +1682,64 @@ public:
 		// Mark the image as in flight
 		m_imagesInFlight[imageIndex] = m_inFlightFences[m_currentFrame].get();
 
-		// Draw scene
 		m_device->resetCommandPool(m_commandPools[m_currentFrame].get());
-		DrawObjects(m_commandBuffers[m_currentFrame].get(), m_swapchainFramebuffers[imageIndex].get(), m_surfaceExtent, imageIndex);
+
+		const vk::CommandBuffer commandBuffer = m_commandBuffers[m_currentFrame].get();
+
+		commandBuffer.begin(vk::CommandBufferBeginInfo{});
+
+		//
+		// Pass 0. Draw shadows
+		//
+		const auto clearDepthStencil = vk::ClearDepthStencilValue{1.0f, 0};
+		const auto clearValues = std::array{
+		    vk::ClearValue{clearDepthStencil},
+		};
+
+		{
+			// Update view uniforms
+			const auto viewUniforms = ViewUniforms{
+			    .viewProj = m_shadowMatrix,
+			};
+
+			SetBufferData(m_device.get(), m_viewUniformBuffers[0].memory[imageIndex], viewUniforms);
+		}
+
+		DrawObjects(
+		    commandBuffer, m_shadowRenderPass.get(), m_shadowMapFramebuffer.get(), clearValues,
+		    m_shadowMapPipeline.get(), m_shadowMapExtent, m_viewDescriptorSets[0], imageIndex);
+
+		//
+		// Pass 1. Draw scene
+		//
+		const auto clearColor = std::array{0.0f, 0.0f, 0.0f, 1.0f};
+		const auto clearValues2 = std::array{
+		    vk::ClearValue{clearColor},
+		    vk::ClearValue{clearDepthStencil},
+		};
+
+		{
+			// Update view uniforms
+			const float aspectRatio = static_cast<float>(m_surfaceExtent.width) / static_cast<float>(m_surfaceExtent.height);
+
+			const Geo::Matrix4 rotation = Geo::Matrix4::RotationZ(m_cameraYaw) * Geo::Matrix4::RotationX(m_cameraPitch);
+			const Geo::Vector3 cameraDirection = Geo::Normalise(rotation * Geo::Vector3{0.0f, 1.0f, 0.0f});
+			const Geo::Vector3 cameraUp = Geo::Normalise(rotation * Geo::Vector3{0.0f, 0.0f, 1.0f});
+
+			const Geo::Point3 cameraPosition = m_cameraTarget - cameraDirection * m_cameraDistance;
+
+			const auto viewUniforms = ViewUniforms{
+			    .viewProj = Geo::LookAt(cameraPosition, m_cameraTarget, cameraUp)
+			        * Geo::Perspective(45.0_deg, aspectRatio, 0.1f, 10.0f),
+			};
+			SetBufferData(m_device.get(), m_viewUniformBuffers[1].memory[imageIndex], viewUniforms);
+		}
+
+		DrawObjects(
+		    commandBuffer, m_renderPass.get(), m_swapchainFramebuffers[imageIndex].get(), clearValues2,
+		    m_pipeline.get(), m_surfaceExtent, m_viewDescriptorSets[1], imageIndex);
+
+		commandBuffer.end();
 
 		// Submit the command buffer
 		const vk::PipelineStageFlags waitStage = vk::PipelineStageFlagBits::eColorAttachmentOutput;
@@ -1671,7 +1927,7 @@ private:
 		TransitionImageLayout(
 		    OneShotCommands(), m_colorImage.get(), imageInfo.format, 1, vk::ImageLayout::eUndefined,
 		    vk::ImageLayout::eColorAttachmentOptimal, vk::PipelineStageFlagBits::eTopOfPipe,
-		    vk::PipelineStageFlagBits::eEarlyFragmentTests);
+		    vk::PipelineStageFlagBits::eColorAttachmentOutput);
 
 		// Create image view
 		const auto viewInfo = vk::ImageViewCreateInfo{
@@ -1714,6 +1970,7 @@ private:
 		const auto allocation = m_swapchainAllocator->Allocate(
 		    m_device->getImageMemoryRequirements(m_depthImage.get()), vk::MemoryPropertyFlagBits::eDeviceLocal);
 		m_device->bindImageMemory(m_depthImage.get(), allocation.memory, allocation.offset);
+
 		TransitionImageLayout(
 		    OneShotCommands(), m_depthImage.get(), imageInfo.format, 1, vk::ImageLayout::eUndefined,
 		    vk::ImageLayout::eDepthStencilAttachmentOptimal, vk::PipelineStageFlagBits::eTopOfPipe,
@@ -1829,120 +2086,68 @@ private:
 
 	void CreateUniformBuffers()
 	{
-		m_globalUniformBuffers.resize(m_swapchainImages.size());
-		m_globalUniformBuffersMemory.resize(m_swapchainImages.size());
-		for (size_t i = 0; i < m_swapchainImages.size(); i++)
-		{
-			m_globalUniformBuffers[i]
-			    = CreateBuffer(m_device.get(), sizeof(GlobalUniforms), vk::BufferUsageFlagBits::eUniformBuffer);
-			m_globalUniformBuffersMemory[i] = m_generalAllocator->Allocate(
-			    m_device->getBufferMemoryRequirements(m_globalUniformBuffers[i].get()),
-			    vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
-			m_device->bindBufferMemory(
-			    m_globalUniformBuffers[i].get(), m_globalUniformBuffersMemory[i].memory,
-			    m_globalUniformBuffersMemory[i].offset);
-		}
+		m_globalUniformBuffer
+		    = CreateUniformBuffer(m_swapchainImages.size(), sizeof(GlobalUniforms), m_device.get(), *m_generalAllocator);
 
-		m_perObjectUniformBuffers.resize(m_swapchainImages.size());
-		m_perObjectUniformBuffersMemory.resize(m_swapchainImages.size());
-		for (size_t i = 0; i < m_swapchainImages.size(); i++)
+		for (uint32_t pass = 0; pass < m_passCount; pass++)
 		{
-			m_perObjectUniformBuffers[i]
-			    = CreateBuffer(m_device.get(), sizeof(PerObjectUniforms), vk::BufferUsageFlagBits::eUniformBuffer);
-			m_perObjectUniformBuffersMemory[i] = m_generalAllocator->Allocate(
-			    m_device->getBufferMemoryRequirements(m_perObjectUniformBuffers[i].get()),
-			    vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
-			m_device->bindBufferMemory(
-			    m_perObjectUniformBuffers[i].get(), m_perObjectUniformBuffersMemory[i].memory,
-			    m_perObjectUniformBuffersMemory[i].offset);
+			m_viewUniformBuffers.push_back(
+			    CreateUniformBuffer(m_swapchainImages.size(), sizeof(ViewUniforms), m_device.get(), *m_generalAllocator));
 		}
+		m_objectUniformBuffer
+		    = CreateUniformBuffer(m_swapchainImages.size(), sizeof(ObjectUniforms), m_device.get(), *m_generalAllocator);
 	}
 
 	void CreateDescriptorSets()
 	{
-		auto descriptorPool = CreateDescriptorPool(m_device.get(), static_cast<uint32_t>(m_swapchainImages.size() * 2));
+		const auto poolSizes = std::array{
+		    vk::DescriptorPoolSize{
+		        .type = vk::DescriptorType::eUniformBuffer,
+		        .descriptorCount = size32(m_swapchainImages) * (2 + m_passCount),
+		    },
+		    vk::DescriptorPoolSize{
+		        .type = vk::DescriptorType::eCombinedImageSampler,
+		        .descriptorCount = size32(m_swapchainImages) * (1 + m_passCount),
+		    },
+		};
+
+		const auto poolCreateInfo = vk::DescriptorPoolCreateInfo{
+			.maxSets = size32(m_swapchainImages) * (2 + m_passCount),
+		}.setPoolSizes(poolSizes);
+
+		auto descriptorPool = m_device->createDescriptorPoolUnique(poolCreateInfo, s_allocator);
 
 		// Global descriptor sets
+		m_globalDescriptorSet = CreateDescriptorSet(
+		    m_swapchainImages.size(), m_globalDescriptorSetLayout.get(), descriptorPool.get(), m_device.get(),
+		    m_globalUniformBuffer);
+
+		// View desriptor sets
+		m_viewDescriptorSets.clear();
+		const auto shadowMapImages = std::array{ImageView{
+		    .view = m_shadowMapView.get(),
+		    .sampler = m_shadowMapSampler.get(),
+		    .layout = vk::ImageLayout::eDepthStencilReadOnlyOptimal,
+		}};
+		for (size_t i = 0; i < m_passCount; i++)
 		{
-			const auto layouts
-			    = std::vector<vk::DescriptorSetLayout>(m_swapchainImages.size(), m_globalDescriptorSetLayout.get());
-			const auto allocInfo = vk::DescriptorSetAllocateInfo{
-			    .descriptorPool = descriptorPool.get(),
-			    .descriptorSetCount = size32(layouts),
-			    .pSetLayouts = data(layouts),
-			};
+			// Include shadow maps only after shadow pass
+			const auto images = i >= 1 ? shadowMapImages : std::span<const ImageView>{};
 
-			m_globalDescriptorSets = m_device->allocateDescriptorSets(allocInfo);
-
-			for (size_t i = 0; i < layouts.size(); i++)
-			{
-				const auto bufferInfo = vk::DescriptorBufferInfo{
-				    .buffer = m_globalUniformBuffers[i].get(),
-				    .offset = 0,
-				    .range = sizeof(GlobalUniforms),
-				};
-
-				const auto descriptorWrites = std::array{vk::WriteDescriptorSet{
-				    .dstSet = m_globalDescriptorSets[i],
-				    .dstBinding = 0,
-				    .dstArrayElement = 0,
-				    .descriptorCount = 1,
-				    .descriptorType = vk::DescriptorType::eUniformBuffer,
-				    .pBufferInfo = &bufferInfo,
-				}};
-
-				m_device->updateDescriptorSets(descriptorWrites, {});
-			}
+			m_viewDescriptorSets.push_back(CreateDescriptorSet(
+			    m_swapchainImages.size(), m_viewDescriptorSetLayout.get(), descriptorPool.get(), m_device.get(),
+			    m_viewUniformBuffers[i], images));
 		}
 
-		// Per object desriptor sets
-		{
-			const auto layouts
-			    = std::vector<vk::DescriptorSetLayout>(m_swapchainImages.size(), m_perObjectDescriptorSetLayout.get());
-			const auto allocInfo = vk::DescriptorSetAllocateInfo{
-			    .descriptorPool = descriptorPool.get(),
-			    .descriptorSetCount = size32(layouts),
-			    .pSetLayouts = data(layouts),
-			};
-
-			m_perObjectDescriptorSets = m_device->allocateDescriptorSets(allocInfo);
-
-			for (size_t i = 0; i < layouts.size(); i++)
-			{
-				const auto bufferInfo = vk::DescriptorBufferInfo{
-				    .buffer = m_perObjectUniformBuffers[i].get(),
-				    .offset = 0,
-				    .range = sizeof(PerObjectUniforms),
-				};
-
-				const auto imageInfo = vk::DescriptorImageInfo{
-				    .sampler = m_textureSampler.get(),
-				    .imageView = m_textureImageView.get(),
-				    .imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal,
-				};
-
-				const auto descriptorWrites = std::array{
-				    vk::WriteDescriptorSet{
-				        .dstSet = m_perObjectDescriptorSets[i],
-				        .dstBinding = 0,
-				        .dstArrayElement = 0,
-				        .descriptorCount = 1,
-				        .descriptorType = vk::DescriptorType::eUniformBuffer,
-				        .pBufferInfo = &bufferInfo,
-				    },
-				    vk::WriteDescriptorSet{
-				        .dstSet = m_perObjectDescriptorSets[i],
-				        .dstBinding = 1,
-				        .dstArrayElement = 0,
-				        .descriptorCount = 1,
-				        .descriptorType = vk::DescriptorType::eCombinedImageSampler,
-				        .pImageInfo = &imageInfo,
-				    },
-				};
-
-				m_device->updateDescriptorSets(descriptorWrites, {});
-			}
-		}
+		// Object desriptor sets
+		const auto objectTextures = std::array{ImageView{
+		    .view = m_textureImageView.get(),
+		    .sampler = m_textureSampler.get(),
+		    .layout = vk::ImageLayout::eShaderReadOnlyOptimal,
+		}};
+		m_objectDescriptorSet = CreateDescriptorSet(
+		    m_swapchainImages.size(), m_objectDescriptorSetLayout.get(), descriptorPool.get(), m_device.get(),
+		    m_objectUniformBuffer, objectTextures);
 
 		m_descriptorPool = std::move(descriptorPool);
 	}
@@ -2038,11 +2243,8 @@ private:
 	void CreateShadowMap()
 	{
 		constexpr uint32_t shadowMapSize = 1024;
-
-		const auto formatCandidates = std::array{
-		    vk::Format::eD16Unorm, vk::Format::eD32Sfloat, vk::Format::eD32SfloatS8Uint, vk::Format::eD24UnormS8Uint};
-		m_shadowMapFormat = FindSupportedFormat(
-		    m_physicalDevice, formatCandidates, vk::ImageTiling::eOptimal, vk::FormatFeatureFlagBits::eDepthStencilAttachment);
+		m_shadowMapExtent = vk::Extent2D{shadowMapSize, shadowMapSize};
+		m_shadowMapFormat = vk::Format::eD16Unorm;
 
 		// Create image
 		const auto imageInfo = vk::ImageCreateInfo{
@@ -2053,7 +2255,7 @@ private:
 		    .arrayLayers = 1,
 		    .samples = vk::SampleCountFlagBits::e1,
 		    .tiling = vk::ImageTiling::eOptimal,
-		    .usage = vk::ImageUsageFlagBits::eDepthStencilAttachment,
+		    .usage = vk::ImageUsageFlagBits::eDepthStencilAttachment | vk::ImageUsageFlagBits::eSampled,
 		    .sharingMode = vk::SharingMode::eExclusive,
 		    .initialLayout = vk::ImageLayout::eUndefined,
 		};
@@ -2081,40 +2283,77 @@ private:
 			},
 		};
 		m_shadowMapView = m_device->createImageViewUnique(viewInfo, s_allocator);
-	}
 
-	void DrawObjects(vk::CommandBuffer commandBuffer, vk::Framebuffer framebuffer, vk::Extent2D surfaceExtent, size_t imageIndex)
-	{
-		commandBuffer.begin(vk::CommandBufferBeginInfo{});
-
-		const auto clearColor = std::array{0.0f, 0.0f, 0.0f, 1.0f};
-		const auto clearDepthStencil = vk::ClearDepthStencilValue{1.0f, 0};
-		const auto clearValues = std::array{
-		    vk::ClearValue{clearColor},
-		    vk::ClearValue{clearDepthStencil},
+		// Create sampler
+		const auto samplerInfo = vk::SamplerCreateInfo{
+		    .magFilter = vk::Filter::eLinear,
+		    .minFilter = vk::Filter::eLinear,
+		    .mipmapMode = vk::SamplerMipmapMode::eNearest,
+		    .addressModeU = vk::SamplerAddressMode::eRepeat,
+		    .addressModeV = vk::SamplerAddressMode::eRepeat,
+		    .addressModeW = vk::SamplerAddressMode::eRepeat,
+		    .anisotropyEnable = true,
+		    .maxAnisotropy = m_physicalDevice.getProperties().limits.maxSamplerAnisotropy,
+		    .compareEnable = true,
+		    .compareOp = vk::CompareOp::eLess,
+		    .borderColor = vk::BorderColor::eFloatOpaqueWhite,
 		};
 
+		m_shadowMapSampler = m_device->createSamplerUnique(samplerInfo, s_allocator);
+
+		// Create render pass
+		m_shadowRenderPass = CreateShadowRenderPass(m_device.get(), m_shadowMapFormat);
+
+		// Create framebuffer
+		const auto framebufferCreateInfo = vk::FramebufferCreateInfo{
+		    .renderPass = m_shadowRenderPass.get(),
+		    .attachmentCount = 1,
+		    .pAttachments = &m_shadowMapView.get(),
+		    .width = m_shadowMapExtent.width,
+		    .height = m_shadowMapExtent.height,
+		    .layers = 1,
+		};
+
+		m_shadowMapFramebuffer = m_device->createFramebufferUnique(framebufferCreateInfo, s_allocator);
+
+		// Depth bias (and slope) are used to avoid shadowing artifacts
+		// Constant depth bias factor (always applied)
+		float depthBiasConstant = 1.25f;
+		// Slope depth bias factor, applied depending on polygon's slope
+		float depthBiasSlope = 1.75f;
+
+		// Create pipeline
+		m_shadowMapPipeline = CreateGraphicsPipeline(
+		    m_vertexShader.get(), nullptr, m_pipelineLayout.get(), m_shadowRenderPass.get(), m_shadowMapExtent,
+		    vk::SampleCountFlagBits::e1, m_device.get(), depthBiasConstant, depthBiasSlope);
+	}
+
+	void DrawObjects(
+	    vk::CommandBuffer commandBuffer, vk::RenderPass renderPass, vk::Framebuffer framebuffer,
+	    std::span<const vk::ClearValue> clearValues, vk::Pipeline pipeline, vk::Extent2D extent,
+	    const DescriptorSet& viewDescriptorSet, size_t imageIndex)
+	{
 		const auto renderPassBegin = vk::RenderPassBeginInfo{
-		    .renderPass = m_renderPass.get(),
+		    .renderPass = renderPass,
 		    .framebuffer = framebuffer,
-		    .renderArea = {.offset = {0, 0}, .extent = surfaceExtent},
+		    .renderArea = {.offset = {0, 0}, .extent = extent},
 		    .clearValueCount = size32(clearValues),
 		    .pClearValues = data(clearValues),
 		};
 
-		const auto descriptorSets = std::array{m_globalDescriptorSets[imageIndex], m_perObjectDescriptorSets[imageIndex]};
+		const auto descriptorSets = std::array{
+		    m_globalDescriptorSet.sets[imageIndex], viewDescriptorSet.sets[imageIndex],
+		    m_objectDescriptorSet.sets[imageIndex]};
 
 		commandBuffer.beginRenderPass(renderPassBegin, vk::SubpassContents::eInline);
 
-		commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, m_pipeline.get());
+		commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, pipeline);
 		commandBuffer.bindVertexBuffers(0, m_vertexBuffer.get(), vk::DeviceSize{0});
 		commandBuffer.bindIndexBuffer(m_indexBuffer.get(), vk::DeviceSize{0}, vk::IndexType::eUint16);
 		commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, m_pipelineLayout.get(), 0, descriptorSets, {});
 		commandBuffer.drawIndexed(m_indexCount, 1, 0, 0, 0);
 
 		commandBuffer.endRenderPass();
-
-		commandBuffer.end();
 	}
 
 	void RecreateSwapchain()
@@ -2163,7 +2402,8 @@ private:
 	vk::UniqueShaderModule m_vertexShader;
 	vk::UniqueShaderModule m_pixelShader;
 	vk::UniqueDescriptorSetLayout m_globalDescriptorSetLayout;
-	vk::UniqueDescriptorSetLayout m_perObjectDescriptorSetLayout;
+	vk::UniqueDescriptorSetLayout m_viewDescriptorSetLayout;
+	vk::UniqueDescriptorSetLayout m_objectDescriptorSetLayout;
 	vk::UniquePipeline m_pipeline;
 	vk::UniqueRenderPass m_renderPass;
 	vk::UniquePipelineLayout m_pipelineLayout;
@@ -2176,12 +2416,14 @@ private:
 	MemoryAllocation m_textureMemory;
 	vk::UniqueImageView m_textureImageView;
 	vk::UniqueSampler m_textureSampler;
-	std::vector<vk::UniqueBuffer> m_globalUniformBuffers;
-	std::vector<MemoryAllocation> m_globalUniformBuffersMemory;
-	std::vector<vk::UniqueBuffer> m_perObjectUniformBuffers;
-	std::vector<MemoryAllocation> m_perObjectUniformBuffersMemory;
-	std::vector<vk::DescriptorSet> m_globalDescriptorSets;
-	std::vector<vk::DescriptorSet> m_perObjectDescriptorSets;
+
+	const uint32_t m_passCount = 2;
+	UniformBuffer m_globalUniformBuffer;
+	std::vector<UniformBuffer> m_viewUniformBuffers;
+	UniformBuffer m_objectUniformBuffer;
+	DescriptorSet m_globalDescriptorSet;
+	std::vector<DescriptorSet> m_viewDescriptorSets;
+	DescriptorSet m_objectDescriptorSet;
 	std::vector<vk::UniqueFramebuffer> m_swapchainFramebuffers;
 
 	// Lights
@@ -2189,8 +2431,14 @@ private:
 	Geo::Angle m_lightPitch = 45.0_deg;
 	vk::UniqueImage m_shadowMap;
 	vk::Format m_shadowMapFormat;
+	vk::Extent2D m_shadowMapExtent;
 	MemoryAllocation m_shadowMapMemory;
 	vk::UniqueImageView m_shadowMapView;
+	vk::UniqueSampler m_shadowMapSampler;
+	vk::UniqueRenderPass m_shadowRenderPass;
+	vk::UniqueFramebuffer m_shadowMapFramebuffer;
+	vk::UniquePipeline m_shadowMapPipeline;
+	Geo::Matrix4 m_shadowMatrix;
 
 	// Camera
 	Geo::Point3 m_cameraTarget = {0.0f, 0.0f, 0.0f};

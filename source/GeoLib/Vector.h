@@ -17,6 +17,8 @@ struct Vector<T, 2, Tag>
 	constexpr T& operator[](int i) { return this->*Members()[i]; }
 	constexpr T operator[](int i) const { return this->*Members()[i]; }
 
+	friend auto operator<=>(const Vector& a, const Vector& b) = default;
+
 private:
 	static constexpr auto& Members()
 	{
@@ -33,6 +35,8 @@ struct Vector<T, 3, Tag>
 	constexpr T& operator[](int i) { return this->*Members()[i]; }
 	constexpr T operator[](int i) const { return this->*Members()[i]; }
 
+	friend auto operator<=>(const Vector& a, const Vector& b) = default;
+
 private:
 	static constexpr auto& Members()
 	{
@@ -48,6 +52,8 @@ struct Vector<T, 4, Tag>
 
 	constexpr T& operator[](int i) { return this->*Members()[i]; }
 	constexpr T operator[](int i) const { return this->*Members()[i]; }
+
+	friend auto operator<=>(const Vector& a, const Vector& b) = default;
 
 private:
 	static constexpr auto& Members()
