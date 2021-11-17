@@ -116,6 +116,18 @@ constexpr TBuiltInResource DefaultTBuiltInResource
            .generalConstantMatrixVectorIndexing = 1,
        }};
 
+constexpr std::string_view ShaderCommon = R"--(
+#version 450
+
+vec4 mul(mat4 m, vec4 v) {
+    return v * m;
+}
+
+mat4 mul(mat4 m1, mat4 m2) {
+    return m1 * m1;
+}
+)--";
+
 struct StaticInit
 {
 	StaticInit() { glslang::InitializeProcess(); }
@@ -125,9 +137,10 @@ struct StaticInit
 std::vector<uint32_t> Compile(std::string_view shaderSource, EShLanguage stage, glslang::EShSource source)
 {
 	auto shader = glslang::TShader(stage);
-	const char* const inputString = shaderSource.data();
-	shader.setStrings(&inputString, 1);
-	shader.setEnvInput(source, stage, glslang::EShClientVulkan, 100);
+	const auto inputStrings = std::array{data(ShaderCommon), data(shaderSource)};
+	const auto inputStringLengths = std::array{static_cast<int>(size(ShaderCommon)), static_cast<int>(size(shaderSource))};
+	shader.setStringsWithLengths(data(inputStrings), data(inputStringLengths), static_cast<int>(size(inputStringLengths)));
+	shader.setEnvInput(source, stage, glslang::EShClientVulkan, 450);
 	shader.setEnvClient(glslang::EShClientVulkan, glslang::EShTargetVulkan_1_0);
 	shader.setEnvTarget(glslang::EShTargetSpv, glslang::EShTargetSpv_1_0);
 

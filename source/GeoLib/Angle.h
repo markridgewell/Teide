@@ -12,45 +12,45 @@ class AngleT
 public:
 	AngleT() = default;
 
-	static constexpr AngleT Radians(T radians) { return AngleT(radians); }
-	static constexpr AngleT Degrees(T degrees)
+	static constexpr AngleT Radians(T radians) noexcept { return AngleT(radians); }
+	static constexpr AngleT Degrees(T degrees) noexcept
 	{
 		return AngleT(static_cast<T>(degrees * std::numbers::pi_v<long double> / 180.0));
 	}
 
-	constexpr T AsRadians() const { return m_radians; }
-	constexpr T AsDegrees() const { return m_radians / std::numbers::pi_v<T> * 180.0f; }
+	constexpr T AsRadians() const noexcept { return m_radians; }
+	constexpr T AsDegrees() const noexcept { return m_radians / std::numbers::pi_v<T> * 180.0f; }
 
-	friend constexpr AngleT operator*(AngleT a, T b) { return {a.m_radians * b}; }
-	friend constexpr AngleT operator/(AngleT a, T b) { return {a.m_radians / b}; }
-	friend constexpr AngleT operator*(T a, AngleT b) { return {a * b.m_radians}; }
-	friend constexpr AngleT operator+(AngleT a, AngleT b) { return {a.m_radians + b.m_radians}; }
-	friend constexpr AngleT operator-(AngleT a, AngleT b) { return {a.m_radians - b.m_radians}; }
-	friend constexpr AngleT operator-(AngleT a) { return {-a.m_radians}; }
+	friend constexpr AngleT operator*(AngleT a, T b) noexcept { return {a.m_radians * b}; }
+	friend constexpr AngleT operator/(AngleT a, T b) noexcept { return {a.m_radians / b}; }
+	friend constexpr AngleT operator*(T a, AngleT b) noexcept { return {a * b.m_radians}; }
+	friend constexpr AngleT operator+(AngleT a, AngleT b) noexcept { return {a.m_radians + b.m_radians}; }
+	friend constexpr AngleT operator-(AngleT a, AngleT b) noexcept { return {a.m_radians - b.m_radians}; }
+	friend constexpr AngleT operator-(AngleT a) noexcept { return {-a.m_radians}; }
 
-	friend constexpr AngleT& operator+=(AngleT& a, AngleT b)
+	friend constexpr AngleT& operator+=(AngleT& a, AngleT b) noexcept
 	{
 		a.m_radians += b.m_radians;
 		return a;
 	}
-	friend constexpr AngleT& operator-=(AngleT& a, AngleT b)
+	friend constexpr AngleT& operator-=(AngleT& a, AngleT b) noexcept
 	{
 		a.m_radians -= b.m_radians;
 		return a;
 	}
-	friend constexpr AngleT& operator*=(AngleT& a, T b)
+	friend constexpr AngleT& operator*=(AngleT& a, T b) noexcept
 	{
 		a.m_radians *= b;
 		return a;
 	}
-	friend constexpr AngleT& operator/=(AngleT& a, T b)
+	friend constexpr AngleT& operator/=(AngleT& a, T b) noexcept
 	{
 		a.m_radians /= b;
 		return a;
 	}
 
 private:
-	constexpr AngleT(T r) : m_radians{r} {}
+	constexpr AngleT(T r) noexcept : m_radians{r} {}
 
 	T m_radians{};
 };

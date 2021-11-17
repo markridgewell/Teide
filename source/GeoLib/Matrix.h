@@ -16,12 +16,12 @@ struct Matrix<T, M, 2>
 {
 	Vector<T, M, VectorTag> x, y;
 
-	constexpr auto& operator[](int i) { return this->*Members()[i]; }
-	constexpr auto operator[](int i) const { return this->*Members()[i]; }
+	constexpr auto& operator[](int i) noexcept { return this->*Members()[i]; }
+	constexpr auto operator[](int i) const noexcept { return this->*Members()[i]; }
 
-	friend auto operator<=>(const Matrix& a, const Matrix& b) = default;
+	friend auto operator<=>(const Matrix& a, const Matrix& b) noexcept = default;
 
-	static Matrix<T, M, 2> Identity()
+	static Matrix<T, M, 2> Identity() noexcept
 	{
 		Matrix<T, M, 2> ret;
 		ret.x[0] = T{1};
@@ -30,7 +30,7 @@ struct Matrix<T, M, 2>
 	}
 
 private:
-	static constexpr auto& Members()
+	static constexpr auto& Members() noexcept
 	{
 		static constexpr auto members = std::array{&Matrix::x, &Matrix::y};
 		return members;
@@ -42,12 +42,12 @@ struct Matrix<T, M, 3>
 {
 	Vector<T, M, VectorTag> x, y, z;
 
-	constexpr auto& operator[](int i) { return this->*Members()[i]; }
-	constexpr auto operator[](int i) const { return this->*Members()[i]; }
+	constexpr auto& operator[](int i) noexcept { return this->*Members()[i]; }
+	constexpr auto operator[](int i) const noexcept { return this->*Members()[i]; }
 
-	friend auto operator<=>(const Matrix& a, const Matrix& b) = default;
+	friend auto operator<=>(const Matrix& a, const Matrix& b) noexcept = default;
 
-	static Matrix<T, M, 3> Identity()
+	static Matrix<T, M, 3> Identity() noexcept
 	{
 		Matrix<T, M, 3> ret;
 		ret.x[0] = T{1};
@@ -60,7 +60,7 @@ struct Matrix<T, M, 3>
 	}
 
 private:
-	static constexpr auto& Members()
+	static constexpr auto& Members() noexcept
 	{
 		static constexpr auto members = std::array{&Matrix::x, &Matrix::y, &Matrix::z};
 		return members;
@@ -72,12 +72,12 @@ struct Matrix<T, M, 4>
 {
 	Vector<T, M, VectorTag> x, y, z, w;
 
-	constexpr auto& operator[](int i) { return this->*Members()[i]; }
-	constexpr auto operator[](int i) const { return this->*Members()[i]; }
+	constexpr auto& operator[](int i) noexcept { return this->*Members()[i]; }
+	constexpr auto operator[](int i) const noexcept { return this->*Members()[i]; }
 
-	friend auto operator<=>(const Matrix& a, const Matrix& b) = default;
+	friend auto operator<=>(const Matrix& a, const Matrix& b) noexcept = default;
 
-	static Matrix<T, M, 4> Identity()
+	static Matrix<T, M, 4> Identity() noexcept
 	{
 		Matrix<T, M, 4> ret;
 		ret.x[0] = T{1};
@@ -127,7 +127,7 @@ struct Matrix<T, M, 4>
 	}
 
 private:
-	static constexpr auto& Members()
+	static constexpr auto& Members() noexcept
 	{
 		static constexpr auto members = std::array{&Matrix::x, &Matrix::y, &Matrix::z, &Matrix::w};
 		return members;
@@ -139,7 +139,7 @@ using Matrix3 = Matrix<float, 3, 3>;
 using Matrix4 = Matrix<float, 4, 4>;
 
 template <class T, int M>
-Matrix<T, M, M> operator*(const Matrix<T, M, M>& a, const Matrix<T, M, M>& b)
+Matrix<T, M, M> operator*(const Matrix<T, M, M>& a, const Matrix<T, M, M>& b) noexcept
 {
 	Matrix<T, M, M> ret{};
 	for (int row = 0; row < M; row++)
@@ -156,7 +156,7 @@ Matrix<T, M, M> operator*(const Matrix<T, M, M>& a, const Matrix<T, M, M>& b)
 }
 
 template <class T, int M, class VectorTag>
-Vector<T, M, VectorTag> operator*(const Matrix<T, M, M>& a, const Vector<T, M, VectorTag>& b)
+Vector<T, M, VectorTag> operator*(const Matrix<T, M, M>& a, const Vector<T, M, VectorTag>& b) noexcept
 {
 	Vector<T, M, VectorTag> ret{};
 	for (int row = 0; row < M; row++)
@@ -170,21 +170,21 @@ Vector<T, M, VectorTag> operator*(const Matrix<T, M, M>& a, const Vector<T, M, V
 }
 
 template <class T>
-Vector<T, 3, VectorTag> operator*(const Matrix<T, 4, 4>& a, const Vector<T, 3, VectorTag>& b)
+Vector<T, 3, VectorTag> operator*(const Matrix<T, 4, 4>& a, const Vector<T, 3, VectorTag>& b) noexcept
 {
 	const auto ret = a * Vector<T, 4, VectorTag>(b.x, b.y, b.z, T{0});
 	return {ret.x, ret.y, ret.z};
 }
 
 template <class T>
-Vector<T, 3, PointTag> operator*(const Matrix<T, 4, 4>& a, const Vector<T, 3, PointTag>& b)
+Vector<T, 3, PointTag> operator*(const Matrix<T, 4, 4>& a, const Vector<T, 3, PointTag>& b) noexcept
 {
 	const auto ret = a * Vector<T, 4, VectorTag>(b.x, b.y, b.z, T{1});
 	return {ret.x / ret.w, ret.y / ret.w, ret.z / ret.w};
 }
 
 template <class T, int M, int N>
-Matrix<T, N, M> Transpose(const Matrix<T, M, N>& m)
+Matrix<T, N, M> Transpose(const Matrix<T, M, N>& m) noexcept
 {
 	Matrix<T, N, M> ret;
 	for (int row = 0; row < M; row++)
@@ -209,12 +209,12 @@ LookAt(const Vector<T, 3, PointTag>& eye, const Vector<T, 3, PointTag>& target, 
 	const T eyeY = -Dot(realUp, eye);
 	const T eyeZ = -Dot(forward, eye);
 
-	return {
+	return Transpose(Geo::Matrix<T,4,4>{
 	    {right.x, realUp.x, forward.x, 0},
 	    {right.y, realUp.y, forward.y, 0},
 	    {right.z, realUp.z, forward.z, 0},
 	    {eyeX, eyeY, eyeZ, 1},
-	};
+	});
 }
 
 template <class T>
@@ -222,12 +222,12 @@ Matrix<T, 4, 4> Perspective(AngleT<T> fovy, T aspect, T near, T far) noexcept
 {
 	T const tanHalfFovy = Tan(fovy / static_cast<T>(2));
 
-	return {
+	return Transpose(Geo::Matrix<T,4,4>{
 	    {T{1} / (aspect * tanHalfFovy), 0, 0, 0},
 	    {0, T{-1} / (tanHalfFovy), 0, 0},
 	    {0, 0, (far + near) / (far - near), T{1}},
 	    {0, 0, -(T{2} * far * near) / (far - near), 0},
-	};
+	});
 }
 
 template <class T>

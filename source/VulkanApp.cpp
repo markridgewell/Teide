@@ -45,8 +45,6 @@ uint32_t size32(const T& cont)
 }
 
 constexpr std::string_view VertexShader = R"--(
-#version 450
-
 layout(location = 0) in vec3 inPosition;
 layout(location = 1) in vec2 inTexCoord;
 layout(location = 2) in vec3 inNormal;
@@ -66,16 +64,14 @@ layout(set = 2, binding = 0) uniform ObjectUniforms {
 } object;
 
 void main() {
-    outPosition = (object.model * vec4(inPosition, 1.0)).xyz;
-    gl_Position = view.viewProj * vec4(outPosition, 1.0);
+    outPosition = mul(object.model, vec4(inPosition, 1.0)).xyz;
+    gl_Position = mul(view.viewProj, vec4(outPosition, 1.0));
     outTexCoord = inTexCoord;
-    outNormal = (object.model * vec4(inNormal, 0.0)).xyz;
+    outNormal = mul(object.model, vec4(inNormal, 0.0)).xyz;
     outColor = inColor;
 })--";
 
 constexpr std::string_view PixelShader = R"--(
-#version 450
-
 layout(location = 0) in vec2 inTexCoord;
 layout(location = 1) in vec3 inPosition;
 layout(location = 2) in vec3 inNormal;
@@ -94,7 +90,7 @@ layout(set = 0, binding = 0) uniform GlobalUniforms {
 } ubo;
 
 void main() {
-    vec4 shadowCoord = ubo.shadowMatrix * vec4(inPosition, 1.0);
+    vec4 shadowCoord = mul(ubo.shadowMatrix, vec4(inPosition, 1.0));
     shadowCoord /= shadowCoord.w;
     shadowCoord.xy = shadowCoord.xy * 0.5 + 0.5;
     float lit = texture(shadowMapSampler, shadowCoord.xyz).r;
@@ -1649,12 +1645,31 @@ public:
 		const Geo::Vector3 lightUp = Geo::Normalise(lightRotation * Geo::Vector3{0.0f, 0.0f, 1.0f});
 		const Geo::Point3 shadowCameraPosition = Geo::Point3{} - lightDirection * ShadowCamDistance;
 
-		const float border = ShadowCamWidth * 0.5f;
+		const auto modelMatrix = Geo::Matrix4::RotationX(180.0_deg);
 
 		const auto shadowCamView = Geo::LookAt(shadowCameraPosition, Geo::Point3{}, lightUp);
-		const auto shadowCamProj = Geo::Orthographic(-border, border, border, -border, 0.0f, ShadowCamDepth);
+		const auto shadowCamProj = Geo::Orthographic(-1.0f, 1.0f, -1.0f, 1.0f, 0.0f, 1.0f);
 
-		m_shadowMatrix = shadowCamView * shadowCamProj;
+		const auto shadowMVP = shadowCamProj * shadowCamView * modelMatrix;
+
+		const std::array<Geo::Point3, 8> bboxCorners = {
+		    shadowMVP * Geo::Point3(m_meshBoundsMin.x, m_meshBoundsMin.y, m_meshBoundsMin.z),
+		    shadowMVP * Geo::Point3(m_meshBoundsMin.x, m_meshBoundsMin.y, m_meshBoundsMax.z),
+		    shadowMVP * Geo::Point3(m_meshBoundsMin.x, m_meshBoundsMax.y, m_meshBoundsMin.z),
+		    shadowMVP * Geo::Point3(m_meshBoundsMin.x, m_meshBoundsMax.y, m_meshBoundsMax.z),
+		    shadowMVP * Geo::Point3(m_meshBoundsMax.x, m_meshBoundsMin.y, m_meshBoundsMin.z),
+		    shadowMVP * Geo::Point3(m_meshBoundsMax.x, m_meshBoundsMin.y, m_meshBoundsMax.z),
+		    shadowMVP * Geo::Point3(m_meshBoundsMax.x, m_meshBoundsMax.y, m_meshBoundsMin.z),
+		    shadowMVP * Geo::Point3(m_meshBoundsMax.x, m_meshBoundsMax.y, m_meshBoundsMax.z),
+		};
+
+		const auto [minX, maxX] = std::ranges::minmax(std::views::transform(bboxCorners, &Geo::Point3::x));
+		const auto [minY, maxY] = std::ranges::minmax(std::views::transform(bboxCorners, &Geo::Point3::y));
+		const auto [minZ, maxZ] = std::ranges::minmax(std::views::transform(bboxCorners, &Geo::Point3::z));
+
+		const auto shadowCamProjFitted = Geo::Orthographic(minX, maxX, maxY, minY, minZ, maxZ);
+
+		m_shadowMatrix = shadowCamProjFitted * shadowCamView;
 
 		// Update global uniforms
 		const auto globalUniforms = GlobalUniforms{
@@ -1668,7 +1683,7 @@ public:
 
 		// Update object uniforms
 		const auto objectUniforms = ObjectUniforms{
-		    .model = Geo::Matrix4::RotationX(180.0_deg),
+		    .model = modelMatrix,
 		};
 
 		SetBufferData(m_device.get(), m_objectUniformBuffer.memory[imageIndex], objectUniforms);
@@ -1728,9 +1743,13 @@ public:
 
 			const Geo::Point3 cameraPosition = m_cameraTarget - cameraDirection * m_cameraDistance;
 
+			const Geo::Matrix view = Geo::LookAt(cameraPosition, m_cameraTarget, cameraUp);
+			const Geo::Matrix proj = Geo::Perspective(45.0_deg, aspectRatio, 0.1f, 10.0f);
+			const Geo::Matrix viewProj = proj * view;
+			const Geo::Matrix projView = view * proj;
+
 			const auto viewUniforms = ViewUniforms{
-			    .viewProj = Geo::LookAt(cameraPosition, m_cameraTarget, cameraUp)
-			        * Geo::Perspective(45.0_deg, aspectRatio, 0.1f, 10.0f),
+			    .viewProj = viewProj,
 			};
 			SetBufferData(m_device.get(), m_viewUniformBuffers[1].memory[imageIndex], viewUniforms);
 		}
@@ -2017,6 +2036,9 @@ private:
 		{
 			CreateVertexBuffer(QuadVertices);
 			CreateIndexBuffer(QuadIndices);
+
+			m_meshBoundsMin = {-0.5f, -0.5f, 0.0f};
+			m_meshBoundsMax = {0.5f, 0.5f, 0.0f};
 		}
 		else
 		{
@@ -2047,6 +2069,11 @@ private:
 			std::vector<Vertex> vertices;
 			vertices.reserve(mesh.mNumVertices);
 
+			m_meshBoundsMin
+			    = {std::numeric_limits<float>::max(), std::numeric_limits<float>::max(), std::numeric_limits<float>::max()};
+			m_meshBoundsMax
+			    = {std::numeric_limits<float>::lowest(), std::numeric_limits<float>::lowest(),
+			       std::numeric_limits<float>::lowest()};
 			for (unsigned int i = 0; i < mesh.mNumVertices; i++)
 			{
 				const auto pos = mesh.mVertices[i];
@@ -2059,6 +2086,13 @@ private:
 				    .normal = {norm.x, norm.y, norm.z},
 				    .color = {color.r, color.g, color.b},
 				});
+
+				m_meshBoundsMin.x = std::min(m_meshBoundsMin.x, pos.x);
+				m_meshBoundsMin.y = std::min(m_meshBoundsMin.y, pos.y);
+				m_meshBoundsMin.z = std::min(m_meshBoundsMin.z, pos.z);
+				m_meshBoundsMax.x = std::max(m_meshBoundsMax.x, pos.x);
+				m_meshBoundsMax.y = std::max(m_meshBoundsMax.y, pos.y);
+				m_meshBoundsMax.z = std::max(m_meshBoundsMax.z, pos.z);
 			}
 
 			CreateVertexBuffer(vertices);
@@ -2407,6 +2441,8 @@ private:
 	vk::UniquePipeline m_pipeline;
 	vk::UniqueRenderPass m_renderPass;
 	vk::UniquePipelineLayout m_pipelineLayout;
+	Geo::Point3 m_meshBoundsMin;
+	Geo::Point3 m_meshBoundsMax;
 	vk::UniqueBuffer m_vertexBuffer;
 	MemoryAllocation m_vertexBufferMemory;
 	vk::UniqueBuffer m_indexBuffer;

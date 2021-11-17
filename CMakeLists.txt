@@ -25,6 +25,7 @@ set(sources
     ${GeoLibInclude}/GeoLib/Vector.h
     ${GeoLibInclude}/GeoLib/Matrix.h
     ${GeoLibInclude}/GeoLib/Angle.h
+    GeoLib.natvis
 )
 
 add_library(GeoLib INTERFACE ${sources})

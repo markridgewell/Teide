@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<AutoVisualizer xmlns="http://schemas.microsoft.com/vstudio/debugger/natvis/2010">
+
+  <!-- Geo::Vector -->
+  <Type Name="Geo::Vector&lt;*,2,*&gt;">
+    <DisplayString>{x}, {y}</DisplayString>
+  </Type>
+  <Type Name="Geo::Vector&lt;*,3,*&gt;">
+    <DisplayString>{x}, {y}, {z}</DisplayString>
+  </Type>
+  <Type Name="Geo::Vector&lt;*,4,*&gt;">
+    <DisplayString>{x}, {y}, {z}, {w}</DisplayString>
+  </Type>
+  
+</AutoVisualizer>
