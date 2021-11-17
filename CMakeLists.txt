@@ -13,6 +13,7 @@ find_package(assimp CONFIG REQUIRED)
 find_package(gtest CONFIG)
 find_path(STB_INCLUDE_DIRS "stb.h")
 
+set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT Teide)
 
 include(CTest)
