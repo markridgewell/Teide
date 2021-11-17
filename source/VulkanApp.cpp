@@ -89,17 +89,36 @@ layout(set = 0, binding = 0) uniform GlobalUniforms {
     mat4 shadowMatrix;
 } ubo;
 
+float textureProj(sampler2DShadow shadowMap, vec4 shadowCoord, vec2 off) {
+    return texture(shadowMap, shadowCoord.xyz + vec3(off, 0.0)).r;
+}
+
 void main() {
     vec4 shadowCoord = mul(ubo.shadowMatrix, vec4(inPosition, 1.0));
     shadowCoord /= shadowCoord.w;
     shadowCoord.xy = shadowCoord.xy * 0.5 + 0.5;
-    float lit = texture(shadowMapSampler, shadowCoord.xyz).r;
 
-    vec3 dirLight = clamp(dot(inNormal, -ubo.lightDir), 0.0, 1.0) * ubo.lightColor;
-    vec3 ambLight = mix(ubo.ambientColorBottom, ubo.ambientColorTop, inNormal.z * 0.5 + 0.5);
-    vec3 lighting = lit * dirLight + ambLight;
+    ivec2 texDim = textureSize(shadowMapSampler, 0);
+    float scale = 1.5;
+    float dx = scale * 1.0 / float(texDim.x);
+    float dy = scale * 1.0 / float(texDim.y);
 
-    vec3 color = lighting * texture(texSampler, inTexCoord).rgb;
+    const int range = 1;
+    int count = 0;
+    float shadowFactor = 0.0;
+    for (int x = -range; x <= range; x++) {
+        for (int y = -range; y <= range; y++) {
+            count++;
+            shadowFactor += textureProj(shadowMapSampler, shadowCoord, vec2(dx*x, dy*y));
+        }
+    }
+    const float lit = shadowFactor / count;
+
+    const vec3 dirLight = clamp(dot(inNormal, -ubo.lightDir), 0.0, 1.0) * ubo.lightColor;
+    const vec3 ambLight = mix(ubo.ambientColorBottom, ubo.ambientColorTop, inNormal.z * 0.5 + 0.5);
+    const vec3 lighting = lit * dirLight + ambLight;
+
+    const vec3 color = lighting * texture(texSampler, inTexCoord).rgb;
     outColor = vec4(color, 1.0);
 })--";
 
@@ -2276,7 +2295,7 @@ private:
 
 	void CreateShadowMap()
 	{
-		constexpr uint32_t shadowMapSize = 1024;
+		constexpr uint32_t shadowMapSize = 2048;
 		m_shadowMapExtent = vk::Extent2D{shadowMapSize, shadowMapSize};
 		m_shadowMapFormat = vk::Format::eD16Unorm;
 
@@ -2354,7 +2373,7 @@ private:
 		// Constant depth bias factor (always applied)
 		float depthBiasConstant = 1.25f;
 		// Slope depth bias factor, applied depending on polygon's slope
-		float depthBiasSlope = 1.75f;
+		float depthBiasSlope = 2.75f;
 
 		// Create pipeline
 		m_shadowMapPipeline = CreateGraphicsPipeline(
