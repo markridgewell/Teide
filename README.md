@@ -3,6 +3,9 @@ Teide &#127755;
 ===============
 A 3D renderer based on Vulkan
 
+[![Build-and-Test](https://github.com/markridgewell/Teide/actions/workflows/Build-and-Test.yml/badge.svg)](https://github.com/markridgewell/Teide/actions/workflows/Build-and-Test.yml)
+[![Format-Check](https://github.com/markridgewell/Teide/actions/workflows/Format-Check.yml/badge.svg)](https://github.com/markridgewell/Teide/actions/workflows/Format-Check.yml)
+
 Requirements
 ------------
 
