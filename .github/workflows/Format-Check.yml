@@ -1,0 +1,22 @@
+name: Format-Check
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  job:
+    name: Check-Formatting
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+
+    - name: clang-format lint
+      uses: jidicula/clang-format-action@v4.3.0
+      with:
+        clang-format-version: 12
+        check-path: 'source'

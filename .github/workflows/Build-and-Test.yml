@@ -1,4 +1,4 @@
-name: CMake
+name: Build-and-Test
 
 on:
   push:
@@ -6,23 +6,27 @@ on:
   pull_request:
     branches: [ main ]
 
-env:
-  # Customize the CMake build type here (Release, Debug, RelWithDebInfo, etc.)
-  BUILD_TYPE: Release
-
 jobs:
-  build:
-    # The CMake configure and build commands are platform agnostic and should work equally
-    # well on Windows or Mac.  You can convert this to a matrix build if you need
-    # cross-platform coverage.
-    # See: https://docs.github.com/en/free-pro-team@latest/actions/learn-github-actions/managing-complex-workflows#using-a-build-matrix
+  job:
+    strategy:
+      matrix:
+        buildtype: [Debug, Release]
+
+    name: Build-and-Test-${{matrix.buildtype}}
     runs-on: windows-latest
 
     steps:
-    - uses: actions/checkout@v2
-    
+    - name: Checkout
+      uses: actions/checkout@v2
+
     - name: Setup Vulkan SDK
       uses: humbletim/setup-vulkan-sdk@v1.0.3
+
+    - name: Setup vcpkg
+      uses: lukka/run-vcpkg@v10
+      with:
+        # The Git commit id of vcpkg to be checked out. This is only needed because we are not using a submodule.
+        vcpkgGitCommitId: '2a31089e777fc187f1cc05338250b8e1810cfb52'
 
     - name: Configure CMake
       # Configure CMake in a 'build' subdirectory. `CMAKE_BUILD_TYPE` is only required if you are using a single-configuration generator such as make.
@@ -31,11 +35,10 @@ jobs:
 
     - name: Build
       # Build your program with the given configuration
-      run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
+      run: cmake --build ${{github.workspace}}/build --config ${{matrix.buildtype}}
 
     - name: Test
       working-directory: ${{github.workspace}}/build
-      # Execute tests defined by the CMake configuration.  
+      # Execute tests defined by the CMake configuration.
       # See https://cmake.org/cmake/help/latest/manual/ctest.1.html for more detail
-      run: ctest -C ${{env.BUILD_TYPE}}
-      
+      run: ctest -C ${{matrix.buildtype}}
