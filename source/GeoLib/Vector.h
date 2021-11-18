@@ -5,7 +5,6 @@
 
 namespace Geo
 {
-
 template <class T, int N, class Tag>
 struct Vector;
 
