@@ -12,6 +12,31 @@ template <class T, int M, int N>
 struct Matrix;
 
 template <class T, int M>
+struct Matrix<T, M, 1>
+{
+	Vector<T, M, VectorTag> x;
+
+	constexpr auto& operator[](int i) noexcept { return this->*Members()[i]; }
+	constexpr auto operator[](int i) const noexcept { return this->*Members()[i]; }
+
+	friend auto operator<=>(const Matrix& a, const Matrix& b) noexcept = default;
+
+	static Matrix<T, M, 1> Identity() noexcept
+	{
+		Matrix<T, M, 1> ret;
+		ret.x[0] = T{1};
+		return ret;
+	}
+
+private:
+	static constexpr auto& Members() noexcept
+	{
+		static constexpr auto members = std::array{&Matrix::x};
+		return members;
+	}
+};
+
+template <class T, int M>
 struct Matrix<T, M, 2>
 {
 	Vector<T, M, VectorTag> x, y;
@@ -98,8 +123,8 @@ struct Matrix<T, M, 4>
 		static_assert(M == 4, "RotationX only works with 4x4 matrices");
 		return {
 		    {1, 0, 0, 0},
-		    {0, Cos(angle), Sin(angle), 0},
-		    {0, -Sin(angle), Cos(angle), 0},
+		    {0, Cos(angle), -Sin(angle), 0},
+		    {0, Sin(angle), Cos(angle), 0},
 		    {0, 0, 0, 1},
 		};
 	}
@@ -108,9 +133,9 @@ struct Matrix<T, M, 4>
 	{
 		static_assert(M == 4, "RotationY only works with 4x4 matrices");
 		return {
-		    {Cos(angle), 0, -Sin(angle), 0},
+		    {Cos(angle), 0, Sin(angle), 0},
 		    {0, 1, 0, 0},
-		    {Sin(angle), 0, Cos(angle), 0},
+		    {-Sin(angle), 0, Cos(angle), 0},
 		    {0, 0, 0, 1},
 		};
 	}
@@ -119,8 +144,8 @@ struct Matrix<T, M, 4>
 	{
 		static_assert(M == 4, "RotationZ only works with 4x4 matrices");
 		return {
-		    {Cos(angle), Sin(angle), 0, 0},
-		    {-Sin(angle), Cos(angle), 0, 0},
+		    {Cos(angle), -Sin(angle), 0, 0},
+		    {Sin(angle), Cos(angle), 0, 0},
 		    {0, 0, 1, 0},
 		    {0, 0, 0, 1},
 		};
@@ -138,13 +163,13 @@ using Matrix2 = Matrix<float, 2, 2>;
 using Matrix3 = Matrix<float, 3, 3>;
 using Matrix4 = Matrix<float, 4, 4>;
 
-template <class T, int M>
-Matrix<T, M, M> operator*(const Matrix<T, M, M>& a, const Matrix<T, M, M>& b) noexcept
+template <class T, int M, int N, int O>
+Matrix<T, O, N> operator*(const Matrix<T, M, N>& a, const Matrix<T, O, M>& b) noexcept
 {
-	Matrix<T, M, M> ret{};
-	for (int row = 0; row < M; row++)
+	Matrix<T, O, N> ret{};
+	for (int row = 0; row < N; row++)
 	{
-		for (int col = 0; col < M; col++)
+		for (int col = 0; col < O; col++)
 		{
 			for (int i = 0; i < M; i++)
 			{
@@ -209,12 +234,12 @@ LookAt(const Vector<T, 3, PointTag>& eye, const Vector<T, 3, PointTag>& target, 
 	const T eyeY = -Dot(realUp, eye);
 	const T eyeZ = -Dot(forward, eye);
 
-	return Transpose(Geo::Matrix<T,4,4>{
-	    {right.x, realUp.x, forward.x, 0},
-	    {right.y, realUp.y, forward.y, 0},
-	    {right.z, realUp.z, forward.z, 0},
-	    {eyeX, eyeY, eyeZ, 1},
-	});
+	return {
+	    {right.x, right.y, right.z, eyeX},
+	    {realUp.x, realUp.y, realUp.z, eyeY},
+	    {forward.x, forward.y, forward.z, eyeZ},
+	    {0, 0, 0, 1},
+	};
 }
 
 template <class T>
@@ -222,12 +247,12 @@ Matrix<T, 4, 4> Perspective(AngleT<T> fovy, T aspect, T near, T far) noexcept
 {
 	T const tanHalfFovy = Tan(fovy / static_cast<T>(2));
 
-	return Transpose(Geo::Matrix<T,4,4>{
+	return {
 	    {T{1} / (aspect * tanHalfFovy), 0, 0, 0},
 	    {0, T{-1} / (tanHalfFovy), 0, 0},
-	    {0, 0, (far + near) / (far - near), T{1}},
-	    {0, 0, -(T{2} * far * near) / (far - near), 0},
-	});
+	    {0, 0, (far + near) / (far - near), -(T{2} * far * near) / (far - near)},
+	    {0, 0, T{1}, 0},
+	};
 }
 
 template <class T>

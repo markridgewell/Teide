@@ -10,6 +10,24 @@ template <class T, int N, class Tag>
 struct Vector;
 
 template <class T, class Tag>
+struct Vector<T, 1, Tag>
+{
+	T x{};
+
+	constexpr T& operator[](int i) noexcept { return this->*Members()[i]; }
+	constexpr T operator[](int i) const noexcept { return this->*Members()[i]; }
+
+	friend auto operator<=>(const Vector& a, const Vector& b) noexcept = default;
+
+private:
+	static constexpr auto& Members() noexcept
+	{
+		static constexpr auto members = std::array{&Vector::x};
+		return members;
+	}
+};
+
+template <class T, class Tag>
 struct Vector<T, 2, Tag>
 {
 	T x{}, y{};

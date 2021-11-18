@@ -13,9 +13,10 @@ public:
 	AngleT() = default;
 
 	static constexpr AngleT Radians(T radians) noexcept { return AngleT(radians); }
+
 	static constexpr AngleT Degrees(T degrees) noexcept
 	{
-		return AngleT(static_cast<T>(degrees * std::numbers::pi_v<long double> / 180.0));
+		return AngleT(static_cast<T>(degrees / 180.0 * std::numbers::pi_v<long double>));
 	}
 
 	constexpr T AsRadians() const noexcept { return m_radians; }

@@ -1,21 +1,15 @@
 
 #include "GeoLib/Matrix.h"
 
+#include "TestUtils.h"
+
 #include <gtest/gtest.h>
 
-namespace Geo
-{
-template <class T, int N, class Tag>
-std::ostream& operator<<(std::ostream& os, const Vector<T, N, Tag>& v)
-{
-	os << '(';
-	for (int i = 0; i < N - 1; i++)
-	{
-		os << v[i] << ", ";
-	}
-	return os << v[N - 1] << ')';
-}
+using namespace Geo;
+using namespace testing;
 
+namespace
+{
 TEST(MatrixTest, MultiplyMatrix4Matrix4)
 {
 	const Matrix4 v1{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16};
@@ -29,8 +23,15 @@ TEST(MatrixTest, MultiplyMatrix4Matrix4)
 
 TEST(MatrixTest, MultiplyMatrix4Vector4)
 {
-	EXPECT_EQ(Vector4(1, 2, 3, 1), Matrix4::Identity() * Vector4(1, 2, 3, 1));
-	//EXPECT_EQ(Vector4(1, -3, 2, 1), Matrix4::RotationX(90.0_deg) * Vector4(1, 2, 3, 1));
+	EXPECT_THAT(Matrix4::Identity() * Vector4(1, 2, 3, 1), ApproxEq(Vector4(1, 2, 3, 1)));
+
+	const auto rotation = Matrix4{
+	    {1, 0, 0, 0},
+	    {0, 0, -1, 0},
+	    {0, 1, 0, 0},
+	    {0, 0, 0, 1},
+	};
+	EXPECT_THAT(rotation * Vector4(1, 2, 3, 1), ApproxEq(Vector4(1, -3, 2, 1)));
 
 	const auto translation = Matrix4{
 	    {1, 0, 0, 10},
@@ -38,7 +39,7 @@ TEST(MatrixTest, MultiplyMatrix4Vector4)
 	    {0, 0, 1, 20},
 	    {0, 0, 0, 1},
 	};
-	EXPECT_EQ(Vector4(11, 52, 23, 1), translation * Vector4(1, 2, 3, 1));
+	EXPECT_THAT(translation * Vector4(1, 2, 3, 1), ApproxEq(Vector4(11, 52, 23, 1)));
 
 	const auto scaling = Matrix4{
 	    {10, 0, 0, 0},
@@ -46,12 +47,61 @@ TEST(MatrixTest, MultiplyMatrix4Vector4)
 	    {0, 0, 100, 0},
 	    {0, 0, 0, 1},
 	};
-	EXPECT_EQ(Vector4(10, 4, 300, 1), scaling * Vector4(1, 2, 3, 1));
+	EXPECT_THAT(scaling * Vector4(1, 2, 3, 1), ApproxEq(Vector4(10, 4, 300, 1)));
 
-	EXPECT_EQ(Vector4(110, 104, 2300, 1), (scaling * translation) * Vector4(1, 2, 3, 1));
-	EXPECT_EQ(Vector4(110, 104, 2300, 1), scaling * (translation * Vector4(1, 2, 3, 1)));
-	EXPECT_EQ(Vector4(20, 54, 320, 1), (translation * scaling) * Vector4(1, 2, 3, 1));
-	EXPECT_EQ(Vector4(20, 54, 320, 1), translation * (scaling * Vector4(1, 2, 3, 1)));
+	EXPECT_THAT((scaling * translation) * Vector4(1, 2, 3, 1), ApproxEq(Vector4(110, 104, 2300, 1)));
+	EXPECT_THAT(scaling * (translation * Vector4(1, 2, 3, 1)), ApproxEq(Vector4(110, 104, 2300, 1)));
+	EXPECT_THAT((translation * scaling) * Vector4(1, 2, 3, 1), ApproxEq(Vector4(20, 54, 320, 1)));
+	EXPECT_THAT(translation * (scaling * Vector4(1, 2, 3, 1)), ApproxEq(Vector4(20, 54, 320, 1)));
 }
 
-} // namespace Geo
+TEST(MatrixTest, MultiplyMatrix3x2Matrix4x3)
+{
+	const auto a = Matrix<float, 3, 2>{
+	    {1, 2, 3},
+	    {4, 5, 6},
+	};
+
+	const auto b = Matrix<float, 4, 3>{
+	    {1, 2, 3, 4},
+	    {5, 6, 7, 8},
+	    {9, 10, 11, 12},
+	};
+
+	const auto expected = Matrix<float, 4, 2>{
+	    {38, 44, 50, 56},
+	    {83, 98, 113, 128},
+	};
+
+	EXPECT_THAT(a * b, Eq(expected));
+}
+
+TEST(MatrixTest, MultiplyMatrix4x1Matrix1x4)
+{
+	const auto a = Matrix<float, 4, 1>{
+	    {1, 2, 3, 4},
+	};
+
+	const auto b = Matrix<float, 1, 4>{
+	    {5},
+	    {6},
+	    {7},
+	    {8},
+	};
+
+	const auto expected = Matrix<float, 1, 1>{
+	    {70},
+	};
+
+	// This is equivalent to the dot product
+	EXPECT_THAT(a * b, Eq(expected));
+}
+
+TEST(MatrixTest, Matrix4Rotation)
+{
+	EXPECT_THAT(Matrix4::RotationX(90.0_deg) * Vector4(0, 2, 0, 1), ApproxEq(Vector4(0, 0, 2, 1)));
+	EXPECT_THAT(Matrix4::RotationX(90.0_deg) * Vector4(1, 2, 3, 1), ApproxEq(Vector4(1, -3, 2, 1)));
+	EXPECT_THAT(Matrix4::RotationY(90.0_deg) * Vector4(2, 0, 0, 1), ApproxEq(Vector4(0, 0, -2, 1)));
+}
+
+} // namespace

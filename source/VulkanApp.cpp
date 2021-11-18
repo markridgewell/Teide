@@ -1859,16 +1859,16 @@ public:
 		{
 			if (mouseButtonMask & SDL_BUTTON_LMASK)
 			{
-				m_lightYaw -= static_cast<float>(mouseX) * CameraRotateSpeed;
-				m_lightPitch += static_cast<float>(mouseY) * CameraRotateSpeed;
+				m_lightYaw += static_cast<float>(mouseX) * CameraRotateSpeed;
+				m_lightPitch -= static_cast<float>(mouseY) * CameraRotateSpeed;
 			}
 		}
 		else
 		{
 			if (mouseButtonMask & SDL_BUTTON_LMASK)
 			{
-				m_cameraYaw -= static_cast<float>(mouseX) * CameraRotateSpeed;
-				m_cameraPitch += static_cast<float>(mouseY) * CameraRotateSpeed;
+				m_cameraYaw += static_cast<float>(mouseX) * CameraRotateSpeed;
+				m_cameraPitch -= static_cast<float>(mouseY) * CameraRotateSpeed;
 			}
 			if (mouseButtonMask & SDL_BUTTON_RMASK)
 			{
@@ -2482,8 +2482,8 @@ private:
 	std::vector<vk::UniqueFramebuffer> m_swapchainFramebuffers;
 
 	// Lights
-	Geo::Angle m_lightYaw = -45.0_deg;
-	Geo::Angle m_lightPitch = 45.0_deg;
+	Geo::Angle m_lightYaw = 45.0_deg;
+	Geo::Angle m_lightPitch = -45.0_deg;
 	vk::UniqueImage m_shadowMap;
 	vk::Format m_shadowMapFormat;
 	vk::Extent2D m_shadowMapExtent;
@@ -2498,7 +2498,7 @@ private:
 	// Camera
 	Geo::Point3 m_cameraTarget = {0.0f, 0.0f, 0.0f};
 	Geo::Angle m_cameraYaw = 45.0_deg;
-	Geo::Angle m_cameraPitch = 45.0_deg;
+	Geo::Angle m_cameraPitch = -45.0_deg;
 	float m_cameraDistance = 3.0f;
 
 	// Rendering

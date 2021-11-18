@@ -36,12 +36,14 @@ target_compile_features(GeoLib INTERFACE cxx_std_23)
 # ----- GeoLibTest -----
 
 set(sources
+    test/GeoLib/Main.cpp
+    test/GeoLib/TestUtils.h
     test/GeoLib/MatrixTest.cpp
     test/GeoLib/VectorTest.cpp
 )
 
 add_executable(GeoLibTest ${sources})
-target_link_libraries(GeoLibTest PRIVATE GeoLib GTest::gtest GTest::gtest_main)
+target_link_libraries(GeoLibTest PRIVATE GeoLib GTest::gtest GTest::gmock)
 add_test(NAME GeoLibTest COMMAND GeoLibTest)
 
 # ----- Application -----
