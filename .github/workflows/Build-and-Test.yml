@@ -71,13 +71,23 @@ jobs:
       with:
         vulkan-version: sdk-1.2.198
 
+    - name: Install Irrlicht dependencies
+      run: |
+          sudo apt-get update
+          sudo apt install libgl1-mesa-dev libxxf86vm-dev
+
     - name: Setup vcpkg
       uses: lukka/run-vcpkg@v10
       with:
         vcpkgGitCommitId: '2a31089e777fc187f1cc05338250b8e1810cfb52'
 
+    - name: Install GCC 11
+      run: |
+          sudo apt-get update
+          sudo apt install gcc-11 g++-11
+
     - name: Configure CMake
-      run: cmake -B ${{github.workspace}}/build --preset ${{matrix.preset}}
+      run: cmake -B ${{github.workspace}}/build --preset ${{matrix.preset}} -DCMAKE_CXX_COMPILER=g++-11
 
     - name: Build
       run: cmake --build ${{github.workspace}}/build --config ${{matrix.buildtype}}
