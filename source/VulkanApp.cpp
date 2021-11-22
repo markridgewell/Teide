@@ -2077,11 +2077,11 @@ private:
 
 			if (scene->mNumMeshes == 0)
 			{
-				throw CustomError(fmt::format("Model file '{}' contains no meshes"));
+				throw CustomError(fmt::format("Model file '{}' contains no meshes", filename));
 			}
 			if (scene->mNumMeshes > 1)
 			{
-				throw CustomError(fmt::format("Model file '{}' contains too many meshes"));
+				throw CustomError(fmt::format("Model file '{}' contains too many meshes", filename));
 			}
 
 			const aiMesh& mesh = **scene->mMeshes;

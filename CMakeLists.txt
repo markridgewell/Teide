@@ -11,7 +11,7 @@ find_package(fmt CONFIG REQUIRED)
 find_package(spdlog CONFIG REQUIRED)
 find_package(glslang CONFIG REQUIRED)
 find_package(assimp CONFIG REQUIRED)
-find_package(gtest CONFIG REQUIRED)
+find_package(GTest CONFIG REQUIRED)
 find_path(STB_INCLUDE_DIRS "stb.h")
 
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)

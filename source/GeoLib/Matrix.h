@@ -14,8 +14,8 @@ struct Matrix<T, M, 1>
 {
 	Vector<T, M, VectorTag> x;
 
-	constexpr auto& operator[](int i) noexcept { return this->*Members()[i]; }
-	constexpr auto operator[](int i) const noexcept { return this->*Members()[i]; }
+	constexpr auto& operator[](int i) noexcept { return this->*members[i]; }
+	constexpr auto operator[](int i) const noexcept { return this->*members[i]; }
 
 	friend auto operator<=>(const Matrix& a, const Matrix& b) noexcept = default;
 
@@ -27,11 +27,7 @@ struct Matrix<T, M, 1>
 	}
 
 private:
-	static constexpr auto& Members() noexcept
-	{
-		static constexpr decltype(&Matrix::x) members[] = {&Matrix::x};
-		return members;
-	}
+	static constexpr decltype(&Matrix::x) members[] = {&Matrix::x};
 };
 
 template <class T, int M>
@@ -39,8 +35,8 @@ struct Matrix<T, M, 2>
 {
 	Vector<T, M, VectorTag> x, y;
 
-	constexpr auto& operator[](int i) noexcept { return this->*Members()[i]; }
-	constexpr auto operator[](int i) const noexcept { return this->*Members()[i]; }
+	constexpr auto& operator[](int i) noexcept { return this->*members[i]; }
+	constexpr auto operator[](int i) const noexcept { return this->*members[i]; }
 
 	friend auto operator<=>(const Matrix& a, const Matrix& b) noexcept = default;
 
@@ -53,11 +49,7 @@ struct Matrix<T, M, 2>
 	}
 
 private:
-	static constexpr auto& Members() noexcept
-	{
-		static constexpr decltype(&Matrix::x) members[] = {&Matrix::x, &Matrix::y};
-		return members;
-	}
+	static constexpr decltype(&Matrix::x) members[] = {&Matrix::x, &Matrix::y};
 };
 
 template <class T, int M>
@@ -65,8 +57,8 @@ struct Matrix<T, M, 3>
 {
 	Vector<T, M, VectorTag> x, y, z;
 
-	constexpr auto& operator[](int i) noexcept { return this->*Members()[i]; }
-	constexpr auto operator[](int i) const noexcept { return this->*Members()[i]; }
+	constexpr auto& operator[](int i) noexcept { return this->*members[i]; }
+	constexpr auto operator[](int i) const noexcept { return this->*members[i]; }
 
 	friend auto operator<=>(const Matrix& a, const Matrix& b) noexcept = default;
 
@@ -83,11 +75,7 @@ struct Matrix<T, M, 3>
 	}
 
 private:
-	static constexpr auto& Members() noexcept
-	{
-		static constexpr decltype(&Matrix::x) members[] = {&Matrix::x, &Matrix::y, &Matrix::z};
-		return members;
-	}
+	static constexpr decltype(&Matrix::x) members[] = {&Matrix::x, &Matrix::y, &Matrix::z};
 };
 
 template <class T, int M>
@@ -95,8 +83,8 @@ struct Matrix<T, M, 4>
 {
 	Vector<T, M, VectorTag> x, y, z, w;
 
-	constexpr auto& operator[](int i) noexcept { return this->*Members()[i]; }
-	constexpr auto operator[](int i) const noexcept { return this->*Members()[i]; }
+	constexpr auto& operator[](int i) noexcept { return this->*members[i]; }
+	constexpr auto operator[](int i) const noexcept { return this->*members[i]; }
 
 	friend auto operator<=>(const Matrix& a, const Matrix& b) noexcept = default;
 
@@ -150,11 +138,7 @@ struct Matrix<T, M, 4>
 	}
 
 private:
-	static constexpr auto& Members() noexcept
-	{
-		static constexpr decltype(&Matrix::x) members[] = {&Matrix::x, &Matrix::y, &Matrix::z, &Matrix::w};
-		return members;
-	}
+	static constexpr decltype(&Matrix::x) members[] = {&Matrix::x, &Matrix::y, &Matrix::z, &Matrix::w};
 };
 
 using Matrix2 = Matrix<float, 2, 2>;

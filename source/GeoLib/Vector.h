@@ -13,17 +13,13 @@ struct Vector<T, 1, Tag>
 {
 	T x{};
 
-	constexpr T& operator[](int i) noexcept { return this->*Members()[i]; }
-	constexpr T operator[](int i) const noexcept { return this->*Members()[i]; }
+	constexpr T& operator[](int i) noexcept { return this->*members[i]; }
+	constexpr T operator[](int i) const noexcept { return this->*members[i]; }
 
 	friend auto operator<=>(const Vector& a, const Vector& b) noexcept = default;
 
 private:
-	static constexpr auto& Members() noexcept
-	{
-		static constexpr decltype(&Vector::x) members[] = {&Vector::x};
-		return members;
-	}
+	static constexpr decltype(&Vector::x) members[] = {&Vector::x};
 };
 
 template <class T, class Tag>
@@ -31,17 +27,13 @@ struct Vector<T, 2, Tag>
 {
 	T x{}, y{};
 
-	constexpr T& operator[](int i) noexcept { return this->*Members()[i]; }
-	constexpr T operator[](int i) const noexcept { return this->*Members()[i]; }
+	constexpr T& operator[](int i) noexcept { return this->*members[i]; }
+	constexpr T operator[](int i) const noexcept { return this->*members[i]; }
 
 	friend auto operator<=>(const Vector& a, const Vector& b) noexcept = default;
 
 private:
-	static constexpr auto& Members() noexcept
-	{
-		static constexpr decltype(&Vector::x) members[] = {&Vector::x, &Vector::y};
-		return members;
-	}
+	static constexpr decltype(&Vector::x) members[] = {&Vector::x, &Vector::y};
 };
 
 template <class T, class Tag>
@@ -49,17 +41,13 @@ struct Vector<T, 3, Tag>
 {
 	T x{}, y{}, z{};
 
-	constexpr T& operator[](int i) noexcept { return this->*Members()[i]; }
-	constexpr T operator[](int i) const noexcept { return this->*Members()[i]; }
+	constexpr T& operator[](int i) noexcept { return this->*members[i]; }
+	constexpr T operator[](int i) const noexcept { return this->*members[i]; }
 
 	friend auto operator<=>(const Vector& a, const Vector& b) = default;
 
 private:
-	static constexpr auto& Members()
-	{
-		static constexpr decltype(&Vector::x) members[] = {&Vector::x, &Vector::y, &Vector::z};
-		return members;
-	}
+	static constexpr decltype(&Vector::x) members[] = {&Vector::x, &Vector::y, &Vector::z};
 };
 
 template <class T, class Tag>
@@ -67,17 +55,13 @@ struct Vector<T, 4, Tag>
 {
 	T x{}, y{}, z{}, w{};
 
-	constexpr T& operator[](int i) { return this->*Members()[i]; }
-	constexpr T operator[](int i) const { return this->*Members()[i]; }
+	constexpr T& operator[](int i) { return this->*members[i]; }
+	constexpr T operator[](int i) const { return this->*members[i]; }
 
 	friend auto operator<=>(const Vector& a, const Vector& b) = default;
 
 private:
-	static constexpr auto& Members() noexcept
-	{
-		static constexpr decltype(&Vector::x) members[] = {&Vector::x, &Vector::y, &Vector::z, &Vector::w};
-		return members;
-	}
+	static constexpr decltype(&Vector::x) members[] = {&Vector::x, &Vector::y, &Vector::z, &Vector::w};
 };
 
 struct VectorTag;

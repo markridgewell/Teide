@@ -12,8 +12,7 @@
          "binaryDir": "${sourceDir}/build",
          "toolchainFile": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
          "cacheVariables": {
-            "CMAKE_CONFIGURATION_TYPES": "Debug;Release",
-            "CMAKE_CXX_CLANG_TIDY": "-*,cppcoreguidelines-*"
+            "CMAKE_CONFIGURATION_TYPES": "Debug;Release"
          }
       },
       {
@@ -42,6 +41,15 @@
          "cacheVariables": {
             "CMAKE_CXX_FLAGS": "/std:c++latest /W4 /WX /EHsc /permissive- /external:W0 /analyze:external- /external:anglebrackets /external:templates-",
             "CMAKE_CXX_FLAGS_DEBUG": "/Zi /Od /Ob0 /JMC"
+         }
+      },
+      {
+         "name": "unix-make",
+         "inherits": "_common",
+         "displayName": "Unix Makefiles",
+         "generator": "Unix Makefiles",
+         "cacheVariables": {
+            "CMAKE_CXX_FLAGS": "--std=c++2a -DSDL_main=main"
          }
       }
    ]
