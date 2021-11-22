@@ -8,6 +8,10 @@
             "features": [ "vulkan" ]
         },
         {
+            "name": "fmt",
+            "version>=": "8.0.1"
+        },
+        {
             "name": "spdlog",
             "version>=": "1.9.2"
         },

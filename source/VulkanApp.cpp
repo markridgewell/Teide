@@ -1634,7 +1634,8 @@ public:
 	{
 		constexpr auto timeout = std::numeric_limits<uint64_t>::max();
 
-		const auto waitResult = m_device->waitForFences(m_inFlightFences[m_currentFrame].get(), true, timeout);
+		[[maybe_unused]] const auto waitResult
+		    = m_device->waitForFences(m_inFlightFences[m_currentFrame].get(), true, timeout);
 		assert(waitResult == vk::Result::eSuccess); // TODO check if waitForFences can fail with no timeout
 
 		// Acquire an image from the swap chain
@@ -1710,7 +1711,7 @@ public:
 		// Check if a previous frame is using this image (i.e. there is its fence to wait on)
 		if (m_imagesInFlight[imageIndex])
 		{
-			const auto waitResult2 = m_device->waitForFences(m_imagesInFlight[imageIndex], true, timeout);
+			[[maybe_unused]] const auto waitResult2 = m_device->waitForFences(m_imagesInFlight[imageIndex], true, timeout);
 			assert(waitResult2 == vk::Result::eSuccess); // TODO check if waitForFences can fail with no timeout
 		}
 		// Mark the image as in flight
@@ -2076,11 +2077,11 @@ private:
 
 			if (scene->mNumMeshes == 0)
 			{
-				throw CustomError(std::format("Model file '{}' contains no meshes"));
+				throw CustomError(fmt::format("Model file '{}' contains no meshes"));
 			}
 			if (scene->mNumMeshes > 1)
 			{
-				throw CustomError(std::format("Model file '{}' contains too many meshes"));
+				throw CustomError(fmt::format("Model file '{}' contains too many meshes"));
 			}
 
 			const aiMesh& mesh = **scene->mMeshes;
@@ -2218,7 +2219,7 @@ private:
 		const auto pixels = StbiPtr(stbi_load(filename, &width, &height, &channels, STBI_rgb_alpha));
 		if (!pixels)
 		{
-			throw CustomError(std::format("Error loading texture '{}'", filename));
+			throw CustomError(fmt::format("Error loading texture '{}'", filename));
 		}
 
 		const vk::DeviceSize imageSize = width * height * 4;
@@ -2531,7 +2532,7 @@ int Run(int argc, char* argv[])
 	if (!window)
 	{
 		spdlog::critical("SDL error: {}", SDL_GetError());
-		std::string message = std::format("The following error occurred when initializing SDL: {}", SDL_GetError());
+		std::string message = fmt::format("The following error occurred when initializing SDL: {}", SDL_GetError());
 		SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Error", message.c_str(), window.get());
 		return 1;
 	}
@@ -2544,14 +2545,14 @@ int Run(int argc, char* argv[])
 	catch (const vk::Error& e)
 	{
 		spdlog::critical("Vulkan error: {}", e.what());
-		std::string message = std::format("The following error occurred when initializing Vulkan:\n{}", e.what());
+		std::string message = fmt::format("The following error occurred when initializing Vulkan:\n{}", e.what());
 		SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Error", message.c_str(), window.get());
 		return 1;
 	}
 	catch (const CompileError& e)
 	{
 		spdlog::critical("Shader compilation error: {}", e.what());
-		std::string message = std::format("The following error occurred when compiling shaders:\n{}", e.what());
+		std::string message = fmt::format("The following error occurred when compiling shaders:\n{}", e.what());
 		SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Error", message.c_str(), window.get());
 		return 1;
 	}

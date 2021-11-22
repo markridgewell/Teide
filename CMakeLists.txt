@@ -7,10 +7,11 @@ project(Teide VERSION 0.0.0
 
 find_package(Vulkan REQUIRED)
 find_package(SDL2 CONFIG REQUIRED)
+find_package(fmt CONFIG REQUIRED)
 find_package(spdlog CONFIG REQUIRED)
 find_package(glslang CONFIG REQUIRED)
 find_package(assimp CONFIG REQUIRED)
-find_package(gtest CONFIG)
+find_package(gtest CONFIG REQUIRED)
 find_path(STB_INCLUDE_DIRS "stb.h")
 
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
@@ -31,7 +32,6 @@ set(sources
 
 add_library(GeoLib INTERFACE ${sources})
 target_include_directories(GeoLib INTERFACE ${GeoLibInclude})
-target_compile_features(GeoLib INTERFACE cxx_std_23)
 
 # ----- GeoLibTest -----
 
@@ -43,7 +43,9 @@ set(sources
 )
 
 add_executable(GeoLibTest ${sources})
-target_link_libraries(GeoLibTest PRIVATE GeoLib GTest::gtest GTest::gmock)
+target_link_libraries(GeoLibTest PRIVATE GeoLib
+    GTest::gtest GTest::gmock
+    fmt::fmt)
 add_test(NAME GeoLibTest COMMAND GeoLibTest)
 
 # ----- Application -----
@@ -57,7 +59,6 @@ set(sources
 
 add_executable(Teide WIN32 ${sources})
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${sources})
-target_compile_features(Teide PUBLIC cxx_std_23)
 target_compile_definitions(Teide PRIVATE VULKAN_HPP_NO_STRUCT_CONSTRUCTORS VULKAN_HPP_DISPATCH_LOADER_DYNAMIC=1)
 set_property(TARGET Teide PROPERTY VS_DPI_AWARE "PerMonitor")
 
@@ -65,6 +66,7 @@ target_link_libraries(Teide PRIVATE
     GeoLib
     Vulkan::Vulkan
     SDL2::SDL2 SDL2::SDL2main
+    fmt::fmt
     spdlog::spdlog
     HLSL SPIRV glslang OGLCompiler
     assimp::assimp

@@ -4,8 +4,6 @@
 #include "Angle.h"
 #include "Vector.h"
 
-#include <array>
-
 namespace Geo
 {
 template <class T, int M, int N>
@@ -31,7 +29,7 @@ struct Matrix<T, M, 1>
 private:
 	static constexpr auto& Members() noexcept
 	{
-		static constexpr auto members = std::array{&Matrix::x};
+		static constexpr decltype(&Matrix::x) members[] = {&Matrix::x};
 		return members;
 	}
 };
@@ -57,7 +55,7 @@ struct Matrix<T, M, 2>
 private:
 	static constexpr auto& Members() noexcept
 	{
-		static constexpr auto members = std::array{&Matrix::x, &Matrix::y};
+		static constexpr decltype(&Matrix::x) members[] = {&Matrix::x, &Matrix::y};
 		return members;
 	}
 };
@@ -87,7 +85,7 @@ struct Matrix<T, M, 3>
 private:
 	static constexpr auto& Members() noexcept
 	{
-		static constexpr auto members = std::array{&Matrix::x, &Matrix::y, &Matrix::z};
+		static constexpr decltype(&Matrix::x) members[] = {&Matrix::x, &Matrix::y, &Matrix::z};
 		return members;
 	}
 };
@@ -154,7 +152,7 @@ struct Matrix<T, M, 4>
 private:
 	static constexpr auto& Members() noexcept
 	{
-		static constexpr auto members = std::array{&Matrix::x, &Matrix::y, &Matrix::z, &Matrix::w};
+		static constexpr decltype(&Matrix::x) members[] = {&Matrix::x, &Matrix::y, &Matrix::z, &Matrix::w};
 		return members;
 	}
 };

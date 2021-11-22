@@ -3,10 +3,10 @@
 
 #include "GeoLib/Vector.h"
 
+#include <fmt/core.h>
 #include <gmock/gmock.h>
 
 #include <concepts>
-#include <format>
 #include <ostream>
 
 namespace Geo
@@ -46,7 +46,7 @@ bool ApproxEqual(const Geo::Vector<T, N, Tag>& a, const Geo::Vector<T, N, Tag>& 
 	return true;
 }
 
-MATCHER_P(ApproxEq, v, std::format("{} [approximately]", testing::PrintToString(v)))
+MATCHER_P(ApproxEq, v, fmt::format("{} [approximately]", testing::PrintToString(v)))
 {
 	(void)result_listener;
 	return ApproxEqual(arg, v);

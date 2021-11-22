@@ -21,7 +21,7 @@ struct Vector<T, 1, Tag>
 private:
 	static constexpr auto& Members() noexcept
 	{
-		static constexpr auto members = std::array{&Vector::x};
+		static constexpr decltype(&Vector::x) members[] = {&Vector::x};
 		return members;
 	}
 };
@@ -39,7 +39,7 @@ struct Vector<T, 2, Tag>
 private:
 	static constexpr auto& Members() noexcept
 	{
-		static constexpr auto members = std::array{&Vector::x, &Vector::y};
+		static constexpr decltype(&Vector::x) members[] = {&Vector::x, &Vector::y};
 		return members;
 	}
 };
@@ -57,7 +57,7 @@ struct Vector<T, 3, Tag>
 private:
 	static constexpr auto& Members()
 	{
-		static constexpr auto members = std::array{&Vector::x, &Vector::y, &Vector::z};
+		static constexpr decltype(&Vector::x) members[] = {&Vector::x, &Vector::y, &Vector::z};
 		return members;
 	}
 };
@@ -75,7 +75,7 @@ struct Vector<T, 4, Tag>
 private:
 	static constexpr auto& Members() noexcept
 	{
-		static constexpr auto members = std::array{&Vector::x, &Vector::y, &Vector::z, &Vector::w};
+		static constexpr decltype(&Vector::x) members[] = {&Vector::x, &Vector::y, &Vector::z, &Vector::w};
 		return members;
 	}
 };
