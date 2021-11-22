@@ -7,31 +7,41 @@
    },
    "configurePresets": [
       {
-         "name": "msvc",
+         "name": "_common",
+         "hidden": true,
+         "binaryDir": "${sourceDir}/build",
+         "toolchainFile": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
+         "cacheVariables": {
+            "CMAKE_CONFIGURATION_TYPES": "Debug;Release",
+            "CMAKE_CXX_CLANG_TIDY": "-*,cppcoreguidelines-*"
+         }
+      },
+      {
+         "name": "msvc2019",
+         "inherits": "_common",
          "displayName": "Visual Studio 2019",
          "generator": "Visual Studio 16 2019",
-         "binaryDir": "${sourceDir}/build",
          "architecture": {
             "value": "x64",
             "strategy": "external"
           },
          "cacheVariables": {
             "CMAKE_CXX_FLAGS": "/W4 /WX /EHsc /permissive- /external:W0 /analyze:external- /external:anglebrackets /external:templates-",
-            "CMAKE_CXX_FLAGS_DEBUG": "/Zi /Od /Ob0 /JMC",
-            "CMAKE_CONFIGURATION_TYPES": "Debug;Release",
-            "CMAKE_TOOLCHAIN_FILE": {
-               "value": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
-               "type": "FILEPATH"
-            },
-            "CMAKE_CXX_CLANG_TIDY": "-*,cppcoreguidelines-*"
+            "CMAKE_CXX_FLAGS_DEBUG": "/Zi /Od /Ob0 /JMC"
          }
       },
       {
-         "name": "msvc-asan",
-         "inherits": "msvc",
+         "name": "msvc2022",
+         "inherits": "_common",
+         "displayName": "Visual Studio 2022",
+         "generator": "Visual Studio 17 2022",
+         "architecture": {
+            "value": "x64",
+            "strategy": "external"
+          },
          "cacheVariables": {
-            "CMAKE_CXX_FLAGS_DEBUG": "/Zi /Od /Ob0 /JMC /fsanitize=address",
-            "CMAKE_EXE_LINKER_FLAGS_DEBUG": "/DEBUG /INCREMENTAL:NO"
+            "CMAKE_CXX_FLAGS": "/W4 /WX /EHsc /permissive- /external:W0 /analyze:external- /external:anglebrackets /external:templates-",
+            "CMAKE_CXX_FLAGS_DEBUG": "/Zi /Od /Ob0 /JMC"
          }
       }
    ]
