@@ -11,9 +11,9 @@ jobs:
     strategy:
       matrix:
         buildtype: [Debug, Release]
-        preset: [msvc2019, msvc2022]
+        preset: [msvc2019]
 
-    name: Build-and-Test-${{matrix.buildtype}}
+    name: Build-and-Test-${{matrix.buildtype}}-${{matrix.preset}}
     runs-on: windows-latest
 
     steps:
