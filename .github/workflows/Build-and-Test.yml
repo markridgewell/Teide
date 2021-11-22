@@ -59,6 +59,13 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v2
 
+    # This step is only needed as long as assimp depends on irrlicht.
+    # If the dependency is removed, this step can be removed.
+    - name: Install Irrlicht dependencies
+      run: |
+          sudo apt-get update
+          sudo apt install libgl1-mesa-dev libxxf86vm-dev
+
     - name: Setup Vulkan SDK
       uses: humbletim/setup-vulkan-sdk@v1.0.3
       with:
