@@ -13,6 +13,9 @@ struct Vector<T, 1, Tag>
 {
 	T x{};
 
+	constexpr Vector() = default;
+	constexpr Vector(T x) noexcept : x{x} {}
+
 	constexpr T& operator[](int i) noexcept { return this->*members[i]; }
 	constexpr T operator[](int i) const noexcept { return this->*members[i]; }
 
@@ -26,6 +29,9 @@ template <class T, class Tag>
 struct Vector<T, 2, Tag>
 {
 	T x{}, y{};
+
+	constexpr Vector() = default;
+	constexpr Vector(T x, T y) noexcept : x{x}, y{y} {}
 
 	constexpr T& operator[](int i) noexcept { return this->*members[i]; }
 	constexpr T operator[](int i) const noexcept { return this->*members[i]; }
@@ -41,6 +47,9 @@ struct Vector<T, 3, Tag>
 {
 	T x{}, y{}, z{};
 
+	constexpr Vector() = default;
+	constexpr Vector(T x, T y, T z) noexcept : x{x}, y{y}, z{z} {}
+
 	constexpr T& operator[](int i) noexcept { return this->*members[i]; }
 	constexpr T operator[](int i) const noexcept { return this->*members[i]; }
 
@@ -54,6 +63,9 @@ template <class T, class Tag>
 struct Vector<T, 4, Tag>
 {
 	T x{}, y{}, z{}, w{};
+
+	constexpr Vector() = default;
+	constexpr Vector(T x, T y, T z, T w) noexcept : x{x}, y{y}, z{z}, w{w} {}
 
 	constexpr T& operator[](int i) { return this->*members[i]; }
 	constexpr T operator[](int i) const { return this->*members[i]; }
