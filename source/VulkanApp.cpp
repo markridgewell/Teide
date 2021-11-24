@@ -131,10 +131,10 @@ struct Vertex
 };
 
 constexpr auto QuadVertices = std::array<Vertex, 4>{{
-    {{-0.5f, -0.5f, 0.0f}, {0.0f, 0.0f}, {1.0f, 0.0f, 0.0f}},
-    {{0.5f, -0.5f, 0.0f}, {1.0f, 0.0f}, {0.0f, 1.0f, 0.0f}},
-    {{0.5f, 0.5f, 0.0f}, {1.0f, 1.0f}, {0.0f, 0.0f, 1.0f}},
-    {{-0.5f, 0.5f, 0.0f}, {0.0f, 1.0f}, {1.0f, 1.0f, 1.0f}},
+    {{-0.5f, -0.5f, 0.0f}, {0.0f, 0.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 1.0f}},
+    {{0.5f, -0.5f, 0.0f}, {1.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f, 1.0f}},
+    {{0.5f, 0.5f, 0.0f}, {1.0f, 1.0f}, {0.0f, 0.0f, 1.0f}, {1.0f, 1.0f, 1.0f}},
+    {{-0.5f, 0.5f, 0.0f}, {0.0f, 1.0f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f, 1.0f}},
 }};
 
 constexpr auto QuadIndices = std::array<uint16_t, 6>{{0, 1, 2, 2, 3, 0}};
@@ -258,39 +258,38 @@ VKAPI_ATTR VkBool32 VKAPI_CALL DebugCallback(
     VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, [[maybe_unused]] VkDebugUtilsMessageTypeFlagsEXT messageType,
     const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, [[maybe_unused]] void* pUserData)
 {
-	const char* prefix = "";
-	switch (static_cast<vk::DebugUtilsMessageTypeFlagBitsEXT>(messageType))
-	{
-		using enum vk::DebugUtilsMessageTypeFlagBitsEXT;
+	using MessageType = vk::DebugUtilsMessageTypeFlagBitsEXT;
+	using MessageSeverity = vk::DebugUtilsMessageSeverityFlagBitsEXT;
 
-		case eGeneral:
+	const char* prefix = "";
+	switch (MessageType(messageType))
+	{
+		case MessageType::eGeneral:
 			prefix = "";
 			break;
-		case eValidation:
+		case MessageType::eValidation:
 			prefix = "[validation] ";
 			break;
-		case ePerformance:
+		case MessageType::ePerformance:
 			prefix = "[performance] ";
 			break;
 	}
 
-	switch (vk::DebugUtilsMessageSeverityFlagBitsEXT(messageSeverity))
+	switch (MessageSeverity(messageSeverity))
 	{
-		using enum vk::DebugUtilsMessageSeverityFlagBitsEXT;
-
-		case eVerbose:
+		case MessageSeverity::eVerbose:
 			spdlog::debug("{}{}", prefix, pCallbackData->pMessage);
 			break;
 
-		case eInfo:
+		case MessageSeverity::eInfo:
 			spdlog::info("{}{}", prefix, pCallbackData->pMessage);
 			break;
 
-		case eWarning:
+		case MessageSeverity::eWarning:
 			spdlog::warn("{}{}", prefix, pCallbackData->pMessage);
 			break;
 
-		case eError:
+		case MessageSeverity::eError:
 			spdlog::error("{}{}", prefix, pCallbackData->pMessage);
 			break;
 	}
@@ -298,12 +297,12 @@ VKAPI_ATTR VkBool32 VKAPI_CALL DebugCallback(
 }
 
 constexpr auto DebugCreateInfo = [] {
-	using enum vk::DebugUtilsMessageSeverityFlagBitsEXT;
-	using enum vk::DebugUtilsMessageTypeFlagBitsEXT;
+	using MessageType = vk::DebugUtilsMessageTypeFlagBitsEXT;
+	using MessageSeverity = vk::DebugUtilsMessageSeverityFlagBitsEXT;
 
 	return vk::DebugUtilsMessengerCreateInfoEXT{
-	    .messageSeverity = eError | eWarning | eInfo,
-	    .messageType = eGeneral | eValidation | ePerformance,
+	    .messageSeverity = MessageSeverity ::eError | MessageSeverity ::eWarning | MessageSeverity ::eInfo,
+	    .messageType = MessageType::eGeneral | MessageType::eValidation | MessageType::ePerformance,
 	    .pfnUserCallback = DebugCallback,
 	};
 }();
@@ -1656,14 +1655,10 @@ public:
 			return;
 		}
 
-		static constexpr float ShadowCamDistance = 5.0f;
-		static constexpr float ShadowCamDepth = 10.0f;
-		static constexpr float ShadowCamWidth = 5.0f;
-
 		const Geo::Matrix4 lightRotation = Geo::Matrix4::RotationZ(m_lightYaw) * Geo::Matrix4::RotationX(m_lightPitch);
 		const Geo::Vector3 lightDirection = Geo::Normalise(lightRotation * Geo::Vector3{0.0f, 1.0f, 0.0f});
 		const Geo::Vector3 lightUp = Geo::Normalise(lightRotation * Geo::Vector3{0.0f, 0.0f, 1.0f});
-		const Geo::Point3 shadowCameraPosition = Geo::Point3{} - lightDirection * ShadowCamDistance;
+		const Geo::Point3 shadowCameraPosition = Geo::Point3{} - lightDirection;
 
 		const auto modelMatrix = Geo::Matrix4::RotationX(180.0_deg);
 
@@ -1766,7 +1761,6 @@ public:
 			const Geo::Matrix view = Geo::LookAt(cameraPosition, m_cameraTarget, cameraUp);
 			const Geo::Matrix proj = Geo::Perspective(45.0_deg, aspectRatio, 0.1f, 10.0f);
 			const Geo::Matrix viewProj = proj * view;
-			const Geo::Matrix projView = view * proj;
 
 			const auto viewUniforms = ViewUniforms{
 			    .viewProj = viewProj,
