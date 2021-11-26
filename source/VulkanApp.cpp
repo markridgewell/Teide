@@ -37,6 +37,8 @@ namespace
 constexpr bool UseMSAA = true;
 constexpr vk::DeviceSize MemoryBlockSize = 64 * 1024 * 1024;
 
+constexpr uint32_t MaxFramesInFlight = 2;
+
 template <class T>
 uint32_t size32(const T& cont)
 {
@@ -920,24 +922,26 @@ BufferWithAllocation CreateBufferWithData(
 
 struct UniformBuffer
 {
-	std::vector<vk::UniqueBuffer> buffers;
-	std::vector<MemoryAllocation> memory;
+	std::array<BufferWithAllocation, MaxFramesInFlight> buffers;
 	vk::DeviceSize size;
+
+	void SetData(vk::Device device, int currentFrame, BytesView data)
+	{
+		SetBufferData(device, buffers[currentFrame % MaxFramesInFlight].allocation, data);
+	}
 };
 
-UniformBuffer CreateUniformBuffer(size_t swapchainSize, size_t bufferSize, vk::Device device, MemoryAllocator& allocator)
+UniformBuffer CreateUniformBuffer(size_t bufferSize, vk::Device device, MemoryAllocator& allocator)
 {
 	UniformBuffer ret;
-	ret.buffers.resize(swapchainSize);
-	ret.memory.resize(swapchainSize);
 	ret.size = bufferSize;
-	for (size_t i = 0; i < swapchainSize; i++)
+	for (auto& buffer : ret.buffers)
 	{
-		ret.buffers[i] = CreateBuffer(device, bufferSize, vk::BufferUsageFlagBits::eUniformBuffer);
-		ret.memory[i] = allocator.Allocate(
-		    device.getBufferMemoryRequirements(ret.buffers[i].get()),
+		buffer.buffer = CreateBuffer(device, bufferSize, vk::BufferUsageFlagBits::eUniformBuffer);
+		buffer.allocation = allocator.Allocate(
+		    device.getBufferMemoryRequirements(buffer.buffer.get()),
 		    vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
-		device.bindBufferMemory(ret.buffers[i].get(), ret.memory[i].memory, ret.memory[i].offset);
+		device.bindBufferMemory(buffer.buffer.get(), buffer.allocation.memory, buffer.allocation.offset);
 	}
 	return ret;
 }
@@ -955,10 +959,10 @@ struct ImageView
 };
 
 DescriptorSet CreateDescriptorSet(
-    size_t swapchainSize, vk::DescriptorSetLayout layout, vk::DescriptorPool descriptorPool, vk::Device device,
+    vk::DescriptorSetLayout layout, vk::DescriptorPool descriptorPool, vk::Device device,
     const UniformBuffer& uniformBuffer, std::span<const ImageView> images = {})
 {
-	const auto layouts = std::vector<vk::DescriptorSetLayout>(swapchainSize, layout);
+	const auto layouts = std::vector<vk::DescriptorSetLayout>(MaxFramesInFlight, layout);
 	const auto allocInfo = vk::DescriptorSetAllocateInfo{
 	    .descriptorPool = descriptorPool,
 	    .descriptorSetCount = size32(layouts),
@@ -970,7 +974,7 @@ DescriptorSet CreateDescriptorSet(
 	for (size_t i = 0; i < layouts.size(); i++)
 	{
 		const auto bufferInfo = vk::DescriptorBufferInfo{
-		    .buffer = uniformBuffer.buffers[i].get(),
+		    .buffer = uniformBuffer.buffers[i].buffer.get(),
 		    .offset = 0,
 		    .range = uniformBuffer.size,
 		};
@@ -1694,14 +1698,14 @@ public:
 		    .ambientColorBottom = {0.003f, 0.003f, 0.002f},
 		    .shadowMatrix = m_shadowMatrix,
 		};
-		SetBufferData(m_device.get(), m_globalUniformBuffer.memory[imageIndex], globalUniforms);
+		m_globalUniformBuffer.SetData(m_device.get(), m_currentFrame, globalUniforms);
 
 		// Update object uniforms
 		const auto objectUniforms = ObjectUniforms{
 		    .model = modelMatrix,
 		};
 
-		SetBufferData(m_device.get(), m_objectUniformBuffer.memory[imageIndex], objectUniforms);
+		m_objectUniformBuffer.SetData(m_device.get(), m_currentFrame, objectUniforms);
 
 		// Check if a previous frame is using this image (i.e. there is its fence to wait on)
 		if (m_imagesInFlight[imageIndex])
@@ -1732,12 +1736,12 @@ public:
 			    .viewProj = m_shadowMatrix,
 			};
 
-			SetBufferData(m_device.get(), m_viewUniformBuffers[0].memory[imageIndex], viewUniforms);
+			m_viewUniformBuffers[0].SetData(m_device.get(), m_currentFrame, viewUniforms);
 		}
 
 		DrawObjects(
 		    commandBuffer, m_shadowRenderPass.get(), m_shadowMapFramebuffer.get(), clearValues,
-		    m_shadowMapPipeline.get(), m_shadowMapExtent, m_viewDescriptorSets[0], imageIndex);
+		    m_shadowMapPipeline.get(), m_shadowMapExtent, m_viewDescriptorSets[0]);
 
 		//
 		// Pass 1. Draw scene
@@ -1765,12 +1769,12 @@ public:
 			const auto viewUniforms = ViewUniforms{
 			    .viewProj = viewProj,
 			};
-			SetBufferData(m_device.get(), m_viewUniformBuffers[1].memory[imageIndex], viewUniforms);
+			m_viewUniformBuffers[1].SetData(m_device.get(), m_currentFrame, viewUniforms);
 		}
 
 		DrawObjects(
 		    commandBuffer, m_renderPass.get(), m_swapchainFramebuffers[imageIndex].get(), clearValues2,
-		    m_pipeline.get(), m_surfaceExtent, m_viewDescriptorSets[1], imageIndex);
+		    m_pipeline.get(), m_surfaceExtent, m_viewDescriptorSets[1]);
 
 		commandBuffer.end();
 
@@ -2134,16 +2138,13 @@ private:
 
 	void CreateUniformBuffers()
 	{
-		m_globalUniformBuffer
-		    = CreateUniformBuffer(m_swapchainImages.size(), sizeof(GlobalUniforms), m_device.get(), *m_generalAllocator);
+		m_globalUniformBuffer = CreateUniformBuffer(sizeof(GlobalUniforms), m_device.get(), *m_generalAllocator);
 
 		for (uint32_t pass = 0; pass < m_passCount; pass++)
 		{
-			m_viewUniformBuffers.push_back(
-			    CreateUniformBuffer(m_swapchainImages.size(), sizeof(ViewUniforms), m_device.get(), *m_generalAllocator));
+			m_viewUniformBuffers.push_back(CreateUniformBuffer(sizeof(ViewUniforms), m_device.get(), *m_generalAllocator));
 		}
-		m_objectUniformBuffer
-		    = CreateUniformBuffer(m_swapchainImages.size(), sizeof(ObjectUniforms), m_device.get(), *m_generalAllocator);
+		m_objectUniformBuffer = CreateUniformBuffer(sizeof(ObjectUniforms), m_device.get(), *m_generalAllocator);
 	}
 
 	void CreateDescriptorSets()
@@ -2151,24 +2152,23 @@ private:
 		const auto poolSizes = std::array{
 		    vk::DescriptorPoolSize{
 		        .type = vk::DescriptorType::eUniformBuffer,
-		        .descriptorCount = size32(m_swapchainImages) * (2 + m_passCount),
+		        .descriptorCount = MaxFramesInFlight * (2 + m_passCount),
 		    },
 		    vk::DescriptorPoolSize{
 		        .type = vk::DescriptorType::eCombinedImageSampler,
-		        .descriptorCount = size32(m_swapchainImages) * (1 + m_passCount),
+		        .descriptorCount = MaxFramesInFlight * (1 + m_passCount),
 		    },
 		};
 
 		const auto poolCreateInfo = vk::DescriptorPoolCreateInfo{
-			.maxSets = size32(m_swapchainImages) * (2 + m_passCount),
+			.maxSets = MaxFramesInFlight * (2 + m_passCount),
 		}.setPoolSizes(poolSizes);
 
 		auto descriptorPool = m_device->createDescriptorPoolUnique(poolCreateInfo, s_allocator);
 
 		// Global descriptor sets
 		m_globalDescriptorSet = CreateDescriptorSet(
-		    m_swapchainImages.size(), m_globalDescriptorSetLayout.get(), descriptorPool.get(), m_device.get(),
-		    m_globalUniformBuffer);
+		    m_globalDescriptorSetLayout.get(), descriptorPool.get(), m_device.get(), m_globalUniformBuffer);
 
 		// View desriptor sets
 		m_viewDescriptorSets.clear();
@@ -2183,8 +2183,7 @@ private:
 			const auto images = i >= 1 ? shadowMapImages : std::span<const ImageView>{};
 
 			m_viewDescriptorSets.push_back(CreateDescriptorSet(
-			    m_swapchainImages.size(), m_viewDescriptorSetLayout.get(), descriptorPool.get(), m_device.get(),
-			    m_viewUniformBuffers[i], images));
+			    m_viewDescriptorSetLayout.get(), descriptorPool.get(), m_device.get(), m_viewUniformBuffers[i], images));
 		}
 
 		// Object desriptor sets
@@ -2194,8 +2193,7 @@ private:
 		    .layout = vk::ImageLayout::eShaderReadOnlyOptimal,
 		}};
 		m_objectDescriptorSet = CreateDescriptorSet(
-		    m_swapchainImages.size(), m_objectDescriptorSetLayout.get(), descriptorPool.get(), m_device.get(),
-		    m_objectUniformBuffer, objectTextures);
+		    m_objectDescriptorSetLayout.get(), descriptorPool.get(), m_device.get(), m_objectUniformBuffer, objectTextures);
 
 		m_descriptorPool = std::move(descriptorPool);
 	}
@@ -2379,7 +2377,7 @@ private:
 	void DrawObjects(
 	    vk::CommandBuffer commandBuffer, vk::RenderPass renderPass, vk::Framebuffer framebuffer,
 	    std::span<const vk::ClearValue> clearValues, vk::Pipeline pipeline, vk::Extent2D extent,
-	    const DescriptorSet& viewDescriptorSet, size_t imageIndex)
+	    const DescriptorSet& viewDescriptorSet)
 	{
 		const auto renderPassBegin = vk::RenderPassBeginInfo{
 		    .renderPass = renderPass,
@@ -2390,8 +2388,8 @@ private:
 		};
 
 		const auto descriptorSets = std::array{
-		    m_globalDescriptorSet.sets[imageIndex], viewDescriptorSet.sets[imageIndex],
-		    m_objectDescriptorSet.sets[imageIndex]};
+		    m_globalDescriptorSet.sets[m_currentFrame], viewDescriptorSet.sets[m_currentFrame],
+		    m_objectDescriptorSet.sets[m_currentFrame]};
 
 		commandBuffer.beginRenderPass(renderPassBegin, vk::SubpassContents::eInline);
 
@@ -2410,8 +2408,6 @@ private:
 
 		m_device->waitIdle();
 		CreateSwapchainAndImages();
-		CreateUniformBuffers();
-		CreateDescriptorSets();
 	}
 
 	SDL_Window* m_window;
@@ -2498,7 +2494,6 @@ private:
 
 	// Rendering
 	int m_currentFrame = 0;
-	static constexpr int MaxFramesInFlight = 2;
 	std::array<vk::UniqueSemaphore, MaxFramesInFlight> m_imageAvailable;
 	std::array<vk::UniqueSemaphore, MaxFramesInFlight> m_renderFinished;
 	std::array<vk::UniqueFence, MaxFramesInFlight> m_inFlightFences;
