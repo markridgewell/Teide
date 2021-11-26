@@ -61,7 +61,7 @@ layout(set = 1, binding = 0) uniform ViewUniforms {
     mat4 viewProj;
 } view;
 
-layout(set = 2, binding = 0) uniform ObjectUniforms {
+layout(push_constant) uniform ObjectUniforms {
     mat4 model;
 } object;
 
@@ -923,7 +923,7 @@ BufferWithAllocation CreateBufferWithData(
 struct UniformBuffer
 {
 	std::array<BufferWithAllocation, MaxFramesInFlight> buffers;
-	vk::DeviceSize size;
+	vk::DeviceSize size = 0;
 
 	void SetData(vk::Device device, int currentFrame, BytesView data)
 	{
@@ -973,20 +973,25 @@ DescriptorSet CreateDescriptorSet(
 
 	for (size_t i = 0; i < layouts.size(); i++)
 	{
-		const auto bufferInfo = vk::DescriptorBufferInfo{
-		    .buffer = uniformBuffer.buffers[i].buffer.get(),
-		    .offset = 0,
-		    .range = uniformBuffer.size,
-		};
+		std::vector<vk::WriteDescriptorSet> descriptorWrites;
 
-		std::vector<vk::WriteDescriptorSet> descriptorWrites = {{
-		    .dstSet = descriptorSets.sets[i],
-		    .dstBinding = 0,
-		    .dstArrayElement = 0,
-		    .descriptorCount = 1,
-		    .descriptorType = vk::DescriptorType::eUniformBuffer,
-		    .pBufferInfo = &bufferInfo,
-		}};
+		if (uniformBuffer.size > 0)
+		{
+			const auto bufferInfo = vk::DescriptorBufferInfo{
+			    .buffer = uniformBuffer.buffers[i].buffer.get(),
+			    .offset = 0,
+			    .range = uniformBuffer.size,
+			};
+
+			descriptorWrites.push_back({
+			    .dstSet = descriptorSets.sets[i],
+			    .dstBinding = 0,
+			    .dstArrayElement = 0,
+			    .descriptorCount = 1,
+			    .descriptorType = vk::DescriptorType::eUniformBuffer,
+			    .pBufferInfo = &bufferInfo,
+			});
+		}
 
 		std::vector<vk::DescriptorImageInfo> imageInfos;
 		imageInfos.resize(images.size());
@@ -1225,13 +1230,7 @@ constexpr auto ViewBindings = std::array{
     },
 };
 
-constexpr auto ObjectBindings = std::array{
-    vk::DescriptorSetLayoutBinding{
-        .binding = 0,
-        .descriptorType = vk::DescriptorType::eUniformBuffer,
-        .descriptorCount = 1,
-        .stageFlags = vk::ShaderStageFlagBits::eVertex,
-    },
+constexpr auto MaterialBindings = std::array{
     vk::DescriptorSetLayoutBinding{
         .binding = 1,
         .descriptorType = vk::DescriptorType::eCombinedImageSampler,
@@ -1370,11 +1369,17 @@ vk::UniquePipeline CreateGraphicsPipeline(
 
 vk::UniquePipelineLayout CreateGraphicsPipelineLayout(vk::Device device, std::span<const vk::DescriptorSetLayout> setLayouts)
 {
+	const auto pushConstant = vk::PushConstantRange{
+	    .stageFlags = vk::ShaderStageFlagBits::eVertex,
+	    .offset = 0,
+	    .size = sizeof(ObjectUniforms),
+	};
+
 	const auto createInfo = vk::PipelineLayoutCreateInfo{
 	    .setLayoutCount = size32(setLayouts),
 	    .pSetLayouts = data(setLayouts),
-	    .pushConstantRangeCount = 0,
-	    .pPushConstantRanges = nullptr,
+	    .pushConstantRangeCount = 1,
+	    .pPushConstantRanges = &pushConstant,
 	};
 
 	return device.createPipelineLayoutUnique(createInfo, s_allocator);
@@ -1602,9 +1607,9 @@ public:
 
 		m_globalDescriptorSetLayout = CreateDescriptorSetLayout(m_device.get(), GlobalBindings);
 		m_viewDescriptorSetLayout = CreateDescriptorSetLayout(m_device.get(), ViewBindings);
-		m_objectDescriptorSetLayout = CreateDescriptorSetLayout(m_device.get(), ObjectBindings);
+		m_materialDescriptorSetLayout = CreateDescriptorSetLayout(m_device.get(), MaterialBindings);
 		const auto layouts = std::array{
-		    m_globalDescriptorSetLayout.get(), m_viewDescriptorSetLayout.get(), m_objectDescriptorSetLayout.get()};
+		    m_globalDescriptorSetLayout.get(), m_viewDescriptorSetLayout.get(), m_materialDescriptorSetLayout.get()};
 		m_pipelineLayout = CreateGraphicsPipelineLayout(m_device.get(), layouts);
 
 		m_vertexShader = CreateShaderModule(VertexShader, ShaderStage::Vertex, ShaderLang, m_device.get());
@@ -1701,11 +1706,9 @@ public:
 		m_globalUniformBuffer.SetData(m_device.get(), m_currentFrame, globalUniforms);
 
 		// Update object uniforms
-		const auto objectUniforms = ObjectUniforms{
+		m_objectUniforms = {
 		    .model = modelMatrix,
 		};
-
-		m_objectUniformBuffer.SetData(m_device.get(), m_currentFrame, objectUniforms);
 
 		// Check if a previous frame is using this image (i.e. there is its fence to wait on)
 		if (m_imagesInFlight[imageIndex])
@@ -2144,7 +2147,6 @@ private:
 		{
 			m_viewUniformBuffers.push_back(CreateUniformBuffer(sizeof(ViewUniforms), m_device.get(), *m_generalAllocator));
 		}
-		m_objectUniformBuffer = CreateUniformBuffer(sizeof(ObjectUniforms), m_device.get(), *m_generalAllocator);
 	}
 
 	void CreateDescriptorSets()
@@ -2166,7 +2168,7 @@ private:
 
 		auto descriptorPool = m_device->createDescriptorPoolUnique(poolCreateInfo, s_allocator);
 
-		// Global descriptor sets
+		// Global descriptor set
 		m_globalDescriptorSet = CreateDescriptorSet(
 		    m_globalDescriptorSetLayout.get(), descriptorPool.get(), m_device.get(), m_globalUniformBuffer);
 
@@ -2186,14 +2188,14 @@ private:
 			    m_viewDescriptorSetLayout.get(), descriptorPool.get(), m_device.get(), m_viewUniformBuffers[i], images));
 		}
 
-		// Object desriptor sets
-		const auto objectTextures = std::array{ImageView{
+		// Material desriptor set
+		const auto materialTextures = std::array{ImageView{
 		    .view = m_textureImageView.get(),
 		    .sampler = m_textureSampler.get(),
 		    .layout = vk::ImageLayout::eShaderReadOnlyOptimal,
 		}};
-		m_objectDescriptorSet = CreateDescriptorSet(
-		    m_objectDescriptorSetLayout.get(), descriptorPool.get(), m_device.get(), m_objectUniformBuffer, objectTextures);
+		m_materialDescriptorSet = CreateDescriptorSet(
+		    m_materialDescriptorSetLayout.get(), descriptorPool.get(), m_device.get(), UniformBuffer{}, materialTextures);
 
 		m_descriptorPool = std::move(descriptorPool);
 	}
@@ -2389,7 +2391,7 @@ private:
 
 		const auto descriptorSets = std::array{
 		    m_globalDescriptorSet.sets[m_currentFrame], viewDescriptorSet.sets[m_currentFrame],
-		    m_objectDescriptorSet.sets[m_currentFrame]};
+		    m_materialDescriptorSet.sets[m_currentFrame]};
 
 		commandBuffer.beginRenderPass(renderPassBegin, vk::SubpassContents::eInline);
 
@@ -2397,6 +2399,8 @@ private:
 		commandBuffer.bindVertexBuffers(0, m_vertexBuffer.get(), vk::DeviceSize{0});
 		commandBuffer.bindIndexBuffer(m_indexBuffer.get(), vk::DeviceSize{0}, vk::IndexType::eUint16);
 		commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, m_pipelineLayout.get(), 0, descriptorSets, {});
+		commandBuffer.pushConstants(
+		    m_pipelineLayout.get(), vk::ShaderStageFlagBits::eVertex, 0, sizeof(m_objectUniforms), &m_objectUniforms);
 		commandBuffer.drawIndexed(m_indexCount, 1, 0, 0, 0);
 
 		commandBuffer.endRenderPass();
@@ -2447,7 +2451,7 @@ private:
 	vk::UniqueShaderModule m_pixelShader;
 	vk::UniqueDescriptorSetLayout m_globalDescriptorSetLayout;
 	vk::UniqueDescriptorSetLayout m_viewDescriptorSetLayout;
-	vk::UniqueDescriptorSetLayout m_objectDescriptorSetLayout;
+	vk::UniqueDescriptorSetLayout m_materialDescriptorSetLayout;
 	vk::UniquePipeline m_pipeline;
 	vk::UniqueRenderPass m_renderPass;
 	vk::UniquePipelineLayout m_pipelineLayout;
@@ -2466,10 +2470,10 @@ private:
 	const uint32_t m_passCount = 2;
 	UniformBuffer m_globalUniformBuffer;
 	std::vector<UniformBuffer> m_viewUniformBuffers;
-	UniformBuffer m_objectUniformBuffer;
+	ObjectUniforms m_objectUniforms;
 	DescriptorSet m_globalDescriptorSet;
 	std::vector<DescriptorSet> m_viewDescriptorSets;
-	DescriptorSet m_objectDescriptorSet;
+	DescriptorSet m_materialDescriptorSet;
 	std::vector<vk::UniqueFramebuffer> m_swapchainFramebuffers;
 
 	// Lights
