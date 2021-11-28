@@ -12,6 +12,7 @@
 #include <assimp/scene.h>
 #include <spdlog/sinks/msvc_sink.h>
 #include <spdlog/spdlog.h>
+#include <taskflow/taskflow.hpp>
 #include <vulkan/vulkan.hpp>
 
 #define STB_IMAGE_IMPLEMENTATION
@@ -263,6 +264,13 @@ VKAPI_ATTR VkBool32 VKAPI_CALL DebugCallback(
 	using MessageType = vk::DebugUtilsMessageTypeFlagBitsEXT;
 	using MessageSeverity = vk::DebugUtilsMessageSeverityFlagBitsEXT;
 
+	// Filter unwanted messages
+	if (pCallbackData->messageIdNumber == 767975156)
+	{
+		// UNASSIGNED-BestPractices-vkCreateInstance-specialuse-extension
+		return VK_FALSE;
+	}
+
 	const char* prefix = "";
 	switch (MessageType(messageType))
 	{
@@ -308,6 +316,19 @@ constexpr auto DebugCreateInfo = [] {
 	    .pfnUserCallback = DebugCallback,
 	};
 }();
+
+template <class Type, class Dispatch>
+void SetDebugName(vk::Device device, vk::UniqueHandle<Type, Dispatch>& handle, const char* debugName)
+{
+	if constexpr (IsDebugBuild)
+	{
+		device.setDebugUtilsObjectNameEXT({
+		    .objectType = handle->objectType,
+		    .objectHandle = std::bit_cast<uint64_t>(handle.get()),
+		    .pObjectName = debugName,
+		});
+	}
+}
 
 vk::UniqueInstance CreateInstance(SDL_Window* window)
 {
@@ -700,6 +721,38 @@ vk::UniqueFence CreateFence(vk::Device device)
 	return device.createFenceUnique(vk::FenceCreateInfo{.flags = vk::FenceCreateFlagBits::eSignaled}, s_allocator);
 }
 
+struct ThreadResources
+{
+	vk::UniqueCommandPool commandPool;
+	vk::UniqueCommandBuffer commandBuffer;
+	bool usedThisFrame = false;
+
+	void Reset(vk::Device device)
+	{
+		device.resetCommandPool(commandPool.get());
+		usedThisFrame = false;
+	}
+};
+
+std::vector<ThreadResources> CreateThreadResources(uint32_t queueFamilyIndex, vk::Device device, uint32_t numThreads)
+{
+	std::vector<ThreadResources> ret;
+	ret.resize(numThreads);
+	std::ranges::generate(ret, [&] {
+		ThreadResources res;
+		res.commandPool = CreateCommandPool(queueFamilyIndex, device);
+		const auto allocateInfo = vk::CommandBufferAllocateInfo{
+		    .commandPool = res.commandPool.get(),
+		    .level = vk::CommandBufferLevel::ePrimary,
+		    .commandBufferCount = 1,
+		};
+		res.commandBuffer = std::move(device.allocateCommandBuffersUnique(allocateInfo).front());
+		return res;
+	});
+
+	return ret;
+}
+
 vk::UniqueShaderModule
 CreateShaderModule(std::string_view shaderSource, ShaderStage stage, ShaderLanguage language, vk::Device device)
 {
@@ -724,6 +777,7 @@ struct MemoryAllocation
 {
 	vk::DeviceMemory memory;
 	vk::DeviceSize offset;
+	void* mappedData;
 };
 
 // The world's simplest memory allocator
@@ -745,7 +799,14 @@ public:
 			throw CustomError("Out of memory!");
 		}
 		block.consumedSize = offset + requirements.size;
-		return {block.memory.get(), offset};
+
+		void* const mappedData = block.mappedData.get();
+
+		return {
+		    .memory = block.memory.get(),
+		    .offset = offset,
+		    .mappedData = mappedData ? static_cast<char*>(mappedData) + offset : nullptr,
+		};
 	}
 
 	void DeallocateAll()
@@ -757,12 +818,23 @@ public:
 	}
 
 private:
+	struct MemoryUnmapper
+	{
+		vk::Device device;
+		vk::DeviceMemory memory;
+
+		void operator()(void*) { device.unmapMemory(memory); }
+	};
+
+	using MappedMemory = std::unique_ptr<void, MemoryUnmapper>;
+
 	struct MemoryBlock
 	{
 		vk::DeviceSize capacity;
 		vk::DeviceSize consumedSize;
 		uint32_t memoryType;
 		vk::UniqueDeviceMemory memory;
+		MappedMemory mappedData;
 	};
 
 	MemoryBlock& FindMemoryBlock(uint32_t memoryType, vk::DeviceSize availableSize, vk::DeviceSize alignment)
@@ -798,6 +870,15 @@ private:
 			    .memoryType = memoryType,
 			    .memory = m_device.allocateMemoryUnique(allocInfo),
 			});
+
+			// Persistently map memory if it's host visible
+			const auto memoryProperties = m_physicalDevice.getMemoryProperties().memoryTypes[memoryType];
+			if ((memoryProperties.propertyFlags & vk::MemoryPropertyFlagBits::eHostVisible) != vk::MemoryPropertyFlags{})
+			{
+				auto& block = m_memoryBlocks.back();
+				block.mappedData = MappedMemory(
+				    m_device.mapMemory(block.memory.get(), 0, block.capacity), MemoryUnmapper{m_device, block.memory.get()});
+			}
 
 			return m_memoryBlocks.back();
 		}
@@ -854,11 +935,9 @@ private:
 	std::span<const std::byte> m_span;
 };
 
-void SetBufferData(vk::Device device, MemoryAllocation allocation, BytesView data)
+void SetBufferData(MemoryAllocation allocation, BytesView data)
 {
-	void* mappedData = device.mapMemory(allocation.memory, allocation.offset, data.size());
-	memcpy(mappedData, data.data(), data.size());
-	device.unmapMemory(allocation.memory);
+	memcpy(allocation.mappedData, data.data(), data.size());
 }
 
 void CopyBuffer(vk::CommandBuffer cmdBuffer, vk::Buffer source, vk::Buffer destination, vk::DeviceSize size)
@@ -907,7 +986,7 @@ BufferWithAllocation CreateBufferWithData(
 	    device.getBufferMemoryRequirements(stagingBuffer.get()),
 	    vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
 	device.bindBufferMemory(stagingBuffer.get(), stagingAlloc.memory, stagingAlloc.offset);
-	SetBufferData(device, stagingAlloc, data);
+	SetBufferData(stagingAlloc, data);
 
 	// Create vertex buffer
 	ret.buffer = CreateBuffer(device, data.size(), usage | vk::BufferUsageFlagBits::eTransferDst);
@@ -925,9 +1004,9 @@ struct UniformBuffer
 	std::array<BufferWithAllocation, MaxFramesInFlight> buffers;
 	vk::DeviceSize size = 0;
 
-	void SetData(vk::Device device, int currentFrame, BytesView data)
+	void SetData(int currentFrame, BytesView data)
 	{
-		SetBufferData(device, buffers[currentFrame % MaxFramesInFlight].allocation, data);
+		SetBufferData(buffers[currentFrame % MaxFramesInFlight].allocation, data);
 	}
 };
 
@@ -1060,15 +1139,23 @@ TransitionAccessMasks GetTransitionAccessMasks(vk::ImageLayout oldLayout, vk::Im
 	}
 	else if (oldLayout == eDepthStencilAttachmentOptimal && newLayout == eShaderReadOnlyOptimal)
 	{
-		return {Access::eDepthStencilAttachmentWrite, Access::eShaderRead};
+		return {Access::eDepthStencilAttachmentRead | Access::eDepthStencilAttachmentWrite, Access::eShaderRead};
+	}
+	else if (oldLayout == eDepthStencilAttachmentOptimal && newLayout == eDepthStencilReadOnlyOptimal)
+	{
+		return {Access::eDepthStencilAttachmentRead | Access::eDepthStencilAttachmentWrite, Access::eShaderRead};
 	}
 	else if (oldLayout == eDepthAttachmentOptimal && newLayout == eShaderReadOnlyOptimal)
 	{
-		return {Access::eDepthStencilAttachmentRead, Access::eShaderRead};
+		return {Access::eDepthStencilAttachmentRead | Access::eDepthStencilAttachmentWrite, Access::eShaderRead};
 	}
 	else if (oldLayout == eStencilAttachmentOptimal && newLayout == eShaderReadOnlyOptimal)
 	{
-		return {Access::eDepthStencilAttachmentRead, Access::eShaderRead};
+		return {Access::eDepthStencilAttachmentRead | Access::eDepthStencilAttachmentWrite, Access::eShaderRead};
+	}
+	else if (oldLayout == eShaderReadOnlyOptimal && newLayout == eDepthStencilAttachmentOptimal)
+	{
+		return {Access::eShaderRead, Access::eDepthStencilAttachmentRead | Access::eDepthStencilAttachmentWrite};
 	}
 
 	assert(false && "Unsupported image transition");
@@ -1100,7 +1187,7 @@ vk::ImageAspectFlags GetAspectMask(vk::Format format)
 
 void TransitionImageLayout(
     vk::CommandBuffer cmdBuffer, vk::Image image, vk::Format format, uint32_t mipLevelCount, vk::ImageLayout oldLayout,
-    vk::ImageLayout newLayout, vk::PipelineStageFlagBits srcStageMask, vk::PipelineStageFlagBits dstStageMask)
+    vk::ImageLayout newLayout, vk::PipelineStageFlags srcStageMask, vk::PipelineStageFlags dstStageMask)
 {
 	const auto accessMasks = GetTransitionAccessMasks(oldLayout, newLayout);
 
@@ -1477,7 +1564,7 @@ vk::UniqueRenderPass CreateShadowRenderPass(vk::Device device, vk::Format format
 	    .stencilLoadOp = vk::AttachmentLoadOp::eDontCare,
 	    .stencilStoreOp = vk::AttachmentStoreOp::eDontCare,
 	    .initialLayout = vk::ImageLayout::eUndefined,
-	    .finalLayout = vk::ImageLayout::eDepthStencilReadOnlyOptimal,
+	    .finalLayout = vk::ImageLayout::eDepthStencilAttachmentOptimal,
 	};
 
 	const auto attachmentRef = vk::AttachmentReference{
@@ -1493,33 +1580,11 @@ vk::UniqueRenderPass CreateShadowRenderPass(vk::Device device, vk::Format format
 	    .pDepthStencilAttachment = &attachmentRef,
 	};
 
-	const auto dependencies = std::array{
-	    vk::SubpassDependency{
-	        .srcSubpass = VK_SUBPASS_EXTERNAL,
-	        .dstSubpass = 0,
-	        .srcStageMask = vk::PipelineStageFlagBits::eFragmentShader,
-	        .dstStageMask = vk::PipelineStageFlagBits::eEarlyFragmentTests,
-	        .srcAccessMask = vk::AccessFlagBits::eShaderRead,
-	        .dstAccessMask = vk::AccessFlagBits::eDepthStencilAttachmentWrite,
-	        .dependencyFlags = vk::DependencyFlagBits::eByRegion,
-	    },
-	    vk::SubpassDependency{
-	        .srcSubpass = 0,
-	        .dstSubpass = VK_SUBPASS_EXTERNAL,
-	        .srcStageMask = vk::PipelineStageFlagBits::eLateFragmentTests,
-	        .dstStageMask = vk::PipelineStageFlagBits::eFragmentShader,
-	        .srcAccessMask = vk::AccessFlagBits::eDepthStencilAttachmentWrite,
-	        .dstAccessMask = vk::AccessFlagBits::eShaderRead,
-	        .dependencyFlags = vk::DependencyFlagBits::eByRegion,
-	    }};
-
 	const auto createInfo = vk::RenderPassCreateInfo{
 	    .attachmentCount = 1,
 	    .pAttachments = &attachment,
 	    .subpassCount = 1,
 	    .pSubpasses = &subpass,
-	    .dependencyCount = size32(dependencies),
-	    .pDependencies = data(dependencies),
 	};
 
 	return device.createRenderPassUnique(createInfo, s_allocator);
@@ -1563,7 +1628,8 @@ public:
 	static constexpr float CameraZoomSpeed = 0.002f;
 	static constexpr float CameraMoveSpeed = 0.001f;
 
-	explicit VulkanApp(SDL_Window* window, const char* imageFilename, const char* modelFilename) : m_window{window}
+	explicit VulkanApp(SDL_Window* window, const char* imageFilename, const char* modelFilename) :
+	    m_window{window}, m_renderExecutor(2)
 	{
 		vk::DynamicLoader dl;
 		VULKAN_HPP_DEFAULT_DISPATCHER.init(dl.getProcAddress<PFN_vkGetInstanceProcAddr>("vkGetInstanceProcAddr"));
@@ -1600,10 +1666,16 @@ public:
 		m_generalAllocator.emplace(m_device.get(), m_physicalDevice);
 		m_swapchainAllocator.emplace(m_device.get(), m_physicalDevice);
 
+		m_setupCommandPool = CreateCommandPool(m_graphicsQueueFamily, m_device.get());
+
+		const uint32_t numRenderThreads = static_cast<uint32_t>(m_renderExecutor.num_workers());
+
 		std::ranges::generate(m_imageAvailable, [this] { return CreateSemaphore(m_device.get()); });
 		std::ranges::generate(m_renderFinished, [this] { return CreateSemaphore(m_device.get()); });
 		std::ranges::generate(m_inFlightFences, [this] { return CreateFence(m_device.get()); });
-		std::ranges::generate(m_commandPools, [this] { return CreateCommandPool(m_graphicsQueueFamily, m_device.get()); });
+		std::ranges::generate(m_threadResources, [this, numRenderThreads] {
+			return CreateThreadResources(m_graphicsQueueFamily, m_device.get(), numRenderThreads);
+		});
 
 		m_globalDescriptorSetLayout = CreateDescriptorSetLayout(m_device.get(), GlobalBindings);
 		m_viewDescriptorSetLayout = CreateDescriptorSetLayout(m_device.get(), ViewBindings);
@@ -1623,17 +1695,6 @@ public:
 		CreateTextureSampler();
 		CreateShadowMap();
 		CreateDescriptorSets();
-
-		for (size_t i = 0; i < MaxFramesInFlight; i++)
-		{
-			const auto allocateInfo = vk::CommandBufferAllocateInfo{
-			    .commandPool = m_commandPools[i].get(),
-			    .level = vk::CommandBufferLevel::ePrimary,
-			    .commandBufferCount = 1,
-			};
-
-			m_commandBuffers[i] = std::move(m_device->allocateCommandBuffersUnique(allocateInfo).front());
-		}
 
 		spdlog::info("Vulkan initialised successfully");
 	}
@@ -1703,7 +1764,7 @@ public:
 		    .ambientColorBottom = {0.003f, 0.003f, 0.002f},
 		    .shadowMatrix = m_shadowMatrix,
 		};
-		m_globalUniformBuffer.SetData(m_device.get(), m_currentFrame, globalUniforms);
+		m_globalUniformBuffer.SetData(m_currentFrame, globalUniforms);
 
 		// Update object uniforms
 		m_objectUniforms = {
@@ -1719,43 +1780,75 @@ public:
 		// Mark the image as in flight
 		m_imagesInFlight[imageIndex] = m_inFlightFences[m_currentFrame].get();
 
-		m_device->resetCommandPool(m_commandPools[m_currentFrame].get());
+		auto& frameResources = m_threadResources[m_currentFrame];
+		for (auto& threadResources : frameResources)
+		{
+			threadResources.Reset(m_device.get());
+		}
 
-		const vk::CommandBuffer commandBuffer = m_commandBuffers[m_currentFrame].get();
+		const vk::Framebuffer finalFramebuffer = m_swapchainFramebuffers[imageIndex].get();
 
-		commandBuffer.begin(vk::CommandBufferBeginInfo{});
+		// Multi-threaded command buffer recording
+		tf::Taskflow taskflow;
 
 		//
 		// Pass 0. Draw shadows
 		//
-		const auto clearDepthStencil = vk::ClearDepthStencilValue{1.0f, 0};
-		const auto clearValues = std::array{
-		    vk::ClearValue{clearDepthStencil},
-		};
+		auto shadowPass = taskflow.emplace([this, &frameResources] {
+			const uint32_t taskIndex = 0; // m_renderExecutor.this_worker_id()
+			auto& threadResources = frameResources[taskIndex];
 
-		{
+			const vk::CommandBuffer commandBuffer = threadResources.commandBuffer.get();
+			if (!threadResources.usedThisFrame)
+			{
+				commandBuffer.begin(vk::CommandBufferBeginInfo{});
+				threadResources.usedThisFrame = true;
+			}
+
+			const auto clearDepthStencil = vk::ClearDepthStencilValue{1.0f, 0};
+			const auto clearValues = std::array{
+			    vk::ClearValue{clearDepthStencil},
+			};
+
 			// Update view uniforms
 			const auto viewUniforms = ViewUniforms{
 			    .viewProj = m_shadowMatrix,
 			};
 
-			m_viewUniformBuffers[0].SetData(m_device.get(), m_currentFrame, viewUniforms);
-		}
+			m_viewUniformBuffers[0].SetData(m_currentFrame, viewUniforms);
 
-		DrawObjects(
-		    commandBuffer, m_shadowRenderPass.get(), m_shadowMapFramebuffer.get(), clearValues,
-		    m_shadowMapPipeline.get(), m_shadowMapExtent, m_viewDescriptorSets[0]);
+			TransitionImageLayout(
+			    commandBuffer, m_shadowMap.get(), m_shadowMapFormat, 1, vk::ImageLayout::eUndefined,
+			    vk::ImageLayout::eDepthStencilAttachmentOptimal, vk::PipelineStageFlagBits::eTopOfPipe,
+			    vk::PipelineStageFlagBits::eEarlyFragmentTests);
+
+			DrawObjects(
+			    commandBuffer, m_shadowRenderPass.get(), m_shadowMapFramebuffer.get(), clearValues,
+			    m_shadowMapPipeline.get(), m_shadowMapExtent, m_viewDescriptorSets[0]);
+		});
 
 		//
 		// Pass 1. Draw scene
 		//
-		const auto clearColor = std::array{0.0f, 0.0f, 0.0f, 1.0f};
-		const auto clearValues2 = std::array{
-		    vk::ClearValue{clearColor},
-		    vk::ClearValue{clearDepthStencil},
-		};
+		auto mainPass = taskflow.emplace([this, &frameResources, finalFramebuffer] {
+			const uint32_t taskIndex
+			    = std::min(1u, (uint32_t)m_renderExecutor.num_workers() - 1); // m_renderExecutor.this_worker_id();
+			auto& threadResources = frameResources[taskIndex];
 
-		{
+			const vk::CommandBuffer commandBuffer = threadResources.commandBuffer.get();
+			if (!threadResources.usedThisFrame)
+			{
+				commandBuffer.begin(vk::CommandBufferBeginInfo{});
+				threadResources.usedThisFrame = true;
+			}
+
+			const auto clearColor = std::array{0.0f, 0.0f, 0.0f, 1.0f};
+			const auto clearDepthStencil = vk::ClearDepthStencilValue{1.0f, 0};
+			const auto clearValues = std::array{
+			    vk::ClearValue{clearColor},
+			    vk::ClearValue{clearDepthStencil},
+			};
+
 			// Update view uniforms
 			const float aspectRatio = static_cast<float>(m_surfaceExtent.width) / static_cast<float>(m_surfaceExtent.height);
 
@@ -1772,23 +1865,38 @@ public:
 			const auto viewUniforms = ViewUniforms{
 			    .viewProj = viewProj,
 			};
-			m_viewUniformBuffers[1].SetData(m_device.get(), m_currentFrame, viewUniforms);
+			m_viewUniformBuffers[1].SetData(m_currentFrame, viewUniforms);
+
+			TransitionImageLayout(
+			    commandBuffer, m_shadowMap.get(), m_shadowMapFormat, 1, vk::ImageLayout::eDepthStencilAttachmentOptimal,
+			    vk::ImageLayout::eDepthStencilReadOnlyOptimal, vk::PipelineStageFlagBits::eLateFragmentTests,
+			    vk::PipelineStageFlagBits::eFragmentShader);
+
+			DrawObjects(
+			    commandBuffer, m_renderPass.get(), finalFramebuffer, clearValues, m_pipeline.get(), m_surfaceExtent,
+			    m_viewDescriptorSets[1]);
+		});
+
+		m_renderExecutor.run(taskflow).wait();
+
+		// Submit the command buffer(s)
+		std::vector<vk::CommandBuffer> commandBuffersToSubmit;
+		for (const auto& threadResources : frameResources)
+		{
+			if (threadResources.usedThisFrame)
+			{
+				threadResources.commandBuffer->end();
+				commandBuffersToSubmit.push_back(threadResources.commandBuffer.get());
+			}
 		}
 
-		DrawObjects(
-		    commandBuffer, m_renderPass.get(), m_swapchainFramebuffers[imageIndex].get(), clearValues2,
-		    m_pipeline.get(), m_surfaceExtent, m_viewDescriptorSets[1]);
-
-		commandBuffer.end();
-
-		// Submit the command buffer
 		const vk::PipelineStageFlags waitStage = vk::PipelineStageFlagBits::eColorAttachmentOutput;
 		const auto submitInfo = vk::SubmitInfo{
 		    .waitSemaphoreCount = 1,
 		    .pWaitSemaphores = &m_imageAvailable[m_currentFrame].get(),
 		    .pWaitDstStageMask = &waitStage,
-		    .commandBufferCount = 1,
-		    .pCommandBuffers = &m_commandBuffers[m_currentFrame].get(),
+		    .commandBufferCount = size32(commandBuffersToSubmit),
+		    .pCommandBuffers = data(commandBuffersToSubmit),
 		    .signalSemaphoreCount = 1,
 		    .pSignalSemaphores = &m_renderFinished[m_currentFrame].get(),
 		};
@@ -1909,10 +2017,7 @@ public:
 	}
 
 private:
-	auto OneShotCommands()
-	{
-		return OneShotCommandBuffer(m_device.get(), m_commandPools[m_currentFrame].get(), m_graphicsQueue);
-	}
+	auto OneShotCommands() { return OneShotCommandBuffer(m_device.get(), m_setupCommandPool.get(), m_graphicsQueue); }
 
 	void CreateSwapchainAndImages()
 	{
@@ -1960,6 +2065,7 @@ private:
 		};
 
 		m_colorImage = m_device->createImageUnique(imageInfo, s_allocator);
+		SetDebugName(m_device.get(), m_colorImage, "ColorImage");
 		const auto allocation = m_swapchainAllocator->Allocate(
 		    m_device->getImageMemoryRequirements(m_colorImage.get()), vk::MemoryPropertyFlagBits::eDeviceLocal);
 		m_device->bindImageMemory(m_colorImage.get(), allocation.memory, allocation.offset);
@@ -1983,6 +2089,7 @@ private:
 			},
 		};
 		m_colorImageView = m_device->createImageViewUnique(viewInfo, s_allocator);
+		SetDebugName(m_device.get(), m_colorImageView, "ColorImageView");
 	}
 
 	void CreateDepthBuffer()
@@ -2007,6 +2114,7 @@ private:
 		};
 
 		m_depthImage = m_device->createImageUnique(imageInfo, s_allocator);
+		SetDebugName(m_device.get(), m_depthImage, "DepthImage");
 		const auto allocation = m_swapchainAllocator->Allocate(
 		    m_device->getImageMemoryRequirements(m_depthImage.get()), vk::MemoryPropertyFlagBits::eDeviceLocal);
 		m_device->bindImageMemory(m_depthImage.get(), allocation.memory, allocation.offset);
@@ -2030,23 +2138,26 @@ private:
 			},
 		};
 		m_depthImageView = m_device->createImageViewUnique(viewInfo, s_allocator);
+		SetDebugName(m_device.get(), m_depthImageView, "DepthImageView");
 	}
 
 	void CreateVertexBuffer(BytesView data)
 	{
 		auto result = CreateBufferWithData(
-		    m_device.get(), m_generalAllocator.value(), m_commandPools[m_currentFrame].get(), m_graphicsQueue, data,
+		    m_device.get(), m_generalAllocator.value(), m_setupCommandPool.get(), m_graphicsQueue, data,
 		    vk::BufferUsageFlagBits::eVertexBuffer);
 		m_vertexBuffer = std::move(result.buffer);
+		SetDebugName(m_device.get(), m_vertexBuffer, "VertexBuffer");
 		m_vertexBufferMemory = std::move(result.allocation);
 	}
 
 	void CreateIndexBuffer(std::span<const uint16_t> data)
 	{
 		auto result = CreateBufferWithData(
-		    m_device.get(), m_generalAllocator.value(), m_commandPools[m_currentFrame].get(), m_graphicsQueue, data,
+		    m_device.get(), m_generalAllocator.value(), m_setupCommandPool.get(), m_graphicsQueue, data,
 		    vk::BufferUsageFlagBits::eIndexBuffer);
 		m_indexBuffer = std::move(result.buffer);
+		SetDebugName(m_device.get(), m_indexBuffer, "IndexBuffer");
 		m_indexBufferMemory = std::move(result.allocation);
 		m_indexCount = size32(data);
 	}
@@ -2225,7 +2336,7 @@ private:
 		    m_device->getBufferMemoryRequirements(stagingBuffer.get()),
 		    vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
 		m_device->bindBufferMemory(stagingBuffer.get(), stagingAlloc.memory, stagingAlloc.offset);
-		SetBufferData(m_device.get(), stagingAlloc, std::span(pixels.get(), imageSize));
+		SetBufferData(stagingAlloc, std::span(pixels.get(), imageSize));
 
 		// Create image
 		const auto imageExtent = vk::Extent3D{static_cast<uint32_t>(width), static_cast<uint32_t>(height), 1};
@@ -2309,6 +2420,7 @@ private:
 		};
 
 		m_shadowMap = m_device->createImageUnique(imageInfo, s_allocator);
+		SetDebugName(m_device.get(), m_shadowMap, "ShadowMap");
 		m_shadowMapMemory = m_generalAllocator->Allocate(
 		    m_device->getImageMemoryRequirements(m_shadowMap.get()), vk::MemoryPropertyFlagBits::eDeviceLocal);
 		m_device->bindImageMemory(m_shadowMap.get(), m_shadowMapMemory.memory, m_shadowMapMemory.offset);
@@ -2331,6 +2443,7 @@ private:
 			},
 		};
 		m_shadowMapView = m_device->createImageViewUnique(viewInfo, s_allocator);
+		SetDebugName(m_device.get(), m_shadowMapView, "ShadowMapView");
 
 		// Create sampler
 		const auto samplerInfo = vk::SamplerCreateInfo{
@@ -2348,9 +2461,11 @@ private:
 		};
 
 		m_shadowMapSampler = m_device->createSamplerUnique(samplerInfo, s_allocator);
+		SetDebugName(m_device.get(), m_shadowMapSampler, "ShadowMapSampler");
 
 		// Create render pass
 		m_shadowRenderPass = CreateShadowRenderPass(m_device.get(), m_shadowMapFormat);
+		SetDebugName(m_device.get(), m_shadowRenderPass, "ShadowRenderPass");
 
 		// Create framebuffer
 		const auto framebufferCreateInfo = vk::FramebufferCreateInfo{
@@ -2379,7 +2494,7 @@ private:
 	void DrawObjects(
 	    vk::CommandBuffer commandBuffer, vk::RenderPass renderPass, vk::Framebuffer framebuffer,
 	    std::span<const vk::ClearValue> clearValues, vk::Pipeline pipeline, vk::Extent2D extent,
-	    const DescriptorSet& viewDescriptorSet)
+	    const DescriptorSet& viewDescriptorSet) const
 	{
 		const auto renderPassBegin = vk::RenderPassBeginInfo{
 		    .renderPass = renderPass,
@@ -2445,6 +2560,7 @@ private:
 	MemoryAllocation m_depthMemory;
 	vk::UniqueImageView m_depthImageView;
 	vk::UniqueDescriptorPool m_descriptorPool;
+	vk::UniqueCommandPool m_setupCommandPool;
 
 	// Object setup
 	vk::UniqueShaderModule m_vertexShader;
@@ -2501,10 +2617,10 @@ private:
 	std::array<vk::UniqueSemaphore, MaxFramesInFlight> m_imageAvailable;
 	std::array<vk::UniqueSemaphore, MaxFramesInFlight> m_renderFinished;
 	std::array<vk::UniqueFence, MaxFramesInFlight> m_inFlightFences;
-	std::array<vk::UniqueCommandPool, MaxFramesInFlight> m_commandPools;
-	std::array<vk::UniqueCommandBuffer, MaxFramesInFlight> m_commandBuffers;
-
 	std::vector<vk::Fence> m_imagesInFlight;
+
+	tf::Executor m_renderExecutor;
+	std::array<std::vector<ThreadResources>, MaxFramesInFlight> m_threadResources;
 };
 
 struct SDLWindowDeleter

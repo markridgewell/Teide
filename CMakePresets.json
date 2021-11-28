@@ -22,7 +22,7 @@
          "generator": "Visual Studio 16 2019",
          "architecture": "x64",
          "cacheVariables": {
-            "CMAKE_CXX_FLAGS": "/std:c++latest /W4 /WX /EHsc /permissive- /external:W0 /analyze:external- /external:anglebrackets /external:templates-",
+            "CMAKE_CXX_FLAGS": "/W4 /WX /EHsc /permissive- /external:W0 /analyze:external- /external:anglebrackets /external:templates-",
             "CMAKE_CXX_FLAGS_DEBUG": "/Zi /Od /Ob0 /JMC"
          }
       },
@@ -32,7 +32,7 @@
          "displayName": "Visual Studio 2022",
          "generator": "Visual Studio 17 2022",
          "cacheVariables": {
-            "CMAKE_CXX_FLAGS": "/std:c++latest /W4 /WX /EHsc /permissive- /external:W0 /analyze:external- /external:anglebrackets /external:templates-",
+            "CMAKE_CXX_FLAGS": "/W4 /WX /EHsc /permissive- /external:W0 /analyze:external- /external:anglebrackets /external:templates-",
             "CMAKE_CXX_FLAGS_DEBUG": "/Zi /Od /Ob0 /JMC"
          }
       },
@@ -44,7 +44,7 @@
          "toolset": "ClangCL",
          "architecture": "x64",
          "cacheVariables": {
-            "CMAKE_CXX_FLAGS": "/std:c++latest /W4 /WX /EHsc /permissive- /external:W0 /analyze:external- /external:anglebrackets /external:templates-",
+            "CMAKE_CXX_FLAGS": "/W4 /WX /EHsc /permissive- /external:W0 /analyze:external- /external:anglebrackets /external:templates-",
             "CMAKE_CXX_FLAGS_DEBUG": "/Zi /Od /Ob0 /JMC"
          }
       },
@@ -55,7 +55,7 @@
          "generator": "Visual Studio 17 2022",
          "toolset": "ClangCL",
          "cacheVariables": {
-            "CMAKE_CXX_FLAGS": "/std:c++latest /W4 /WX /EHsc /permissive- /external:W0 /analyze:external- /external:anglebrackets /external:templates-",
+            "CMAKE_CXX_FLAGS": "/W4 /WX /EHsc /permissive- /external:W0 /analyze:external- /external:anglebrackets /external:templates-",
             "CMAKE_CXX_FLAGS_DEBUG": "/Zi /Od /Ob0 /JMC"
          }
       },

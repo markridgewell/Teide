@@ -12,10 +12,18 @@ find_package(spdlog CONFIG REQUIRED)
 find_package(glslang CONFIG REQUIRED)
 find_package(assimp CONFIG REQUIRED)
 find_package(GTest CONFIG REQUIRED)
+find_package(Taskflow CONFIG REQUIRED)
 find_path(STB_INCLUDE_DIRS "stb.h")
 
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT Teide)
+
+if(MSVC)
+# Current Visual Studio versions require /std:c++latest for some C++20 features, which requires cxx_std_23
+set(cxx_standard cxx_std_23)
+else()
+set(cxx_standard cxx_std_20)
+endif()
 
 include(CTest)
 enable_testing()
@@ -32,6 +40,7 @@ set(sources
 
 add_library(GeoLib INTERFACE ${sources})
 target_include_directories(GeoLib INTERFACE ${GeoLibInclude})
+target_compile_features(GeoLib INTERFACE ${cxx_standard})
 
 # ----- GeoLibTest -----
 
@@ -43,6 +52,7 @@ set(sources
 )
 
 add_executable(GeoLibTest ${sources})
+target_compile_features(GeoLibTest PRIVATE ${cxx_standard})
 target_link_libraries(GeoLibTest PRIVATE GeoLib
     GTest::gtest GTest::gmock
     fmt::fmt)
@@ -59,6 +69,7 @@ set(sources
 
 add_executable(Teide WIN32 ${sources})
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${sources})
+target_compile_features(Teide PRIVATE ${cxx_standard})
 target_compile_definitions(Teide PRIVATE VULKAN_HPP_NO_STRUCT_CONSTRUCTORS VULKAN_HPP_DISPATCH_LOADER_DYNAMIC=1)
 set_property(TARGET Teide PROPERTY VS_DPI_AWARE "PerMonitor")
 
@@ -70,5 +81,12 @@ target_link_libraries(Teide PRIVATE
     spdlog::spdlog
     HLSL SPIRV glslang OGLCompiler
     assimp::assimp
+    Taskflow::Taskflow
 )
 target_include_directories(Teide PRIVATE ${STB_INCLUDE_DIRS})
+
+# Visual Studio debugging environment, from preset
+set_property(TARGET Teide PROPERTY VS_DEBUGGER_COMMAND ${TEIDE_VS_DEBUGGER_COMMAND})
+set_property(TARGET Teide PROPERTY VS_DEBUGGER_COMMAND_ARGUMENTS ${TEIDE_VS_DEBUGGER_COMMAND_ARGUMENTS})
+set_property(TARGET Teide PROPERTY VS_DEBUGGER_ENVIRONMENT ${TEIDE_VS_DEBUGGER_ENVIRONMENT})
+set_property(TARGET Teide PROPERTY VS_DEBUGGER_WORKING_DIRECTORY ${TEIDE_VS_DEBUGGER_WORKING_DIRECTORY})
