@@ -1,6 +1,7 @@
 
 #pragma once
 
+#include "GeoLib/Angle.h"
 #include "GeoLib/Vector.h"
 
 #include <fmt/core.h>
@@ -44,6 +45,12 @@ bool ApproxEqual(const Geo::Vector<T, N, Tag>& a, const Geo::Vector<T, N, Tag>& 
 		}
 	}
 	return true;
+}
+
+template <class T>
+bool ApproxEqual(Geo::AngleT<T> a, Geo::AngleT<T> b)
+{
+	return ApproxEqual(a.AsRadians(), b.AsRadians());
 }
 
 MATCHER_P(ApproxEq, v, fmt::format("{} [approximately]", testing::PrintToString(v)))

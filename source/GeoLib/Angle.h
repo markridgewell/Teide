@@ -7,6 +7,10 @@
 namespace Geo
 {
 template <class T>
+constexpr T PiT = std::numbers::pi_v<T>;
+constexpr float Pi = PiT<float>;
+
+template <class T>
 class AngleT
 {
 public:
@@ -16,11 +20,11 @@ public:
 
 	static constexpr AngleT Degrees(T degrees) noexcept
 	{
-		return AngleT(static_cast<T>(degrees / 180.0 * std::numbers::pi_v<long double>));
+		return AngleT(static_cast<T>(degrees / 180.0 * PiT<long double>));
 	}
 
 	constexpr T AsRadians() const noexcept { return m_radians; }
-	constexpr T AsDegrees() const noexcept { return m_radians / std::numbers::pi_v<T> * 180.0f; }
+	constexpr T AsDegrees() const noexcept { return m_radians / PiT<T> * 180.0f; }
 
 	friend constexpr AngleT operator*(AngleT a, T b) noexcept { return {a.m_radians * b}; }
 	friend constexpr AngleT operator/(AngleT a, T b) noexcept { return {a.m_radians / b}; }
@@ -49,6 +53,8 @@ public:
 		a.m_radians /= b;
 		return a;
 	}
+
+	auto friend operator<=>(AngleT a, AngleT b) = default;
 
 private:
 	constexpr AngleT(T r) noexcept : m_radians{r} {}

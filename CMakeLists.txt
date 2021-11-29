@@ -47,6 +47,7 @@ target_compile_features(GeoLib INTERFACE ${cxx_standard})
 set(sources
     test/GeoLib/Main.cpp
     test/GeoLib/TestUtils.h
+    test/GeoLib/AngleTest.cpp
     test/GeoLib/MatrixTest.cpp
     test/GeoLib/VectorTest.cpp
 )

@@ -26,3 +26,31 @@ TEST(MatrixTest, DotVector4)
 }
 
 } // namespace
+
+namespace Geo
+{
+// Explicit instantiations to ensure correct code coverage
+template Vector<float, 1, VectorTag>;
+template Vector<float, 2, VectorTag>;
+template Vector<float, 3, VectorTag>;
+template Vector<float, 4, VectorTag>;
+
+template Vector<float, 3, VectorTag> operator+(const Vector<float, 3, VectorTag>& a, const Vector<float, 3, VectorTag>& b) noexcept;
+template Vector<float, 3, VectorTag>& operator+=(Vector<float, 3, VectorTag>& a, const Vector<float, 3, VectorTag>& b) noexcept;
+template Vector<float, 3, PointTag> operator+(const Vector<float, 3, PointTag>& a, const Vector<float, 3, VectorTag>& b) noexcept;
+template Vector<float, 3, PointTag>& operator+=(Vector<float, 3, PointTag>& a, const Vector<float, 3, VectorTag>& b) noexcept;
+template Vector<float, 3, PointTag> operator+(const Vector<float, 3, VectorTag>& a, const Vector<float, 3, PointTag>& b) noexcept;
+template Vector<float, 3, VectorTag> operator-(const Vector<float, 3, VectorTag>& a, const Vector<float, 3, VectorTag>& b) noexcept;
+template Vector<float, 3, VectorTag>& operator-=(Vector<float, 3, VectorTag>& a, const Vector<float, 3, VectorTag>& b) noexcept;
+template Vector<float, 3, PointTag> operator-(const Vector<float, 3, PointTag>& a, const Vector<float, 3, VectorTag>& b) noexcept;
+template Vector<float, 3, PointTag>& operator-=(Vector<float, 3, PointTag>& a, const Vector<float, 3, VectorTag>& b) noexcept;
+template Vector<float, 3, VectorTag> operator-(const Vector<float, 3, PointTag>& a, const Vector<float, 3, PointTag>& b) noexcept;
+template Vector<float, 3, VectorTag> operator-(const Vector<float, 3, VectorTag>& a) noexcept;
+template Vector<float, 3, VectorTag> operator*(const Vector<float, 3, VectorTag>& a, float b) noexcept;
+template Vector<float, 3, VectorTag> operator/(const Vector<float, 3, VectorTag>& a, float b) noexcept;
+
+template float Magnitude(const Vector<float, 3, VectorTag>& a) noexcept;
+template Vector<float, 3, VectorTag> Normalise(const Vector<float, 3, VectorTag>& a) noexcept;
+template float Dot(const Vector<float, 3, VectorTag>& a, const Vector<float, 3, VectorTag>& b) noexcept;
+template Vector<float, 3, VectorTag> Cross(const Vector<float, 3, VectorTag>& a, const Vector<float, 3, VectorTag>& b) noexcept;
+} // namespace Geo

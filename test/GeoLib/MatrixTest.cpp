@@ -105,3 +105,25 @@ TEST(MatrixTest, Matrix4Rotation)
 }
 
 } // namespace
+
+namespace Geo
+{
+// Explicit instantiations to ensure correct code coverage
+template Matrix<float, 1, 1>;
+template Matrix<float, 2, 2>;
+template Matrix<float, 3, 3>;
+template Matrix<float, 4, 4>;
+
+template Matrix<float, 4, 4> operator*(const Matrix<float, 4, 4>& a, const Matrix<float, 4, 4>& b) noexcept;
+template Vector<float, 4, VectorTag> operator*(const Matrix<float, 4, 4>& a, const Vector<float, 4, VectorTag>& b) noexcept;
+template Vector<float, 3, VectorTag> operator*(const Matrix<float, 4, 4>& a, const Vector<float, 3, VectorTag>& b) noexcept;
+template Vector<float, 3, PointTag> operator*(const Matrix<float, 4, 4>& a, const Vector<float, 3, PointTag>& b) noexcept;
+template Matrix<float, 4, 4> Transpose(const Matrix<float, 4, 4>& m) noexcept;
+template Matrix<float, 4, 4> LookAt(
+    const Vector<float, 3, PointTag>& eye, const Vector<float, 3, PointTag>& target,
+    const Vector<float, 3, VectorTag>& up) noexcept;
+template Matrix<float, 4, 4> Perspective(AngleT<float> fovy, float aspect, float near, float far) noexcept;
+template Matrix<float, 4, 4> Orthographic(float width, float height) noexcept;
+template Matrix<float, 4, 4> Orthographic(float left, float right, float bottom, float top, float nclip, float fclip) noexcept;
+
+} // namespace Geo
