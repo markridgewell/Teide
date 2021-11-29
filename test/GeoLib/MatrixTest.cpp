@@ -106,6 +106,7 @@ TEST(MatrixTest, Matrix4Rotation)
 
 } // namespace
 
+#ifdef _MSC_VER
 namespace Geo
 {
 // Explicit instantiations to ensure correct code coverage
@@ -127,3 +128,4 @@ template Matrix<float, 4, 4> Orthographic(float width, float height) noexcept;
 template Matrix<float, 4, 4> Orthographic(float left, float right, float bottom, float top, float nclip, float fclip) noexcept;
 
 } // namespace Geo
+#endif

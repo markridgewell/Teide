@@ -27,6 +27,7 @@ TEST(MatrixTest, DotVector4)
 
 } // namespace
 
+#ifdef _MSC_VER
 namespace Geo
 {
 // Explicit instantiations to ensure correct code coverage
@@ -54,3 +55,4 @@ template Vector<float, 3, VectorTag> Normalise(const Vector<float, 3, VectorTag>
 template float Dot(const Vector<float, 3, VectorTag>& a, const Vector<float, 3, VectorTag>& b) noexcept;
 template Vector<float, 3, VectorTag> Cross(const Vector<float, 3, VectorTag>& a, const Vector<float, 3, VectorTag>& b) noexcept;
 } // namespace Geo
+#endif
