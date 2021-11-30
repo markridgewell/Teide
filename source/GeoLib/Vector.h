@@ -177,6 +177,12 @@ constexpr Vector<T, N, VectorTag> operator-(const Vector<T, N, PointTag>& a, con
 {
 	return Impl::Subtract<VectorTag>(a, b);
 }
+template <class T, int N>
+constexpr Vector<T, N, PointTag>& operator-=(Vector<T, N, PointTag>& a, const Vector<T, N, PointTag>& b) noexcept
+{
+	a = Impl::Subtract<PointTag>(a, b);
+	return a;
+}
 
 template <class T, int N, class Tag>
 constexpr Vector<T, N, Tag> operator-(const Vector<T, N, Tag>& a) noexcept
@@ -201,6 +207,12 @@ constexpr Vector<T, N, Tag> operator*(const Vector<T, N, Tag>& a, T b) noexcept
 }
 
 template <class T, int N, class Tag>
+constexpr Vector<T, N, Tag>& operator*=(Vector<T, N, Tag>& a, T b) noexcept
+{
+	return a = a * b;
+}
+
+template <class T, int N, class Tag>
 constexpr Vector<T, N, Tag> operator/(const Vector<T, N, Tag>& a, T b) noexcept
 {
 	Vector<T, N, Tag> ret{};
@@ -209,6 +221,12 @@ constexpr Vector<T, N, Tag> operator/(const Vector<T, N, Tag>& a, T b) noexcept
 		ret[i] = a[i] / b;
 	}
 	return ret;
+}
+
+template <class T, int N, class Tag>
+constexpr Vector<T, N, Tag>& operator/=(Vector<T, N, Tag>& a, T b) noexcept
+{
+	return a = a / b;
 }
 
 // Vector operations
