@@ -6,7 +6,6 @@
 
 namespace Geo
 {
-
 namespace Impl
 {
 	template <class T, int N>
