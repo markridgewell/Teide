@@ -2,6 +2,7 @@
 #pragma once
 
 #include "GeoLib/Angle.h"
+#include "GeoLib/Matrix.h"
 #include "GeoLib/Vector.h"
 
 #include <fmt/core.h>
@@ -12,6 +13,7 @@
 
 namespace Geo
 {
+
 template <class T, int N, class Tag>
 std::ostream& operator<<(std::ostream& os, const Vector<T, N, Tag>& v)
 {
@@ -22,10 +24,21 @@ std::ostream& operator<<(std::ostream& os, const Vector<T, N, Tag>& v)
 	}
 	return os << v[N - 1] << ')';
 }
+
+template <class T, int M, int N>
+std::ostream& operator<<(std::ostream& os, const Matrix<T, M, N>& m)
+{
+	os << '(';
+	for (int i = 0; i < N - 1; i++)
+	{
+		os << m[i] << ", ";
+	}
+	return os << m[N - 1] << ')';
+}
 } // namespace Geo
 
 template <class T>
-constexpr T Epsilon = std::numeric_limits<T>::epsilon();
+constexpr T Epsilon = std::numeric_limits<T>::epsilon() * T{10};
 
 template <class T>
 	requires std::floating_point<T>

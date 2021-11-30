@@ -6,107 +6,136 @@
 
 namespace Geo
 {
+
+namespace Impl
+{
+	template <class T, int N>
+	consteval Vector<T, N, VectorTag> InitRow(T x, T y, T z, T w)
+	{
+		if constexpr (N == 1)
+			return {x};
+		if constexpr (N == 2)
+			return {x, y};
+		if constexpr (N == 3)
+			return {x, y, z};
+		if constexpr (N == 4)
+			return {x, y, z, w};
+	}
+
+	template <class T, int N, int Row>
+	consteval Vector<T, N, VectorTag> MatrixIdentityRow()
+	{
+		return InitRow<T, N>(Row == 0 ? T{1} : 0, Row == 1 ? T{1} : 0, Row == 2 ? T{1} : 0, Row == 3 ? T{1} : 0);
+	}
+} // namespace Impl
+
 template <class T, int M, int N>
 struct Matrix;
 
-template <class T, int M>
-struct Matrix<T, M, 1>
+template <class T, int N>
+struct Matrix<T, 1, N>
 {
-	Vector<T, M, VectorTag> x;
+	Vector<T, N, VectorTag> x = Impl::MatrixIdentityRow<T, N, 0>();
 
-	constexpr auto& operator[](int i) noexcept { return this->*members[i]; }
-	constexpr auto operator[](int i) const noexcept { return this->*members[i]; }
-
-	friend auto operator<=>(const Matrix& a, const Matrix& b) noexcept = default;
-
-	static Matrix<T, M, 1> Identity() noexcept
+	constexpr auto& operator[](int i) noexcept
 	{
-		Matrix<T, M, 1> ret;
-		ret.x[0] = T{1};
-		return ret;
+		assert(i >= 0 && i < sizeof(members) / sizeof(members[0]));
+		return this->*members[i];
 	}
+	constexpr const auto& operator[](int i) const noexcept
+	{
+		assert(i >= 0 && i < sizeof(members) / sizeof(members[0]));
+		return this->*members[i];
+	}
+
+	friend bool operator==(const Matrix& a, const Matrix& b) noexcept = default;
+
+	static Matrix Zero() noexcept { return {{}}; }
+	static Matrix Identity() noexcept { return Matrix{}; }
 
 private:
 	static constexpr decltype(&Matrix::x) members[] = {&Matrix::x};
 };
 
-template <class T, int M>
-struct Matrix<T, M, 2>
+template <class T, int N>
+struct Matrix<T, 2, N>
 {
-	Vector<T, M, VectorTag> x, y;
+	Vector<T, N, VectorTag> x = Impl::MatrixIdentityRow<T, N, 0>();
+	Vector<T, N, VectorTag> y = Impl::MatrixIdentityRow<T, N, 1>();
 
-	constexpr auto& operator[](int i) noexcept { return this->*members[i]; }
-	constexpr auto operator[](int i) const noexcept { return this->*members[i]; }
-
-	friend auto operator<=>(const Matrix& a, const Matrix& b) noexcept = default;
-
-	static Matrix<T, M, 2> Identity() noexcept
+	constexpr auto& operator[](int i) noexcept
 	{
-		Matrix<T, M, 2> ret;
-		ret.x[0] = T{1};
-		ret.y[1] = T{1};
-		return ret;
+		assert(i >= 0 && i < sizeof(members) / sizeof(members[0]));
+		return this->*members[i];
 	}
+	constexpr const auto& operator[](int i) const noexcept
+	{
+		assert(i >= 0 && i < sizeof(members) / sizeof(members[0]));
+		return this->*members[i];
+	}
+
+	friend bool operator==(const Matrix& a, const Matrix& b) noexcept = default;
+
+	static Matrix Zero() noexcept { return {{}, {}}; }
+	static Matrix Identity() noexcept { return Matrix{}; }
 
 private:
 	static constexpr decltype(&Matrix::x) members[] = {&Matrix::x, &Matrix::y};
 };
 
-template <class T, int M>
-struct Matrix<T, M, 3>
+template <class T, int N>
+struct Matrix<T, 3, N>
 {
-	Vector<T, M, VectorTag> x, y, z;
+	Vector<T, N, VectorTag> x = Impl::MatrixIdentityRow<T, N, 0>();
+	Vector<T, N, VectorTag> y = Impl::MatrixIdentityRow<T, N, 1>();
+	Vector<T, N, VectorTag> z = Impl::MatrixIdentityRow<T, N, 2>();
 
-	constexpr auto& operator[](int i) noexcept { return this->*members[i]; }
-	constexpr auto operator[](int i) const noexcept { return this->*members[i]; }
-
-	friend auto operator<=>(const Matrix& a, const Matrix& b) noexcept = default;
-
-	static Matrix<T, M, 3> Identity() noexcept
+	constexpr auto& operator[](int i) noexcept
 	{
-		Matrix<T, M, 3> ret;
-		ret.x[0] = T{1};
-		ret.y[1] = T{1};
-		if constexpr (M >= 3)
-		{
-			ret.z[2] = T{1};
-		}
-		return ret;
+		assert(i >= 0 && i < sizeof(members) / sizeof(members[0]));
+		return this->*members[i];
 	}
+	constexpr const auto& operator[](int i) const noexcept
+	{
+		assert(i >= 0 && i < sizeof(members) / sizeof(members[0]));
+		return this->*members[i];
+	}
+
+	friend bool operator==(const Matrix& a, const Matrix& b) noexcept = default;
+
+	static Matrix Zero() noexcept { return {{}, {}, {}}; }
+	static Matrix Identity() noexcept { return Matrix{}; }
 
 private:
 	static constexpr decltype(&Matrix::x) members[] = {&Matrix::x, &Matrix::y, &Matrix::z};
 };
 
-template <class T, int M>
-struct Matrix<T, M, 4>
+template <class T, int N>
+struct Matrix<T, 4, N>
 {
-	Vector<T, M, VectorTag> x, y, z, w;
+	Vector<T, N, VectorTag> x = Impl::MatrixIdentityRow<T, N, 0>();
+	Vector<T, N, VectorTag> y = Impl::MatrixIdentityRow<T, N, 1>();
+	Vector<T, N, VectorTag> z = Impl::MatrixIdentityRow<T, N, 2>();
+	Vector<T, N, VectorTag> w = Impl::MatrixIdentityRow<T, N, 3>();
 
-	constexpr auto& operator[](int i) noexcept { return this->*members[i]; }
-	constexpr auto operator[](int i) const noexcept { return this->*members[i]; }
-
-	friend auto operator<=>(const Matrix& a, const Matrix& b) noexcept = default;
-
-	static Matrix<T, M, 4> Identity() noexcept
+	constexpr auto& operator[](int i) noexcept
 	{
-		Matrix<T, M, 4> ret;
-		ret.x[0] = T{1};
-		ret.y[1] = T{1};
-		if constexpr (M >= 3)
-		{
-			ret.z[2] = T{1};
-		}
-		if constexpr (M >= 4)
-		{
-			ret.w[3] = T{1};
-		}
-		return ret;
+		assert(i >= 0 && i < sizeof(members) / sizeof(members[0]));
+		return this->*members[i];
+	}
+	constexpr const auto& operator[](int i) const noexcept
+	{
+		assert(i >= 0 && i < sizeof(members) / sizeof(members[0]));
+		return this->*members[i];
 	}
 
-	static Matrix<T, 4, 4> RotationX(AngleT<T> angle) noexcept
+	friend bool operator==(const Matrix& a, const Matrix& b) noexcept = default;
+
+	static Matrix Zero() noexcept { return {{}, {}, {}, {}}; }
+	static Matrix Identity() noexcept { return Matrix{}; }
+
+	static Matrix<T, 4, 4> RotationX(AngleT<T> angle) noexcept requires(N == 4)
 	{
-		static_assert(M == 4, "RotationX only works with 4x4 matrices");
 		return {
 		    {1, 0, 0, 0},
 		    {0, Cos(angle), -Sin(angle), 0},
@@ -115,9 +144,8 @@ struct Matrix<T, M, 4>
 		};
 	}
 
-	static Matrix<T, 4, 4> RotationY(AngleT<T> angle) noexcept
+	static Matrix<T, 4, 4> RotationY(AngleT<T> angle) noexcept requires(N == 4)
 	{
-		static_assert(M == 4, "RotationY only works with 4x4 matrices");
 		return {
 		    {Cos(angle), 0, Sin(angle), 0},
 		    {0, 1, 0, 0},
@@ -126,9 +154,8 @@ struct Matrix<T, M, 4>
 		};
 	}
 
-	static Matrix<T, 4, 4> RotationZ(AngleT<T> angle) noexcept
+	static Matrix<T, 4, 4> RotationZ(AngleT<T> angle) noexcept requires(N == 4)
 	{
-		static_assert(M == 4, "RotationZ only works with 4x4 matrices");
 		return {
 		    {Cos(angle), -Sin(angle), 0, 0},
 		    {Sin(angle), Cos(angle), 0, 0},
@@ -137,23 +164,22 @@ struct Matrix<T, M, 4>
 		};
 	}
 
-private:
-	static constexpr decltype(&Matrix::x) members[] = {&Matrix::x, &Matrix::y, &Matrix::z, &Matrix::w};
+private : static constexpr decltype(&Matrix::x) members[] = {&Matrix::x, &Matrix::y, &Matrix::z, &Matrix::w};
 };
 
 using Matrix2 = Matrix<float, 2, 2>;
 using Matrix3 = Matrix<float, 3, 3>;
 using Matrix4 = Matrix<float, 4, 4>;
 
-template <class T, int M, int N, int O>
-Matrix<T, O, N> operator*(const Matrix<T, M, N>& a, const Matrix<T, O, M>& b) noexcept
+template <class T, int N, int M, int O>
+Matrix<T, M, O> operator*(const Matrix<T, M, N>& a, const Matrix<T, N, O>& b) noexcept
 {
-	Matrix<T, O, N> ret{};
-	for (int row = 0; row < N; row++)
+	auto ret = Matrix<T, M, O>::Zero();
+	for (int row = 0; row < M; row++)
 	{
 		for (int col = 0; col < O; col++)
 		{
-			for (int i = 0; i < M; i++)
+			for (int i = 0; i < N; i++)
 			{
 				ret[row][col] += a[row][i] * b[i][col];
 			}
@@ -193,12 +219,12 @@ Vector<T, 3, PointTag> operator*(const Matrix<T, 4, 4>& a, const Vector<T, 3, Po
 template <class T, int M, int N>
 Matrix<T, N, M> Transpose(const Matrix<T, M, N>& m) noexcept
 {
-	Matrix<T, N, M> ret;
-	for (int row = 0; row < M; row++)
+	auto ret = Matrix<T, N, M>::Zero();
+	for (int row = 0; row < N; row++)
 	{
 		for (int col = 0; col < M; col++)
 		{
-			ret[col][row] = m[row][col];
+			ret[row][col] = m[col][row];
 		}
 	}
 	return ret;

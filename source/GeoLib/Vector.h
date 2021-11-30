@@ -1,6 +1,7 @@
 
 #pragma once
 
+#include <cassert>
 #include <cmath>
 
 namespace Geo
@@ -16,10 +17,18 @@ struct Vector<T, 1, Tag>
 	constexpr Vector() = default;
 	constexpr Vector(T x) noexcept : x{x} {}
 
-	constexpr T& operator[](int i) noexcept { return this->*members[i]; }
-	constexpr T operator[](int i) const noexcept { return this->*members[i]; }
+	constexpr T& operator[](int i) noexcept
+	{
+		assert(i >= 0 && i < sizeof(members) / sizeof(members[0]));
+		return this->*members[i];
+	}
+	constexpr T operator[](int i) const noexcept
+	{
+		assert(i >= 0 && i < sizeof(members) / sizeof(members[0]));
+		return this->*members[i];
+	}
 
-	friend auto operator<=>(const Vector& a, const Vector& b) noexcept = default;
+	friend bool operator==(const Vector& a, const Vector& b) noexcept = default;
 
 private:
 	static constexpr decltype(&Vector::x) members[] = {&Vector::x};
@@ -33,10 +42,18 @@ struct Vector<T, 2, Tag>
 	constexpr Vector() = default;
 	constexpr Vector(T x, T y) noexcept : x{x}, y{y} {}
 
-	constexpr T& operator[](int i) noexcept { return this->*members[i]; }
-	constexpr T operator[](int i) const noexcept { return this->*members[i]; }
+	constexpr T& operator[](int i) noexcept
+	{
+		assert(i >= 0 && i < sizeof(members) / sizeof(members[0]));
+		return this->*members[i];
+	}
+	constexpr T operator[](int i) const noexcept
+	{
+		assert(i >= 0 && i < sizeof(members) / sizeof(members[0]));
+		return this->*members[i];
+	}
 
-	friend auto operator<=>(const Vector& a, const Vector& b) noexcept = default;
+	friend bool operator==(const Vector& a, const Vector& b) noexcept = default;
 
 private:
 	static constexpr decltype(&Vector::x) members[] = {&Vector::x, &Vector::y};
@@ -50,10 +67,18 @@ struct Vector<T, 3, Tag>
 	constexpr Vector() = default;
 	constexpr Vector(T x, T y, T z) noexcept : x{x}, y{y}, z{z} {}
 
-	constexpr T& operator[](int i) noexcept { return this->*members[i]; }
-	constexpr T operator[](int i) const noexcept { return this->*members[i]; }
+	constexpr T& operator[](int i) noexcept
+	{
+		assert(i >= 0 && i < sizeof(members) / sizeof(members[0]));
+		return this->*members[i];
+	}
+	constexpr T operator[](int i) const noexcept
+	{
+		assert(i >= 0 && i < sizeof(members) / sizeof(members[0]));
+		return this->*members[i];
+	}
 
-	friend auto operator<=>(const Vector& a, const Vector& b) = default;
+	friend bool operator==(const Vector& a, const Vector& b) = default;
 
 private:
 	static constexpr decltype(&Vector::x) members[] = {&Vector::x, &Vector::y, &Vector::z};
@@ -67,10 +92,18 @@ struct Vector<T, 4, Tag>
 	constexpr Vector() = default;
 	constexpr Vector(T x, T y, T z, T w) noexcept : x{x}, y{y}, z{z}, w{w} {}
 
-	constexpr T& operator[](int i) { return this->*members[i]; }
-	constexpr T operator[](int i) const { return this->*members[i]; }
+	constexpr T& operator[](int i) noexcept
+	{
+		assert(i >= 0 && i < sizeof(members) / sizeof(members[0]));
+		return this->*members[i];
+	}
+	constexpr T operator[](int i) const noexcept
+	{
+		assert(i >= 0 && i < sizeof(members) / sizeof(members[0]));
+		return this->*members[i];
+	}
 
-	friend auto operator<=>(const Vector& a, const Vector& b) = default;
+	friend bool operator==(const Vector& a, const Vector& b) = default;
 
 private:
 	static constexpr decltype(&Vector::x) members[] = {&Vector::x, &Vector::y, &Vector::z, &Vector::w};
