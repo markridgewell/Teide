@@ -62,7 +62,7 @@ add_test(NAME GeoLibTest COMMAND GeoLibTest)
 # ----- Application -----
 
 set(sources
-    source/VulkanApp.cpp
+    source/Application.cpp
     source/ShaderCompiler.h
     source/ShaderCompiler.cpp
     source/Definitions.h

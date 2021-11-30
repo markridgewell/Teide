@@ -1621,14 +1621,14 @@ std::vector<vk::UniqueFramebuffer> CreateFramebuffers(
 
 } // namespace
 
-class VulkanApp
+class Application
 {
 public:
 	static constexpr Geo::Angle CameraRotateSpeed = 0.1_deg;
 	static constexpr float CameraZoomSpeed = 0.002f;
 	static constexpr float CameraMoveSpeed = 0.001f;
 
-	explicit VulkanApp(SDL_Window* window, const char* imageFilename, const char* modelFilename) :
+	explicit Application(SDL_Window* window, const char* imageFilename, const char* modelFilename) :
 	    m_window{window}, m_renderExecutor(2)
 	{
 		vk::DynamicLoader dl;
@@ -2646,10 +2646,10 @@ int Run(int argc, char* argv[])
 		return 1;
 	}
 
-	std::optional<VulkanApp> vulkan;
+	std::optional<Application> application;
 	try
 	{
-		vulkan.emplace(window.get(), imageFilename, modelFilename);
+		application.emplace(window.get(), imageFilename, modelFilename);
 	}
 	catch (const vk::Error& e)
 	{
@@ -2666,7 +2666,7 @@ int Run(int argc, char* argv[])
 		return 1;
 	}
 
-	vulkan->MainLoop();
+	application->MainLoop();
 
 	return 0;
 }
