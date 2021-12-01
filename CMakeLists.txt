@@ -32,9 +32,11 @@ enable_testing()
 
 set(GeoLibInclude source)
 set(sources
+    ${GeoLibInclude}/GeoLib/ForwardDeclare.h
     ${GeoLibInclude}/GeoLib/Vector.h
     ${GeoLibInclude}/GeoLib/Matrix.h
     ${GeoLibInclude}/GeoLib/Angle.h
+    ${GeoLibInclude}/GeoLib/Scalar.h
     GeoLib.natvis
 )
 

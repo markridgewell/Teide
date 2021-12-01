@@ -1,6 +1,9 @@
 
 #pragma once
 
+#include <GeoLib/ForwardDeclare.h>
+#include <GeoLib/Scalar.h>
+
 #include <cassert>
 #include <cmath>
 
@@ -17,6 +20,10 @@ struct Vector<T, 1, Tag>
 	constexpr Vector() = default;
 	constexpr Vector(T x) noexcept : x{x} {}
 
+	template <class OtherTag>
+	constexpr explicit Vector(const Vector<T, 1, OtherTag>& v) : x{v.x}
+	{}
+
 	constexpr T& operator[](int i) noexcept
 	{
 		assert(i >= 0 && i < sizeof(members) / sizeof(members[0]));
@@ -29,6 +36,9 @@ struct Vector<T, 1, Tag>
 	}
 
 	friend bool operator==(const Vector& a, const Vector& b) noexcept = default;
+
+	static constexpr Vector Zero() noexcept { return {}; }
+	static constexpr Vector UnitX() noexcept { return {1.0f}; }
 
 private:
 	static constexpr decltype(&Vector::x) members[] = {&Vector::x};
@@ -42,6 +52,10 @@ struct Vector<T, 2, Tag>
 	constexpr Vector() = default;
 	constexpr Vector(T x, T y) noexcept : x{x}, y{y} {}
 
+	template <class OtherTag>
+	constexpr explicit Vector(const Vector<T, 2, OtherTag>& v) : x{v.x}, y{v.y}
+	{}
+
 	constexpr T& operator[](int i) noexcept
 	{
 		assert(i >= 0 && i < sizeof(members) / sizeof(members[0]));
@@ -55,6 +69,10 @@ struct Vector<T, 2, Tag>
 
 	friend bool operator==(const Vector& a, const Vector& b) noexcept = default;
 
+	static constexpr Vector Zero() noexcept { return {}; }
+	static constexpr Vector UnitX() noexcept { return {1.0f, 0.0f}; }
+	static constexpr Vector UnitY() noexcept { return {0.0f, 1.0f}; }
+
 private:
 	static constexpr decltype(&Vector::x) members[] = {&Vector::x, &Vector::y};
 };
@@ -66,6 +84,10 @@ struct Vector<T, 3, Tag>
 
 	constexpr Vector() = default;
 	constexpr Vector(T x, T y, T z) noexcept : x{x}, y{y}, z{z} {}
+
+	template <class OtherTag>
+	constexpr explicit Vector(const Vector<T, 3, OtherTag>& v) : x{v.x}, y{v.y}, z{v.z}
+	{}
 
 	constexpr T& operator[](int i) noexcept
 	{
@@ -79,6 +101,11 @@ struct Vector<T, 3, Tag>
 	}
 
 	friend bool operator==(const Vector& a, const Vector& b) = default;
+
+	static constexpr Vector Zero() noexcept { return {}; }
+	static constexpr Vector UnitX() noexcept { return {1.0f, 0.0f, 0.0f}; }
+	static constexpr Vector UnitY() noexcept { return {0.0f, 1.0f, 0.0f}; }
+	static constexpr Vector UnitZ() noexcept { return {0.0f, 0.0f, 1.0f}; }
 
 private:
 	static constexpr decltype(&Vector::x) members[] = {&Vector::x, &Vector::y, &Vector::z};
@@ -92,6 +119,10 @@ struct Vector<T, 4, Tag>
 	constexpr Vector() = default;
 	constexpr Vector(T x, T y, T z, T w) noexcept : x{x}, y{y}, z{z}, w{w} {}
 
+	template <class OtherTag>
+	constexpr explicit Vector(const Vector<T, 4, OtherTag>& v) : x{v.x}, y{v.y}, z{v.z}, w{v.w}
+	{}
+
 	constexpr T& operator[](int i) noexcept
 	{
 		assert(i >= 0 && i < sizeof(members) / sizeof(members[0]));
@@ -105,19 +136,15 @@ struct Vector<T, 4, Tag>
 
 	friend bool operator==(const Vector& a, const Vector& b) = default;
 
+	static constexpr Vector Zero() noexcept { return {}; }
+	static constexpr Vector UnitX() noexcept { return {1.0f, 0.0f, 0.0f, 0.0f}; }
+	static constexpr Vector UnitY() noexcept { return {0.0f, 1.0f, 0.0f, 0.0f}; }
+	static constexpr Vector UnitZ() noexcept { return {0.0f, 0.0f, 1.0f, 0.0f}; }
+	static constexpr Vector UnitW() noexcept { return {0.0f, 0.0f, 0.0f, 1.0f}; }
+
 private:
 	static constexpr decltype(&Vector::x) members[] = {&Vector::x, &Vector::y, &Vector::z, &Vector::w};
 };
-
-struct VectorTag;
-using Vector2 = Vector<float, 2, VectorTag>;
-using Vector3 = Vector<float, 3, VectorTag>;
-using Vector4 = Vector<float, 4, VectorTag>;
-
-struct PointTag;
-using Point2 = Vector<float, 2, PointTag>;
-using Point3 = Vector<float, 3, PointTag>;
-using Point4 = Vector<float, 4, PointTag>;
 
 // Arithmetic operators
 namespace Impl
@@ -240,6 +267,17 @@ constexpr Vector<T, N, Tag> operator*(const Vector<T, N, Tag>& a, T b) noexcept
 }
 
 template <class T, int N, class Tag>
+constexpr Vector<T, N, Tag> operator*(T a, const Vector<T, N, Tag>& b) noexcept
+{
+	Vector<T, N, Tag> ret{};
+	for (int i = 0; i < N; i++)
+	{
+		ret[i] = a * b[i];
+	}
+	return ret;
+}
+
+template <class T, int N, class Tag>
 constexpr Vector<T, N, Tag>& operator*=(Vector<T, N, Tag>& a, T b) noexcept
 {
 	return a = a * b;
@@ -265,14 +303,20 @@ constexpr Vector<T, N, Tag>& operator/=(Vector<T, N, Tag>& a, T b) noexcept
 // Vector operations
 
 template <class T, int N, class Tag>
-inline T Magnitude(const Vector<T, N, Tag>& a) noexcept
+inline T MagnitudeSq(const Vector<T, N, Tag>& a) noexcept
 {
 	T ret{};
 	for (int i = 0; i < N; i++)
 	{
 		ret += a[i] * a[i];
 	}
-	return std::sqrt(ret);
+	return ret;
+}
+
+template <class T, int N, class Tag>
+inline T Magnitude(const Vector<T, N, Tag>& a) noexcept
+{
+	return std::sqrt(MagnitudeSq(a));
 }
 
 template <class T, int N, class Tag>
@@ -300,6 +344,42 @@ constexpr Vector<T, 3, Tag> Cross(const Vector<T, 3, Tag>& a, const Vector<T, 3,
 	    a.z * b.x - a.x * b.z,
 	    a.x * b.y - a.y * b.x,
 	};
+}
+
+template <class T, int N, class Tag>
+constexpr Vector<T, N, Tag> Lerp(const Vector<T, N, Tag>& a, const Vector<T, N, Tag>& b, T t) noexcept
+{
+	Vector<T, N, Tag> ret{};
+	for (int i = 0; i < N; i++)
+	{
+		ret[i] = Lerp(a[i], b[i], t);
+	}
+	return ret;
+}
+
+template <class T, std::size_t N, class Tag>
+constexpr Vector<T, N, Tag> Midpoint(const Vector<T, N, Tag>& a, const Vector<T, N, Tag>& b) noexcept
+{
+	Vector<T, N, Tag> ret{};
+	for (int i = 0; i < N; i++)
+	{
+		ret[i] = Midpoint(a[i], b[i]);
+	}
+	return ret;
+}
+
+
+template <class T, int N, class Tag>
+bool Compare(const Geo::Vector<T, N, Tag>& a, const Geo::Vector<T, N, Tag>& b, T maxRelDiff)
+{
+	for (int i = 0; i < N; i++)
+	{
+		if (!Compare(a[i], b[i], maxRelDiff))
+		{
+			return false;
+		}
+	}
+	return true;
 }
 
 } // namespace Geo

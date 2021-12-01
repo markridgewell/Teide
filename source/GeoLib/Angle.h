@@ -1,6 +1,8 @@
 
 #pragma once
 
+#include <GeoLib/Scalar.h>
+
 #include <cmath>
 #include <numbers>
 
@@ -81,6 +83,12 @@ template <class T>
 inline T Tan(AngleT<T> a) noexcept
 {
 	return std::tan(a.AsRadians());
+}
+
+template <class T>
+bool Compare(Geo::AngleT<T> a, Geo::AngleT<T> b, T epsilon)
+{
+	return Compare(a.AsRadians(), b.AsRadians(), epsilon);
 }
 
 inline namespace Literals
