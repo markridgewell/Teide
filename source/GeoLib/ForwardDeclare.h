@@ -15,4 +15,9 @@ struct PointTag;
 using Point2 = Vector<float, 2, PointTag>;
 using Point3 = Vector<float, 3, PointTag>;
 using Point4 = Vector<float, 4, PointTag>;
+
+struct ScaleTag;
+using Scale2 = Vector<float, 2, ScaleTag>;
+using Scale3 = Vector<float, 3, ScaleTag>;
+using Scale4 = Vector<float, 4, ScaleTag>;
 } // namespace Geo

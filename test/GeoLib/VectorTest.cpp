@@ -12,6 +12,20 @@ namespace
 {
 using Vector1 = Vector<float, 1, VectorTag>;
 using Point1 = Vector<float, 1, PointTag>;
+using Scale1 = Vector<float, 1, ScaleTag>;
+
+static_assert(std::is_same_v<ScalarType<Vector1>, float>);
+static_assert(std::is_same_v<ScalarType<Vector2>, float>);
+static_assert(std::is_same_v<ScalarType<Vector3>, float>);
+static_assert(std::is_same_v<ScalarType<Vector4>, float>);
+static_assert(std::is_same_v<ScalarType<Point1>, float>);
+static_assert(std::is_same_v<ScalarType<Point2>, float>);
+static_assert(std::is_same_v<ScalarType<Point3>, float>);
+static_assert(std::is_same_v<ScalarType<Point4>, float>);
+static_assert(std::is_same_v<ScalarType<Scale1>, float>);
+static_assert(std::is_same_v<ScalarType<Scale2>, float>);
+static_assert(std::is_same_v<ScalarType<Scale3>, float>);
+static_assert(std::is_same_v<ScalarType<Scale4>, float>);
 
 TEST(VectorTest, DefaultConstruct)
 {
@@ -55,28 +69,49 @@ TEST(VectorTest, UnitW)
 	EXPECT_THAT(Vector4::UnitW(), Eq(Vector4{0.0f, 0.0f, 0.0f, 1.0f}));
 }
 
+TEST(VectorTest, ConstructVector1)
+{
+	const Vector2 v1{2.0f};
+	EXPECT_EQ(2.0f, v1.x);
+}
+
 TEST(VectorTest, ConstructVector2)
 {
-	const Vector2 v{1.0f, 2.0f};
-	EXPECT_EQ(1.0f, v.x);
-	EXPECT_EQ(2.0f, v.y);
+	const Vector2 v1{1.0f, 2.0f};
+	EXPECT_EQ(1.0f, v1.x);
+	EXPECT_EQ(2.0f, v1.y);
+
+	const Vector2 v2{3.0f};
+	EXPECT_EQ(3.0f, v2.x);
+	EXPECT_EQ(3.0f, v2.y);
 }
 
 TEST(VectorTest, ConstructVector3)
 {
-	const Vector3 v{1.0f, 2.0f, 3.0f};
-	EXPECT_EQ(1.0f, v.x);
-	EXPECT_EQ(2.0f, v.y);
-	EXPECT_EQ(3.0f, v.z);
+	const Vector3 v1{1.0f, 2.0f, 3.0f};
+	EXPECT_EQ(1.0f, v1.x);
+	EXPECT_EQ(2.0f, v1.y);
+	EXPECT_EQ(3.0f, v1.z);
+
+	const Vector3 v2{10.0f};
+	EXPECT_EQ(10.0f, v2.x);
+	EXPECT_EQ(10.0f, v2.y);
+	EXPECT_EQ(10.0f, v2.z);
 }
 
 TEST(VectorTest, ConstructVector4)
 {
-	const Vector4 v{1.0f, 2.0f, 3.0f, 4.0f};
-	EXPECT_EQ(1.0f, v.x);
-	EXPECT_EQ(2.0f, v.y);
-	EXPECT_EQ(3.0f, v.z);
-	EXPECT_EQ(4.0f, v.w);
+	const Vector4 v1{1.0f, 2.0f, 3.0f, 4.0f};
+	EXPECT_EQ(1.0f, v1.x);
+	EXPECT_EQ(2.0f, v1.y);
+	EXPECT_EQ(3.0f, v1.z);
+	EXPECT_EQ(4.0f, v1.w);
+
+	const Vector4 v2{5.0f};
+	EXPECT_EQ(5.0f, v2.x);
+	EXPECT_EQ(5.0f, v2.y);
+	EXPECT_EQ(5.0f, v2.z);
+	EXPECT_EQ(5.0f, v2.w);
 }
 
 TEST(VectorTest, ConstructVector1FromPoint1)
@@ -318,6 +353,65 @@ TEST(VectorTest, OperationsVector4)
 	EXPECT_THAT(2.0f * a, ApproxEq(Vector4{10.0f, 12.0f, 14.0f, 16.0f}));
 	EXPECT_THAT(a / 2.0f, ApproxEq(Vector4{2.5f, 3.0f, 3.5f, 4.0f}));
 	EXPECT_THAT(-b, ApproxEq(Vector4{-1.0f, -2.0f, -3.0f, -4.0f}));
+}
+
+TEST(VectorTest, OperationsScale3)
+{
+	const Vector3 v{3.0f, 2.0f, 1.0f};
+	const Point3 p{4.0f, -2.0f, 3.0f};
+	const Scale3 s{2.0f, 1.0f, 10.0f};
+
+	EXPECT_THAT(v * s, ApproxEq(Vector3{6.0f, 2.0f, 10.0f}));
+	EXPECT_THAT(p * s, ApproxEq(Point3{8.0f, -2.0f, 30.0f}));
+	EXPECT_THAT(s * v, ApproxEq(Vector3{6.0f, 2.0f, 10.0f}));
+	EXPECT_THAT(s * p, ApproxEq(Point3{8.0f, -2.0f, 30.0f}));
+	EXPECT_THAT(s * s, ApproxEq(Scale3{4.0f, 1.0f, 100.0f}));
+	EXPECT_THAT(v / s, ApproxEq(Vector3{1.5f, 2.0f, 0.1f}));
+	EXPECT_THAT(p / s, ApproxEq(Point3{2.0f, -2.0f, 0.3f}));
+	EXPECT_THAT(s / s, ApproxEq(Scale3{1.0f, 1.0f, 1.0f}));
+	EXPECT_THAT(s * 2.0f, ApproxEq(Scale3{4.0f, 2.0f, 20.0f}));
+	EXPECT_THAT(s / 2.0f, ApproxEq(Scale3{1.0f, 0.5f, 5.0f}));
+	EXPECT_THAT(2.0f * s, ApproxEq(Scale3{4.0f, 2.0f, 20.0f}));
+	EXPECT_THAT(1.0f / s, ApproxEq(Scale3{0.5f, 1.0f, 0.1f}));
+}
+
+TEST(VectorTest, InPlaceOperationsScale3)
+{
+	const Vector3 v1{3.0f, 2.0f, 1.0f};
+	const Point3 p1{4.0f, -2.0f, 3.0f};
+	const Scale3 s1{2.0f, 1.0f, 10.0f};
+
+	Vector3 v = v1;
+	v *= s1;
+	EXPECT_THAT(v, ApproxEq(Vector3{6.0f, 2.0f, 10.0f}));
+
+	Point3 p = p1;
+	p *= s1;
+	EXPECT_THAT(p, ApproxEq(Point3{8.0f, -2.0f, 30.0f}));
+
+	Scale3 s = s1;
+	s *= s;
+	EXPECT_THAT(s, ApproxEq(Scale3{4.0f, 1.0f, 100.0f}));
+
+	v = v1;
+	v /= s1;
+	EXPECT_THAT(v, ApproxEq(Vector3{1.5f, 2.0f, 0.1f}));
+
+	p = p1;
+	p /= s1;
+	EXPECT_THAT(p, ApproxEq(Point3{2.0f, -2.0f, 0.3f}));
+
+	s = s1;
+	s /= s1;
+	EXPECT_THAT(s, ApproxEq(Scale3{1.0f, 1.0f, 1.0f}));
+
+	s = s1;
+	s *= 2.0f;
+	EXPECT_THAT(s, ApproxEq(Scale3{4.0f, 2.0f, 20.0f}));
+
+	s = s1;
+	s /= 2.0f;
+	EXPECT_THAT(s, ApproxEq(Scale3{1.0f, 0.5f, 5.0f}));
 }
 
 TEST(VectorTest, NormalizeVector1)
