@@ -1575,7 +1575,7 @@ public:
 		// Pass 0. Draw shadows
 		//
 		auto shadowPass = taskflow.emplace([this] {
-			const uint32_t taskIndex = 0; // m_renderExecutor.this_worker_id()
+			const uint32_t taskIndex = m_renderExecutor.this_worker_id();
 
 			const auto clearDepthStencil = vk::ClearDepthStencilValue{1.0f, 0};
 			const auto clearValues = std::array{
@@ -1594,6 +1594,7 @@ public:
 			    .framebuffer = m_shadowMapFramebuffer.get(),
 			    .framebufferSize = m_shadowMapExtent,
 			    .clearValues = clearValues,
+			    .sequenceIndex = 0,
 			    .sceneDescriptorSet = &m_globalDescriptorSet,
 			    .viewDescriptorSet = &m_viewDescriptorSets[0],
 			    .objects = {{
@@ -1614,8 +1615,7 @@ public:
 		// Pass 1. Draw scene
 		//
 		auto mainPass = taskflow.emplace([this, finalFramebuffer] {
-			const uint32_t taskIndex
-			    = std::min(1u, (uint32_t)m_renderExecutor.num_workers() - 1); // m_renderExecutor.this_worker_id();
+			const uint32_t taskIndex = m_renderExecutor.this_worker_id();
 
 			const auto clearColor = std::array{0.0f, 0.0f, 0.0f, 1.0f};
 			const auto clearDepthStencil = vk::ClearDepthStencilValue{1.0f, 0};
@@ -1647,6 +1647,7 @@ public:
 			    .framebuffer = finalFramebuffer,
 			    .framebufferSize = m_surfaceExtent,
 			    .clearValues = clearValues,
+			    .sequenceIndex = 1,
 			    .sceneDescriptorSet = &m_globalDescriptorSet,
 			    .viewDescriptorSet = &m_viewDescriptorSets[1],
 			    .objects = {{

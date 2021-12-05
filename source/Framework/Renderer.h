@@ -82,6 +82,7 @@ struct RenderList
 	vk::Framebuffer framebuffer;
 	vk::Extent2D framebufferSize;
 	std::span<const vk::ClearValue> clearValues;
+	uint32_t sequenceIndex = 0;
 
 	const DescriptorSet* sceneDescriptorSet = nullptr;
 	const DescriptorSet* viewDescriptorSet = nullptr;
@@ -106,15 +107,17 @@ private:
 		vk::UniqueCommandPool commandPool;
 		vk::UniqueCommandBuffer commandBuffer;
 		bool usedThisFrame = false;
+		uint32_t sequenceIndex = 0;
 
 		void Reset(vk::Device device)
 		{
 			device.resetCommandPool(commandPool.get());
 			usedThisFrame = false;
+			sequenceIndex = 0;
 		}
 	};
 
-	vk::CommandBuffer GetCommandBuffer(uint32_t threadIndex);
+	vk::CommandBuffer GetCommandBuffer(uint32_t threadIndex, uint32_t sequenceIndex);
 	void Render(const RenderList& renderList, vk::CommandBuffer commandBuffer);
 
 	static std::vector<ThreadResources> CreateThreadResources(vk::Device device, uint32_t queueFamilyIndex, uint32_t numThreads);

@@ -44,12 +44,18 @@ void Renderer::EndFrame(vk::Semaphore waitSemaphore, vk::Semaphore signalSemapho
 {
 	// Submit the command buffer(s)
 	std::vector<vk::CommandBuffer> commandBuffersToSubmit;
+	std::vector<uint32_t> sequenceIndices;
 	for (const auto& threadResources : m_frameResources[m_frameNumber])
 	{
 		if (threadResources.usedThisFrame)
 		{
 			threadResources.commandBuffer->end();
-			commandBuffersToSubmit.push_back(threadResources.commandBuffer.get());
+
+			const auto posToInsert = std::ranges::upper_bound(sequenceIndices, threadResources.sequenceIndex);
+			const auto index = std::distance(sequenceIndices.begin(), posToInsert);
+
+			sequenceIndices.insert(posToInsert, threadResources.sequenceIndex);
+			commandBuffersToSubmit.insert(commandBuffersToSubmit.begin() + index, threadResources.commandBuffer.get());
 		}
 	}
 
@@ -68,7 +74,7 @@ void Renderer::EndFrame(vk::Semaphore waitSemaphore, vk::Semaphore signalSemapho
 	m_queue.submit(submitInfo, fence);
 }
 
-vk::CommandBuffer Renderer::GetCommandBuffer(uint32_t threadIndex)
+vk::CommandBuffer Renderer::GetCommandBuffer(uint32_t threadIndex, uint32_t sequenceIndex)
 {
 	auto& threadResources = m_frameResources[m_frameNumber][threadIndex];
 
@@ -77,6 +83,7 @@ vk::CommandBuffer Renderer::GetCommandBuffer(uint32_t threadIndex)
 	{
 		commandBuffer.begin(vk::CommandBufferBeginInfo{});
 		threadResources.usedThisFrame = true;
+		threadResources.sequenceIndex = sequenceIndex;
 	}
 
 	return commandBuffer;
@@ -84,7 +91,7 @@ vk::CommandBuffer Renderer::GetCommandBuffer(uint32_t threadIndex)
 
 void Renderer::RenderToTexture(vk::Image texture, vk::Format format, const RenderList& renderList, uint32_t threadIndex)
 {
-	const vk::CommandBuffer commandBuffer = GetCommandBuffer(threadIndex);
+	const vk::CommandBuffer commandBuffer = GetCommandBuffer(threadIndex, renderList.sequenceIndex);
 
 	TransitionImageLayout(
 	    commandBuffer, texture, format, 1, vk::ImageLayout::eUndefined, vk::ImageLayout::eDepthStencilAttachmentOptimal,
@@ -100,7 +107,7 @@ void Renderer::RenderToTexture(vk::Image texture, vk::Format format, const Rende
 
 void Renderer::RenderToSurface(const RenderList& renderList, uint32_t threadIndex)
 {
-	const vk::CommandBuffer commandBuffer = GetCommandBuffer(threadIndex);
+	const vk::CommandBuffer commandBuffer = GetCommandBuffer(threadIndex, renderList.sequenceIndex);
 
 	Render(renderList, commandBuffer);
 }
