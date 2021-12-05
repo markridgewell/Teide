@@ -68,6 +68,8 @@ set(sources
     source/ShaderCompiler.h
     source/ShaderCompiler.cpp
     source/Definitions.h
+    source/Framework/Renderer.h
+    source/Framework/Renderer.cpp
 )
 
 add_executable(Teide WIN32 ${sources})

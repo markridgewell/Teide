@@ -1,5 +1,6 @@
 
 #include "Definitions.h"
+#include "Framework/Renderer.h"
 #include "GeoLib/Matrix.h"
 #include "GeoLib/Vector.h"
 #include "ShaderCompiler.h"
@@ -37,15 +38,6 @@ namespace
 {
 constexpr bool UseMSAA = true;
 constexpr vk::DeviceSize MemoryBlockSize = 64 * 1024 * 1024;
-
-constexpr uint32_t MaxFramesInFlight = 2;
-
-template <class T>
-uint32_t size32(const T& cont)
-{
-	using std::size;
-	return static_cast<uint32_t>(size(cont));
-}
 
 constexpr std::string_view VertexShader = R"--(
 layout(location = 0) in vec3 inPosition;
@@ -721,38 +713,6 @@ vk::UniqueFence CreateFence(vk::Device device)
 	return device.createFenceUnique(vk::FenceCreateInfo{.flags = vk::FenceCreateFlagBits::eSignaled}, s_allocator);
 }
 
-struct ThreadResources
-{
-	vk::UniqueCommandPool commandPool;
-	vk::UniqueCommandBuffer commandBuffer;
-	bool usedThisFrame = false;
-
-	void Reset(vk::Device device)
-	{
-		device.resetCommandPool(commandPool.get());
-		usedThisFrame = false;
-	}
-};
-
-std::vector<ThreadResources> CreateThreadResources(uint32_t queueFamilyIndex, vk::Device device, uint32_t numThreads)
-{
-	std::vector<ThreadResources> ret;
-	ret.resize(numThreads);
-	std::ranges::generate(ret, [&] {
-		ThreadResources res;
-		res.commandPool = CreateCommandPool(queueFamilyIndex, device);
-		const auto allocateInfo = vk::CommandBufferAllocateInfo{
-		    .commandPool = res.commandPool.get(),
-		    .level = vk::CommandBufferLevel::ePrimary,
-		    .commandBufferCount = 1,
-		};
-		res.commandBuffer = std::move(device.allocateCommandBuffersUnique(allocateInfo).front());
-		return res;
-	});
-
-	return ret;
-}
-
 vk::UniqueShaderModule
 CreateShaderModule(std::string_view shaderSource, ShaderStage stage, ShaderLanguage language, vk::Device device)
 {
@@ -890,51 +850,6 @@ private:
 	std::vector<MemoryBlock> m_memoryBlocks;
 };
 
-
-template <class T>
-concept Span = requires(T t)
-{
-	{std::span{t}};
-};
-
-template <class T>
-concept TrivialSpan
-    = Span<T> && std::is_trivially_copyable_v<typename T::value_type> && std::is_standard_layout_v<typename T::value_type>;
-
-template <class T>
-concept TrivialObject
-    = !Span<T> && std::is_trivially_copyable_v<T> && std::is_standard_layout_v<T> && !std::is_pointer_v<T>;
-
-class BytesView
-{
-public:
-	BytesView() = default;
-	BytesView(const BytesView&) = default;
-	BytesView(BytesView&&) = default;
-	BytesView& operator=(const BytesView&) = default;
-	BytesView& operator=(BytesView&&) = default;
-
-	BytesView(std::span<const std::byte> bytes) : m_span{bytes} {}
-
-	template <TrivialSpan T>
-	BytesView(const T& data) : m_span{std::as_bytes(std::span(data))}
-	{}
-
-	template <TrivialObject T>
-	BytesView(const T& data) : m_span{std::as_bytes(std::span(&data, 1))}
-	{}
-
-	auto data() const { return m_span.data(); }
-	auto size() const { return m_span.size(); }
-	auto begin() const { return m_span.begin(); }
-	auto end() const { return m_span.end(); }
-	auto rbegin() const { return m_span.rbegin(); }
-	auto rend() const { return m_span.rend(); }
-
-private:
-	std::span<const std::byte> m_span;
-};
-
 void SetBufferData(MemoryAllocation allocation, BytesView data)
 {
 	memcpy(allocation.mappedData, data.data(), data.size());
@@ -1024,11 +939,6 @@ UniformBuffer CreateUniformBuffer(size_t bufferSize, vk::Device device, MemoryAl
 	}
 	return ret;
 }
-
-struct DescriptorSet
-{
-	std::vector<vk::DescriptorSet> sets;
-};
 
 struct ImageView
 {
@@ -1670,12 +1580,11 @@ public:
 
 		const uint32_t numRenderThreads = static_cast<uint32_t>(m_renderExecutor.num_workers());
 
+		m_renderer.emplace(m_device.get(), m_graphicsQueueFamily, numRenderThreads);
+
 		std::ranges::generate(m_imageAvailable, [this] { return CreateSemaphore(m_device.get()); });
 		std::ranges::generate(m_renderFinished, [this] { return CreateSemaphore(m_device.get()); });
 		std::ranges::generate(m_inFlightFences, [this] { return CreateFence(m_device.get()); });
-		std::ranges::generate(m_threadResources, [this, numRenderThreads] {
-			return CreateThreadResources(m_graphicsQueueFamily, m_device.get(), numRenderThreads);
-		});
 
 		m_globalDescriptorSetLayout = CreateDescriptorSetLayout(m_device.get(), GlobalBindings);
 		m_viewDescriptorSetLayout = CreateDescriptorSetLayout(m_device.get(), ViewBindings);
@@ -1780,11 +1689,7 @@ public:
 		// Mark the image as in flight
 		m_imagesInFlight[imageIndex] = m_inFlightFences[m_currentFrame].get();
 
-		auto& frameResources = m_threadResources[m_currentFrame];
-		for (auto& threadResources : frameResources)
-		{
-			threadResources.Reset(m_device.get());
-		}
+		m_renderer->BeginFrame(m_currentFrame);
 
 		const vk::Framebuffer finalFramebuffer = m_swapchainFramebuffers[imageIndex].get();
 
@@ -1794,16 +1699,10 @@ public:
 		//
 		// Pass 0. Draw shadows
 		//
-		auto shadowPass = taskflow.emplace([this, &frameResources] {
+		auto shadowPass = taskflow.emplace([this] {
 			const uint32_t taskIndex = 0; // m_renderExecutor.this_worker_id()
-			auto& threadResources = frameResources[taskIndex];
 
-			const vk::CommandBuffer commandBuffer = threadResources.commandBuffer.get();
-			if (!threadResources.usedThisFrame)
-			{
-				commandBuffer.begin(vk::CommandBufferBeginInfo{});
-				threadResources.usedThisFrame = true;
-			}
+			const vk::CommandBuffer commandBuffer = m_renderer->GetCommandBuffer(taskIndex);
 
 			const auto clearDepthStencil = vk::ClearDepthStencilValue{1.0f, 0};
 			const auto clearValues = std::array{
@@ -1822,25 +1721,35 @@ public:
 			    vk::ImageLayout::eDepthStencilAttachmentOptimal, vk::PipelineStageFlagBits::eTopOfPipe,
 			    vk::PipelineStageFlagBits::eEarlyFragmentTests);
 
-			DrawObjects(
-			    commandBuffer, m_shadowRenderPass.get(), m_shadowMapFramebuffer.get(), clearValues,
-			    m_shadowMapPipeline.get(), m_shadowMapExtent, m_viewDescriptorSets[0]);
+			RenderList renderList = {
+			    .renderPass = m_shadowRenderPass.get(),
+			    .framebuffer = m_shadowMapFramebuffer.get(),
+			    .framebufferSize = m_shadowMapExtent,
+			    .clearValues = clearValues,
+			    .sceneDescriptorSet = &m_globalDescriptorSet,
+			    .viewDescriptorSet = &m_viewDescriptorSets[0],
+			    .objects = {{
+			        .vertexBuffer = m_vertexBuffer.get(),
+			        .indexBuffer = m_indexBuffer.get(),
+			        .indexCount = m_indexCount,
+			        .pipeline = m_shadowMapPipeline.get(),
+			        .pipelineLayout = m_pipelineLayout.get(),
+			        .materialDescriptorSet = &m_materialDescriptorSet,
+			        .pushConstants = m_objectUniforms,
+			    }},
+			};
+
+			m_renderer->Render(renderList, taskIndex);
 		});
 
 		//
 		// Pass 1. Draw scene
 		//
-		auto mainPass = taskflow.emplace([this, &frameResources, finalFramebuffer] {
+		auto mainPass = taskflow.emplace([this, finalFramebuffer] {
 			const uint32_t taskIndex
 			    = std::min(1u, (uint32_t)m_renderExecutor.num_workers() - 1); // m_renderExecutor.this_worker_id();
-			auto& threadResources = frameResources[taskIndex];
 
-			const vk::CommandBuffer commandBuffer = threadResources.commandBuffer.get();
-			if (!threadResources.usedThisFrame)
-			{
-				commandBuffer.begin(vk::CommandBufferBeginInfo{});
-				threadResources.usedThisFrame = true;
-			}
+			const vk::CommandBuffer commandBuffer = m_renderer->GetCommandBuffer(taskIndex);
 
 			const auto clearColor = std::array{0.0f, 0.0f, 0.0f, 1.0f};
 			const auto clearDepthStencil = vk::ClearDepthStencilValue{1.0f, 0};
@@ -1872,37 +1781,32 @@ public:
 			    vk::ImageLayout::eDepthStencilReadOnlyOptimal, vk::PipelineStageFlagBits::eLateFragmentTests,
 			    vk::PipelineStageFlagBits::eFragmentShader);
 
-			DrawObjects(
-			    commandBuffer, m_renderPass.get(), finalFramebuffer, clearValues, m_pipeline.get(), m_surfaceExtent,
-			    m_viewDescriptorSets[1]);
+			RenderList renderList = {
+			    .renderPass = m_renderPass.get(),
+			    .framebuffer = finalFramebuffer,
+			    .framebufferSize = m_surfaceExtent,
+			    .clearValues = clearValues,
+			    .sceneDescriptorSet = &m_globalDescriptorSet,
+			    .viewDescriptorSet = &m_viewDescriptorSets[1],
+			    .objects = {{
+			        .vertexBuffer = m_vertexBuffer.get(),
+			        .indexBuffer = m_indexBuffer.get(),
+			        .indexCount = m_indexCount,
+			        .pipeline = m_pipeline.get(),
+			        .pipelineLayout = m_pipelineLayout.get(),
+			        .materialDescriptorSet = &m_materialDescriptorSet,
+			        .pushConstants = m_objectUniforms,
+			    }},
+			};
+
+			m_renderer->Render(renderList, taskIndex);
 		});
 
 		m_renderExecutor.run(taskflow).wait();
 
-		// Submit the command buffer(s)
-		std::vector<vk::CommandBuffer> commandBuffersToSubmit;
-		for (const auto& threadResources : frameResources)
-		{
-			if (threadResources.usedThisFrame)
-			{
-				threadResources.commandBuffer->end();
-				commandBuffersToSubmit.push_back(threadResources.commandBuffer.get());
-			}
-		}
-
-		const vk::PipelineStageFlags waitStage = vk::PipelineStageFlagBits::eColorAttachmentOutput;
-		const auto submitInfo = vk::SubmitInfo{
-		    .waitSemaphoreCount = 1,
-		    .pWaitSemaphores = &m_imageAvailable[m_currentFrame].get(),
-		    .pWaitDstStageMask = &waitStage,
-		    .commandBufferCount = size32(commandBuffersToSubmit),
-		    .pCommandBuffers = data(commandBuffersToSubmit),
-		    .signalSemaphoreCount = 1,
-		    .pSignalSemaphores = &m_renderFinished[m_currentFrame].get(),
-		};
-
-		m_device->resetFences(m_inFlightFences[m_currentFrame].get());
-		m_graphicsQueue.submit(submitInfo, m_inFlightFences[m_currentFrame].get());
+		m_renderer->EndFrame(
+		    m_imageAvailable[m_currentFrame].get(), m_renderFinished[m_currentFrame].get(),
+		    m_inFlightFences[m_currentFrame].get());
 
 		// Present
 		const auto presentInfo = vk::PresentInfoKHR{
@@ -2613,14 +2517,14 @@ private:
 	float m_cameraDistance = 3.0f;
 
 	// Rendering
-	int m_currentFrame = 0;
+	std::optional<Renderer> m_renderer;
+	uint32_t m_currentFrame = 0;
 	std::array<vk::UniqueSemaphore, MaxFramesInFlight> m_imageAvailable;
 	std::array<vk::UniqueSemaphore, MaxFramesInFlight> m_renderFinished;
 	std::array<vk::UniqueFence, MaxFramesInFlight> m_inFlightFences;
 	std::vector<vk::Fence> m_imagesInFlight;
 
 	tf::Executor m_renderExecutor;
-	std::array<std::vector<ThreadResources>, MaxFramesInFlight> m_threadResources;
 };
 
 struct SDLWindowDeleter
