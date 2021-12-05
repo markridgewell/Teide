@@ -682,18 +682,6 @@ vk::Format FindSupportedFormat(
 	throw CustomError("Failed to find a suitable format");
 }
 
-bool HasDepthComponent(vk::Format format)
-{
-	return format == vk::Format::eD16Unorm || format == vk::Format::eD32Sfloat || format == vk::Format::eD16UnormS8Uint
-	    || format == vk::Format::eD24UnormS8Uint || format == vk::Format::eD32SfloatS8Uint;
-}
-
-bool HasStencilComponent(vk::Format format)
-{
-	return format == vk::Format::eS8Uint || format == vk::Format::eD16UnormS8Uint
-	    || format == vk::Format::eD24UnormS8Uint || format == vk::Format::eD32SfloatS8Uint;
-}
-
 vk::UniqueCommandPool CreateCommandPool(uint32_t queueFamilyIndex, vk::Device device)
 {
 	const auto createInfo = vk::CommandPoolCreateInfo{
@@ -1006,119 +994,6 @@ DescriptorSet CreateDescriptorSet(
 	}
 
 	return descriptorSets;
-}
-
-struct TransitionAccessMasks
-{
-	vk::AccessFlags source;
-	vk::AccessFlags destination;
-};
-
-TransitionAccessMasks GetTransitionAccessMasks(vk::ImageLayout oldLayout, vk::ImageLayout newLayout)
-{
-	using enum vk::ImageLayout;
-	using Access = vk::AccessFlagBits;
-
-	if (oldLayout == eUndefined && newLayout == eTransferDstOptimal)
-	{
-		return {{}, Access::eTransferWrite};
-	}
-	else if (oldLayout == eTransferDstOptimal && newLayout == eShaderReadOnlyOptimal)
-	{
-		return {Access::eTransferWrite, Access::eShaderRead};
-	}
-	else if (oldLayout == eUndefined && newLayout == eColorAttachmentOptimal)
-	{
-		return {{}, Access::eColorAttachmentRead | Access::eColorAttachmentWrite};
-	}
-	else if (oldLayout == eUndefined && newLayout == eDepthAttachmentOptimal)
-	{
-		return {{}, Access::eDepthStencilAttachmentRead | Access::eDepthStencilAttachmentWrite};
-	}
-	else if (oldLayout == eUndefined && newLayout == eStencilAttachmentOptimal)
-	{
-		return {{}, Access::eDepthStencilAttachmentRead | Access::eDepthStencilAttachmentWrite};
-	}
-	else if (oldLayout == eUndefined && newLayout == eDepthStencilAttachmentOptimal)
-	{
-		return {{}, Access::eDepthStencilAttachmentRead | Access::eDepthStencilAttachmentWrite};
-	}
-	else if (oldLayout == eColorAttachmentOptimal && newLayout == eShaderReadOnlyOptimal)
-	{
-		return {Access::eColorAttachmentWrite, Access::eShaderRead};
-	}
-	else if (oldLayout == eDepthStencilAttachmentOptimal && newLayout == eShaderReadOnlyOptimal)
-	{
-		return {Access::eDepthStencilAttachmentRead | Access::eDepthStencilAttachmentWrite, Access::eShaderRead};
-	}
-	else if (oldLayout == eDepthStencilAttachmentOptimal && newLayout == eDepthStencilReadOnlyOptimal)
-	{
-		return {Access::eDepthStencilAttachmentRead | Access::eDepthStencilAttachmentWrite, Access::eShaderRead};
-	}
-	else if (oldLayout == eDepthAttachmentOptimal && newLayout == eShaderReadOnlyOptimal)
-	{
-		return {Access::eDepthStencilAttachmentRead | Access::eDepthStencilAttachmentWrite, Access::eShaderRead};
-	}
-	else if (oldLayout == eStencilAttachmentOptimal && newLayout == eShaderReadOnlyOptimal)
-	{
-		return {Access::eDepthStencilAttachmentRead | Access::eDepthStencilAttachmentWrite, Access::eShaderRead};
-	}
-	else if (oldLayout == eShaderReadOnlyOptimal && newLayout == eDepthStencilAttachmentOptimal)
-	{
-		return {Access::eShaderRead, Access::eDepthStencilAttachmentRead | Access::eDepthStencilAttachmentWrite};
-	}
-
-	assert(false && "Unsupported image transition");
-	return {};
-}
-
-vk::ImageAspectFlags GetAspectMask(vk::Format format)
-{
-	if (HasDepthComponent(format))
-	{
-		if (HasStencilComponent(format))
-		{
-			return vk::ImageAspectFlagBits::eDepth | vk::ImageAspectFlagBits::eStencil;
-		}
-		else
-		{
-			return vk::ImageAspectFlagBits::eDepth;
-		}
-	}
-	else if (HasStencilComponent(format))
-	{
-		return vk::ImageAspectFlagBits::eStencil;
-	}
-	else
-	{
-		return vk::ImageAspectFlagBits::eColor;
-	}
-}
-
-void TransitionImageLayout(
-    vk::CommandBuffer cmdBuffer, vk::Image image, vk::Format format, uint32_t mipLevelCount, vk::ImageLayout oldLayout,
-    vk::ImageLayout newLayout, vk::PipelineStageFlags srcStageMask, vk::PipelineStageFlags dstStageMask)
-{
-	const auto accessMasks = GetTransitionAccessMasks(oldLayout, newLayout);
-
-	const auto barrier = vk::ImageMemoryBarrier{
-	    .srcAccessMask = accessMasks.source,
-	    .dstAccessMask = accessMasks.destination,
-	    .oldLayout = oldLayout,
-	    .newLayout = newLayout,
-	    .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-	    .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-	    .image = image,
-	    .subresourceRange = {
-	        .aspectMask = GetAspectMask(format),
-	        .baseMipLevel = 0,
-	        .levelCount = mipLevelCount,
-	        .baseArrayLayer = 0,
-	        .layerCount = 1,
-	    },
-	};
-
-	cmdBuffer.pipelineBarrier(srcStageMask, dstStageMask, {}, {}, {}, barrier);
 }
 
 void GenerateMipmaps(vk::CommandBuffer cmdBuffer, vk::Image image, uint32_t width, uint32_t height, uint32_t mipLevelCount)
@@ -1702,8 +1577,6 @@ public:
 		auto shadowPass = taskflow.emplace([this] {
 			const uint32_t taskIndex = 0; // m_renderExecutor.this_worker_id()
 
-			const vk::CommandBuffer commandBuffer = m_renderer->GetCommandBuffer(taskIndex);
-
 			const auto clearDepthStencil = vk::ClearDepthStencilValue{1.0f, 0};
 			const auto clearValues = std::array{
 			    vk::ClearValue{clearDepthStencil},
@@ -1715,11 +1588,6 @@ public:
 			};
 
 			m_viewUniformBuffers[0].SetData(m_currentFrame, viewUniforms);
-
-			TransitionImageLayout(
-			    commandBuffer, m_shadowMap.get(), m_shadowMapFormat, 1, vk::ImageLayout::eUndefined,
-			    vk::ImageLayout::eDepthStencilAttachmentOptimal, vk::PipelineStageFlagBits::eTopOfPipe,
-			    vk::PipelineStageFlagBits::eEarlyFragmentTests);
 
 			RenderList renderList = {
 			    .renderPass = m_shadowRenderPass.get(),
@@ -1739,7 +1607,7 @@ public:
 			    }},
 			};
 
-			m_renderer->Render(renderList, taskIndex);
+			m_renderer->RenderToTexture(m_shadowMap.get(), m_shadowMapFormat, renderList, taskIndex);
 		});
 
 		//
@@ -1748,8 +1616,6 @@ public:
 		auto mainPass = taskflow.emplace([this, finalFramebuffer] {
 			const uint32_t taskIndex
 			    = std::min(1u, (uint32_t)m_renderExecutor.num_workers() - 1); // m_renderExecutor.this_worker_id();
-
-			const vk::CommandBuffer commandBuffer = m_renderer->GetCommandBuffer(taskIndex);
 
 			const auto clearColor = std::array{0.0f, 0.0f, 0.0f, 1.0f};
 			const auto clearDepthStencil = vk::ClearDepthStencilValue{1.0f, 0};
@@ -1776,11 +1642,6 @@ public:
 			};
 			m_viewUniformBuffers[1].SetData(m_currentFrame, viewUniforms);
 
-			TransitionImageLayout(
-			    commandBuffer, m_shadowMap.get(), m_shadowMapFormat, 1, vk::ImageLayout::eDepthStencilAttachmentOptimal,
-			    vk::ImageLayout::eDepthStencilReadOnlyOptimal, vk::PipelineStageFlagBits::eLateFragmentTests,
-			    vk::PipelineStageFlagBits::eFragmentShader);
-
 			RenderList renderList = {
 			    .renderPass = m_renderPass.get(),
 			    .framebuffer = finalFramebuffer,
@@ -1799,7 +1660,7 @@ public:
 			    }},
 			};
 
-			m_renderer->Render(renderList, taskIndex);
+			m_renderer->RenderToSurface(renderList, taskIndex);
 		});
 
 		m_renderExecutor.run(taskflow).wait();

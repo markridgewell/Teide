@@ -1,7 +1,7 @@
 
 #pragma once
 
-#include "Renderer.h"
+#include "Framework/Renderer.h"
 
 #include <vulkan/vulkan.hpp>
 
@@ -82,7 +82,30 @@ vk::CommandBuffer Renderer::GetCommandBuffer(uint32_t threadIndex)
 	return commandBuffer;
 }
 
-void Renderer::Render(const RenderList& renderList, uint32_t threadIndex)
+void Renderer::RenderToTexture(vk::Image texture, vk::Format format, const RenderList& renderList, uint32_t threadIndex)
+{
+	const vk::CommandBuffer commandBuffer = GetCommandBuffer(threadIndex);
+
+	TransitionImageLayout(
+	    commandBuffer, texture, format, 1, vk::ImageLayout::eUndefined, vk::ImageLayout::eDepthStencilAttachmentOptimal,
+	    vk::PipelineStageFlagBits::eTopOfPipe, vk::PipelineStageFlagBits::eEarlyFragmentTests);
+
+	Render(renderList, commandBuffer);
+
+	TransitionImageLayout(
+	    commandBuffer, texture, format, 1, vk::ImageLayout::eDepthStencilAttachmentOptimal,
+	    vk::ImageLayout::eDepthStencilReadOnlyOptimal, vk::PipelineStageFlagBits::eLateFragmentTests,
+	    vk::PipelineStageFlagBits::eFragmentShader);
+}
+
+void Renderer::RenderToSurface(const RenderList& renderList, uint32_t threadIndex)
+{
+	const vk::CommandBuffer commandBuffer = GetCommandBuffer(threadIndex);
+
+	Render(renderList, commandBuffer);
+}
+
+void Renderer::Render(const RenderList& renderList, vk::CommandBuffer commandBuffer)
 {
 	using std::data;
 
@@ -96,7 +119,6 @@ void Renderer::Render(const RenderList& renderList, uint32_t threadIndex)
 	    .pClearValues = data(renderList.clearValues),
 	};
 
-	const vk::CommandBuffer commandBuffer = GetCommandBuffer(threadIndex);
 	commandBuffer.beginRenderPass(renderPassBegin, vk::SubpassContents::eInline);
 
 	const auto sceneSet = GetDescriptorSet(renderList.sceneDescriptorSet);

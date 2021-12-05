@@ -70,6 +70,8 @@ set(sources
     source/Definitions.h
     source/Framework/Renderer.h
     source/Framework/Renderer.cpp
+    source/Framework/Vulkan.h
+    source/Framework/Vulkan.cpp
 )
 
 add_executable(Teide WIN32 ${sources})

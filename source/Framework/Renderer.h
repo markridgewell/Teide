@@ -1,7 +1,7 @@
 
 #pragma once
 
-#include <vulkan/vulkan.hpp>
+#include "Framework/Vulkan.h"
 
 #include <array>
 #include <cstdint>
@@ -59,6 +59,7 @@ public:
 private:
 	std::span<const std::byte> m_span;
 };
+
 struct DescriptorSet
 {
 	std::vector<vk::DescriptorSet> sets;
@@ -96,9 +97,8 @@ public:
 	void BeginFrame(uint32_t frameNumber);
 	void EndFrame(vk::Semaphore waitSemaphore, vk::Semaphore signalSemaphore, vk::Fence fence);
 
-	vk::CommandBuffer GetCommandBuffer(uint32_t threadIndex);
-
-	void Render(const RenderList& renderList, uint32_t threadIndex);
+	void RenderToTexture(vk::Image texture, vk::Format format, const RenderList& renderList, uint32_t threadIndex);
+	void RenderToSurface(const RenderList& renderList, uint32_t threadIndex);
 
 private:
 	struct ThreadResources
@@ -113,6 +113,9 @@ private:
 			usedThisFrame = false;
 		}
 	};
+
+	vk::CommandBuffer GetCommandBuffer(uint32_t threadIndex);
+	void Render(const RenderList& renderList, vk::CommandBuffer commandBuffer);
 
 	static std::vector<ThreadResources> CreateThreadResources(vk::Device device, uint32_t queueFamilyIndex, uint32_t numThreads);
 
