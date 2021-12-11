@@ -13,7 +13,6 @@
 #include <assimp/scene.h>
 #include <spdlog/sinks/msvc_sink.h>
 #include <spdlog/spdlog.h>
-#include <taskflow/taskflow.hpp>
 #include <vulkan/vulkan.hpp>
 
 #define STB_IMAGE_IMPLEMENTATION
@@ -1413,8 +1412,7 @@ public:
 	static constexpr float CameraZoomSpeed = 0.002f;
 	static constexpr float CameraMoveSpeed = 0.001f;
 
-	explicit Application(SDL_Window* window, const char* imageFilename, const char* modelFilename) :
-	    m_window{window}, m_renderExecutor(2)
+	explicit Application(SDL_Window* window, const char* imageFilename, const char* modelFilename) : m_window{window}
 	{
 		vk::DynamicLoader dl;
 		VULKAN_HPP_DEFAULT_DISPATCHER.init(dl.getProcAddress<PFN_vkGetInstanceProcAddr>("vkGetInstanceProcAddr"));
@@ -1453,9 +1451,7 @@ public:
 
 		m_setupCommandPool = CreateCommandPool(m_graphicsQueueFamily, m_device.get());
 
-		const uint32_t numRenderThreads = static_cast<uint32_t>(m_renderExecutor.num_workers());
-
-		m_renderer.emplace(m_device.get(), m_graphicsQueueFamily, numRenderThreads);
+		m_renderer.emplace(m_device.get(), m_graphicsQueueFamily);
 
 		std::ranges::generate(m_imageAvailable, [this] { return CreateSemaphore(m_device.get()); });
 		std::ranges::generate(m_renderFinished, [this] { return CreateSemaphore(m_device.get()); });
@@ -1568,15 +1564,11 @@ public:
 
 		const vk::Framebuffer finalFramebuffer = m_swapchainFramebuffers[imageIndex].get();
 
-		// Multi-threaded command buffer recording
-		tf::Taskflow taskflow;
 
 		//
 		// Pass 0. Draw shadows
 		//
-		auto shadowPass = taskflow.emplace([this] {
-			const uint32_t taskIndex = m_renderExecutor.this_worker_id();
-
+		{
 			const auto clearDepthStencil = vk::ClearDepthStencilValue{1.0f, 0};
 			const auto clearValues = std::array{
 			    vk::ClearValue{clearDepthStencil},
@@ -1594,7 +1586,6 @@ public:
 			    .framebuffer = m_shadowMapFramebuffer.get(),
 			    .framebufferSize = m_shadowMapExtent,
 			    .clearValues = clearValues,
-			    .sequenceIndex = 0,
 			    .sceneDescriptorSet = &m_globalDescriptorSet,
 			    .viewDescriptorSet = &m_viewDescriptorSets[0],
 			    .objects = {{
@@ -1608,15 +1599,13 @@ public:
 			    }},
 			};
 
-			m_renderer->RenderToTexture(m_shadowMap.get(), m_shadowMapFormat, renderList, taskIndex);
-		});
+			m_renderer->RenderToTexture(m_shadowMap.get(), m_shadowMapFormat, renderList);
+		}
 
 		//
 		// Pass 1. Draw scene
 		//
-		auto mainPass = taskflow.emplace([this, finalFramebuffer] {
-			const uint32_t taskIndex = m_renderExecutor.this_worker_id();
-
+		{
 			const auto clearColor = std::array{0.0f, 0.0f, 0.0f, 1.0f};
 			const auto clearDepthStencil = vk::ClearDepthStencilValue{1.0f, 0};
 			const auto clearValues = std::array{
@@ -1647,7 +1636,6 @@ public:
 			    .framebuffer = finalFramebuffer,
 			    .framebufferSize = m_surfaceExtent,
 			    .clearValues = clearValues,
-			    .sequenceIndex = 1,
 			    .sceneDescriptorSet = &m_globalDescriptorSet,
 			    .viewDescriptorSet = &m_viewDescriptorSets[1],
 			    .objects = {{
@@ -1661,10 +1649,8 @@ public:
 			    }},
 			};
 
-			m_renderer->RenderToSurface(renderList, taskIndex);
-		});
-
-		m_renderExecutor.run(taskflow).wait();
+			m_renderer->RenderToSurface(renderList);
+		}
 
 		m_renderer->EndFrame(
 		    m_imageAvailable[m_currentFrame].get(), m_renderFinished[m_currentFrame].get(),
@@ -2257,36 +2243,6 @@ private:
 		    vk::SampleCountFlagBits::e1, m_device.get(), depthBiasConstant, depthBiasSlope);
 	}
 
-	void DrawObjects(
-	    vk::CommandBuffer commandBuffer, vk::RenderPass renderPass, vk::Framebuffer framebuffer,
-	    std::span<const vk::ClearValue> clearValues, vk::Pipeline pipeline, vk::Extent2D extent,
-	    const DescriptorSet& viewDescriptorSet) const
-	{
-		const auto renderPassBegin = vk::RenderPassBeginInfo{
-		    .renderPass = renderPass,
-		    .framebuffer = framebuffer,
-		    .renderArea = {.offset = {0, 0}, .extent = extent},
-		    .clearValueCount = size32(clearValues),
-		    .pClearValues = data(clearValues),
-		};
-
-		const auto descriptorSets = std::array{
-		    m_globalDescriptorSet.sets[m_currentFrame], viewDescriptorSet.sets[m_currentFrame],
-		    m_materialDescriptorSet.sets[m_currentFrame]};
-
-		commandBuffer.beginRenderPass(renderPassBegin, vk::SubpassContents::eInline);
-
-		commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, pipeline);
-		commandBuffer.bindVertexBuffers(0, m_vertexBuffer.get(), vk::DeviceSize{0});
-		commandBuffer.bindIndexBuffer(m_indexBuffer.get(), vk::DeviceSize{0}, vk::IndexType::eUint16);
-		commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, m_pipelineLayout.get(), 0, descriptorSets, {});
-		commandBuffer.pushConstants(
-		    m_pipelineLayout.get(), vk::ShaderStageFlagBits::eVertex, 0, sizeof(m_objectUniforms), &m_objectUniforms);
-		commandBuffer.drawIndexed(m_indexCount, 1, 0, 0, 0);
-
-		commandBuffer.endRenderPass();
-	}
-
 	void RecreateSwapchain()
 	{
 		m_swapchainAllocator->DeallocateAll();
@@ -2385,8 +2341,6 @@ private:
 	std::array<vk::UniqueSemaphore, MaxFramesInFlight> m_renderFinished;
 	std::array<vk::UniqueFence, MaxFramesInFlight> m_inFlightFences;
 	std::vector<vk::Fence> m_imagesInFlight;
-
-	tf::Executor m_renderExecutor;
 };
 
 struct SDLWindowDeleter

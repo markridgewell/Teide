@@ -3,6 +3,8 @@
 
 #include "Framework/Vulkan.h"
 
+#include <taskflow/taskflow.hpp>
+
 #include <array>
 #include <cstdint>
 #include <span>
@@ -82,7 +84,6 @@ struct RenderList
 	vk::Framebuffer framebuffer;
 	vk::Extent2D framebufferSize;
 	std::span<const vk::ClearValue> clearValues;
-	uint32_t sequenceIndex = 0;
 
 	const DescriptorSet* sceneDescriptorSet = nullptr;
 	const DescriptorSet* viewDescriptorSet = nullptr;
@@ -93,13 +94,13 @@ struct RenderList
 class Renderer
 {
 public:
-	explicit Renderer(vk::Device device, uint32_t queueFamilyIndex, uint32_t numThreads);
+	explicit Renderer(vk::Device device, uint32_t queueFamilyIndex, uint32_t numThreads = std::thread::hardware_concurrency());
 
 	void BeginFrame(uint32_t frameNumber);
 	void EndFrame(vk::Semaphore waitSemaphore, vk::Semaphore signalSemaphore, vk::Fence fence);
 
-	void RenderToTexture(vk::Image texture, vk::Format format, const RenderList& renderList, uint32_t threadIndex);
-	void RenderToSurface(const RenderList& renderList, uint32_t threadIndex);
+	void RenderToTexture(vk::Image texture, vk::Format format, RenderList renderList);
+	void RenderToSurface(RenderList renderList);
 
 private:
 	struct ThreadResources
@@ -126,6 +127,9 @@ private:
 
 	vk::Device m_device;
 	vk::Queue m_queue;
+	tf::Executor m_executor;
+	tf::Taskflow m_taskflow;
+	uint32_t m_nextSequenceIndex = 0;
 	std::array<std::vector<ThreadResources>, MaxFramesInFlight> m_frameResources;
 	uint32_t m_frameNumber = 0;
 };

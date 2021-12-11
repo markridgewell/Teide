@@ -23,7 +23,7 @@ vk::UniqueCommandPool CreateCommandPool(uint32_t queueFamilyIndex, vk::Device de
 } // namespace
 
 Renderer::Renderer(vk::Device device, uint32_t queueFamilyIndex, uint32_t numThreads) :
-    m_device{device}, m_queue{device.getQueue(queueFamilyIndex, 0)}
+    m_device{device}, m_queue{device.getQueue(queueFamilyIndex, 0)}, m_executor(numThreads)
 {
 	std::ranges::generate(m_frameResources, [=] { return CreateThreadResources(m_device, queueFamilyIndex, numThreads); });
 }
@@ -32,6 +32,9 @@ void Renderer::BeginFrame(uint32_t frameNumber)
 {
 	assert(m_frameNumber == 0 || (m_frameNumber + 1) % MaxFramesInFlight == frameNumber);
 	m_frameNumber = frameNumber;
+
+	m_taskflow.clear();
+	m_nextSequenceIndex = 0;
 
 	auto& frameResources = m_frameResources[frameNumber];
 	for (auto& threadResources : frameResources)
@@ -42,6 +45,8 @@ void Renderer::BeginFrame(uint32_t frameNumber)
 
 void Renderer::EndFrame(vk::Semaphore waitSemaphore, vk::Semaphore signalSemaphore, vk::Fence fence)
 {
+	m_executor.run(m_taskflow).wait();
+
 	// Submit the command buffer(s)
 	std::vector<vk::CommandBuffer> commandBuffersToSubmit;
 	std::vector<uint32_t> sequenceIndices;
@@ -89,27 +94,35 @@ vk::CommandBuffer Renderer::GetCommandBuffer(uint32_t threadIndex, uint32_t sequ
 	return commandBuffer;
 }
 
-void Renderer::RenderToTexture(vk::Image texture, vk::Format format, const RenderList& renderList, uint32_t threadIndex)
+void Renderer::RenderToTexture(vk::Image texture, vk::Format format, RenderList renderList)
 {
-	const vk::CommandBuffer commandBuffer = GetCommandBuffer(threadIndex, renderList.sequenceIndex);
+	m_taskflow.emplace([=, this, renderList = std::move(renderList), sequenceIndex = m_nextSequenceIndex++] {
+		const uint32_t taskIndex = m_executor.this_worker_id();
 
-	TransitionImageLayout(
-	    commandBuffer, texture, format, 1, vk::ImageLayout::eUndefined, vk::ImageLayout::eDepthStencilAttachmentOptimal,
-	    vk::PipelineStageFlagBits::eTopOfPipe, vk::PipelineStageFlagBits::eEarlyFragmentTests);
+		const vk::CommandBuffer commandBuffer = GetCommandBuffer(taskIndex, sequenceIndex);
 
-	Render(renderList, commandBuffer);
+		TransitionImageLayout(
+		    commandBuffer, texture, format, 1, vk::ImageLayout::eUndefined, vk::ImageLayout::eDepthStencilAttachmentOptimal,
+		    vk::PipelineStageFlagBits::eTopOfPipe, vk::PipelineStageFlagBits::eEarlyFragmentTests);
 
-	TransitionImageLayout(
-	    commandBuffer, texture, format, 1, vk::ImageLayout::eDepthStencilAttachmentOptimal,
-	    vk::ImageLayout::eDepthStencilReadOnlyOptimal, vk::PipelineStageFlagBits::eLateFragmentTests,
-	    vk::PipelineStageFlagBits::eFragmentShader);
+		Render(renderList, commandBuffer);
+
+		TransitionImageLayout(
+		    commandBuffer, texture, format, 1, vk::ImageLayout::eDepthStencilAttachmentOptimal,
+		    vk::ImageLayout::eDepthStencilReadOnlyOptimal, vk::PipelineStageFlagBits::eLateFragmentTests,
+		    vk::PipelineStageFlagBits::eFragmentShader);
+	});
 }
 
-void Renderer::RenderToSurface(const RenderList& renderList, uint32_t threadIndex)
+void Renderer::RenderToSurface(RenderList renderList)
 {
-	const vk::CommandBuffer commandBuffer = GetCommandBuffer(threadIndex, renderList.sequenceIndex);
+	m_taskflow.emplace([=, this, renderList = std::move(renderList), sequenceIndex = m_nextSequenceIndex++] {
+		const uint32_t taskIndex = m_executor.this_worker_id();
 
-	Render(renderList, commandBuffer);
+		const vk::CommandBuffer commandBuffer = GetCommandBuffer(taskIndex, sequenceIndex);
+
+		Render(renderList, commandBuffer);
+	});
 }
 
 void Renderer::Render(const RenderList& renderList, vk::CommandBuffer commandBuffer)
