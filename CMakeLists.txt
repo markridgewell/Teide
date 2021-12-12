@@ -68,8 +68,12 @@ set(sources
     source/ShaderCompiler.h
     source/ShaderCompiler.cpp
     source/Definitions.h
+    source/Framework/MemoryAllocator.h
+    source/Framework/MemoryAllocator.cpp
     source/Framework/Renderer.h
     source/Framework/Renderer.cpp
+    source/Framework/Surface.h
+    source/Framework/Surface.cpp
     source/Framework/Vulkan.h
     source/Framework/Vulkan.cpp
 )

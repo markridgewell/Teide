@@ -3,6 +3,8 @@
 
 namespace
 {
+static const vk::Optional<const vk::AllocationCallbacks> s_allocator = nullptr;
+
 struct TransitionAccessMasks
 {
 	vk::AccessFlags source;
@@ -127,4 +129,46 @@ void TransitionImageLayout(
 	};
 
 	cmdBuffer.pipelineBarrier(srcStageMask, dstStageMask, {}, {}, {}, barrier);
+}
+
+vk::UniqueSemaphore CreateSemaphore(vk::Device device)
+{
+	return device.createSemaphoreUnique(vk::SemaphoreCreateInfo{}, s_allocator);
+}
+
+vk::UniqueFence CreateFence(vk::Device device)
+{
+	return device.createFenceUnique(vk::FenceCreateInfo{.flags = vk::FenceCreateFlagBits::eSignaled}, s_allocator);
+}
+
+vk::UniqueCommandPool CreateCommandPool(uint32_t queueFamilyIndex, vk::Device device)
+{
+	const auto createInfo = vk::CommandPoolCreateInfo{
+	    .queueFamilyIndex = queueFamilyIndex,
+	};
+
+	return device.createCommandPoolUnique(createInfo, s_allocator);
+}
+
+OneShotCommandBuffer::OneShotCommandBuffer(vk::Device device, vk::CommandPool commandPool, vk::Queue queue) :
+    m_queue{queue}
+{
+	const auto allocInfo = vk::CommandBufferAllocateInfo{
+	    .commandPool = commandPool,
+	    .level = vk::CommandBufferLevel::ePrimary,
+	    .commandBufferCount = 1,
+	};
+	auto cmdBuffers = device.allocateCommandBuffersUnique(allocInfo);
+	m_cmdBuffer = std::move(cmdBuffers.front());
+
+	m_cmdBuffer->begin({.flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit});
+}
+
+OneShotCommandBuffer::~OneShotCommandBuffer()
+{
+	m_cmdBuffer->end();
+
+	const auto submitInfo = vk::SubmitInfo{}.setCommandBuffers(m_cmdBuffer.get());
+	m_queue.submit(submitInfo);
+	m_queue.waitIdle();
 }
