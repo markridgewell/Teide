@@ -39,6 +39,7 @@ public:
 
 	auto data() const { return m_span.data(); }
 	auto size() const { return m_span.size(); }
+	auto empty() const { return m_span.empty(); }
 	auto begin() const { return m_span.begin(); }
 	auto end() const { return m_span.end(); }
 	auto rbegin() const { return m_span.rbegin(); }

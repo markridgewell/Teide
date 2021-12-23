@@ -70,14 +70,18 @@ set(sources
     source/Definitions.h
     source/Framework/Buffer.h
     source/Framework/Buffer.cpp
+    source/Framework/BytesView.h
     source/Framework/MemoryAllocator.h
     source/Framework/MemoryAllocator.cpp
     source/Framework/Renderer.h
     source/Framework/Renderer.cpp
     source/Framework/Surface.h
     source/Framework/Surface.cpp
+    source/Framework/Texture.h
+    source/Framework/Texture.cpp
     source/Framework/Vulkan.h
     source/Framework/Vulkan.cpp
+    Vulkan.natvis
 )
 
 add_executable(Teide WIN32 ${sources})

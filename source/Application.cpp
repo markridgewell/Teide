@@ -4,6 +4,7 @@
 #include "Framework/MemoryAllocator.h"
 #include "Framework/Renderer.h"
 #include "Framework/Surface.h"
+#include "Framework/Texture.h"
 #include "GeoLib/Matrix.h"
 #include "GeoLib/Vector.h"
 #include "ShaderCompiler.h"
@@ -521,6 +522,23 @@ void CopyBufferToImage(vk::CommandBuffer cmdBuffer, vk::Buffer source, vk::Image
 	cmdBuffer.copyBufferToImage(source, destination, vk::ImageLayout::eTransferDstOptimal, copyRegion);
 }
 
+vk::ImageAspectFlags GetImageAspect(vk::Format format)
+{
+	if (HasDepthComponent(format) && HasStencilComponent(format))
+	{
+		return vk::ImageAspectFlagBits::eDepth | vk::ImageAspectFlagBits::eStencil;
+	}
+	if (HasDepthComponent(format))
+	{
+		return vk::ImageAspectFlagBits::eDepth;
+	}
+	if (HasStencilComponent(format))
+	{
+		return vk::ImageAspectFlagBits::eStencil;
+	}
+	return vk::ImageAspectFlagBits::eColor;
+}
+
 struct UniformBuffer
 {
 	std::array<Buffer, MaxFramesInFlight> buffers;
@@ -542,16 +560,9 @@ UniformBuffer CreateUniformBuffer(size_t bufferSize, vk::Device device, MemoryAl
 	return ret;
 }
 
-struct ImageView
-{
-	vk::ImageView view;
-	vk::Sampler sampler;
-	vk::ImageLayout layout;
-};
-
 DescriptorSet CreateDescriptorSet(
     vk::DescriptorSetLayout layout, vk::DescriptorPool descriptorPool, vk::Device device,
-    const UniformBuffer& uniformBuffer, std::span<const ImageView> images = {})
+    const UniformBuffer& uniformBuffer, std::span<const Texture* const> textures = {})
 {
 	const auto layouts = std::vector<vk::DescriptorSetLayout>(MaxFramesInFlight, layout);
 	const auto allocInfo = vk::DescriptorSetAllocateInfo{
@@ -585,13 +596,14 @@ DescriptorSet CreateDescriptorSet(
 		}
 
 		std::vector<vk::DescriptorImageInfo> imageInfos;
-		imageInfos.resize(images.size());
-		for (const auto& image : images)
+		imageInfos.resize(textures.size());
+		for (const auto& texture : textures)
 		{
 			imageInfos.push_back({
-			    .sampler = image.sampler,
-			    .imageView = image.view,
-			    .imageLayout = image.layout,
+			    .sampler = texture->sampler.get(),
+			    .imageView = texture->imageView.get(),
+			    .imageLayout = HasDepthOrStencilComponent(texture->format) ? vk::ImageLayout::eDepthStencilReadOnlyOptimal
+			                                                               : vk::ImageLayout::eShaderReadOnlyOptimal,
 			});
 
 			descriptorWrites.push_back({
@@ -608,89 +620,6 @@ DescriptorSet CreateDescriptorSet(
 	}
 
 	return descriptorSets;
-}
-
-void GenerateMipmaps(vk::CommandBuffer cmdBuffer, vk::Image image, uint32_t width, uint32_t height, uint32_t mipLevelCount)
-{
-	const auto makeBarrier = [&](vk::AccessFlags srcAccessMask, vk::AccessFlags dstAccessMask,
-	                             vk::ImageLayout oldLayout, vk::ImageLayout newLayout, uint32_t mipLevel) {
-		return vk::ImageMemoryBarrier{
-		    .srcAccessMask = srcAccessMask,
-		    .dstAccessMask = dstAccessMask,
-		    .oldLayout = oldLayout,
-		    .newLayout = newLayout,
-		    .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-		    .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-		    .image = image,
-		    .subresourceRange = {
-		        .aspectMask = vk::ImageAspectFlagBits::eColor,
-		        .baseMipLevel = mipLevel,
-		        .levelCount = 1,
-		        .baseArrayLayer = 0,
-		        .layerCount = 1,
-		    }};
-	};
-
-	const auto origin = vk::Offset3D{0, 0, 0};
-	auto prevMipSize = vk::Offset3D{static_cast<int32_t>(width), static_cast<int32_t>(height), 1};
-
-	// Iterate all mip levels starting at 1
-	for (uint32_t i = 1; i < mipLevelCount; i++)
-	{
-		const auto currMipSize = vk::Offset3D{
-		    prevMipSize.x > 1 ? prevMipSize.x / 2 : 1,
-		    prevMipSize.y > 1 ? prevMipSize.y / 2 : 1,
-		    prevMipSize.z > 1 ? prevMipSize.z / 2 : 1,
-		};
-
-		// Transition previous mip level to be a transfer source
-		const auto beforeBarrier = makeBarrier(
-		    vk::AccessFlagBits::eTransferWrite, vk::AccessFlagBits::eTransferRead, vk::ImageLayout::eTransferDstOptimal,
-		    vk::ImageLayout::eTransferSrcOptimal, i - 1);
-
-		cmdBuffer.pipelineBarrier(
-		    vk::PipelineStageFlagBits::eTransfer, vk::PipelineStageFlagBits::eTransfer, {}, {}, {}, beforeBarrier);
-
-		// Blit previous mip to current mip
-		const auto blit = vk::ImageBlit{
-		    .srcSubresource = {
-		        .aspectMask = vk::ImageAspectFlagBits::eColor,
-		        .mipLevel = i - 1,
-		        .baseArrayLayer = 0,
-		        .layerCount = 1,
-		    },
-		    .srcOffsets = {{origin, prevMipSize}},
-		    .dstSubresource = {
-		        .aspectMask = vk::ImageAspectFlagBits::eColor,
-		        .mipLevel = i,
-		        .baseArrayLayer = 0,
-		        .layerCount = 1,
-		    },
-		    .dstOffsets = {{origin, currMipSize}},
-		};
-
-		cmdBuffer.blitImage(
-		    image, vk::ImageLayout::eTransferSrcOptimal, image, vk::ImageLayout::eTransferDstOptimal, blit,
-		    vk::Filter::eLinear);
-
-		// Transition previous mip level to be ready for reading in shader
-		const auto afterBarrier = makeBarrier(
-		    vk::AccessFlagBits::eTransferRead, vk::AccessFlagBits::eShaderRead, vk::ImageLayout::eTransferSrcOptimal,
-		    vk::ImageLayout::eShaderReadOnlyOptimal, i - 1);
-
-		cmdBuffer.pipelineBarrier(
-		    vk::PipelineStageFlagBits::eTransfer, vk::PipelineStageFlagBits::eFragmentShader, {}, {}, {}, afterBarrier);
-
-		prevMipSize = currMipSize;
-	}
-
-	// Transition final mip level to be ready for reading in shader
-	const auto finalBarrier = makeBarrier(
-	    vk::AccessFlagBits::eTransferWrite, vk::AccessFlagBits::eShaderRead, vk::ImageLayout::eTransferDstOptimal,
-	    vk::ImageLayout::eShaderReadOnlyOptimal, mipLevelCount - 1);
-
-	cmdBuffer.pipelineBarrier(
-	    vk::PipelineStageFlagBits::eTransfer, vk::PipelineStageFlagBits::eFragmentShader, {}, {}, {}, finalBarrier);
 }
 
 constexpr auto GlobalBindings = std::array{vk::DescriptorSetLayoutBinding{
@@ -962,8 +891,7 @@ public:
 
 		CreateMesh(modelFilename);
 		CreateUniformBuffers();
-		CreateTextureImage(imageFilename);
-		CreateTextureSampler();
+		LoadTexture(imageFilename);
 		CreateShadowMap();
 		CreateDescriptorSets();
 
@@ -1060,8 +988,7 @@ public:
 			    }},
 			};
 
-			m_renderer->RenderToTexture(
-			    m_shadowMap.get(), m_shadowMapFormat, m_shadowMapFramebuffer.get(), m_shadowMapExtent, renderList);
+			m_renderer->RenderToTexture(*m_shadowMap, m_shadowMapFramebuffer.get(), renderList);
 		}
 
 		//
@@ -1346,33 +1273,25 @@ private:
 
 		// View desriptor sets
 		m_viewDescriptorSets.clear();
-		const auto shadowMapImages = std::array{ImageView{
-		    .view = m_shadowMapView.get(),
-		    .sampler = m_shadowMapSampler.get(),
-		    .layout = vk::ImageLayout::eDepthStencilReadOnlyOptimal,
-		}};
+		const auto shadowMapImages = std::array{m_shadowMap.get()};
 		for (size_t i = 0; i < m_passCount; i++)
 		{
 			// Include shadow maps only after shadow pass
-			const auto images = i >= 1 ? shadowMapImages : std::span<const ImageView>{};
+			const auto images = i >= 1 ? shadowMapImages : std::span<Texture* const>{};
 
 			m_viewDescriptorSets.push_back(CreateDescriptorSet(
 			    m_viewDescriptorSetLayout.get(), descriptorPool.get(), m_device.get(), m_viewUniformBuffers[i], images));
 		}
 
 		// Material desriptor set
-		const auto materialTextures = std::array{ImageView{
-		    .view = m_textureImageView.get(),
-		    .sampler = m_textureSampler.get(),
-		    .layout = vk::ImageLayout::eShaderReadOnlyOptimal,
-		}};
+		const auto materialTextures = std::array{m_texture.get()};
 		m_materialDescriptorSet = CreateDescriptorSet(
 		    m_materialDescriptorSetLayout.get(), descriptorPool.get(), m_device.get(), UniformBuffer{}, materialTextures);
 
 		m_descriptorPool = std::move(descriptorPool);
 	}
 
-	void CreateTextureImage(const char* filename)
+	void LoadTexture(const char* filename)
 	{
 		struct StbiDeleter
 		{
@@ -1389,150 +1308,52 @@ private:
 		}
 
 		const vk::DeviceSize imageSize = width * height * 4;
-		const auto mipLevelCount = static_cast<uint32_t>(std::floor(std::log2(std::max(width, height)))) + 1;
 
-		// Create staging buffer
-		auto stagingBuffer = CreateBuffer(
-		    m_device.get(), *m_generalAllocator, imageSize, vk::BufferUsageFlagBits::eTransferSrc,
-		    vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
-		stagingBuffer.SetData(std::span(pixels.get(), imageSize));
-
-		// Create image
-		const auto imageExtent = vk::Extent3D{static_cast<uint32_t>(width), static_cast<uint32_t>(height), 1};
-		const auto imageInfo = vk::ImageCreateInfo{
-		    .imageType = vk::ImageType::e2D,
+		const auto data = TextureData{
+		    .size = {static_cast<uint32_t>(width), static_cast<uint32_t>(height)},
 		    .format = vk::Format::eR8G8B8A8Srgb,
-		    .extent = imageExtent,
-		    .mipLevels = mipLevelCount,
-		    .arrayLayers = 1,
-		    .samples = vk::SampleCountFlagBits::e1,
-		    .tiling = vk::ImageTiling::eOptimal,
-		    .usage = vk::ImageUsageFlagBits::eTransferSrc | vk::ImageUsageFlagBits::eTransferDst
-		        | vk::ImageUsageFlagBits::eSampled,
-		    .sharingMode = vk::SharingMode::eExclusive,
-		    .initialLayout = vk::ImageLayout::eUndefined,
+		    .mipLevelCount = static_cast<uint32_t>(std::floor(std::log2(std::max(width, height)))) + 1,
+		    .pixels = std::span(pixels.get(), imageSize),
 		};
 
-		m_textureImage = m_device->createImageUnique(imageInfo, s_allocator);
-		m_textureMemory = m_generalAllocator->Allocate(
-		    m_device->getImageMemoryRequirements(m_textureImage.get()), vk::MemoryPropertyFlagBits::eDeviceLocal);
-		m_device->bindImageMemory(m_textureImage.get(), m_textureMemory.memory, m_textureMemory.offset);
-		const auto cmdBuffer = OneShotCommands();
-		TransitionImageLayout(
-		    cmdBuffer, m_textureImage.get(), imageInfo.format, mipLevelCount, imageInfo.initialLayout,
-		    vk::ImageLayout::eTransferDstOptimal, vk::PipelineStageFlagBits::eTopOfPipe,
-		    vk::PipelineStageFlagBits::eTransfer);
-		CopyBufferToImage(cmdBuffer, stagingBuffer.buffer.get(), m_textureImage.get(), imageExtent);
-
-		GenerateMipmaps(cmdBuffer, m_textureImage.get(), width, height, mipLevelCount);
-
-		// Create image view
-		const auto viewInfo = vk::ImageViewCreateInfo{
-			.image = m_textureImage.get(),
-			.viewType = vk::ImageViewType::e2D,
-			.format = imageInfo.format,
-			.subresourceRange = {
-				.aspectMask = vk::ImageAspectFlagBits::eColor,
-				.baseMipLevel = 0,
-				.levelCount = mipLevelCount,
-				.baseArrayLayer = 0,
-				.layerCount = 1,
-			},
-		};
-		m_textureImageView = m_device->createImageViewUnique(viewInfo, s_allocator);
-	}
-
-	void CreateTextureSampler()
-	{
-		const auto samplerInfo = vk::SamplerCreateInfo{
-		    .magFilter = vk::Filter::eLinear,
-		    .minFilter = vk::Filter::eLinear,
-		    .mipmapMode = vk::SamplerMipmapMode::eLinear,
-		    .addressModeU = vk::SamplerAddressMode::eRepeat,
-		    .addressModeV = vk::SamplerAddressMode::eRepeat,
-		    .addressModeW = vk::SamplerAddressMode::eRepeat,
-		    .anisotropyEnable = true,
-		    .maxAnisotropy = m_physicalDevice.getProperties().limits.maxSamplerAnisotropy,
-		};
-
-		m_textureSampler = m_device->createSamplerUnique(samplerInfo, s_allocator);
+		m_texture = std::make_unique<Texture>(CreateTexture(data, filename));
 	}
 
 	void CreateShadowMap()
 	{
 		constexpr uint32_t shadowMapSize = 2048;
-		m_shadowMapExtent = vk::Extent2D{shadowMapSize, shadowMapSize};
-		m_shadowMapFormat = vk::Format::eD16Unorm;
 
-		// Create image
-		const auto imageInfo = vk::ImageCreateInfo{
-		    .imageType = vk::ImageType::e2D,
-		    .format = m_shadowMapFormat,
-		    .extent = {shadowMapSize, shadowMapSize, 1},
-		    .mipLevels = 1,
-		    .arrayLayers = 1,
-		    .samples = vk::SampleCountFlagBits::e1,
-		    .tiling = vk::ImageTiling::eOptimal,
-		    .usage = vk::ImageUsageFlagBits::eDepthStencilAttachment | vk::ImageUsageFlagBits::eSampled,
-		    .sharingMode = vk::SharingMode::eExclusive,
-		    .initialLayout = vk::ImageLayout::eUndefined,
+		const auto data = TextureData{
+		    .size = {shadowMapSize, shadowMapSize},
+		    .format = vk::Format::eD16Unorm,
+		    .samplerInfo = {
+		        .magFilter = vk::Filter::eLinear,
+		        .minFilter = vk::Filter::eLinear,
+		        .mipmapMode = vk::SamplerMipmapMode::eNearest,
+		        .addressModeU = vk::SamplerAddressMode::eRepeat,
+		        .addressModeV = vk::SamplerAddressMode::eRepeat,
+		        .addressModeW = vk::SamplerAddressMode::eRepeat,
+		        .anisotropyEnable = true,
+		        .maxAnisotropy = m_physicalDevice.getProperties().limits.maxSamplerAnisotropy,
+		        .compareEnable = true,
+		        .compareOp = vk::CompareOp::eLess,
+		        .borderColor = vk::BorderColor::eFloatOpaqueWhite,
+		    },
 		};
 
-		m_shadowMap = m_device->createImageUnique(imageInfo, s_allocator);
-		SetDebugName(m_device.get(), m_shadowMap, "ShadowMap");
-		m_shadowMapMemory = m_generalAllocator->Allocate(
-		    m_device->getImageMemoryRequirements(m_shadowMap.get()), vk::MemoryPropertyFlagBits::eDeviceLocal);
-		m_device->bindImageMemory(m_shadowMap.get(), m_shadowMapMemory.memory, m_shadowMapMemory.offset);
-		TransitionImageLayout(
-		    OneShotCommands(), m_shadowMap.get(), imageInfo.format, 1, vk::ImageLayout::eUndefined,
-		    vk::ImageLayout::eDepthStencilAttachmentOptimal, vk::PipelineStageFlagBits::eTopOfPipe,
-		    vk::PipelineStageFlagBits::eEarlyFragmentTests);
-
-		// Create image view
-		const auto viewInfo = vk::ImageViewCreateInfo{
-			.image = m_shadowMap.get(),
-			.viewType = vk::ImageViewType::e2D,
-			.format = imageInfo.format,
-			.subresourceRange = {
-				.aspectMask = vk::ImageAspectFlagBits::eDepth,
-				.baseMipLevel = 0,
-				.levelCount = 1,
-				.baseArrayLayer = 0,
-				.layerCount = 1,
-			},
-		};
-		m_shadowMapView = m_device->createImageViewUnique(viewInfo, s_allocator);
-		SetDebugName(m_device.get(), m_shadowMapView, "ShadowMapView");
-
-		// Create sampler
-		const auto samplerInfo = vk::SamplerCreateInfo{
-		    .magFilter = vk::Filter::eLinear,
-		    .minFilter = vk::Filter::eLinear,
-		    .mipmapMode = vk::SamplerMipmapMode::eNearest,
-		    .addressModeU = vk::SamplerAddressMode::eRepeat,
-		    .addressModeV = vk::SamplerAddressMode::eRepeat,
-		    .addressModeW = vk::SamplerAddressMode::eRepeat,
-		    .anisotropyEnable = true,
-		    .maxAnisotropy = m_physicalDevice.getProperties().limits.maxSamplerAnisotropy,
-		    .compareEnable = true,
-		    .compareOp = vk::CompareOp::eLess,
-		    .borderColor = vk::BorderColor::eFloatOpaqueWhite,
-		};
-
-		m_shadowMapSampler = m_device->createSamplerUnique(samplerInfo, s_allocator);
-		SetDebugName(m_device.get(), m_shadowMapSampler, "ShadowMapSampler");
+		m_shadowMap = std::make_unique<Texture>(CreateRenderableTexture(data, "ShadowMap"));
 
 		// Create render pass
-		m_shadowRenderPass = CreateShadowRenderPass(m_device.get(), m_shadowMapFormat);
+		m_shadowRenderPass = CreateShadowRenderPass(m_device.get(), m_shadowMap->format);
 		SetDebugName(m_device.get(), m_shadowRenderPass, "ShadowRenderPass");
 
 		// Create framebuffer
 		const auto framebufferCreateInfo = vk::FramebufferCreateInfo{
 		    .renderPass = m_shadowRenderPass.get(),
 		    .attachmentCount = 1,
-		    .pAttachments = &m_shadowMapView.get(),
-		    .width = m_shadowMapExtent.width,
-		    .height = m_shadowMapExtent.height,
+		    .pAttachments = &m_shadowMap->imageView.get(),
+		    .width = m_shadowMap->size.width,
+		    .height = m_shadowMap->size.height,
 		    .layers = 1,
 		};
 
@@ -1550,6 +1371,145 @@ private:
 		    vk::SampleCountFlagBits::e1, m_device.get(), depthBiasConstant, depthBiasSlope);
 	}
 
+	//
+	// Device functions
+	//
+
+	Texture CreateTexture(const TextureData& data, const char* debugName)
+	{
+		auto cmdBuffer = OneShotCommands();
+
+		auto texture = CreateTextureImpl(data, vk::ImageUsageFlagBits::eSampled, cmdBuffer, debugName);
+
+		if (data.mipLevelCount > 1)
+		{
+			texture.GenerateMipmaps(cmdBuffer);
+		}
+		else
+		{
+			// Transition into samplable image, but only if mipmaps were not generated
+			// (if so, the mipmap generation already transitioned to image to be samplable)
+			texture.TransitionToShaderInput(cmdBuffer);
+		}
+
+		return texture;
+	}
+
+	Texture CreateRenderableTexture(const TextureData& data, const char* debugName)
+	{
+		const auto renderUsage = HasDepthOrStencilComponent(data.format) ? vk::ImageUsageFlagBits::eDepthStencilAttachment
+		                                                                 : vk::ImageUsageFlagBits::eColorAttachment;
+
+		auto cmdBuffer = OneShotCommands();
+
+		auto texture = CreateTextureImpl(data, renderUsage | vk::ImageUsageFlagBits::eSampled, cmdBuffer, debugName);
+
+		if (renderUsage & vk::ImageUsageFlagBits::eColorAttachment)
+		{
+			texture.TransitionToColorTarget(cmdBuffer);
+		}
+		else if (renderUsage & vk::ImageUsageFlagBits::eDepthStencilAttachment)
+		{
+			texture.TransitionToDepthStencilTarget(cmdBuffer);
+		}
+
+		return texture;
+	}
+
+	Texture CreateTextureImpl(const TextureData& data, vk::ImageUsageFlags usage, OneShotCommandBuffer& cmdBuffer, const char* debugName)
+	{
+		if (!data.pixels.empty())
+		{
+			// Need to transfer image data into image
+			usage |= vk::ImageUsageFlagBits::eTransferDst;
+		}
+
+		if (data.mipLevelCount > 1)
+		{
+			// Need to transfer pixels between mip levels in order to generate mipmaps
+			usage |= vk::ImageUsageFlagBits::eTransferSrc | vk::ImageUsageFlagBits::eTransferDst;
+		}
+
+		auto initialLayout = vk::ImageLayout::eUndefined;
+
+		// Create image
+		const auto imageExtent = vk::Extent3D{data.size.width, data.size.height, 1};
+		const auto imageInfo = vk::ImageCreateInfo{
+		    .imageType = vk::ImageType::e2D,
+		    .format = data.format,
+		    .extent = imageExtent,
+		    .mipLevels = data.mipLevelCount,
+		    .arrayLayers = 1,
+		    .samples = data.samples,
+		    .tiling = vk::ImageTiling::eOptimal,
+		    .usage = usage,
+		    .sharingMode = vk::SharingMode::eExclusive,
+		    .initialLayout = initialLayout,
+		};
+
+		auto image = m_device->createImageUnique(imageInfo, s_allocator);
+		const auto memory = m_generalAllocator->Allocate(
+		    m_device->getImageMemoryRequirements(image.get()), vk::MemoryPropertyFlagBits::eDeviceLocal);
+		m_device->bindImageMemory(image.get(), memory.memory, memory.offset);
+
+		if (!data.pixels.empty())
+		{
+			// Create staging buffer
+			auto stagingBuffer = CreateBuffer(
+			    m_device.get(), *m_generalAllocator, data.pixels.size(), vk::BufferUsageFlagBits::eTransferSrc,
+			    vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
+			stagingBuffer.SetData(data.pixels);
+
+			// Copy staging buffer to image
+			TransitionImageLayout(
+			    cmdBuffer, image.get(), imageInfo.format, data.mipLevelCount, imageInfo.initialLayout,
+			    vk::ImageLayout::eTransferDstOptimal, vk::PipelineStageFlagBits::eTopOfPipe,
+			    vk::PipelineStageFlagBits::eTransfer);
+			initialLayout = vk::ImageLayout::eTransferDstOptimal;
+			CopyBufferToImage(cmdBuffer, stagingBuffer.buffer.get(), image.get(), imageExtent);
+
+			cmdBuffer.TakeOwnership(std::move(stagingBuffer.buffer));
+		}
+
+		// Create image view
+		const auto viewInfo = vk::ImageViewCreateInfo{
+			.image = image.get(),
+			.viewType = vk::ImageViewType::e2D,
+			.format = data.format,
+			.subresourceRange = {
+				.aspectMask =  GetImageAspect(data.format),
+				.baseMipLevel = 0,
+				.levelCount = data.mipLevelCount,
+				.baseArrayLayer = 0,
+				.layerCount = 1,
+			},
+		};
+		auto imageView = m_device->createImageViewUnique(viewInfo, s_allocator);
+		auto sampler = m_device->createSamplerUnique(data.samplerInfo, s_allocator);
+
+		auto ret = Texture{
+		    .image = std::move(image),
+		    .memory = memory,
+		    .imageView = std::move(imageView),
+		    .sampler = std::move(sampler),
+		    .size = {imageExtent.width, imageExtent.height},
+		    .format = data.format,
+		    .mipLevelCount = data.mipLevelCount,
+		    .samples = data.samples,
+		    .layout = initialLayout,
+		};
+
+		if constexpr (IsDebugBuild)
+		{
+			using namespace std::string_literals;
+			SetDebugName(ret.image, debugName);
+			SetDebugName(ret.imageView, (debugName + ":View"s).c_str());
+			SetDebugName(ret.sampler, (debugName + ":Sampler"s).c_str());
+		}
+
+		return ret;
+	}
+
 	SDL_Window* m_window;
 
 	std::chrono::high_resolution_clock::time_point m_startTime = std::chrono::high_resolution_clock::now();
@@ -1560,7 +1520,6 @@ private:
 	vk::UniqueDevice m_device;
 
 	std::optional<MemoryAllocator> m_generalAllocator; // Allocator for objects that live a long time
-	std::optional<MemoryAllocator> m_swapchainAllocator; // Allocator for objects that need to be recreated with the swapchain
 
 	std::optional<Surface> m_surface;
 	uint32_t m_graphicsQueueFamily;
@@ -1582,10 +1541,7 @@ private:
 	Buffer m_vertexBuffer;
 	Buffer m_indexBuffer;
 	uint32_t m_indexCount;
-	vk::UniqueImage m_textureImage;
-	MemoryAllocation m_textureMemory;
-	vk::UniqueImageView m_textureImageView;
-	vk::UniqueSampler m_textureSampler;
+	std::unique_ptr<Texture> m_texture;
 
 	const uint32_t m_passCount = 2;
 	UniformBuffer m_globalUniformBuffer;
@@ -1598,12 +1554,7 @@ private:
 	// Lights
 	Geo::Angle m_lightYaw = 45.0_deg;
 	Geo::Angle m_lightPitch = -45.0_deg;
-	vk::UniqueImage m_shadowMap;
-	vk::Format m_shadowMapFormat;
-	vk::Extent2D m_shadowMapExtent;
-	MemoryAllocation m_shadowMapMemory;
-	vk::UniqueImageView m_shadowMapView;
-	vk::UniqueSampler m_shadowMapSampler;
+	std::unique_ptr<Texture> m_shadowMap;
 	vk::UniqueRenderPass m_shadowRenderPass;
 	vk::UniqueFramebuffer m_shadowMapFramebuffer;
 	vk::UniquePipeline m_shadowMapPipeline;

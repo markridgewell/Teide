@@ -3,6 +3,7 @@
 
 #include "Framework/Renderer.h"
 
+#include "Framework/Texture.h"
 #include "Framework/Vulkan.h"
 
 #include <spdlog/spdlog.h>
@@ -137,24 +138,24 @@ vk::CommandBuffer Renderer::GetCommandBuffer(uint32_t threadIndex, uint32_t sequ
 	return commandBuffer;
 }
 
-void Renderer::RenderToTexture(
-    vk::Image texture, vk::Format format, vk::Framebuffer framebuffer, vk::Extent2D framebufferSize, RenderList renderList)
+void Renderer::RenderToTexture(Texture& texture, vk::Framebuffer framebuffer, RenderList renderList)
 {
-	m_taskflow.emplace([=, this, renderList = std::move(renderList), sequenceIndex = m_nextSequenceIndex++] {
+	m_taskflow.emplace([this, renderList = std::move(renderList), sequenceIndex = m_nextSequenceIndex++, framebuffer, &texture] {
 		const uint32_t taskIndex = m_executor.this_worker_id();
 
 		const vk::CommandBuffer commandBuffer = GetCommandBuffer(taskIndex, sequenceIndex);
 
-		TransitionImageLayout(
-		    commandBuffer, texture, format, 1, vk::ImageLayout::eUndefined, vk::ImageLayout::eDepthStencilAttachmentOptimal,
-		    vk::PipelineStageFlagBits::eTopOfPipe, vk::PipelineStageFlagBits::eEarlyFragmentTests);
+		texture.DiscardContents();
+		texture.TransitionToDepthStencilTarget(commandBuffer);
 
-		Render(renderList, framebuffer, framebufferSize, commandBuffer);
+		Render(renderList, framebuffer, texture.size, commandBuffer);
 
-		TransitionImageLayout(
+		texture.TransitionToShaderInput(commandBuffer);
+
+		/*TransitionImageLayout(
 		    commandBuffer, texture, format, 1, vk::ImageLayout::eDepthStencilAttachmentOptimal,
 		    vk::ImageLayout::eDepthStencilReadOnlyOptimal, vk::PipelineStageFlagBits::eLateFragmentTests,
-		    vk::PipelineStageFlagBits::eFragmentShader);
+		    vk::PipelineStageFlagBits::eFragmentShader);*/
 	});
 }
 

@@ -10,6 +10,8 @@
 #include <array>
 #include <cstdint>
 
+struct Texture;
+
 struct DescriptorSet
 {
 	std::vector<vk::DescriptorSet> sets;
@@ -37,6 +39,7 @@ struct RenderList
 	std::vector<RenderObject> objects;
 };
 
+
 class Renderer
 {
 public:
@@ -48,9 +51,7 @@ public:
 	void EndFrame(std::span<const SurfaceImage> images);
 	void EndFrame(const SurfaceImage& image);
 
-	void RenderToTexture(
-	    vk::Image texture, vk::Format format, vk::Framebuffer framebuffer, vk::Extent2D framebufferSize,
-	    RenderList renderList);
+	void RenderToTexture(Texture& texture, vk::Framebuffer framebuffer, RenderList renderList);
 	void RenderToSurface(const SurfaceImage& surfaceImage, RenderList renderList);
 
 private:

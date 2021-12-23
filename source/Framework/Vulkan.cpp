@@ -105,6 +105,12 @@ bool HasStencilComponent(vk::Format format)
 	    || format == vk::Format::eD24UnormS8Uint || format == vk::Format::eD32SfloatS8Uint;
 }
 
+bool HasDepthOrStencilComponent(vk::Format format)
+{
+	return format == vk::Format::eD16Unorm || format == vk::Format::eD32Sfloat || format == vk::Format::eD16UnormS8Uint
+	    || format == vk::Format::eD24UnormS8Uint || format == vk::Format::eD32SfloatS8Uint || format == vk::Format::eS8Uint;
+}
+
 void TransitionImageLayout(
     vk::CommandBuffer cmdBuffer, vk::Image image, vk::Format format, uint32_t mipLevelCount, vk::ImageLayout oldLayout,
     vk::ImageLayout newLayout, vk::PipelineStageFlags srcStageMask, vk::PipelineStageFlags dstStageMask)
@@ -171,4 +177,17 @@ OneShotCommandBuffer::~OneShotCommandBuffer()
 	const auto submitInfo = vk::SubmitInfo{}.setCommandBuffers(m_cmdBuffer.get());
 	m_queue.submit(submitInfo);
 	m_queue.waitIdle();
+
+	m_cmdBuffer.reset();
+}
+
+OneShotCommandBuffer::operator vk::CommandBuffer() const
+{
+	assert(m_cmdBuffer);
+	return m_cmdBuffer.get();
+}
+
+void OneShotCommandBuffer::TakeOwnership(vk::UniqueBuffer buffer)
+{
+	m_ownedBuffers.push_back(std::move(buffer));
 }

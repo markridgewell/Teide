@@ -14,6 +14,7 @@ inline uint32_t size32(const T& cont)
 
 bool HasDepthComponent(vk::Format format);
 bool HasStencilComponent(vk::Format format);
+bool HasDepthOrStencilComponent(vk::Format format);
 
 void TransitionImageLayout(
     vk::CommandBuffer cmdBuffer, vk::Image image, vk::Format format, uint32_t mipLevelCount, vk::ImageLayout oldLayout,
@@ -53,11 +54,15 @@ public:
 	OneShotCommandBuffer& operator=(const OneShotCommandBuffer&) = delete;
 	OneShotCommandBuffer& operator=(OneShotCommandBuffer&&) = delete;
 
-	operator vk::CommandBuffer() const { return m_cmdBuffer.get(); }
+	operator vk::CommandBuffer() const;
+
+	void TakeOwnership(vk::UniqueBuffer buffer);
 
 private:
 	vk::UniqueCommandBuffer m_cmdBuffer;
 	vk::Queue m_queue;
+
+	std::vector<vk::UniqueBuffer> m_ownedBuffers;
 };
 
 class VulkanError : public vk::Error, public std::exception
