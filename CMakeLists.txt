@@ -68,6 +68,8 @@ set(sources
     source/ShaderCompiler.h
     source/ShaderCompiler.cpp
     source/Definitions.h
+    source/Framework/Buffer.h
+    source/Framework/Buffer.cpp
     source/Framework/MemoryAllocator.h
     source/Framework/MemoryAllocator.cpp
     source/Framework/Renderer.h

@@ -36,6 +36,12 @@ void SetDebugName(vk::Device device, vk::UniqueHandle<Type, Dispatch>& handle, c
 	}
 }
 
+template <class Type, class Dispatch>
+void SetDebugName(vk::UniqueHandle<Type, Dispatch>& handle, const char* debugName)
+{
+	SetDebugName(handle.getOwner(), handle, debugName);
+}
+
 class OneShotCommandBuffer
 {
 public:

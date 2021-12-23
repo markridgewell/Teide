@@ -1,5 +1,6 @@
 
 #include "Definitions.h"
+#include "Framework/Buffer.h"
 #include "Framework/MemoryAllocator.h"
 #include "Framework/Renderer.h"
 #include "Framework/Surface.h"
@@ -502,31 +503,6 @@ CreateShaderModule(std::string_view shaderSource, ShaderStage stage, ShaderLangu
 	return device.createShaderModuleUnique(createInfo, s_allocator);
 }
 
-vk::UniqueBuffer CreateBuffer(vk::Device device, vk::DeviceSize size, vk::BufferUsageFlags usage)
-{
-	const auto createInfo = vk::BufferCreateInfo{
-	    .size = size,
-	    .usage = usage,
-	    .sharingMode = vk::SharingMode::eExclusive,
-	};
-	return device.createBufferUnique(createInfo, s_allocator);
-}
-
-void SetBufferData(MemoryAllocation allocation, BytesView data)
-{
-	memcpy(allocation.mappedData, data.data(), data.size());
-}
-
-void CopyBuffer(vk::CommandBuffer cmdBuffer, vk::Buffer source, vk::Buffer destination, vk::DeviceSize size)
-{
-	const auto copyRegion = vk::BufferCopy{
-	    .srcOffset = 0,
-	    .dstOffset = 0,
-	    .size = size,
-	};
-	cmdBuffer.copyBuffer(source, destination, copyRegion);
-}
-
 void CopyBufferToImage(vk::CommandBuffer cmdBuffer, vk::Buffer source, vk::Image destination, vk::Extent3D extent)
 {
 	const auto copyRegion = vk::BufferImageCopy
@@ -545,46 +521,12 @@ void CopyBufferToImage(vk::CommandBuffer cmdBuffer, vk::Buffer source, vk::Image
 	cmdBuffer.copyBufferToImage(source, destination, vk::ImageLayout::eTransferDstOptimal, copyRegion);
 }
 
-struct BufferWithAllocation
-{
-	vk::UniqueBuffer buffer;
-	MemoryAllocation allocation;
-};
-
-BufferWithAllocation CreateBufferWithData(
-    vk::Device device, MemoryAllocator& allocator, vk::CommandPool commandPool, vk::Queue queue, BytesView data,
-    vk::BufferUsageFlags usage)
-{
-	BufferWithAllocation ret{};
-
-	// Create staging buffer
-	const auto stagingBuffer = CreateBuffer(device, data.size(), vk::BufferUsageFlagBits::eTransferSrc);
-	const auto stagingAlloc = allocator.Allocate(
-	    device.getBufferMemoryRequirements(stagingBuffer.get()),
-	    vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
-	device.bindBufferMemory(stagingBuffer.get(), stagingAlloc.memory, stagingAlloc.offset);
-	SetBufferData(stagingAlloc, data);
-
-	// Create vertex buffer
-	ret.buffer = CreateBuffer(device, data.size(), usage | vk::BufferUsageFlagBits::eTransferDst);
-	ret.allocation = allocator.Allocate(
-	    device.getBufferMemoryRequirements(ret.buffer.get()),
-	    vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
-	device.bindBufferMemory(ret.buffer.get(), ret.allocation.memory, ret.allocation.offset);
-	CopyBuffer(OneShotCommandBuffer(device, commandPool, queue), stagingBuffer.get(), ret.buffer.get(), data.size());
-
-	return ret;
-}
-
 struct UniformBuffer
 {
-	std::array<BufferWithAllocation, MaxFramesInFlight> buffers;
+	std::array<Buffer, MaxFramesInFlight> buffers;
 	vk::DeviceSize size = 0;
 
-	void SetData(int currentFrame, BytesView data)
-	{
-		SetBufferData(buffers[currentFrame % MaxFramesInFlight].allocation, data);
-	}
+	void SetData(int currentFrame, BytesView data) { buffers[currentFrame % MaxFramesInFlight].SetData(data); }
 };
 
 UniformBuffer CreateUniformBuffer(size_t bufferSize, vk::Device device, MemoryAllocator& allocator)
@@ -593,11 +535,9 @@ UniformBuffer CreateUniformBuffer(size_t bufferSize, vk::Device device, MemoryAl
 	ret.size = bufferSize;
 	for (auto& buffer : ret.buffers)
 	{
-		buffer.buffer = CreateBuffer(device, bufferSize, vk::BufferUsageFlagBits::eUniformBuffer);
-		buffer.allocation = allocator.Allocate(
-		    device.getBufferMemoryRequirements(buffer.buffer.get()),
+		buffer = CreateBuffer(
+		    device, allocator, bufferSize, vk::BufferUsageFlagBits::eUniformBuffer,
 		    vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
-		device.bindBufferMemory(buffer.buffer.get(), buffer.allocation.memory, buffer.allocation.offset);
 	}
 	return ret;
 }
@@ -1110,8 +1050,8 @@ public:
 			    .sceneDescriptorSet = &m_globalDescriptorSet,
 			    .viewDescriptorSet = &m_viewDescriptorSets[0],
 			    .objects = {{
-			        .vertexBuffer = m_vertexBuffer.get(),
-			        .indexBuffer = m_indexBuffer.get(),
+			        .vertexBuffer = m_vertexBuffer.buffer.get(),
+			        .indexBuffer = m_indexBuffer.buffer.get(),
 			        .indexCount = m_indexCount,
 			        .pipeline = m_shadowMapPipeline.get(),
 			        .pipelineLayout = m_pipelineLayout.get(),
@@ -1160,8 +1100,8 @@ public:
 			    .sceneDescriptorSet = &m_globalDescriptorSet,
 			    .viewDescriptorSet = &m_viewDescriptorSets[1],
 			    .objects = {{
-			        .vertexBuffer = m_vertexBuffer.get(),
-			        .indexBuffer = m_indexBuffer.get(),
+			        .vertexBuffer = m_vertexBuffer.buffer.get(),
+			        .indexBuffer = m_indexBuffer.buffer.get(),
 			        .indexCount = m_indexCount,
 			        .pipeline = m_pipeline.get(),
 			        .pipelineLayout = m_pipelineLayout.get(),
@@ -1268,22 +1208,18 @@ private:
 
 	void CreateVertexBuffer(BytesView data)
 	{
-		auto result = CreateBufferWithData(
+		m_vertexBuffer = CreateBufferWithData(
 		    m_device.get(), m_generalAllocator.value(), m_setupCommandPool.get(), m_graphicsQueue, data,
-		    vk::BufferUsageFlagBits::eVertexBuffer);
-		m_vertexBuffer = std::move(result.buffer);
-		SetDebugName(m_device.get(), m_vertexBuffer, "VertexBuffer");
-		m_vertexBufferMemory = std::move(result.allocation);
+		    vk::BufferUsageFlagBits::eVertexBuffer, vk::MemoryPropertyFlagBits::eDeviceLocal);
+		SetDebugName(m_vertexBuffer.buffer, "VertexBuffer");
 	}
 
 	void CreateIndexBuffer(std::span<const uint16_t> data)
 	{
-		auto result = CreateBufferWithData(
+		m_indexBuffer = CreateBufferWithData(
 		    m_device.get(), m_generalAllocator.value(), m_setupCommandPool.get(), m_graphicsQueue, data,
-		    vk::BufferUsageFlagBits::eIndexBuffer);
-		m_indexBuffer = std::move(result.buffer);
-		SetDebugName(m_device.get(), m_indexBuffer, "IndexBuffer");
-		m_indexBufferMemory = std::move(result.allocation);
+		    vk::BufferUsageFlagBits::eIndexBuffer, vk::MemoryPropertyFlagBits::eDeviceLocal);
+		SetDebugName(m_indexBuffer.buffer, "IndexBuffer");
 		m_indexCount = size32(data);
 	}
 
@@ -1456,12 +1392,10 @@ private:
 		const auto mipLevelCount = static_cast<uint32_t>(std::floor(std::log2(std::max(width, height)))) + 1;
 
 		// Create staging buffer
-		const auto stagingBuffer = CreateBuffer(m_device.get(), imageSize, vk::BufferUsageFlagBits::eTransferSrc);
-		const auto stagingAlloc = m_generalAllocator->Allocate(
-		    m_device->getBufferMemoryRequirements(stagingBuffer.get()),
+		auto stagingBuffer = CreateBuffer(
+		    m_device.get(), *m_generalAllocator, imageSize, vk::BufferUsageFlagBits::eTransferSrc,
 		    vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
-		m_device->bindBufferMemory(stagingBuffer.get(), stagingAlloc.memory, stagingAlloc.offset);
-		SetBufferData(stagingAlloc, std::span(pixels.get(), imageSize));
+		stagingBuffer.SetData(std::span(pixels.get(), imageSize));
 
 		// Create image
 		const auto imageExtent = vk::Extent3D{static_cast<uint32_t>(width), static_cast<uint32_t>(height), 1};
@@ -1488,7 +1422,7 @@ private:
 		    cmdBuffer, m_textureImage.get(), imageInfo.format, mipLevelCount, imageInfo.initialLayout,
 		    vk::ImageLayout::eTransferDstOptimal, vk::PipelineStageFlagBits::eTopOfPipe,
 		    vk::PipelineStageFlagBits::eTransfer);
-		CopyBufferToImage(cmdBuffer, stagingBuffer.get(), m_textureImage.get(), imageExtent);
+		CopyBufferToImage(cmdBuffer, stagingBuffer.buffer.get(), m_textureImage.get(), imageExtent);
 
 		GenerateMipmaps(cmdBuffer, m_textureImage.get(), width, height, mipLevelCount);
 
@@ -1645,11 +1579,9 @@ private:
 	vk::UniquePipelineLayout m_pipelineLayout;
 	Geo::Point3 m_meshBoundsMin;
 	Geo::Point3 m_meshBoundsMax;
-	vk::UniqueBuffer m_vertexBuffer;
-	MemoryAllocation m_vertexBufferMemory;
-	vk::UniqueBuffer m_indexBuffer;
+	Buffer m_vertexBuffer;
+	Buffer m_indexBuffer;
 	uint32_t m_indexCount;
-	MemoryAllocation m_indexBufferMemory;
 	vk::UniqueImage m_textureImage;
 	MemoryAllocation m_textureMemory;
 	vk::UniqueImageView m_textureImageView;
