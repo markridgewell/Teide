@@ -9,7 +9,7 @@
       {
          "name": "_common",
          "hidden": true,
-         "binaryDir": "${sourceDir}/build",
+         "binaryDir": "${sourceDir}/build/{presetName}",
          "toolchainFile": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
          "cacheVariables": {
             "CMAKE_CONFIGURATION_TYPES": "Debug;Release"
@@ -65,7 +65,20 @@
          "displayName": "Unix Makefiles",
          "generator": "Unix Makefiles",
          "cacheVariables": {
-            "CMAKE_CXX_FLAGS": "--std=c++2a -DSDL_main=main"
+            "CMAKE_CXX_FLAGS": "--std=c++2a -DSDL_main=main -Wno-attributes"
+         }
+      },
+      {
+         "name": "mingw-make",
+         "inherits": "_common",
+         "displayName": "MinGW Makefiles",
+         "generator": "MinGW Makefiles",
+         "cacheVariables": {
+            "CMAKE_CXX_FLAGS": "--std=c++2a -DSDL_main=main -Wno-attributes"
+         },
+         "environment": {
+            "VCPKG_DEFAULT_TRIPLET": "x64-mingw-static",
+            "VCPKG_DEFAULT_HOST_TRIPLET": "x64-mingw-static"
          }
       }
    ]

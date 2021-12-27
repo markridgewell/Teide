@@ -1,6 +1,4 @@
 
-#pragma once
-
 #include "Framework/Renderer.h"
 
 #include "Framework/Texture.h"
@@ -25,7 +23,7 @@ Renderer::Renderer(vk::Device device, uint32_t graphicsFamilyIndex, uint32_t pre
     m_executor(numThreads)
 {
 	std::ranges::generate(
-	    m_frameResources, [=] { return CreateThreadResources(m_device, graphicsFamilyIndex, numThreads); });
+	    m_frameResources, [=] { return CreateThreadResources(device, graphicsFamilyIndex, numThreads); });
 	std::ranges::generate(m_renderFinished, [=] { return CreateSemaphore(device); });
 	std::ranges::generate(m_inFlightFences, [=] { return CreateFence(device); });
 }

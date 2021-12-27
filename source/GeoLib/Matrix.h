@@ -19,6 +19,7 @@ namespace Impl
 			return {x, y, z};
 		if constexpr (N == 4)
 			return {x, y, z, w};
+		return {};
 	}
 
 	template <class T, int N, int Row>
