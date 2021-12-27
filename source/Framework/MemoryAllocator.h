@@ -11,7 +11,7 @@ struct MemoryAllocation
 {
 	vk::DeviceMemory memory;
 	vk::DeviceSize offset;
-	void* mappedData;
+	void* mappedData = nullptr;
 };
 
 // The world's simplest memory allocator

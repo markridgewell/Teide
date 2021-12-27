@@ -347,7 +347,7 @@ void Surface::CreateColorBuffer(vk::Format format, vk::CommandBuffer cmdBuffer)
 	};
 
 	m_colorImage = m_device.createImageUnique(imageInfo, s_allocator);
-	SetDebugName(m_device, m_colorImage, "ColorImage");
+	SetDebugName(m_colorImage, "ColorImage");
 	const auto allocation = m_swapchainAllocator.Allocate(
 	    m_device.getImageMemoryRequirements(m_colorImage.get()), vk::MemoryPropertyFlagBits::eDeviceLocal);
 	m_device.bindImageMemory(m_colorImage.get(), allocation.memory, allocation.offset);
@@ -371,7 +371,7 @@ void Surface::CreateColorBuffer(vk::Format format, vk::CommandBuffer cmdBuffer)
 			},
 		};
 	m_colorImageView = m_device.createImageViewUnique(viewInfo, s_allocator);
-	SetDebugName(m_device, m_colorImageView, "ColorImageView");
+	SetDebugName(m_colorImageView, "ColorImageView");
 }
 
 void Surface::CreateDepthBuffer(vk::CommandBuffer cmdBuffer)
@@ -396,7 +396,7 @@ void Surface::CreateDepthBuffer(vk::CommandBuffer cmdBuffer)
 	};
 
 	m_depthImage = m_device.createImageUnique(imageInfo, s_allocator);
-	SetDebugName(m_device, m_depthImage, "DepthImage");
+	SetDebugName(m_depthImage, "DepthImage");
 	const auto allocation = m_swapchainAllocator.Allocate(
 	    m_device.getImageMemoryRequirements(m_depthImage.get()), vk::MemoryPropertyFlagBits::eDeviceLocal);
 	m_device.bindImageMemory(m_depthImage.get(), allocation.memory, allocation.offset);
@@ -420,7 +420,7 @@ void Surface::CreateDepthBuffer(vk::CommandBuffer cmdBuffer)
 			},
 		};
 	m_depthImageView = m_device.createImageViewUnique(viewInfo, s_allocator);
-	SetDebugName(m_device, m_depthImageView, "DepthImageView");
+	SetDebugName(m_depthImageView, "DepthImageView");
 }
 
 void Surface::CreateSwapchainAndImages()

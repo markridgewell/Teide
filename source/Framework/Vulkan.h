@@ -3,6 +3,7 @@
 
 #include "Definitions.h"
 
+#include <fmt/core.h>
 #include <vulkan/vulkan.hpp>
 
 template <class T>
@@ -25,11 +26,11 @@ vk::UniqueFence CreateFence(vk::Device device);
 vk::UniqueCommandPool CreateCommandPool(uint32_t queueFamilyIndex, vk::Device device);
 
 template <class Type, class Dispatch>
-void SetDebugName(vk::Device device, vk::UniqueHandle<Type, Dispatch>& handle, const char* debugName)
+void SetDebugName(vk::UniqueHandle<Type, Dispatch>& handle, const char* debugName)
 {
 	if constexpr (IsDebugBuild)
 	{
-		device.setDebugUtilsObjectNameEXT({
+		handle.getOwner().setDebugUtilsObjectNameEXT({
 		    .objectType = handle->objectType,
 		    .objectHandle = std::bit_cast<uint64_t>(handle.get()),
 		    .pObjectName = debugName,
@@ -37,10 +38,14 @@ void SetDebugName(vk::Device device, vk::UniqueHandle<Type, Dispatch>& handle, c
 	}
 }
 
-template <class Type, class Dispatch>
-void SetDebugName(vk::UniqueHandle<Type, Dispatch>& handle, const char* debugName)
+template <class Type, class Dispatch, class... FormatArgs>
+void SetDebugName(vk::UniqueHandle<Type, Dispatch>& handle, const fmt::format_string<FormatArgs...>& format, FormatArgs&&... fmtArgs)
 {
-	SetDebugName(handle.getOwner(), handle, debugName);
+	if constexpr (IsDebugBuild)
+	{
+		const auto string = fmt::vformat(format, fmt::make_format_args(fmtArgs...));
+		SetDebugName(handle, string.c_str());
+	}
 }
 
 class OneShotCommandBuffer

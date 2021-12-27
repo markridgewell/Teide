@@ -3,6 +3,7 @@
 #include "Framework/Buffer.h"
 #include "Framework/MemoryAllocator.h"
 #include "Framework/Renderer.h"
+#include "Framework/Shader.h"
 #include "Framework/Surface.h"
 #include "Framework/Texture.h"
 #include "GeoLib/Matrix.h"
@@ -494,14 +495,12 @@ CreateDevice(vk::PhysicalDevice physicalDevice, std::span<const uint32_t> queueF
 	return physicalDevice.createDeviceUnique(deviceCreateInfo, s_allocator);
 }
 
-vk::UniqueShaderModule
-CreateShaderModule(std::string_view shaderSource, ShaderStage stage, ShaderLanguage language, vk::Device device)
+ShaderData CompileShader(std::string_view vertexShaderSource, std::string_view pixelShaderSource, ShaderLanguage language)
 {
-	const std::vector<uint32_t> spirv = CompileShader(shaderSource, stage, language);
-
-	const auto createInfo = vk::ShaderModuleCreateInfo{.codeSize = spirv.size() * sizeof(uint32_t), .pCode = spirv.data()};
-
-	return device.createShaderModuleUnique(createInfo, s_allocator);
+	return ShaderData{
+	    .vertexShaderSpirv = CompileShader(vertexShaderSource, ShaderStage::Vertex, language),
+	    .pixelShaderSpirv = CompileShader(pixelShaderSource, ShaderStage::Pixel, language),
+	};
 }
 
 void CopyBufferToImage(vk::CommandBuffer cmdBuffer, vk::Buffer source, vk::Image destination, vk::Extent3D extent)
@@ -882,12 +881,12 @@ public:
 		    m_globalDescriptorSetLayout.get(), m_viewDescriptorSetLayout.get(), m_materialDescriptorSetLayout.get()};
 		m_pipelineLayout = CreateGraphicsPipelineLayout(m_device.get(), layouts);
 
-		m_vertexShader = CreateShaderModule(VertexShader, ShaderStage::Vertex, ShaderLang, m_device.get());
-		m_pixelShader = CreateShaderModule(PixelShader, ShaderStage::Pixel, ShaderLang, m_device.get());
+		const auto shaderData = CompileShader(VertexShader, PixelShader, ShaderLang);
+		m_shader = std::make_unique<Shader>(CreateShader(shaderData, "ModelShader"));
 
 		m_pipeline = CreateGraphicsPipeline(
-		    m_vertexShader.get(), m_pixelShader.get(), m_pipelineLayout.get(), m_surface->GetVulkanRenderPass(),
-		    m_surface->GetSampleCount(), m_device.get());
+		    m_shader->vertexShader.get(), m_shader->pixelShader.get(), m_pipelineLayout.get(),
+		    m_surface->GetVulkanRenderPass(), m_surface->GetSampleCount(), m_device.get());
 
 		CreateMesh(modelFilename);
 		CreateUniformBuffers();
@@ -1218,7 +1217,7 @@ private:
 			CreateVertexBuffer(vertices);
 
 			std::vector<uint16_t> indices;
-			indices.reserve(mesh.mNumFaces * 3);
+			indices.reserve(static_cast<std::size_t>(mesh.mNumFaces) * 3);
 
 			for (unsigned int i = 0; i < mesh.mNumFaces; i++)
 			{
@@ -1307,7 +1306,7 @@ private:
 			throw VulkanError(fmt::format("Error loading texture '{}'", filename));
 		}
 
-		const vk::DeviceSize imageSize = width * height * 4;
+		const vk::DeviceSize imageSize = static_cast<vk::DeviceSize>(width) * height * 4;
 
 		const auto data = TextureData{
 		    .size = {static_cast<uint32_t>(width), static_cast<uint32_t>(height)},
@@ -1345,7 +1344,7 @@ private:
 
 		// Create render pass
 		m_shadowRenderPass = CreateShadowRenderPass(m_device.get(), m_shadowMap->format);
-		SetDebugName(m_device.get(), m_shadowRenderPass, "ShadowRenderPass");
+		SetDebugName(m_shadowRenderPass, "ShadowRenderPass");
 
 		// Create framebuffer
 		const auto framebufferCreateInfo = vk::FramebufferCreateInfo{
@@ -1367,13 +1366,35 @@ private:
 
 		// Create pipeline
 		m_shadowMapPipeline = CreateGraphicsPipeline(
-		    m_vertexShader.get(), nullptr, m_pipelineLayout.get(), m_shadowRenderPass.get(),
+		    m_shader->vertexShader.get(), nullptr, m_pipelineLayout.get(), m_shadowRenderPass.get(),
 		    vk::SampleCountFlagBits::e1, m_device.get(), depthBiasConstant, depthBiasSlope);
 	}
 
 	//
 	// Device functions
 	//
+
+	Shader CreateShader(const ShaderData& data, const char* debugName)
+	{
+		const auto vertexCreateInfo = vk::ShaderModuleCreateInfo{
+		    .codeSize = data.vertexShaderSpirv.size() * sizeof(uint32_t),
+		    .pCode = data.vertexShaderSpirv.data(),
+		};
+		const auto pixelCreateInfo = vk::ShaderModuleCreateInfo{
+		    .codeSize = data.pixelShaderSpirv.size() * sizeof(uint32_t),
+		    .pCode = data.pixelShaderSpirv.data(),
+		};
+
+		auto shader = Shader{
+		    .vertexShader = m_device->createShaderModuleUnique(vertexCreateInfo, s_allocator),
+		    .pixelShader = m_device->createShaderModuleUnique(pixelCreateInfo, s_allocator),
+		};
+
+		SetDebugName(shader.vertexShader, "{}:Vertex", debugName);
+		SetDebugName(shader.pixelShader, "{}:Pixel", debugName);
+
+		return shader;
+	}
 
 	Texture CreateTexture(const TextureData& data, const char* debugName)
 	{
@@ -1499,13 +1520,9 @@ private:
 		    .layout = initialLayout,
 		};
 
-		if constexpr (IsDebugBuild)
-		{
-			using namespace std::string_literals;
-			SetDebugName(ret.image, debugName);
-			SetDebugName(ret.imageView, (debugName + ":View"s).c_str());
-			SetDebugName(ret.sampler, (debugName + ":Sampler"s).c_str());
-		}
+		SetDebugName(ret.image, debugName);
+		SetDebugName(ret.imageView, "{}:View", debugName);
+		SetDebugName(ret.sampler, "{}:Sampler", debugName);
 
 		return ret;
 	}
@@ -1529,8 +1546,7 @@ private:
 	vk::UniqueCommandPool m_setupCommandPool;
 
 	// Object setup
-	vk::UniqueShaderModule m_vertexShader;
-	vk::UniqueShaderModule m_pixelShader;
+	std::unique_ptr<Shader> m_shader;
 	vk::UniqueDescriptorSetLayout m_globalDescriptorSetLayout;
 	vk::UniqueDescriptorSetLayout m_viewDescriptorSetLayout;
 	vk::UniqueDescriptorSetLayout m_materialDescriptorSetLayout;
