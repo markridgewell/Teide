@@ -26,7 +26,7 @@ vk::UniqueFence CreateFence(vk::Device device);
 vk::UniqueCommandPool CreateCommandPool(uint32_t queueFamilyIndex, vk::Device device);
 
 template <class Type, class Dispatch>
-void SetDebugName(vk::UniqueHandle<Type, Dispatch>& handle, const char* debugName)
+void SetDebugName(vk::UniqueHandle<Type, Dispatch>& handle [[maybe_unused]], const char* debugName [[maybe_unused]])
 {
 	if constexpr (IsDebugBuild)
 	{
@@ -39,7 +39,9 @@ void SetDebugName(vk::UniqueHandle<Type, Dispatch>& handle, const char* debugNam
 }
 
 template <class Type, class Dispatch, class... FormatArgs>
-void SetDebugName(vk::UniqueHandle<Type, Dispatch>& handle, const fmt::format_string<FormatArgs...>& format, FormatArgs&&... fmtArgs)
+void SetDebugName(
+    vk::UniqueHandle<Type, Dispatch>& handle [[maybe_unused]],
+    const fmt::format_string<FormatArgs...>& format [[maybe_unused]], FormatArgs&&... fmtArgs [[maybe_unused]])
 {
 	if constexpr (IsDebugBuild)
 	{

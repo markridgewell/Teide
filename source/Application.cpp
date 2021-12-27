@@ -495,12 +495,27 @@ CreateDevice(vk::PhysicalDevice physicalDevice, std::span<const uint32_t> queueF
 	return physicalDevice.createDeviceUnique(deviceCreateInfo, s_allocator);
 }
 
-ShaderData CompileShader(std::string_view vertexShaderSource, std::string_view pixelShaderSource, ShaderLanguage language)
+ShaderData CompileShader(
+    std::string_view vertexShaderSource, std::string_view pixelShaderSource, ShaderLanguage language,
+    std::vector<vk::DescriptorSetLayoutBinding> sceneLayoutBindings,
+    std::vector<vk::DescriptorSetLayoutBinding> viewLayoutBindings,
+    std::vector<vk::DescriptorSetLayoutBinding> materialLayoutBindings)
 {
 	return ShaderData{
 	    .vertexShaderSpirv = CompileShader(vertexShaderSource, ShaderStage::Vertex, language),
 	    .pixelShaderSpirv = CompileShader(pixelShaderSource, ShaderStage::Pixel, language),
+	    .sceneBindings = std::move(sceneLayoutBindings),
+	    .viewBindings = std::move(viewLayoutBindings),
+	    .materialBindings = std::move(materialLayoutBindings),
 	};
+}
+
+template <class T, std::size_t N>
+std::vector<T> ToVector(const std::array<T, N>& arr)
+{
+	auto ret = std::vector<T>(N);
+	std::ranges::copy(arr, ret.begin());
+	return ret;
 }
 
 void CopyBufferToImage(vk::CommandBuffer cmdBuffer, vk::Buffer source, vk::Image destination, vk::Extent3D extent)
@@ -874,18 +889,13 @@ public:
 		    m_setupCommandPool.get(), m_graphicsQueue, UseMSAA);
 		m_renderer.emplace(m_device.get(), m_graphicsQueueFamily, m_presentQueueFamily);
 
-		m_globalDescriptorSetLayout = CreateDescriptorSetLayout(m_device.get(), GlobalBindings);
-		m_viewDescriptorSetLayout = CreateDescriptorSetLayout(m_device.get(), ViewBindings);
-		m_materialDescriptorSetLayout = CreateDescriptorSetLayout(m_device.get(), MaterialBindings);
-		const auto layouts = std::array{
-		    m_globalDescriptorSetLayout.get(), m_viewDescriptorSetLayout.get(), m_materialDescriptorSetLayout.get()};
-		m_pipelineLayout = CreateGraphicsPipelineLayout(m_device.get(), layouts);
-
-		const auto shaderData = CompileShader(VertexShader, PixelShader, ShaderLang);
+		const auto shaderData = CompileShader(
+		    VertexShader, PixelShader, ShaderLang, ToVector(GlobalBindings), ToVector(ViewBindings),
+		    ToVector(MaterialBindings));
 		m_shader = std::make_unique<Shader>(CreateShader(shaderData, "ModelShader"));
 
 		m_pipeline = CreateGraphicsPipeline(
-		    m_shader->vertexShader.get(), m_shader->pixelShader.get(), m_pipelineLayout.get(),
+		    m_shader->vertexShader.get(), m_shader->pixelShader.get(), m_shader->pipelineLayout.get(),
 		    m_surface->GetVulkanRenderPass(), m_surface->GetSampleCount(), m_device.get());
 
 		CreateMesh(modelFilename);
@@ -981,7 +991,7 @@ public:
 			        .indexBuffer = m_indexBuffer.buffer.get(),
 			        .indexCount = m_indexCount,
 			        .pipeline = m_shadowMapPipeline.get(),
-			        .pipelineLayout = m_pipelineLayout.get(),
+			        .pipelineLayout = m_shader->pipelineLayout.get(),
 			        .materialDescriptorSet = &m_materialDescriptorSet,
 			        .pushConstants = m_objectUniforms,
 			    }},
@@ -1030,7 +1040,7 @@ public:
 			        .indexBuffer = m_indexBuffer.buffer.get(),
 			        .indexCount = m_indexCount,
 			        .pipeline = m_pipeline.get(),
-			        .pipelineLayout = m_pipelineLayout.get(),
+			        .pipelineLayout = m_shader->pipelineLayout.get(),
 			        .materialDescriptorSet = &m_materialDescriptorSet,
 			        .pushConstants = m_objectUniforms,
 			    }},
@@ -1268,7 +1278,7 @@ private:
 
 		// Global descriptor set
 		m_globalDescriptorSet = CreateDescriptorSet(
-		    m_globalDescriptorSetLayout.get(), descriptorPool.get(), m_device.get(), m_globalUniformBuffer);
+		    m_shader->sceneDescriptorSetLayout.get(), descriptorPool.get(), m_device.get(), m_globalUniformBuffer);
 
 		// View desriptor sets
 		m_viewDescriptorSets.clear();
@@ -1279,13 +1289,15 @@ private:
 			const auto images = i >= 1 ? shadowMapImages : std::span<Texture* const>{};
 
 			m_viewDescriptorSets.push_back(CreateDescriptorSet(
-			    m_viewDescriptorSetLayout.get(), descriptorPool.get(), m_device.get(), m_viewUniformBuffers[i], images));
+			    m_shader->viewDescriptorSetLayout.get(), descriptorPool.get(), m_device.get(), m_viewUniformBuffers[i],
+			    images));
 		}
 
 		// Material desriptor set
 		const auto materialTextures = std::array{m_texture.get()};
 		m_materialDescriptorSet = CreateDescriptorSet(
-		    m_materialDescriptorSetLayout.get(), descriptorPool.get(), m_device.get(), UniformBuffer{}, materialTextures);
+		    m_shader->materialDescriptorSetLayout.get(), descriptorPool.get(), m_device.get(), UniformBuffer{},
+		    materialTextures);
 
 		m_descriptorPool = std::move(descriptorPool);
 	}
@@ -1366,7 +1378,7 @@ private:
 
 		// Create pipeline
 		m_shadowMapPipeline = CreateGraphicsPipeline(
-		    m_shader->vertexShader.get(), nullptr, m_pipelineLayout.get(), m_shadowRenderPass.get(),
+		    m_shader->vertexShader.get(), nullptr, m_shader->pipelineLayout.get(), m_shadowRenderPass.get(),
 		    vk::SampleCountFlagBits::e1, m_device.get(), depthBiasConstant, depthBiasSlope);
 	}
 
@@ -1388,7 +1400,15 @@ private:
 		auto shader = Shader{
 		    .vertexShader = m_device->createShaderModuleUnique(vertexCreateInfo, s_allocator),
 		    .pixelShader = m_device->createShaderModuleUnique(pixelCreateInfo, s_allocator),
+		    .sceneDescriptorSetLayout = CreateDescriptorSetLayout(m_device.get(), data.sceneBindings),
+		    .viewDescriptorSetLayout = CreateDescriptorSetLayout(m_device.get(), data.viewBindings),
+		    .materialDescriptorSetLayout = CreateDescriptorSetLayout(m_device.get(), data.materialBindings),
 		};
+
+		const auto layouts = std::array{
+		    shader.sceneDescriptorSetLayout.get(), shader.viewDescriptorSetLayout.get(),
+		    shader.materialDescriptorSetLayout.get()};
+		shader.pipelineLayout = CreateGraphicsPipelineLayout(m_device.get(), layouts);
 
 		SetDebugName(shader.vertexShader, "{}:Vertex", debugName);
 		SetDebugName(shader.pixelShader, "{}:Pixel", debugName);
@@ -1547,11 +1567,7 @@ private:
 
 	// Object setup
 	std::unique_ptr<Shader> m_shader;
-	vk::UniqueDescriptorSetLayout m_globalDescriptorSetLayout;
-	vk::UniqueDescriptorSetLayout m_viewDescriptorSetLayout;
-	vk::UniqueDescriptorSetLayout m_materialDescriptorSetLayout;
 	vk::UniquePipeline m_pipeline;
-	vk::UniquePipelineLayout m_pipelineLayout;
 	Geo::Point3 m_meshBoundsMin;
 	Geo::Point3 m_meshBoundsMax;
 	Buffer m_vertexBuffer;
