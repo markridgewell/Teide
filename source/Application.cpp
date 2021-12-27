@@ -495,21 +495,6 @@ CreateDevice(vk::PhysicalDevice physicalDevice, std::span<const uint32_t> queueF
 	return physicalDevice.createDeviceUnique(deviceCreateInfo, s_allocator);
 }
 
-ShaderData CompileShader(
-    std::string_view vertexShaderSource, std::string_view pixelShaderSource, ShaderLanguage language,
-    std::vector<vk::DescriptorSetLayoutBinding> sceneLayoutBindings,
-    std::vector<vk::DescriptorSetLayoutBinding> viewLayoutBindings,
-    std::vector<vk::DescriptorSetLayoutBinding> materialLayoutBindings)
-{
-	return ShaderData{
-	    .vertexShaderSpirv = CompileShader(vertexShaderSource, ShaderStage::Vertex, language),
-	    .pixelShaderSpirv = CompileShader(pixelShaderSource, ShaderStage::Pixel, language),
-	    .sceneBindings = std::move(sceneLayoutBindings),
-	    .viewBindings = std::move(viewLayoutBindings),
-	    .materialBindings = std::move(materialLayoutBindings),
-	};
-}
-
 template <class T, std::size_t N>
 std::vector<T> ToVector(const std::array<T, N>& arr)
 {
@@ -636,39 +621,6 @@ DescriptorSet CreateDescriptorSet(
 	return descriptorSets;
 }
 
-constexpr auto GlobalBindings = std::array{vk::DescriptorSetLayoutBinding{
-    .binding = 0,
-    .descriptorType = vk::DescriptorType::eUniformBuffer,
-    .descriptorCount = 1,
-    .stageFlags = vk::ShaderStageFlagBits::eAllGraphics,
-}};
-
-constexpr auto ViewBindings = std::array{
-    vk::DescriptorSetLayoutBinding{
-        .binding = 0,
-        .descriptorType = vk::DescriptorType::eUniformBuffer,
-        .descriptorCount = 1,
-        .stageFlags = vk::ShaderStageFlagBits::eAllGraphics,
-    },
-    vk::DescriptorSetLayoutBinding{
-        .binding = 1,
-        .descriptorType = vk::DescriptorType::eCombinedImageSampler,
-        .descriptorCount = 1,
-        .stageFlags = vk::ShaderStageFlagBits::eFragment,
-        .pImmutableSamplers = nullptr,
-    },
-};
-
-constexpr auto MaterialBindings = std::array{
-    vk::DescriptorSetLayoutBinding{
-        .binding = 1,
-        .descriptorType = vk::DescriptorType::eCombinedImageSampler,
-        .descriptorCount = 1,
-        .stageFlags = vk::ShaderStageFlagBits::eFragment,
-        .pImmutableSamplers = nullptr,
-    },
-};
-
 vk::UniqueDescriptorSetLayout
 CreateDescriptorSetLayout(vk::Device device, std::span<const vk::DescriptorSetLayoutBinding> layoutBindings)
 {
@@ -792,19 +744,18 @@ vk::UniquePipeline CreateGraphicsPipeline(
 	return std::move(pipeline);
 }
 
-vk::UniquePipelineLayout CreateGraphicsPipelineLayout(vk::Device device, std::span<const vk::DescriptorSetLayout> setLayouts)
+vk::UniquePipelineLayout
+CreateGraphicsPipelineLayout(vk::Device device, Shader& shader, std::span<const vk::PushConstantRange> pushConstantRanges)
 {
-	const auto pushConstant = vk::PushConstantRange{
-	    .stageFlags = vk::ShaderStageFlagBits::eVertex,
-	    .offset = 0,
-	    .size = sizeof(ObjectUniforms),
-	};
+	const auto setLayouts = std::array{
+	    shader.sceneDescriptorSetLayout.get(), shader.viewDescriptorSetLayout.get(),
+	    shader.materialDescriptorSetLayout.get()};
 
 	const auto createInfo = vk::PipelineLayoutCreateInfo{
 	    .setLayoutCount = size32(setLayouts),
 	    .pSetLayouts = data(setLayouts),
-	    .pushConstantRangeCount = 1,
-	    .pPushConstantRanges = &pushConstant,
+	    .pushConstantRangeCount = size32(pushConstantRanges),
+	    .pPushConstantRanges = data(pushConstantRanges),
 	};
 
 	return device.createPipelineLayoutUnique(createInfo, s_allocator);
@@ -889,9 +840,7 @@ public:
 		    m_setupCommandPool.get(), m_graphicsQueue, UseMSAA);
 		m_renderer.emplace(m_device.get(), m_graphicsQueueFamily, m_presentQueueFamily);
 
-		const auto shaderData = CompileShader(
-		    VertexShader, PixelShader, ShaderLang, ToVector(GlobalBindings), ToVector(ViewBindings),
-		    ToVector(MaterialBindings));
+		const auto shaderData = CompileShader(VertexShader, PixelShader, ShaderLang);
 		m_shader = std::make_unique<Shader>(CreateShader(shaderData, "ModelShader"));
 
 		m_pipeline = CreateGraphicsPipeline(
@@ -1405,10 +1354,7 @@ private:
 		    .materialDescriptorSetLayout = CreateDescriptorSetLayout(m_device.get(), data.materialBindings),
 		};
 
-		const auto layouts = std::array{
-		    shader.sceneDescriptorSetLayout.get(), shader.viewDescriptorSetLayout.get(),
-		    shader.materialDescriptorSetLayout.get()};
-		shader.pipelineLayout = CreateGraphicsPipelineLayout(m_device.get(), layouts);
+		shader.pipelineLayout = CreateGraphicsPipelineLayout(m_device.get(), shader, data.pushConstantRanges);
 
 		SetDebugName(shader.vertexShader, "{}:Vertex", debugName);
 		SetDebugName(shader.pixelShader, "{}:Pixel", debugName);

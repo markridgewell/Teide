@@ -134,29 +134,105 @@ struct StaticInit
 	~StaticInit() { glslang::FinalizeProcess(); }
 } s_staticInit;
 
-std::vector<uint32_t> Compile(std::string_view shaderSource, EShLanguage stage, glslang::EShSource source)
+std::unique_ptr<glslang::TShader> CompileStage(std::string_view shaderSource, EShLanguage stage, glslang::EShSource source)
 {
-	auto shader = glslang::TShader(stage);
+	auto shader = std::make_unique<glslang::TShader>(stage);
 	const auto inputStrings = std::array{data(ShaderCommon), data(shaderSource)};
 	const auto inputStringLengths = std::array{static_cast<int>(size(ShaderCommon)), static_cast<int>(size(shaderSource))};
-	shader.setStringsWithLengths(data(inputStrings), data(inputStringLengths), static_cast<int>(size(inputStringLengths)));
-	shader.setEnvInput(source, stage, glslang::EShClientVulkan, 450);
-	shader.setEnvClient(glslang::EShClientVulkan, glslang::EShTargetVulkan_1_0);
-	shader.setEnvTarget(glslang::EShTargetSpv, glslang::EShTargetSpv_1_0);
+	shader->setStringsWithLengths(data(inputStrings), data(inputStringLengths), static_cast<int>(size(inputStringLengths)));
+	shader->setEnvInput(source, stage, glslang::EShClientVulkan, 450);
+	shader->setEnvClient(glslang::EShClientVulkan, glslang::EShTargetVulkan_1_0);
+	shader->setEnvTarget(glslang::EShTargetSpv, glslang::EShTargetSpv_1_0);
 
-	if (!shader.parse(&DefaultTBuiltInResource, 110, false, EShMsgDefault))
+	if (!shader->parse(&DefaultTBuiltInResource, 110, false, EShMsgDefault))
 	{
-		throw CompileError(shader.getInfoLog());
+		throw CompileError(shader->getInfoLog());
 	}
+	return shader;
+};
+
+std::vector<vk::DescriptorSetLayoutBinding>& GetSetBindings(ShaderData& data, int set)
+{
+	switch (set)
+	{
+		case 0:
+			return data.sceneBindings;
+		case 1:
+			return data.viewBindings;
+		case 2:
+			return data.materialBindings;
+	}
+	Unreachable();
+}
+
+vk::ShaderStageFlags GetShaderStageFlags(EShLanguageMask lang)
+{
+	vk::ShaderStageFlags ret{};
+	if (lang & EShLangVertexMask)
+	{
+		ret |= vk::ShaderStageFlagBits::eVertex;
+	}
+	if (lang & EShLangTessControlMask)
+	{
+		ret |= vk::ShaderStageFlagBits::eTessellationControl;
+	}
+	if (lang & EShLangTessEvaluationMask)
+	{
+		ret |= vk::ShaderStageFlagBits::eTessellationEvaluation;
+	}
+	if (lang & EShLangGeometryMask)
+	{
+		ret |= vk::ShaderStageFlagBits::eGeometry;
+	}
+	if (lang & EShLangFragmentMask)
+	{
+		ret |= vk::ShaderStageFlagBits::eFragment;
+	}
+	if (lang & EShLangComputeMask)
+	{
+		ret |= vk::ShaderStageFlagBits::eCompute;
+	}
+	if (lang & EShLangRayGenMask)
+	{
+		ret |= vk::ShaderStageFlagBits::eRaygenKHR;
+	}
+	if (lang & EShLangIntersectMask)
+	{
+		ret |= vk::ShaderStageFlagBits::eIntersectionKHR;
+	}
+	if (lang & EShLangAnyHitMask)
+	{
+		ret |= vk::ShaderStageFlagBits::eAnyHitKHR;
+	}
+	if (lang & EShLangClosestHitMask)
+	{
+		ret |= vk::ShaderStageFlagBits::eClosestHitKHR;
+	}
+	if (lang & EShLangMissMask)
+	{
+		ret |= vk::ShaderStageFlagBits::eMissKHR;
+	}
+	if (lang & EShLangCallableMask)
+	{
+		ret |= vk::ShaderStageFlagBits::eCallableKHR;
+	}
+	return ret;
+}
+
+ShaderData Compile(std::string_view vertexSource, std::string_view pixelSource, glslang::EShSource source)
+{
+	auto vertexShader = CompileStage(vertexSource, EShLangVertex, source);
+	auto pixelShader = CompileStage(pixelSource, EShLangFragment, source);
 
 	auto program = glslang::TProgram();
-	program.addShader(&shader);
+	program.addShader(vertexShader.get());
+	program.addShader(pixelShader.get());
+
 	if (!program.link(EShMsgDefault))
 	{
 		throw CompileError(program.getInfoLog());
 	}
 
-	std::vector<uint32_t> spirv;
 	spv::SpvBuildLogger logger;
 	glslang::SpvOptions spvOptions;
 	spvOptions.generateDebugInfo = IsDebugBuild;
@@ -165,9 +241,56 @@ std::vector<uint32_t> Compile(std::string_view shaderSource, EShLanguage stage, 
 	spvOptions.optimizeSize = true;
 	spvOptions.disassemble = false;
 	spvOptions.validate = true;
-	glslang::GlslangToSpv(*program.getIntermediate(stage), spirv, &logger, &spvOptions);
 
-	return spirv;
+	ShaderData ret;
+	glslang::GlslangToSpv(*program.getIntermediate(EShLangVertex), ret.vertexShaderSpirv, &logger, &spvOptions);
+	glslang::GlslangToSpv(*program.getIntermediate(EShLangFragment), ret.pixelShaderSpirv, &logger, &spvOptions);
+
+	program.buildReflection();
+
+	for (int i = 0; i < program.getNumUniformBlocks(); i++)
+	{
+		const auto& uniformBlock = program.getUniformBlock(i);
+		const auto set = uniformBlock.getType()->getQualifier().layoutSet;
+		if (uniformBlock.getType()->getQualifier().isPushConstant())
+		{
+			ret.pushConstantRanges.push_back(vk::PushConstantRange{
+			    .stageFlags = GetShaderStageFlags(uniformBlock.stages),
+			    .offset = 0,
+			    .size = static_cast<uint32_t>(uniformBlock.size),
+			});
+		}
+		else
+		{
+			const auto binding = static_cast<uint32_t>(uniformBlock.getBinding());
+
+			GetSetBindings(ret, set).push_back({
+			    .binding = binding,
+			    .descriptorType = vk::DescriptorType::eUniformBuffer,
+			    .descriptorCount = 1,
+			    .stageFlags = GetShaderStageFlags(uniformBlock.stages),
+			});
+		}
+	}
+
+	for (int i = 0; i < program.getNumUniformVariables(); i++)
+	{
+		const auto& uniform = program.getUniform(i);
+		if (!uniform.getType()->isTexture())
+			continue;
+
+		const auto binding = static_cast<uint32_t>(uniform.getBinding());
+		const auto set = uniform.getType()->getQualifier().layoutSet;
+
+		GetSetBindings(ret, set).push_back({
+		    .binding = binding,
+		    .descriptorType = vk::DescriptorType::eCombinedImageSampler,
+		    .descriptorCount = 1,
+		    .stageFlags = GetShaderStageFlags(uniform.stages),
+		});
+	}
+
+	return ret;
 }
 
 EShLanguage GetEShLanguage(ShaderStage stage)
@@ -196,7 +319,7 @@ glslang::EShSource GetEShSource(ShaderLanguage language)
 
 } // namespace
 
-std::vector<uint32_t> CompileShader(std::string_view sourceSource, ShaderStage stage, ShaderLanguage language)
+ShaderData CompileShader(std::string_view vertexSource, std::string_view pixelSource, ShaderLanguage language)
 {
-	return Compile(sourceSource, GetEShLanguage(stage), GetEShSource(language));
+	return Compile(vertexSource, pixelSource, GetEShSource(language));
 }

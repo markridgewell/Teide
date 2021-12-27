@@ -15,6 +15,7 @@ struct ShaderData
 	std::vector<vk::DescriptorSetLayoutBinding> sceneBindings;
 	std::vector<vk::DescriptorSetLayoutBinding> viewBindings;
 	std::vector<vk::DescriptorSetLayoutBinding> materialBindings;
+	std::vector<vk::PushConstantRange> pushConstantRanges;
 };
 
 struct Shader

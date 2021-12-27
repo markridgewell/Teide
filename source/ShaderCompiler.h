@@ -1,6 +1,8 @@
 
 #pragma once
 
+#include "Framework/Shader.h"
+
 #include <exception>
 #include <string>
 #include <string_view>
@@ -29,4 +31,4 @@ private:
 	std::string m_message;
 };
 
-std::vector<uint32_t> CompileShader(std::string_view sourceSource, ShaderStage stage, ShaderLanguage language);
+ShaderData CompileShader(std::string_view vertexSource, std::string_view pixelSource, ShaderLanguage language);
