@@ -2,8 +2,8 @@
 #pragma once
 
 #include <GeoLib/Angle.h>
-#include <GeoLib/Vector.h>
 #include <GeoLib/ForwardDeclare.h>
+#include <GeoLib/Vector.h>
 
 namespace Geo
 {
