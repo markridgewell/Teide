@@ -5,7 +5,7 @@
 
 namespace Geo
 {
-using Extent = size_t;
+using Extent = std::size_t;
 
 template <class T, Extent N, class Tag>
 struct Vector;

@@ -293,18 +293,6 @@ ShaderData Compile(std::string_view vertexSource, std::string_view pixelSource, 
 	return ret;
 }
 
-EShLanguage GetEShLanguage(ShaderStage stage)
-{
-	switch (stage)
-	{
-		case ShaderStage::Vertex:
-			return EShLangVertex;
-		case ShaderStage::Pixel:
-			return EShLangFragment;
-	}
-	Unreachable();
-}
-
 glslang::EShSource GetEShSource(ShaderLanguage language)
 {
 	switch (language)

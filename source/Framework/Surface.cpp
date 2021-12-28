@@ -251,14 +251,14 @@ std::vector<vk::UniqueFramebuffer> CreateFramebuffers(
 Surface::Surface(
     SDL_Window* window, vk::UniqueSurfaceKHR surface, vk::Device device, vk::PhysicalDevice physicalDevice,
     std::vector<uint32_t> queueFamilyIndices, vk::CommandPool commandPool, vk::Queue queue, bool multisampled) :
-    m_window{window},
-    m_surface{std::move(surface)},
     m_device{device},
     m_physicalDevice{physicalDevice},
+    m_queueFamilyIndices{std::move(queueFamilyIndices)},
     m_commandPool{commandPool},
     m_queue{queue},
-    m_swapchainAllocator(device, physicalDevice),
-    m_queueFamilyIndices{std::move(queueFamilyIndices)}
+    m_window{window},
+    m_surface{std::move(surface)},
+    m_swapchainAllocator(device, physicalDevice)
 {
 	std::ranges::generate(m_imageAvailable, [=] { return CreateSemaphore(device); });
 
