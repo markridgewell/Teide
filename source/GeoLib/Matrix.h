@@ -7,7 +7,6 @@
 
 namespace Geo
 {
-
 namespace Impl
 {
 	template <class T, Extent N>
