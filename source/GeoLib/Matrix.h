@@ -1,14 +1,16 @@
 
 #pragma once
 
-#include "Angle.h"
-#include "Vector.h"
+#include <GeoLib/Angle.h>
+#include <GeoLib/Vector.h>
+#include <GeoLib/ForwardDeclare.h>
 
 namespace Geo
 {
+
 namespace Impl
 {
-	template <class T, int N>
+	template <class T, Extent N>
 	consteval Vector<T, N, VectorTag> InitRow(T x, T y, T z, T w)
 	{
 		if constexpr (N == 1)
@@ -22,27 +24,27 @@ namespace Impl
 		return {};
 	}
 
-	template <class T, int N, int Row>
+	template <class T, Extent N, Extent Row>
 	consteval Vector<T, N, VectorTag> MatrixIdentityRow()
 	{
 		return InitRow<T, N>(Row == 0 ? T{1} : 0, Row == 1 ? T{1} : 0, Row == 2 ? T{1} : 0, Row == 3 ? T{1} : 0);
 	}
 } // namespace Impl
 
-template <class T, int M, int N>
+template <class T, Extent M, Extent N>
 struct Matrix;
 
-template <class T, int N>
+template <class T, Extent N>
 struct Matrix<T, 1, N>
 {
 	Vector<T, N, VectorTag> x = Impl::MatrixIdentityRow<T, N, 0>();
 
-	constexpr auto& operator[](int i) noexcept
+	constexpr auto& operator[](Extent i) noexcept
 	{
 		assert(i >= 0 && i < sizeof(members) / sizeof(members[0]));
 		return this->*members[i];
 	}
-	constexpr const auto& operator[](int i) const noexcept
+	constexpr const auto& operator[](Extent i) const noexcept
 	{
 		assert(i >= 0 && i < sizeof(members) / sizeof(members[0]));
 		return this->*members[i];
@@ -57,18 +59,18 @@ private:
 	static constexpr decltype(&Matrix::x) members[] = {&Matrix::x};
 };
 
-template <class T, int N>
+template <class T, Extent N>
 struct Matrix<T, 2, N>
 {
 	Vector<T, N, VectorTag> x = Impl::MatrixIdentityRow<T, N, 0>();
 	Vector<T, N, VectorTag> y = Impl::MatrixIdentityRow<T, N, 1>();
 
-	constexpr auto& operator[](int i) noexcept
+	constexpr auto& operator[](Extent i) noexcept
 	{
 		assert(i >= 0 && i < sizeof(members) / sizeof(members[0]));
 		return this->*members[i];
 	}
-	constexpr const auto& operator[](int i) const noexcept
+	constexpr const auto& operator[](Extent i) const noexcept
 	{
 		assert(i >= 0 && i < sizeof(members) / sizeof(members[0]));
 		return this->*members[i];
@@ -83,19 +85,19 @@ private:
 	static constexpr decltype(&Matrix::x) members[] = {&Matrix::x, &Matrix::y};
 };
 
-template <class T, int N>
+template <class T, Extent N>
 struct Matrix<T, 3, N>
 {
 	Vector<T, N, VectorTag> x = Impl::MatrixIdentityRow<T, N, 0>();
 	Vector<T, N, VectorTag> y = Impl::MatrixIdentityRow<T, N, 1>();
 	Vector<T, N, VectorTag> z = Impl::MatrixIdentityRow<T, N, 2>();
 
-	constexpr auto& operator[](int i) noexcept
+	constexpr auto& operator[](Extent i) noexcept
 	{
 		assert(i >= 0 && i < sizeof(members) / sizeof(members[0]));
 		return this->*members[i];
 	}
-	constexpr const auto& operator[](int i) const noexcept
+	constexpr const auto& operator[](Extent i) const noexcept
 	{
 		assert(i >= 0 && i < sizeof(members) / sizeof(members[0]));
 		return this->*members[i];
@@ -110,7 +112,7 @@ private:
 	static constexpr decltype(&Matrix::x) members[] = {&Matrix::x, &Matrix::y, &Matrix::z};
 };
 
-template <class T, int N>
+template <class T, Extent N>
 struct Matrix<T, 4, N>
 {
 	Vector<T, N, VectorTag> x = Impl::MatrixIdentityRow<T, N, 0>();
@@ -118,12 +120,12 @@ struct Matrix<T, 4, N>
 	Vector<T, N, VectorTag> z = Impl::MatrixIdentityRow<T, N, 2>();
 	Vector<T, N, VectorTag> w = Impl::MatrixIdentityRow<T, N, 3>();
 
-	constexpr auto& operator[](int i) noexcept
+	constexpr auto& operator[](Extent i) noexcept
 	{
 		assert(i >= 0 && i < sizeof(members) / sizeof(members[0]));
 		return this->*members[i];
 	}
-	constexpr const auto& operator[](int i) const noexcept
+	constexpr const auto& operator[](Extent i) const noexcept
 	{
 		assert(i >= 0 && i < sizeof(members) / sizeof(members[0]));
 		return this->*members[i];
@@ -171,15 +173,15 @@ using Matrix2 = Matrix<float, 2, 2>;
 using Matrix3 = Matrix<float, 3, 3>;
 using Matrix4 = Matrix<float, 4, 4>;
 
-template <class T, int N, int M, int O>
+template <class T, Extent N, Extent M, Extent O>
 Matrix<T, M, O> operator*(const Matrix<T, M, N>& a, const Matrix<T, N, O>& b) noexcept
 {
 	auto ret = Matrix<T, M, O>::Zero();
-	for (int row = 0; row < M; row++)
+	for (Extent row = 0; row < M; row++)
 	{
-		for (int col = 0; col < O; col++)
+		for (Extent col = 0; col < O; col++)
 		{
-			for (int i = 0; i < N; i++)
+			for (Extent i = 0; i < N; i++)
 			{
 				ret[row][col] += a[row][i] * b[i][col];
 			}
@@ -188,13 +190,13 @@ Matrix<T, M, O> operator*(const Matrix<T, M, N>& a, const Matrix<T, N, O>& b) no
 	return ret;
 }
 
-template <class T, int M, class VectorTag>
+template <class T, Extent M, class VectorTag>
 Vector<T, M, VectorTag> operator*(const Matrix<T, M, M>& a, const Vector<T, M, VectorTag>& b) noexcept
 {
 	Vector<T, M, VectorTag> ret{};
-	for (int row = 0; row < M; row++)
+	for (Extent row = 0; row < M; row++)
 	{
-		for (int col = 0; col < M; col++)
+		for (Extent col = 0; col < M; col++)
 		{
 			ret[row] += a[row][col] * b[col];
 		}
@@ -216,13 +218,13 @@ Vector<T, 3, PointTag> operator*(const Matrix<T, 4, 4>& a, const Vector<T, 3, Po
 	return {ret.x / ret.w, ret.y / ret.w, ret.z / ret.w};
 }
 
-template <class T, int M, int N>
+template <class T, Extent M, Extent N>
 Matrix<T, N, M> Transpose(const Matrix<T, M, N>& m) noexcept
 {
 	auto ret = Matrix<T, N, M>::Zero();
-	for (int row = 0; row < N; row++)
+	for (Extent row = 0; row < N; row++)
 	{
-		for (int col = 0; col < M; col++)
+		for (Extent col = 0; col < M; col++)
 		{
 			ret[row][col] = m[col][row];
 		}

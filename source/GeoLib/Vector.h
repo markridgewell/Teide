@@ -9,7 +9,7 @@
 
 namespace Geo
 {
-template <class T, int N, class Tag>
+template <class T, Extent N, class Tag>
 struct Vector;
 
 template <class T, class Tag>
@@ -24,12 +24,12 @@ struct Vector<T, 1, Tag>
 	constexpr explicit Vector(const Vector<T, 1, OtherTag>& v) : x{v.x}
 	{}
 
-	constexpr T& operator[](int i) noexcept
+	constexpr T& operator[](Extent i) noexcept
 	{
 		assert(i >= 0 && i < sizeof(members) / sizeof(members[0]));
 		return this->*members[i];
 	}
-	constexpr T operator[](int i) const noexcept
+	constexpr T operator[](Extent i) const noexcept
 	{
 		assert(i >= 0 && i < sizeof(members) / sizeof(members[0]));
 		return this->*members[i];
@@ -57,12 +57,12 @@ struct Vector<T, 2, Tag>
 	constexpr explicit Vector(const Vector<T, 2, OtherTag>& v) : x{v.x}, y{v.y}
 	{}
 
-	constexpr T& operator[](int i) noexcept
+	constexpr T& operator[](Extent i) noexcept
 	{
 		assert(i >= 0 && i < sizeof(members) / sizeof(members[0]));
 		return this->*members[i];
 	}
-	constexpr T operator[](int i) const noexcept
+	constexpr T operator[](Extent i) const noexcept
 	{
 		assert(i >= 0 && i < sizeof(members) / sizeof(members[0]));
 		return this->*members[i];
@@ -91,12 +91,12 @@ struct Vector<T, 3, Tag>
 	constexpr explicit Vector(const Vector<T, 3, OtherTag>& v) : x{v.x}, y{v.y}, z{v.z}
 	{}
 
-	constexpr T& operator[](int i) noexcept
+	constexpr T& operator[](Extent i) noexcept
 	{
 		assert(i >= 0 && i < sizeof(members) / sizeof(members[0]));
 		return this->*members[i];
 	}
-	constexpr T operator[](int i) const noexcept
+	constexpr T operator[](Extent i) const noexcept
 	{
 		assert(i >= 0 && i < sizeof(members) / sizeof(members[0]));
 		return this->*members[i];
@@ -126,12 +126,12 @@ struct Vector<T, 4, Tag>
 	constexpr explicit Vector(const Vector<T, 4, OtherTag>& v) : x{v.x}, y{v.y}, z{v.z}, w{v.w}
 	{}
 
-	constexpr T& operator[](int i) noexcept
+	constexpr T& operator[](Extent i) noexcept
 	{
 		assert(i >= 0 && i < sizeof(members) / sizeof(members[0]));
 		return this->*members[i];
 	}
-	constexpr T operator[](int i) const noexcept
+	constexpr T operator[](Extent i) const noexcept
 	{
 		assert(i >= 0 && i < sizeof(members) / sizeof(members[0]));
 		return this->*members[i];
@@ -149,55 +149,55 @@ private:
 	static constexpr decltype(&Vector::x) members[] = {&Vector::x, &Vector::y, &Vector::z, &Vector::w};
 };
 
-template <class T, int N, class Tag>
+template <class T, Extent N, class Tag>
 struct Traits<Vector<T, N, Tag>>
 {
 	using ScalarType = T;
 	using TagType = Tag;
-	static constexpr int VectorSize = N;
+	static constexpr Extent VectorSize = N;
 };
 
 // Arithmetic operators
 namespace Impl
 {
-	template <class RetTag, class T, int N, class Tag1, class Tag2>
+	template <class RetTag, class T, Extent N, class Tag1, class Tag2>
 	constexpr Vector<T, N, RetTag> Add(const Vector<T, N, Tag1>& a, const Vector<T, N, Tag2>& b) noexcept
 	{
 		Vector<T, N, RetTag> ret{};
-		for (int i = 0; i < N; i++)
+		for (Extent i = 0; i < N; i++)
 		{
 			ret[i] = a[i] + b[i];
 		}
 		return ret;
 	}
 
-	template <class RetTag, class T, int N, class Tag1, class Tag2>
+	template <class RetTag, class T, Extent N, class Tag1, class Tag2>
 	constexpr Vector<T, N, RetTag> Subtract(const Vector<T, N, Tag1>& a, const Vector<T, N, Tag2>& b) noexcept
 	{
 		Vector<T, N, RetTag> ret{};
-		for (int i = 0; i < N; i++)
+		for (Extent i = 0; i < N; i++)
 		{
 			ret[i] = a[i] - b[i];
 		}
 		return ret;
 	}
 
-	template <class RetTag, class T, int N, class Tag1, class Tag2>
+	template <class RetTag, class T, Extent N, class Tag1, class Tag2>
 	constexpr Vector<T, N, RetTag> Multiply(const Vector<T, N, Tag1>& a, const Vector<T, N, Tag2>& b) noexcept
 	{
 		Vector<T, N, RetTag> ret{};
-		for (int i = 0; i < N; i++)
+		for (Extent i = 0; i < N; i++)
 		{
 			ret[i] = a[i] * b[i];
 		}
 		return ret;
 	}
 
-	template <class RetTag, class T, int N, class Tag1, class Tag2>
+	template <class RetTag, class T, Extent N, class Tag1, class Tag2>
 	constexpr Vector<T, N, RetTag> Divide(const Vector<T, N, Tag1>& a, const Vector<T, N, Tag2>& b) noexcept
 	{
 		Vector<T, N, RetTag> ret{};
-		for (int i = 0; i < N; i++)
+		for (Extent i = 0; i < N; i++)
 		{
 			ret[i] = a[i] / b[i];
 		}
@@ -206,220 +206,220 @@ namespace Impl
 } // namespace Impl
 
 // Vector + Vector = Vector
-template <class T, int N>
+template <class T, Extent N>
 constexpr Vector<T, N, VectorTag> operator+(const Vector<T, N, VectorTag>& a, const Vector<T, N, VectorTag>& b) noexcept
 {
 	return Impl::Add<VectorTag>(a, b);
 }
-template <class T, int N>
+template <class T, Extent N>
 constexpr Vector<T, N, VectorTag>& operator+=(Vector<T, N, VectorTag>& a, const Vector<T, N, VectorTag>& b) noexcept
 {
 	return a = Impl::Add<VectorTag>(a, b);
 }
 
 // Point + Vector = Point
-template <class T, int N>
+template <class T, Extent N>
 constexpr Vector<T, N, PointTag> operator+(const Vector<T, N, PointTag>& a, const Vector<T, N, VectorTag>& b) noexcept
 {
 	return Impl::Add<PointTag>(a, b);
 }
-template <class T, int N>
+template <class T, Extent N>
 constexpr Vector<T, N, PointTag>& operator+=(Vector<T, N, PointTag>& a, const Vector<T, N, VectorTag>& b) noexcept
 {
 	return a = Impl::Add<PointTag>(a, b);
 }
 
 // Vector + Point = Point
-template <class T, int N>
+template <class T, Extent N>
 constexpr Vector<T, N, PointTag> operator+(const Vector<T, N, VectorTag>& a, const Vector<T, N, PointTag>& b) noexcept
 {
 	return Impl::Add<PointTag>(a, b);
 }
 
 // Vector - Vector = Vector
-template <class T, int N>
+template <class T, Extent N>
 constexpr Vector<T, N, VectorTag> operator-(const Vector<T, N, VectorTag>& a, const Vector<T, N, VectorTag>& b) noexcept
 {
 	return Impl::Subtract<VectorTag>(a, b);
 }
-template <class T, int N>
+template <class T, Extent N>
 constexpr Vector<T, N, VectorTag>& operator-=(Vector<T, N, VectorTag>& a, const Vector<T, N, VectorTag>& b) noexcept
 {
 	return a = Impl::Subtract<VectorTag>(a, b);
 }
 
 // Point - Vector = Point
-template <class T, int N>
+template <class T, Extent N>
 constexpr Vector<T, N, PointTag> operator-(const Vector<T, N, PointTag>& a, const Vector<T, N, VectorTag>& b) noexcept
 {
 	return Impl::Subtract<PointTag>(a, b);
 }
-template <class T, int N>
+template <class T, Extent N>
 constexpr Vector<T, N, PointTag>& operator-=(Vector<T, N, PointTag>& a, const Vector<T, N, VectorTag>& b) noexcept
 {
 	return a = Impl::Subtract<PointTag>(a, b);
 }
 
 // Point - Point = Vector
-template <class T, int N>
+template <class T, Extent N>
 constexpr Vector<T, N, VectorTag> operator-(const Vector<T, N, PointTag>& a, const Vector<T, N, PointTag>& b) noexcept
 {
 	return Impl::Subtract<VectorTag>(a, b);
 }
-template <class T, int N>
+template <class T, Extent N>
 constexpr Vector<T, N, PointTag>& operator-=(Vector<T, N, PointTag>& a, const Vector<T, N, PointTag>& b) noexcept
 {
 	return a = Impl::Subtract<PointTag>(a, b);
 }
 
 // Vector * Scale = Vector
-template <class T, int N>
+template <class T, Extent N>
 constexpr Vector<T, N, VectorTag> operator*(const Vector<T, N, VectorTag>& a, const Vector<T, N, ScaleTag>& b) noexcept
 {
 	return Impl::Multiply<VectorTag>(a, b);
 }
-template <class T, int N>
+template <class T, Extent N>
 constexpr Vector<T, N, VectorTag>& operator*=(Vector<T, N, VectorTag>& a, const Vector<T, N, ScaleTag>& b) noexcept
 {
 	return a = Impl::Multiply<VectorTag>(a, b);
 }
 
 // Scale * Vector = Vector
-template <class T, int N>
+template <class T, Extent N>
 constexpr Vector<T, N, VectorTag> operator*(const Vector<T, N, ScaleTag>& a, const Vector<T, N, VectorTag>& b) noexcept
 {
 	return Impl::Multiply<VectorTag>(a, b);
 }
 
 // Point * Scale = Point
-template <class T, int N>
+template <class T, Extent N>
 constexpr Vector<T, N, PointTag> operator*(const Vector<T, N, PointTag>& a, const Vector<T, N, ScaleTag>& b) noexcept
 {
 	return Impl::Multiply<PointTag>(a, b);
 }
-template <class T, int N>
+template <class T, Extent N>
 constexpr Vector<T, N, PointTag>& operator*=(Vector<T, N, PointTag>& a, const Vector<T, N, ScaleTag>& b) noexcept
 {
 	return a = Impl::Multiply<PointTag>(a, b);
 }
 
 // Scale * Point = Point
-template <class T, int N>
+template <class T, Extent N>
 constexpr Vector<T, N, PointTag> operator*(const Vector<T, N, ScaleTag>& a, const Vector<T, N, PointTag>& b) noexcept
 {
 	return Impl::Multiply<PointTag>(a, b);
 }
 
 // Scale * Scale = Scale
-template <class T, int N>
+template <class T, Extent N>
 constexpr Vector<T, N, ScaleTag> operator*(const Vector<T, N, ScaleTag>& a, const Vector<T, N, ScaleTag>& b) noexcept
 {
 	return Impl::Multiply<ScaleTag>(a, b);
 }
-template <class T, int N>
+template <class T, Extent N>
 constexpr Vector<T, N, ScaleTag>& operator*=(Vector<T, N, ScaleTag>& a, const Vector<T, N, ScaleTag>& b) noexcept
 {
 	return a = Impl::Multiply<ScaleTag>(a, b);
 }
 
 // Vector / Scale = Vector
-template <class T, int N>
+template <class T, Extent N>
 constexpr Vector<T, N, VectorTag> operator/(const Vector<T, N, VectorTag>& a, const Vector<T, N, ScaleTag>& b) noexcept
 {
 	return Impl::Divide<VectorTag>(a, b);
 }
-template <class T, int N>
+template <class T, Extent N>
 constexpr Vector<T, N, VectorTag>& operator/=(Vector<T, N, VectorTag>& a, const Vector<T, N, ScaleTag>& b) noexcept
 {
 	return a = Impl::Divide<VectorTag>(a, b);
 }
 
 // Point / Scale = Point
-template <class T, int N>
+template <class T, Extent N>
 constexpr Vector<T, N, PointTag> operator/(const Vector<T, N, PointTag>& a, const Vector<T, N, ScaleTag>& b) noexcept
 {
 	return Impl::Divide<PointTag>(a, b);
 }
-template <class T, int N>
+template <class T, Extent N>
 constexpr Vector<T, N, PointTag>& operator/=(Vector<T, N, PointTag>& a, const Vector<T, N, ScaleTag>& b) noexcept
 {
 	return a = Impl::Divide<PointTag>(a, b);
 }
 
 // Scale / Scale = Scale
-template <class T, int N>
+template <class T, Extent N>
 constexpr Vector<T, N, ScaleTag> operator/(const Vector<T, N, ScaleTag>& a, const Vector<T, N, ScaleTag>& b) noexcept
 {
 	return Impl::Divide<ScaleTag>(a, b);
 }
-template <class T, int N>
+template <class T, Extent N>
 constexpr Vector<T, N, ScaleTag>& operator/=(Vector<T, N, ScaleTag>& a, const Vector<T, N, ScaleTag>& b) noexcept
 {
 	return a = Impl::Divide<ScaleTag>(a, b);
 }
 
-template <class T, int N, class Tag>
+template <class T, Extent N, class Tag>
 constexpr Vector<T, N, Tag> operator-(const Vector<T, N, Tag>& a) noexcept
 {
 	Vector<T, N, Tag> ret{};
-	for (int i = 0; i < N; i++)
+	for (Extent i = 0; i < N; i++)
 	{
 		ret[i] = -a[i];
 	}
 	return ret;
 }
 
-template <class T, int N, class Tag>
+template <class T, Extent N, class Tag>
 constexpr Vector<T, N, Tag> operator*(const Vector<T, N, Tag>& a, T b) noexcept
 {
 	Vector<T, N, Tag> ret{};
-	for (int i = 0; i < N; i++)
+	for (Extent i = 0; i < N; i++)
 	{
 		ret[i] = a[i] * b;
 	}
 	return ret;
 }
 
-template <class T, int N, class Tag>
+template <class T, Extent N, class Tag>
 constexpr Vector<T, N, Tag> operator*(T a, const Vector<T, N, Tag>& b) noexcept
 {
 	Vector<T, N, Tag> ret{};
-	for (int i = 0; i < N; i++)
+	for (Extent i = 0; i < N; i++)
 	{
 		ret[i] = a * b[i];
 	}
 	return ret;
 }
 
-template <class T, int N, class Tag>
+template <class T, Extent N, class Tag>
 constexpr Vector<T, N, Tag>& operator*=(Vector<T, N, Tag>& a, T b) noexcept
 {
 	return a = a * b;
 }
 
-template <class T, int N, class Tag>
+template <class T, Extent N, class Tag>
 constexpr Vector<T, N, Tag> operator/(const Vector<T, N, Tag>& a, T b) noexcept
 {
 	Vector<T, N, Tag> ret{};
-	for (int i = 0; i < N; i++)
+	for (Extent i = 0; i < N; i++)
 	{
 		ret[i] = a[i] / b;
 	}
 	return ret;
 }
 
-template <class T, int N, class Tag>
+template <class T, Extent N, class Tag>
 constexpr Vector<T, N, Tag> operator/(T a, const Vector<T, N, Tag>& b) noexcept
 {
 	Vector<T, N, Tag> ret{};
-	for (int i = 0; i < N; i++)
+	for (Extent i = 0; i < N; i++)
 	{
 		ret[i] = a / b[i];
 	}
 	return ret;
 }
 
-template <class T, int N, class Tag>
+template <class T, Extent N, class Tag>
 constexpr Vector<T, N, Tag>& operator/=(Vector<T, N, Tag>& a, T b) noexcept
 {
 	return a = a / b;
@@ -427,34 +427,34 @@ constexpr Vector<T, N, Tag>& operator/=(Vector<T, N, Tag>& a, T b) noexcept
 
 // Vector operations
 
-template <class T, int N, class Tag>
+template <class T, Extent N, class Tag>
 inline T MagnitudeSq(const Vector<T, N, Tag>& a) noexcept
 {
 	T ret{};
-	for (int i = 0; i < N; i++)
+	for (Extent i = 0; i < N; i++)
 	{
 		ret += a[i] * a[i];
 	}
 	return ret;
 }
 
-template <class T, int N, class Tag>
+template <class T, Extent N, class Tag>
 inline T Magnitude(const Vector<T, N, Tag>& a) noexcept
 {
 	return std::sqrt(MagnitudeSq(a));
 }
 
-template <class T, int N, class Tag>
+template <class T, Extent N, class Tag>
 inline Vector<T, N, Tag> Normalise(const Vector<T, N, Tag>& a) noexcept
 {
 	return a / Magnitude(a);
 }
 
-template <class T, int N, class Tag1, class Tag2>
+template <class T, Extent N, class Tag1, class Tag2>
 constexpr T Dot(const Vector<T, N, Tag1>& a, const Vector<T, N, Tag2>& b) noexcept
 {
 	T ret{};
-	for (int i = 0; i < N; i++)
+	for (Extent i = 0; i < N; i++)
 	{
 		ret += a[i] * b[i];
 	}
@@ -471,22 +471,22 @@ constexpr Vector<T, 3, Tag> Cross(const Vector<T, 3, Tag>& a, const Vector<T, 3,
 	};
 }
 
-template <class T, int N, class Tag>
+template <class T, Extent N, class Tag>
 constexpr Vector<T, N, Tag> Lerp(const Vector<T, N, Tag>& a, const Vector<T, N, Tag>& b, T t) noexcept
 {
 	Vector<T, N, Tag> ret{};
-	for (int i = 0; i < N; i++)
+	for (Extent i = 0; i < N; i++)
 	{
 		ret[i] = Lerp(a[i], b[i], t);
 	}
 	return ret;
 }
 
-template <class T, int N, class Tag>
+template <class T, Extent N, class Tag>
 constexpr Vector<T, N, Tag> Midpoint(const Vector<T, N, Tag>& a, const Vector<T, N, Tag>& b) noexcept
 {
 	Vector<T, N, Tag> ret{};
-	for (int i = 0; i < N; i++)
+	for (Extent i = 0; i < N; i++)
 	{
 		ret[i] = Midpoint(a[i], b[i]);
 	}
@@ -494,10 +494,10 @@ constexpr Vector<T, N, Tag> Midpoint(const Vector<T, N, Tag>& a, const Vector<T,
 }
 
 
-template <class T, int N, class Tag>
+template <class T, Extent N, class Tag>
 bool Compare(const Geo::Vector<T, N, Tag>& a, const Geo::Vector<T, N, Tag>& b, T maxRelDiff)
 {
-	for (int i = 0; i < N; i++)
+	for (Extent i = 0; i < N; i++)
 	{
 		if (!Compare(a[i], b[i], maxRelDiff))
 		{

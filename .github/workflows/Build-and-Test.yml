@@ -47,7 +47,7 @@ jobs:
     strategy:
       matrix:
         buildtype: [Debug, Release]
-        preset: [unix-make]
+        preset: [unix]
 
     name: Build-and-Test-Linux-${{matrix.buildtype}}
     runs-on: ubuntu-latest

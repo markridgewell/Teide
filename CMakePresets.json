@@ -9,77 +9,95 @@
       {
          "name": "_common",
          "hidden": true,
-         "binaryDir": "${sourceDir}/build/{presetName}",
-         "toolchainFile": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
+         "binaryDir": "${sourceDir}/build/${presetName}",
+         "toolchainFile": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake"
+      },
+      {
+         "name": "_msvc-common",
+         "inherits": "_common",
+         "hidden": true,
          "cacheVariables": {
+            "CMAKE_CXX_FLAGS": "/W4 /WX /EHsc /permissive- /external:W0 /analyze:external- /external:anglebrackets /external:templates-",
+            "CMAKE_CXX_FLAGS_DEBUG": "/Zi /Od /Ob0 /JMC",
             "CMAKE_CONFIGURATION_TYPES": "Debug;Release"
          }
       },
       {
          "name": "msvc2019",
-         "inherits": "_common",
+         "inherits": "_msvc-common",
          "displayName": "Visual Studio 2019",
          "generator": "Visual Studio 16 2019",
-         "architecture": "x64",
-         "cacheVariables": {
-            "CMAKE_CXX_FLAGS": "/W4 /WX /EHsc /permissive- /external:W0 /analyze:external- /external:anglebrackets /external:templates-",
-            "CMAKE_CXX_FLAGS_DEBUG": "/Zi /Od /Ob0 /JMC"
-         }
+         "architecture": "x64"
       },
       {
          "name": "msvc2022",
-         "inherits": "_common",
+         "inherits": "_msvc-common",
          "displayName": "Visual Studio 2022",
-         "generator": "Visual Studio 17 2022",
-         "cacheVariables": {
-            "CMAKE_CXX_FLAGS": "/W4 /WX /EHsc /permissive- /external:W0 /analyze:external- /external:anglebrackets /external:templates-",
-            "CMAKE_CXX_FLAGS_DEBUG": "/Zi /Od /Ob0 /JMC"
-         }
+         "generator": "Visual Studio 17 2022"
       },
       {
          "name": "msvc2019-clang",
-         "inherits": "_common",
+         "inherits": "_msvc-common",
          "displayName": "Visual Studio 2019 (Clang)",
          "generator": "Visual Studio 16 2019",
          "toolset": "ClangCL",
-         "architecture": "x64",
-         "cacheVariables": {
-            "CMAKE_CXX_FLAGS": "/W4 /WX /EHsc /permissive- /external:W0 /analyze:external- /external:anglebrackets /external:templates-",
-            "CMAKE_CXX_FLAGS_DEBUG": "/Zi /Od /Ob0 /JMC"
-         }
+         "architecture": "x64"
       },
       {
          "name": "msvc2022-clang",
-         "inherits": "_common",
+         "inherits": "_msvc-common",
          "displayName": "Visual Studio 2022 (Clang)",
          "generator": "Visual Studio 17 2022",
-         "toolset": "ClangCL",
-         "cacheVariables": {
-            "CMAKE_CXX_FLAGS": "/W4 /WX /EHsc /permissive- /external:W0 /analyze:external- /external:anglebrackets /external:templates-",
-            "CMAKE_CXX_FLAGS_DEBUG": "/Zi /Od /Ob0 /JMC"
-         }
+         "toolset": "ClangCL"
       },
       {
-         "name": "unix-make",
+         "name": "unix",
          "inherits": "_common",
-         "displayName": "Unix Makefiles",
+         "displayName": "Unix",
          "generator": "Unix Makefiles",
          "cacheVariables": {
             "CMAKE_CXX_FLAGS": "--std=c++2a -DSDL_main=main -Wno-attributes"
          }
       },
       {
-         "name": "mingw-make",
+         "name": "mingw",
          "inherits": "_common",
-         "displayName": "MinGW Makefiles",
+         "displayName": "MinGW",
          "generator": "MinGW Makefiles",
          "cacheVariables": {
-            "CMAKE_CXX_FLAGS": "--std=c++2a -DSDL_main=main -Wno-attributes"
+            "CMAKE_CXX_FLAGS": "--std=c++2a -DSDL_main=main -Wall -Werror -Wno-attributes"
          },
          "environment": {
-            "VCPKG_DEFAULT_TRIPLET": "x64-mingw-static",
-            "VCPKG_DEFAULT_HOST_TRIPLET": "x64-mingw-static"
+            "VCPKG_TARGET_TRIPLET": "x64-mingw-dynamic",
+            "VCPKG_DEFAULT_TRIPLET": "x64-mingw-dynamic",
+            "VCPKG_DEFAULT_HOST_TRIPLET": "x64-mingw-dynamic"
          }
+      }
+   ],
+   "buildPresets": [
+      {
+         "name": "msvc2019-debug",
+         "configurePreset": "msvc2019",
+         "configuration": "Debug"
+      },
+      {
+         "name": "msvc2019-release",
+         "configurePreset": "msvc2019",
+         "configuration": "Release"
+      },
+      {
+         "name": "msvc2022-debug",
+         "configurePreset": "msvc2022",
+         "configuration": "Debug"
+      },
+      {
+         "name": "msvc2022-release",
+         "configurePreset": "msvc2022",
+         "configuration": "Release"
+      },
+      {
+         "name": "mingw-debug",
+         "configurePreset": "mingw"
       }
    ]
 }

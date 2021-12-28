@@ -88,16 +88,3 @@ TEST(AngleTest, Tan)
 }
 
 } // namespace
-
-#ifdef _MSC_VER
-namespace Geo
-{
-// Explicit instantiations to ensure correct code coverage
-template AngleT<float>;
-template AngleT<double>;
-
-template float Sin<float>(AngleT<float>) noexcept;
-template float Cos<float>(AngleT<float>) noexcept;
-template float Tan<float>(AngleT<float>) noexcept;
-} // namespace Geo
-#endif

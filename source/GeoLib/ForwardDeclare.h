@@ -1,9 +1,13 @@
 
 #pragma once
 
+#include <cstdint>
+
 namespace Geo
 {
-template <class T, int N, class Tag>
+using Extent = size_t;
+
+template <class T, Extent N, class Tag>
 struct Vector;
 
 struct VectorTag;
