@@ -6,6 +6,9 @@ on:
   pull_request:
     branches: [ main ]
 
+env:
+  VULKAN_VERSION: 1.2.198
+
 jobs:
   windows:
     strategy:
@@ -22,11 +25,19 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v2
+    
+    - name: Cache Vulkan SDK
+      uses: actions/cache@v2
+      id: cache-vulkan
+      with:
+        path: ./VULKAN_SDK
+        key: vulkan-${{env.VULKAN_VERSION}}-${{runner.os}}
 
     - name: Setup Vulkan SDK
+      if: steps.cache-vulkan.outputs.cache-hit != 'true'
       uses: humbletim/setup-vulkan-sdk@v1.0.3
       with:
-        vulkan-version: sdk-1.2.198
+        vulkan-version: sdk-${{env.VULKAN_VERSION}}
 
     - name: Setup vcpkg
       uses: lukka/run-vcpkg@v10
@@ -46,7 +57,7 @@ jobs:
 
     - name: Test
       working-directory: ${{github.workspace}}/build
-      run: OpenCppCoverage --export_type cobertura:${{github.workspace}}/coverage.xml --modules "*.exe" --cover_children -- ctest -C ${{matrix.buildtype}}
+      run: OpenCppCoverage --export_type cobertura:${{github.workspace}}/coverage.xml --modules "*.exe" --sources source --cover_children -- ctest -C ${{matrix.buildtype}}
 
     - name: Upload coverage report
       uses: codecov/codecov-action@v1.3.2
@@ -77,11 +88,19 @@ jobs:
       run: |
           sudo apt-get update
           sudo apt install libgl1-mesa-dev libxxf86vm-dev
+    
+    - name: Cache Vulkan SDK
+      uses: actions/cache@v2
+      id: cache-vulkan
+      with:
+        path: ./VULKAN_SDK
+        key: vulkan-${{env.VULKAN_VERSION}}-${{runner.os}}
 
     - name: Setup Vulkan SDK
+      if: steps.cache-vulkan.outputs.cache-hit != 'true'
       uses: humbletim/setup-vulkan-sdk@v1.0.3
       with:
-        vulkan-version: sdk-1.2.198
+        vulkan-version: sdk-${{env.VULKAN_VERSION}}
 
     - name: Install Irrlicht dependencies
       run: |
