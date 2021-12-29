@@ -28,13 +28,21 @@ struct Texture
 	vk::ImageLayout layout = vk::ImageLayout::eUndefined;
 	vk::PipelineStageFlags lastPipelineStageUsage = vk::PipelineStageFlagBits::eTopOfPipe;
 
-	void DiscardContents();
 	void GenerateMipmaps(vk::CommandBuffer cmdBuffer);
 
 	void TransitionToShaderInput(vk::CommandBuffer cmdBuffer);
+
+protected:
+	void DoTransition(vk::CommandBuffer cmdBuffer, vk::ImageLayout newLayout, vk::PipelineStageFlags newPipelineStageFlags);
+};
+
+struct RenderableTexture : public Texture
+{
+	vk::UniqueRenderPass renderPass;
+	vk::UniqueFramebuffer framebuffer;
+
+	void DiscardContents();
+
 	void TransitionToColorTarget(vk::CommandBuffer cmdBuffer);
 	void TransitionToDepthStencilTarget(vk::CommandBuffer cmdBuffer);
-
-private:
-	void DoTransition(vk::CommandBuffer cmdBuffer, vk::ImageLayout newLayout, vk::PipelineStageFlags newPipelineStageFlags);
 };

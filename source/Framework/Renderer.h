@@ -10,8 +10,9 @@
 #include <array>
 #include <cstdint>
 
-struct Texture;
 struct DescriptorSet;
+struct RenderableTexture;
+struct Texture;
 
 struct RenderObject
 {
@@ -26,7 +27,6 @@ struct RenderObject
 
 struct RenderList
 {
-	vk::RenderPass renderPass;
 	std::vector<vk::ClearValue> clearValues;
 
 	const DescriptorSet* sceneDescriptorSet = nullptr;
@@ -34,7 +34,6 @@ struct RenderList
 
 	std::vector<RenderObject> objects;
 };
-
 
 class Renderer
 {
@@ -47,7 +46,7 @@ public:
 	void EndFrame(std::span<const SurfaceImage> images);
 	void EndFrame(const SurfaceImage& image);
 
-	void RenderToTexture(Texture& texture, vk::Framebuffer framebuffer, RenderList renderList);
+	void RenderToTexture(RenderableTexture& texture, RenderList renderList);
 	void RenderToSurface(const SurfaceImage& surfaceImage, RenderList renderList);
 
 private:
@@ -67,7 +66,9 @@ private:
 	};
 
 	vk::CommandBuffer GetCommandBuffer(uint32_t threadIndex, uint32_t sequenceIndex);
-	void Render(const RenderList& renderList, vk::Framebuffer framebuffer, vk::Extent2D framebufferSize, vk::CommandBuffer commandBuffer);
+	void Render(
+	    const RenderList& renderList, vk::RenderPass renderPass, vk::Framebuffer framebuffer,
+	    vk::Extent2D framebufferSize, vk::CommandBuffer commandBuffer);
 
 	static std::vector<ThreadResources> CreateThreadResources(vk::Device device, uint32_t queueFamilyIndex, uint32_t numThreads);
 

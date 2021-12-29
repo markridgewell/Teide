@@ -316,6 +316,7 @@ std::optional<SurfaceImage> Surface::AcquireNextImage(vk::Fence fence)
 	    .swapchain = m_swapchain.get(),
 	    .imageIndex = imageIndex,
 	    .imageAvailable = semaphore,
+	    .renderPass = m_renderPass.get(),
 	    .framebuffer = m_swapchainFramebuffers[imageIndex].get(),
 	    .extent = m_surfaceExtent,
 	};

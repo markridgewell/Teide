@@ -1,12 +1,6 @@
 
 #include "Framework/Texture.h"
 
-void Texture::DiscardContents()
-{
-	layout = vk::ImageLayout::eUndefined;
-	lastPipelineStageUsage = vk::PipelineStageFlagBits::eTopOfPipe;
-}
-
 void Texture::GenerateMipmaps(vk::CommandBuffer cmdBuffer)
 {
 	const auto makeBarrier = [&](vk::AccessFlags srcAccessMask, vk::AccessFlags dstAccessMask,
@@ -106,22 +100,6 @@ void Texture::TransitionToShaderInput(vk::CommandBuffer cmdBuffer)
 	DoTransition(cmdBuffer, newLayout, vk::PipelineStageFlagBits::eFragmentShader);
 }
 
-void Texture::TransitionToColorTarget(vk::CommandBuffer cmdBuffer)
-{
-	assert(!HasDepthOrStencilComponent(format));
-
-	DoTransition(cmdBuffer, vk::ImageLayout::eColorAttachmentOptimal, vk::PipelineStageFlagBits::eColorAttachmentOutput);
-}
-
-void Texture::TransitionToDepthStencilTarget(vk::CommandBuffer cmdBuffer)
-{
-	assert(HasDepthOrStencilComponent(format));
-
-	DoTransition(
-	    cmdBuffer, vk::ImageLayout::eDepthStencilAttachmentOptimal,
-	    vk::PipelineStageFlagBits::eEarlyFragmentTests | vk::PipelineStageFlagBits::eLateFragmentTests);
-}
-
 void Texture::DoTransition(vk::CommandBuffer cmdBuffer, vk::ImageLayout newLayout, vk::PipelineStageFlags newPipelineStageFlags)
 {
 	if (newLayout == layout && newPipelineStageFlags == lastPipelineStageUsage)
@@ -134,4 +112,26 @@ void Texture::DoTransition(vk::CommandBuffer cmdBuffer, vk::ImageLayout newLayou
 
 	layout = newLayout;
 	lastPipelineStageUsage = newPipelineStageFlags;
+}
+
+void RenderableTexture::DiscardContents()
+{
+	layout = vk::ImageLayout::eUndefined;
+	lastPipelineStageUsage = vk::PipelineStageFlagBits::eTopOfPipe;
+}
+
+void RenderableTexture::TransitionToColorTarget(vk::CommandBuffer cmdBuffer)
+{
+	assert(!HasDepthOrStencilComponent(format));
+
+	DoTransition(cmdBuffer, vk::ImageLayout::eColorAttachmentOptimal, vk::PipelineStageFlagBits::eColorAttachmentOutput);
+}
+
+void RenderableTexture::TransitionToDepthStencilTarget(vk::CommandBuffer cmdBuffer)
+{
+	assert(HasDepthOrStencilComponent(format));
+
+	DoTransition(
+	    cmdBuffer, vk::ImageLayout::eDepthStencilAttachmentOptimal,
+	    vk::PipelineStageFlagBits::eEarlyFragmentTests | vk::PipelineStageFlagBits::eLateFragmentTests);
 }

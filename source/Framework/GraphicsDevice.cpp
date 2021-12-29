@@ -388,6 +388,25 @@ void CopyBufferToImage(vk::CommandBuffer cmdBuffer, vk::Buffer source, vk::Image
 	cmdBuffer.copyBufferToImage(source, destination, vk::ImageLayout::eTransferDstOptimal, copyRegion);
 }
 
+vk::SubpassDescription MakeSubpassDescription(const vk::AttachmentReference& attachmentRef, bool isColorTarget)
+{
+	if (isColorTarget)
+	{
+		return vk::SubpassDescription{
+		    .pipelineBindPoint = vk::PipelineBindPoint::eGraphics,
+		    .colorAttachmentCount = 1,
+		    .pColorAttachments = &attachmentRef,
+		};
+	}
+	else
+	{
+		return vk::SubpassDescription{
+		    .pipelineBindPoint = vk::PipelineBindPoint::eGraphics,
+		    .pDepthStencilAttachment = &attachmentRef,
+		};
+	}
+};
+
 } // namespace
 
 //---------------------------------------------------------------------------------------------------------------------
@@ -570,23 +589,67 @@ Texture GraphicsDevice::CreateTexture(const TextureData& data, const char* name)
 	return texture;
 }
 
-Texture GraphicsDevice::CreateRenderableTexture(const TextureData& data, const char* name)
+RenderableTexture GraphicsDevice::CreateRenderableTexture(const TextureData& data, const char* name)
 {
-	const auto renderUsage = HasDepthOrStencilComponent(data.format) ? vk::ImageUsageFlagBits::eDepthStencilAttachment
-	                                                                 : vk::ImageUsageFlagBits::eColorAttachment;
+	const bool isColorTarget = !HasDepthOrStencilComponent(data.format);
+	const auto renderUsage
+	    = isColorTarget ? vk::ImageUsageFlagBits::eColorAttachment : vk::ImageUsageFlagBits::eDepthStencilAttachment;
 
 	auto cmdBuffer = OneShotCommands();
 
-	auto texture = CreateTextureImpl(data, renderUsage | vk::ImageUsageFlagBits::eSampled, cmdBuffer, name);
+	auto texture
+	    = RenderableTexture{{CreateTextureImpl(data, renderUsage | vk::ImageUsageFlagBits::eSampled, cmdBuffer, name)}};
 
-	if (renderUsage & vk::ImageUsageFlagBits::eColorAttachment)
+	if (isColorTarget)
 	{
 		texture.TransitionToColorTarget(cmdBuffer);
 	}
-	else if (renderUsage & vk::ImageUsageFlagBits::eDepthStencilAttachment)
+	else
 	{
 		texture.TransitionToDepthStencilTarget(cmdBuffer);
 	}
+
+	// Create render pass
+	const auto attachment = vk::AttachmentDescription{
+	    .format = texture.format,
+	    .samples = vk::SampleCountFlagBits::e1,
+	    .loadOp = vk::AttachmentLoadOp::eClear,
+	    .storeOp = vk::AttachmentStoreOp::eStore,
+	    .stencilLoadOp = vk::AttachmentLoadOp::eDontCare,
+	    .stencilStoreOp = vk::AttachmentStoreOp::eDontCare,
+	    .initialLayout = vk::ImageLayout::eUndefined,
+	    .finalLayout = texture.layout,
+	};
+
+	const auto attachmentRef = vk::AttachmentReference{
+	    .attachment = 0,
+	    .layout = texture.layout,
+	};
+
+	const auto subpass = MakeSubpassDescription(attachmentRef, isColorTarget);
+
+	const auto createInfo = vk::RenderPassCreateInfo{
+	    .attachmentCount = 1,
+	    .pAttachments = &attachment,
+	    .subpassCount = 1,
+	    .pSubpasses = &subpass,
+	};
+
+	texture.renderPass = m_device->createRenderPassUnique(createInfo);
+	SetDebugName(texture.renderPass, "{}:RenderPass", name);
+
+	// Create framebuffer
+	const auto framebufferCreateInfo = vk::FramebufferCreateInfo{
+	    .renderPass = texture.renderPass.get(),
+	    .attachmentCount = 1,
+	    .pAttachments = &texture.imageView.get(),
+	    .width = texture.size.width,
+	    .height = texture.size.height,
+	    .layers = 1,
+	};
+
+	texture.framebuffer = m_device->createFramebufferUnique(framebufferCreateInfo, s_allocator);
+	SetDebugName(texture.framebuffer, "{}:Framebuffer", name);
 
 	return texture;
 }
@@ -698,14 +761,14 @@ DescriptorSet GraphicsDevice::CreateDescriptorSet(
 	{
 		std::vector<vk::WriteDescriptorSet> descriptorWrites;
 
+		const auto bufferInfo = vk::DescriptorBufferInfo{
+		    .buffer = uniformBuffer.buffers[i].buffer.get(),
+		    .offset = 0,
+		    .range = uniformBuffer.size,
+		};
+
 		if (uniformBuffer.size > 0)
 		{
-			const auto bufferInfo = vk::DescriptorBufferInfo{
-			    .buffer = uniformBuffer.buffers[i].buffer.get(),
-			    .offset = 0,
-			    .range = uniformBuffer.size,
-			};
-
 			descriptorWrites.push_back({
 			    .dstSet = descriptorSets.sets[i],
 			    .dstBinding = 0,

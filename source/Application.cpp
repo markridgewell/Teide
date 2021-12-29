@@ -311,42 +311,6 @@ vk::UniquePipeline CreateGraphicsPipeline(
 	return std::move(pipeline);
 }
 
-vk::UniqueRenderPass CreateShadowRenderPass(GraphicsDevice& device, vk::Format format)
-{
-	const auto attachment = vk::AttachmentDescription{
-	    .format = format,
-	    .samples = vk::SampleCountFlagBits::e1,
-	    .loadOp = vk::AttachmentLoadOp::eClear,
-	    .storeOp = vk::AttachmentStoreOp::eStore,
-	    .stencilLoadOp = vk::AttachmentLoadOp::eDontCare,
-	    .stencilStoreOp = vk::AttachmentStoreOp::eDontCare,
-	    .initialLayout = vk::ImageLayout::eUndefined,
-	    .finalLayout = vk::ImageLayout::eDepthStencilAttachmentOptimal,
-	};
-
-	const auto attachmentRef = vk::AttachmentReference{
-	    .attachment = 0,
-	    .layout = vk::ImageLayout::eDepthStencilAttachmentOptimal,
-	};
-
-	const auto subpass = vk::SubpassDescription{
-	    .pipelineBindPoint = vk::PipelineBindPoint::eGraphics,
-	    .colorAttachmentCount = 0,
-	    .pColorAttachments = nullptr,
-	    .pResolveAttachments = nullptr,
-	    .pDepthStencilAttachment = &attachmentRef,
-	};
-
-	const auto createInfo = vk::RenderPassCreateInfo{
-	    .attachmentCount = 1,
-	    .pAttachments = &attachment,
-	    .subpassCount = 1,
-	    .pSubpasses = &subpass,
-	};
-
-	return device.CreateRenderPass(createInfo);
-}
-
 } // namespace
 
 class Application
@@ -450,7 +414,6 @@ public:
 			m_viewUniformBuffers[0].SetData(m_currentFrame, viewUniforms);
 
 			RenderList renderList = {
-			    .renderPass = m_shadowRenderPass.get(),
 			    .clearValues = clearValues,
 			    .sceneDescriptorSet = &m_globalDescriptorSet,
 			    .viewDescriptorSet = &m_viewDescriptorSets[0],
@@ -465,7 +428,7 @@ public:
 			    }},
 			};
 
-			m_renderer.RenderToTexture(*m_shadowMap, m_shadowMapFramebuffer.get(), renderList);
+			m_renderer.RenderToTexture(*m_shadowMap, renderList);
 		}
 
 		//
@@ -499,7 +462,6 @@ public:
 			m_viewUniformBuffers[1].SetData(m_currentFrame, viewUniforms);
 
 			RenderList renderList = {
-			    .renderPass = m_surface.GetVulkanRenderPass(),
 			    .clearValues = clearValues,
 			    .sceneDescriptorSet = &m_globalDescriptorSet,
 			    .viewDescriptorSet = &m_viewDescriptorSets[1],
@@ -727,11 +689,11 @@ private:
 
 		// View desriptor sets
 		m_viewDescriptorSets.clear();
-		const auto shadowMapImages = std::array{m_shadowMap.get()};
+		const auto shadowMapImages = std::array<const Texture*, 1>{m_shadowMap.get()};
 		for (size_t i = 0; i < m_passCount; i++)
 		{
 			// Include shadow maps only after shadow pass
-			const auto images = i >= 1 ? shadowMapImages : std::span<Texture* const>{};
+			const auto images = i >= 1 ? shadowMapImages : std::span<const Texture* const>{};
 
 			m_viewDescriptorSets.push_back(
 			    m_device.CreateDescriptorSet(m_shader->viewDescriptorSetLayout.get(), m_viewUniformBuffers[i], images));
@@ -793,23 +755,7 @@ private:
 		    },
 		};
 
-		m_shadowMap = std::make_unique<Texture>(m_device.CreateRenderableTexture(data, "ShadowMap"));
-
-		// Create render pass
-		m_shadowRenderPass = CreateShadowRenderPass(m_device, m_shadowMap->format);
-		SetDebugName(m_shadowRenderPass, "ShadowRenderPass");
-
-		// Create framebuffer
-		const auto framebufferCreateInfo = vk::FramebufferCreateInfo{
-		    .renderPass = m_shadowRenderPass.get(),
-		    .attachmentCount = 1,
-		    .pAttachments = &m_shadowMap->imageView.get(),
-		    .width = m_shadowMap->size.width,
-		    .height = m_shadowMap->size.height,
-		    .layers = 1,
-		};
-
-		m_shadowMapFramebuffer = m_device.CreateFramebuffer(framebufferCreateInfo);
+		m_shadowMap = std::make_unique<RenderableTexture>(m_device.CreateRenderableTexture(data, "ShadowMap"));
 
 		// Depth bias (and slope) are used to avoid shadowing artifacts
 		// Constant depth bias factor (always applied)
@@ -819,7 +765,7 @@ private:
 
 		// Create pipeline
 		m_shadowMapPipeline = CreateGraphicsPipeline(
-		    m_shader->vertexShader.get(), nullptr, m_shader->pipelineLayout.get(), m_shadowRenderPass.get(),
+		    m_shader->vertexShader.get(), nullptr, m_shader->pipelineLayout.get(), m_shadowMap->renderPass.get(),
 		    vk::SampleCountFlagBits::e1, m_device.get(), depthBiasConstant, depthBiasSlope);
 	}
 
@@ -842,7 +788,7 @@ private:
 	Buffer m_vertexBuffer;
 	Buffer m_indexBuffer;
 	uint32_t m_indexCount;
-	std::unique_ptr<Texture> m_texture;
+	std::unique_ptr<const Texture> m_texture;
 
 	const uint32_t m_passCount = 2;
 	UniformBuffer m_globalUniformBuffer;
@@ -855,9 +801,7 @@ private:
 	// Lights
 	Geo::Angle m_lightYaw = 45.0_deg;
 	Geo::Angle m_lightPitch = -45.0_deg;
-	std::unique_ptr<Texture> m_shadowMap;
-	vk::UniqueRenderPass m_shadowRenderPass;
-	vk::UniqueFramebuffer m_shadowMapFramebuffer;
+	std::unique_ptr<RenderableTexture> m_shadowMap;
 	vk::UniquePipeline m_shadowMapPipeline;
 	Geo::Matrix4 m_shadowMatrix;
 

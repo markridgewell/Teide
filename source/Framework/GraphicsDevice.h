@@ -44,7 +44,7 @@ public:
 	Shader CreateShader(const ShaderData& data, const char* name);
 
 	Texture CreateTexture(const TextureData& data, const char* name);
-	Texture CreateRenderableTexture(const TextureData& data, const char* name);
+	RenderableTexture CreateRenderableTexture(const TextureData& data, const char* name);
 
 	DescriptorSet CreateDescriptorSet(
 	    vk::DescriptorSetLayout layout, const UniformBuffer& uniformBuffer, std::span<const Texture* const> textures = {});

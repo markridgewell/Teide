@@ -137,9 +137,9 @@ vk::CommandBuffer Renderer::GetCommandBuffer(uint32_t threadIndex, uint32_t sequ
 	return commandBuffer;
 }
 
-void Renderer::RenderToTexture(Texture& texture, vk::Framebuffer framebuffer, RenderList renderList)
+void Renderer::RenderToTexture(RenderableTexture& texture, RenderList renderList)
 {
-	m_taskflow.emplace([this, renderList = std::move(renderList), sequenceIndex = m_nextSequenceIndex++, framebuffer, &texture] {
+	m_taskflow.emplace([this, renderList = std::move(renderList), sequenceIndex = m_nextSequenceIndex++, &texture] {
 		const uint32_t taskIndex = m_executor.this_worker_id();
 
 		const vk::CommandBuffer commandBuffer = GetCommandBuffer(taskIndex, sequenceIndex);
@@ -147,14 +147,9 @@ void Renderer::RenderToTexture(Texture& texture, vk::Framebuffer framebuffer, Re
 		texture.DiscardContents();
 		texture.TransitionToDepthStencilTarget(commandBuffer);
 
-		Render(renderList, framebuffer, texture.size, commandBuffer);
+		Render(renderList, texture.renderPass.get(), texture.framebuffer.get(), texture.size, commandBuffer);
 
 		texture.TransitionToShaderInput(commandBuffer);
-
-		/*TransitionImageLayout(
-		    commandBuffer, texture, format, 1, vk::ImageLayout::eDepthStencilAttachmentOptimal,
-		    vk::ImageLayout::eDepthStencilReadOnlyOptimal, vk::PipelineStageFlagBits::eLateFragmentTests,
-		    vk::PipelineStageFlagBits::eFragmentShader);*/
 	});
 }
 
@@ -167,18 +162,20 @@ void Renderer::RenderToSurface(const SurfaceImage& surfaceImage, RenderList rend
 
 		const vk::CommandBuffer commandBuffer = GetCommandBuffer(taskIndex, sequenceIndex);
 
-		Render(renderList, framebuffer, extent, commandBuffer);
+		Render(renderList, surfaceImage.renderPass, framebuffer, extent, commandBuffer);
 	});
 }
 
-void Renderer::Render(const RenderList& renderList, vk::Framebuffer framebuffer, vk::Extent2D framebufferSize, vk::CommandBuffer commandBuffer)
+void Renderer::Render(
+    const RenderList& renderList, vk::RenderPass renderPass, vk::Framebuffer framebuffer, vk::Extent2D framebufferSize,
+    vk::CommandBuffer commandBuffer)
 {
 	using std::data;
 
 	assert(renderList.objects.size() >= 1u);
 
 	const auto renderPassBegin = vk::RenderPassBeginInfo{
-	    .renderPass = renderList.renderPass,
+	    .renderPass = renderPass,
 	    .framebuffer = framebuffer,
 	    .renderArea = {.offset = {0, 0}, .extent = framebufferSize},
 	    .clearValueCount = size32(renderList.clearValues),
