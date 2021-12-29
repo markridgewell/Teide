@@ -438,7 +438,7 @@ public:
 		//
 		{
 			const auto clearDepthStencil = vk::ClearDepthStencilValue{1.0f, 0};
-			const auto clearValues = std::array{
+			const auto clearValues = std::vector{
 			    vk::ClearValue{clearDepthStencil},
 			};
 
@@ -474,7 +474,7 @@ public:
 		{
 			const auto clearColor = std::array{0.0f, 0.0f, 0.0f, 1.0f};
 			const auto clearDepthStencil = vk::ClearDepthStencilValue{1.0f, 0};
-			const auto clearValues = std::array{
+			const auto clearValues = std::vector{
 			    vk::ClearValue{clearColor},
 			    vk::ClearValue{clearDepthStencil},
 			};

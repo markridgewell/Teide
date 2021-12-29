@@ -27,7 +27,7 @@ struct RenderObject
 struct RenderList
 {
 	vk::RenderPass renderPass;
-	std::span<const vk::ClearValue> clearValues;
+	std::vector<vk::ClearValue> clearValues;
 
 	const DescriptorSet* sceneDescriptorSet = nullptr;
 	const DescriptorSet* viewDescriptorSet = nullptr;
