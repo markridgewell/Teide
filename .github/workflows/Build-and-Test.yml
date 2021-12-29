@@ -8,6 +8,7 @@ on:
 
 env:
   VULKAN_VERSION: 1.2.198
+  VULKAN_SDK: ./VULKAN_SDK
 
 jobs:
   windows:
@@ -30,7 +31,7 @@ jobs:
       uses: actions/cache@v2
       id: cache-vulkan
       with:
-        path: ./VULKAN_SDK
+        path: ${{env.VULKAN_SDK}}
         key: vulkan-${{env.VULKAN_VERSION}}-${{runner.os}}
 
     - name: Setup Vulkan SDK
@@ -93,7 +94,7 @@ jobs:
       uses: actions/cache@v2
       id: cache-vulkan
       with:
-        path: ./VULKAN_SDK
+        path: ${{env.VULKAN_SDK}}
         key: vulkan-${{env.VULKAN_VERSION}}-${{runner.os}}
 
     - name: Setup Vulkan SDK
