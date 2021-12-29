@@ -2,6 +2,7 @@
 #pragma once
 
 #include "Framework/BytesView.h"
+#include "Framework/Pipeline.h"
 #include "Framework/Surface.h"
 #include "Framework/Vulkan.h"
 
@@ -19,8 +20,7 @@ struct RenderObject
 	vk::Buffer vertexBuffer;
 	vk::Buffer indexBuffer;
 	uint32_t indexCount = 0;
-	vk::Pipeline pipeline;
-	vk::PipelineLayout pipelineLayout;
+	PipelinePtr pipeline;
 	const DescriptorSet* materialDescriptorSet = nullptr;
 	BytesView pushConstants;
 };

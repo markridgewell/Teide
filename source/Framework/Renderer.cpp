@@ -206,12 +206,12 @@ void Renderer::Render(
 		    GetDescriptorSet(obj.materialDescriptorSet),
 		};
 
-		commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, obj.pipelineLayout, 0, descriptorSets, {});
-		commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, obj.pipeline);
+		commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, obj.pipeline->layout, 0, descriptorSets, {});
+		commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, obj.pipeline->pipeline.get());
 		commandBuffer.bindVertexBuffers(0, obj.vertexBuffer, vk::DeviceSize{0});
 		commandBuffer.bindIndexBuffer(obj.indexBuffer, vk::DeviceSize{0}, vk::IndexType::eUint16);
 		commandBuffer.pushConstants(
-		    obj.pipelineLayout, vk::ShaderStageFlagBits::eVertex, 0, size32(obj.pushConstants), data(obj.pushConstants));
+		    obj.pipeline->layout, vk::ShaderStageFlagBits::eVertex, 0, size32(obj.pushConstants), data(obj.pushConstants));
 		commandBuffer.drawIndexed(obj.indexCount, 1, 0, 0, 0);
 	}
 

@@ -139,37 +139,41 @@ constexpr auto QuadVertices = std::array<Vertex, 4>{{
 
 constexpr auto QuadIndices = std::array<uint16_t, 6>{{0, 1, 2, 2, 3, 0}};
 
-constexpr auto VertexBindingDescription = vk::VertexInputBindingDescription{
-    .binding = 0,
-    .stride = sizeof(Vertex),
-    .inputRate = vk::VertexInputRate::eVertex,
-};
-
-constexpr auto VertexAttributeDescriptions = std::array{
-    vk::VertexInputAttributeDescription{
+const auto VertexLayoutDesc = VertexLayout
+{
+	.inputAssembly = {
+	    .topology = vk::PrimitiveTopology::eTriangleList,
+	    .primitiveRestartEnable = false,
+	},
+    .vertexInputBindings = {{
+        .binding = 0,
+        .stride = sizeof(Vertex),
+        .inputRate = vk::VertexInputRate::eVertex,
+    }},
+    .vertexInputAttributes = {{
         .location = 0,
         .binding = 0,
         .format = vk::Format::eR32G32B32Sfloat,
         .offset = offsetof(Vertex, position),
     },
-    vk::VertexInputAttributeDescription{
+    {
         .location = 1,
         .binding = 0,
         .format = vk::Format::eR32G32B32Sfloat,
         .offset = offsetof(Vertex, texCoord),
     },
-    vk::VertexInputAttributeDescription{
+    {
         .location = 2,
         .binding = 0,
         .format = vk::Format::eR32G32B32Sfloat,
         .offset = offsetof(Vertex, normal),
     },
-    vk::VertexInputAttributeDescription{
+    {
         .location = 3,
         .binding = 0,
         .format = vk::Format::eR32G32B32Sfloat,
         .offset = offsetof(Vertex, color),
-    },
+    }},
 };
 
 struct GlobalUniforms
@@ -199,116 +203,45 @@ constexpr auto ShaderLang = ShaderLanguage::Glsl;
 
 static const vk::Optional<const vk::AllocationCallbacks> s_allocator = nullptr;
 
-vk::UniquePipeline CreateGraphicsPipeline(
-    vk::ShaderModule vertexShader, vk::ShaderModule pixelShader, vk::PipelineLayout layout, vk::RenderPass renderPass,
-    vk::SampleCountFlagBits sampleCount, vk::Device device, float depthBiasConstant = 0.0f, float depthBiasSlope = 0.0f)
+RenderStates MakeRenderStates(float depthBiasConstant = 0.0f, float depthBiasSlope = 0.0f)
 {
-	std::vector<vk::PipelineShaderStageCreateInfo> shaderStages;
-	if (vertexShader)
-	{
-		shaderStages.push_back({.stage = vk::ShaderStageFlagBits::eVertex, .module = vertexShader, .pName = "main"});
-	}
-	if (pixelShader)
-	{
-		shaderStages.push_back({.stage = vk::ShaderStageFlagBits::eFragment, .module = pixelShader, .pName = "main"});
-	}
+	return {
+		// Viewport and scissor will be dynamic states, so their initial values don't matter
+		.viewport = vk::Viewport{},
+		.scissor = vk::Rect2D{},
 
-	const auto vertexInput = vk::PipelineVertexInputStateCreateInfo{}
-	                             .setVertexBindingDescriptions(VertexBindingDescription)
-	                             .setVertexAttributeDescriptions(VertexAttributeDescriptions);
-
-	const auto inputAssembly = vk::PipelineInputAssemblyStateCreateInfo{
-	    .topology = vk::PrimitiveTopology::eTriangleList,
-	    .primitiveRestartEnable = false,
+		.rasterizationState = vk::PipelineRasterizationStateCreateInfo{
+			.depthClampEnable = false,
+			.rasterizerDiscardEnable = false,
+			.polygonMode = vk::PolygonMode::eFill,
+			.cullMode = vk::CullModeFlagBits::eNone,
+			.frontFace = vk::FrontFace::eClockwise,
+			.depthBiasEnable = depthBiasConstant != 0.0f || depthBiasSlope != 0.0f,
+			.depthBiasConstantFactor = depthBiasConstant,
+			.depthBiasClamp = 0.0f,
+			.depthBiasSlopeFactor = depthBiasSlope,
+			.lineWidth = 1.0f,
+		},
+		.depthStencilState = {
+			.depthTestEnable = true,
+			.depthWriteEnable = true,
+			.depthCompareOp = vk::CompareOp::eLess,
+			.depthBoundsTestEnable = false,
+			.stencilTestEnable = false,
+		},
+		.colorBlendAttachment = {
+			.blendEnable = false,
+			.srcColorBlendFactor = vk::BlendFactor::eOne,
+			.dstColorBlendFactor = vk::BlendFactor::eZero,
+			.colorBlendOp = vk::BlendOp::eAdd,
+			.srcAlphaBlendFactor = vk::BlendFactor::eOne,
+			.dstAlphaBlendFactor = vk::BlendFactor::eZero,
+			.alphaBlendOp = vk::BlendOp::eAdd,
+			.colorWriteMask = vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG
+				| vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA,
+		},
+		.dynamicStates = {vk::DynamicState::eViewport, vk::DynamicState::eScissor}
 	};
-
-	// Viewport and scissor will be dynamic states, so their initial values don't matter
-	const auto viewport = vk::Viewport{};
-	const auto scissor = vk::Rect2D{};
-	const auto viewportState = vk::PipelineViewportStateCreateInfo{
-	    .viewportCount = 1,
-	    .pViewports = &viewport,
-	    .scissorCount = 1,
-	    .pScissors = &scissor,
-	};
-
-	const auto rasterizationState = vk::PipelineRasterizationStateCreateInfo{
-	    .depthClampEnable = false,
-	    .rasterizerDiscardEnable = false,
-	    .polygonMode = vk::PolygonMode::eFill,
-	    .cullMode = vk::CullModeFlagBits::eNone,
-	    .frontFace = vk::FrontFace::eClockwise,
-	    .depthBiasEnable = depthBiasConstant != 0.0f || depthBiasSlope != 0.0f,
-	    .depthBiasConstantFactor = depthBiasConstant,
-	    .depthBiasClamp = 0.0f,
-	    .depthBiasSlopeFactor = depthBiasSlope,
-	    .lineWidth = 1.0f,
-	};
-
-	const auto multisampleState = vk::PipelineMultisampleStateCreateInfo{
-	    .rasterizationSamples = sampleCount,
-	    .sampleShadingEnable = false,
-	    .minSampleShading = 1.0f,
-	    .pSampleMask = nullptr,
-	    .alphaToCoverageEnable = false,
-	    .alphaToOneEnable = false,
-	};
-
-	const auto depthStencilState = vk::PipelineDepthStencilStateCreateInfo{
-	    .depthTestEnable = true,
-	    .depthWriteEnable = true,
-	    .depthCompareOp = vk::CompareOp::eLess,
-	    .depthBoundsTestEnable = false,
-	    .stencilTestEnable = false,
-	};
-
-	const auto colorBlendAttachment = vk::PipelineColorBlendAttachmentState{
-	    .blendEnable = false,
-	    .srcColorBlendFactor = vk::BlendFactor::eOne,
-	    .dstColorBlendFactor = vk::BlendFactor::eZero,
-	    .colorBlendOp = vk::BlendOp::eAdd,
-	    .srcAlphaBlendFactor = vk::BlendFactor::eOne,
-	    .dstAlphaBlendFactor = vk::BlendFactor::eZero,
-	    .alphaBlendOp = vk::BlendOp::eAdd,
-	    .colorWriteMask = vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG
-	        | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA,
-	};
-
-	const auto colorBlendState = vk::PipelineColorBlendStateCreateInfo{
-	    .logicOpEnable = false,
-	    .attachmentCount = 1,
-	    .pAttachments = &colorBlendAttachment,
-	};
-
-	const auto dynamicStates = std::array{vk::DynamicState::eViewport, vk::DynamicState::eScissor};
-
-	const auto dynamicState = vk::PipelineDynamicStateCreateInfo{
-	    .dynamicStateCount = size32(dynamicStates),
-	    .pDynamicStates = data(dynamicStates),
-	};
-
-	const auto createInfo = vk::GraphicsPipelineCreateInfo{
-	    .stageCount = size32(shaderStages),
-	    .pStages = data(shaderStages),
-	    .pVertexInputState = &vertexInput,
-	    .pInputAssemblyState = &inputAssembly,
-	    .pViewportState = &viewportState,
-	    .pRasterizationState = &rasterizationState,
-	    .pMultisampleState = &multisampleState,
-	    .pDepthStencilState = &depthStencilState,
-	    .pColorBlendState = pixelShader ? &colorBlendState : nullptr,
-	    .pDynamicState = &dynamicState,
-	    .layout = layout,
-	    .renderPass = renderPass,
-	    .subpass = 0,
-	};
-
-	auto [result, pipeline] = device.createGraphicsPipelineUnique(nullptr, createInfo, s_allocator);
-	if (result != vk::Result::eSuccess)
-	{
-		throw VulkanError("Couldn't create graphics pipeline");
-	}
-	return std::move(pipeline);
 }
 
 } // namespace
@@ -326,9 +259,7 @@ public:
 		const auto shaderData = CompileShader(VertexShader, PixelShader, ShaderLang);
 		m_shader = std::make_unique<Shader>(m_device.CreateShader(shaderData, "ModelShader"));
 
-		m_pipeline = CreateGraphicsPipeline(
-		    m_shader->vertexShader.get(), m_shader->pixelShader.get(), m_shader->pipelineLayout.get(),
-		    m_surface.GetVulkanRenderPass(), m_surface.GetSampleCount(), m_device.get());
+		m_pipeline = m_device.CreatePipeline(*m_shader, VertexLayoutDesc, MakeRenderStates(), m_surface);
 
 		CreateMesh(modelFilename);
 		CreateUniformBuffers();
@@ -421,8 +352,7 @@ public:
 			        .vertexBuffer = m_vertexBuffer.buffer.get(),
 			        .indexBuffer = m_indexBuffer.buffer.get(),
 			        .indexCount = m_indexCount,
-			        .pipeline = m_shadowMapPipeline.get(),
-			        .pipelineLayout = m_shader->pipelineLayout.get(),
+			        .pipeline = m_shadowMapPipeline,
 			        .materialDescriptorSet = &m_materialDescriptorSet,
 			        .pushConstants = m_objectUniforms,
 			    }},
@@ -469,8 +399,7 @@ public:
 			        .vertexBuffer = m_vertexBuffer.buffer.get(),
 			        .indexBuffer = m_indexBuffer.buffer.get(),
 			        .indexCount = m_indexCount,
-			        .pipeline = m_pipeline.get(),
-			        .pipelineLayout = m_shader->pipelineLayout.get(),
+			        .pipeline = m_pipeline,
 			        .materialDescriptorSet = &m_materialDescriptorSet,
 			        .pushConstants = m_objectUniforms,
 			    }},
@@ -764,9 +693,8 @@ private:
 		float depthBiasSlope = 2.75f;
 
 		// Create pipeline
-		m_shadowMapPipeline = CreateGraphicsPipeline(
-		    m_shader->vertexShader.get(), nullptr, m_shader->pipelineLayout.get(), m_shadowMap->renderPass.get(),
-		    vk::SampleCountFlagBits::e1, m_device.get(), depthBiasConstant, depthBiasSlope);
+		m_shadowMapPipeline = m_device.CreatePipeline(
+		    *m_shader, VertexLayoutDesc, MakeRenderStates(depthBiasConstant, depthBiasSlope), *m_shadowMap);
 	}
 
 	//
@@ -782,7 +710,7 @@ private:
 
 	// Object setup
 	std::unique_ptr<Shader> m_shader;
-	vk::UniquePipeline m_pipeline;
+	PipelinePtr m_pipeline;
 	Geo::Point3 m_meshBoundsMin;
 	Geo::Point3 m_meshBoundsMax;
 	Buffer m_vertexBuffer;
@@ -802,7 +730,7 @@ private:
 	Geo::Angle m_lightYaw = 45.0_deg;
 	Geo::Angle m_lightPitch = -45.0_deg;
 	std::unique_ptr<RenderableTexture> m_shadowMap;
-	vk::UniquePipeline m_shadowMapPipeline;
+	PipelinePtr m_shadowMapPipeline;
 	Geo::Matrix4 m_shadowMatrix;
 
 	// Camera

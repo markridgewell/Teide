@@ -388,6 +388,77 @@ void CopyBufferToImage(vk::CommandBuffer cmdBuffer, vk::Buffer source, vk::Image
 	cmdBuffer.copyBufferToImage(source, destination, vk::ImageLayout::eTransferDstOptimal, copyRegion);
 }
 
+vk::UniquePipeline CreateGraphicsPipeline(
+    const Shader& shader, const VertexLayout& vertexLayout, const RenderStates& renderStates, vk::RenderPass renderPass,
+    vk::Format format, vk::SampleCountFlagBits sampleCount, vk::Device device)
+{
+	const auto vertexShader = shader.vertexShader.get();
+	const auto pixelShader = shader.pixelShader.get();
+
+	std::vector<vk::PipelineShaderStageCreateInfo> shaderStages;
+	shaderStages.push_back({.stage = vk::ShaderStageFlagBits::eVertex, .module = vertexShader, .pName = "main"});
+	if (!HasDepthOrStencilComponent(format))
+	{
+		shaderStages.push_back({.stage = vk::ShaderStageFlagBits::eFragment, .module = pixelShader, .pName = "main"});
+	}
+
+	const auto vertexInput = vk::PipelineVertexInputStateCreateInfo{
+	    .vertexBindingDescriptionCount = size32(vertexLayout.vertexInputBindings),
+	    .pVertexBindingDescriptions = data(vertexLayout.vertexInputBindings),
+	    .vertexAttributeDescriptionCount = size32(vertexLayout.vertexInputAttributes),
+	    .pVertexAttributeDescriptions = data(vertexLayout.vertexInputAttributes),
+	};
+
+	const auto viewportState = vk::PipelineViewportStateCreateInfo{
+	    .viewportCount = 1,
+	    .pViewports = &renderStates.viewport,
+	    .scissorCount = 1,
+	    .pScissors = &renderStates.scissor,
+	};
+
+	const auto multisampleState = vk::PipelineMultisampleStateCreateInfo{
+	    .rasterizationSamples = sampleCount,
+	    .sampleShadingEnable = false,
+	    .minSampleShading = 1.0f,
+	    .pSampleMask = nullptr,
+	    .alphaToCoverageEnable = false,
+	    .alphaToOneEnable = false,
+	};
+
+	const auto colorBlendState = vk::PipelineColorBlendStateCreateInfo{
+	    .logicOpEnable = false,
+	    .attachmentCount = 1,
+	    .pAttachments = &renderStates.colorBlendAttachment,
+	};
+
+	const auto dynamicState = vk::PipelineDynamicStateCreateInfo{
+	    .dynamicStateCount = size32(renderStates.dynamicStates),
+	    .pDynamicStates = data(renderStates.dynamicStates),
+	};
+	const auto createInfo = vk::GraphicsPipelineCreateInfo{
+	    .stageCount = size32(shaderStages),
+	    .pStages = data(shaderStages),
+	    .pVertexInputState = &vertexInput,
+	    .pInputAssemblyState = &vertexLayout.inputAssembly,
+	    .pViewportState = &viewportState,
+	    .pRasterizationState = &renderStates.rasterizationState,
+	    .pMultisampleState = &multisampleState,
+	    .pDepthStencilState = &renderStates.depthStencilState,
+	    .pColorBlendState = pixelShader ? &colorBlendState : nullptr,
+	    .pDynamicState = &dynamicState,
+	    .layout = shader.pipelineLayout.get(),
+	    .renderPass = renderPass,
+	    .subpass = 0,
+	};
+
+	auto [result, pipeline] = device.createGraphicsPipelineUnique(nullptr, createInfo, s_allocator);
+	if (result != vk::Result::eSuccess)
+	{
+		throw VulkanError("Couldn't create graphics pipeline");
+	}
+	return std::move(pipeline);
+}
+
 vk::SubpassDescription MakeSubpassDescription(const vk::AttachmentReference& attachmentRef, bool isColorTarget)
 {
 	if (isColorTarget)
@@ -652,6 +723,25 @@ RenderableTexture GraphicsDevice::CreateRenderableTexture(const TextureData& dat
 	SetDebugName(texture.framebuffer, "{}:Framebuffer", name);
 
 	return texture;
+}
+
+PipelinePtr GraphicsDevice::CreatePipeline(
+    const Shader& shader, const VertexLayout& vertexLayout, const RenderStates& renderStates, const Surface& surface)
+{
+	return std::make_shared<const Pipeline>(
+	    CreateGraphicsPipeline(
+	        shader, vertexLayout, renderStates, surface.GetVulkanRenderPass(), surface.GetColorFormat(),
+	        surface.GetSampleCount(), m_device.get()),
+	    shader.pipelineLayout.get());
+}
+
+PipelinePtr GraphicsDevice::CreatePipeline(
+    const Shader& shader, const VertexLayout& vertexLayout, const RenderStates& renderStates, const RenderableTexture& texture)
+{
+	return std::make_shared<const Pipeline>(
+	    CreateGraphicsPipeline(
+	        shader, vertexLayout, renderStates, texture.renderPass.get(), texture.format, texture.samples, m_device.get()),
+	    shader.pipelineLayout.get());
 }
 
 Texture GraphicsDevice::CreateTextureImpl(

@@ -3,6 +3,7 @@
 
 #include "Framework/Buffer.h"
 #include "Framework/MemoryAllocator.h"
+#include "Framework/Pipeline.h"
 #include "Framework/Renderer.h"
 #include "Framework/Surface.h"
 #include "Framework/Vulkan.h"
@@ -45,6 +46,12 @@ public:
 
 	Texture CreateTexture(const TextureData& data, const char* name);
 	RenderableTexture CreateRenderableTexture(const TextureData& data, const char* name);
+
+	PipelinePtr CreatePipeline(
+	    const Shader& shader, const VertexLayout& vertexLayout, const RenderStates& renderStates, const Surface& surface);
+	PipelinePtr CreatePipeline(
+	    const Shader& shader, const VertexLayout& vertexLayout, const RenderStates& renderStates,
+	    const RenderableTexture& texture);
 
 	DescriptorSet CreateDescriptorSet(
 	    vk::DescriptorSetLayout layout, const UniformBuffer& uniformBuffer, std::span<const Texture* const> textures = {});
