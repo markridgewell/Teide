@@ -1,6 +1,7 @@
 
 #include "Definitions.h"
 #include "Framework/Buffer.h"
+#include "Framework/GraphicsDevice.h"
 #include "Framework/MemoryAllocator.h"
 #include "Framework/Renderer.h"
 #include "Framework/Shader.h"
@@ -11,7 +12,6 @@
 #include "ShaderCompiler.h"
 
 #include <SDL.h>
-#include <SDL_vulkan.h>
 #include <assimp/Importer.hpp>
 #include <assimp/mesh.h>
 #include <assimp/postprocess.h>
@@ -45,8 +45,6 @@ using namespace Geo::Literals;
 namespace
 {
 constexpr bool UseMSAA = true;
-constexpr bool BreakOnVulkanWarning = false;
-constexpr bool BreakOnVulkanError = true;
 
 constexpr std::string_view VertexShader = R"--(
 layout(location = 0) in vec3 inPosition;
@@ -203,437 +201,12 @@ constexpr auto ShaderLang = ShaderLanguage::Glsl;
 
 static const vk::Optional<const vk::AllocationCallbacks> s_allocator = nullptr;
 
-vk::UniqueSurfaceKHR CreateVulkanSurface(SDL_Window* window, vk::Instance instance)
-{
-	VkSurfaceKHR surfaceTmp = {};
-	if (!SDL_Vulkan_CreateSurface(window, instance, &surfaceTmp))
-	{
-		return {};
-	}
-	vk::ObjectDestroy<vk::Instance, vk::DispatchLoaderDynamic> deleter(instance, s_allocator, VULKAN_HPP_DEFAULT_DISPATCHER);
-	return vk::UniqueSurfaceKHR(surfaceTmp, deleter);
-}
-
-void EnableOptionalVulkanLayer(
-    std::vector<const char*>& enabledLayers, const std::vector<vk::LayerProperties>& availableLayers, const char* layerName)
-{
-	std::string_view layerNameSV = layerName;
-	if (std::ranges::find_if(availableLayers, [layerNameSV](const auto& x) { return x.layerName == layerNameSV; })
-	    != availableLayers.end())
-	{
-		spdlog::info("Enabling Vulkan layer {}", layerName);
-		enabledLayers.push_back(layerName);
-	}
-	else
-	{
-		spdlog::warn("Vulkan layer {} not enabled!", layerName);
-	}
-}
-
-void EnableRequiredVulkanExtension(
-    std::vector<const char*>& enabledExtensions, const std::vector<vk::ExtensionProperties>& availableExtensions,
-    const char* extensionName)
-{
-	std::string_view name = extensionName;
-	if (std::ranges::find_if(availableExtensions, [name](const auto& x) { return x.extensionName == name; })
-	    != availableExtensions.end())
-	{
-		spdlog::info("Enabling Vulkan extension {}", extensionName);
-		enabledExtensions.push_back(extensionName);
-	}
-	else
-	{
-		throw vk::ExtensionNotPresentError(extensionName);
-	}
-}
-
-VKAPI_ATTR VkBool32 VKAPI_CALL DebugCallback(
-    VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, [[maybe_unused]] VkDebugUtilsMessageTypeFlagsEXT messageType,
-    const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, [[maybe_unused]] void* pUserData)
-{
-	using MessageType = vk::DebugUtilsMessageTypeFlagBitsEXT;
-	using MessageSeverity = vk::DebugUtilsMessageSeverityFlagBitsEXT;
-
-	// Filter unwanted messages
-	if (pCallbackData->messageIdNumber == 767975156)
-	{
-		// UNASSIGNED-BestPractices-vkCreateInstance-specialuse-extension
-		return VK_FALSE;
-	}
-
-	const char* prefix = "";
-	switch (MessageType(messageType))
-	{
-		case MessageType::eGeneral:
-			prefix = "";
-			break;
-		case MessageType::eValidation:
-			prefix = "[validation] ";
-			break;
-		case MessageType::ePerformance:
-			prefix = "[performance] ";
-			break;
-	}
-
-	switch (MessageSeverity(messageSeverity))
-	{
-		case MessageSeverity::eVerbose:
-			spdlog::debug("{}{}", prefix, pCallbackData->pMessage);
-			break;
-
-		case MessageSeverity::eInfo:
-			spdlog::info("{}{}", prefix, pCallbackData->pMessage);
-			break;
-
-		case MessageSeverity::eWarning:
-			spdlog::warn("{}{}", prefix, pCallbackData->pMessage);
-			assert(!BreakOnVulkanWarning);
-			break;
-
-		case MessageSeverity::eError:
-			spdlog::error("{}{}", prefix, pCallbackData->pMessage);
-			assert(!BreakOnVulkanError);
-			break;
-	}
-	return VK_FALSE;
-}
-
-constexpr auto DebugCreateInfo = [] {
-	using MessageType = vk::DebugUtilsMessageTypeFlagBitsEXT;
-	using MessageSeverity = vk::DebugUtilsMessageSeverityFlagBitsEXT;
-
-	return vk::DebugUtilsMessengerCreateInfoEXT{
-	    .messageSeverity = MessageSeverity ::eError | MessageSeverity ::eWarning | MessageSeverity ::eInfo,
-	    .messageType = MessageType::eGeneral | MessageType::eValidation | MessageType::ePerformance,
-	    .pfnUserCallback = DebugCallback,
-	};
-}();
-
-vk::UniqueInstance CreateInstance(SDL_Window* window)
-{
-	uint32_t extensionCount = 0;
-	SDL_Vulkan_GetInstanceExtensions(window, &extensionCount, nullptr);
-	auto extensions = std::vector<const char*>(extensionCount);
-	SDL_Vulkan_GetInstanceExtensions(window, &extensionCount, extensions.data());
-
-	vk::ApplicationInfo applicationInfo{
-	    .apiVersion = VK_API_VERSION_1_0,
-	};
-
-	const auto availableLayers = vk::enumerateInstanceLayerProperties();
-	const auto availableExtensions = vk::enumerateInstanceExtensionProperties();
-
-	std::vector<const char*> layers;
-	if constexpr (IsDebugBuild)
-	{
-		EnableOptionalVulkanLayer(layers, availableLayers, "VK_LAYER_KHRONOS_validation");
-		EnableRequiredVulkanExtension(extensions, availableExtensions, "VK_EXT_debug_utils");
-
-		const auto enabledFeatures = std::array{
-		    vk::ValidationFeatureEnableEXT::eSynchronizationValidation,
-		    vk::ValidationFeatureEnableEXT::eBestPractices,
-		};
-
-		const auto createInfo = vk::StructureChain{
-		    vk::InstanceCreateInfo{
-		        .pApplicationInfo = &applicationInfo,
-		        .enabledLayerCount = size32(layers),
-		        .ppEnabledLayerNames = data(layers),
-		        .enabledExtensionCount = size32(extensions),
-		        .ppEnabledExtensionNames = data(extensions)},
-		    vk::ValidationFeaturesEXT{
-		        .enabledValidationFeatureCount = size32(enabledFeatures),
-		        .pEnabledValidationFeatures = data(enabledFeatures),
-		    },
-		    DebugCreateInfo,
-		};
-
-		return vk::createInstanceUnique(createInfo.get<vk::InstanceCreateInfo>(), s_allocator);
-	}
-	else
-	{
-		const auto createInfo = vk::InstanceCreateInfo{
-		    .pApplicationInfo = &applicationInfo,
-		    .enabledLayerCount = size32(layers),
-		    .ppEnabledLayerNames = data(layers),
-		    .enabledExtensionCount = size32(extensions),
-		    .ppEnabledExtensionNames = data(extensions),
-		};
-
-		return vk::createInstanceUnique(createInfo, s_allocator);
-	}
-}
-
-struct QueueFamilyIndices
-{
-	std::optional<uint32_t> graphicsFamily;
-	std::optional<uint32_t> presentFamily;
-
-	bool IsComplete() const { return graphicsFamily.has_value() && presentFamily.has_value(); }
-};
-
-QueueFamilyIndices FindQueueFamilies(vk::PhysicalDevice physicalDevice, vk::SurfaceKHR surface)
-{
-	QueueFamilyIndices indices;
-
-	const auto queueFamilies = physicalDevice.getQueueFamilyProperties();
-	int i = 0;
-	for (const auto& queueFamily : queueFamilies)
-	{
-		if (queueFamily.queueFlags & vk::QueueFlagBits::eGraphics)
-		{
-			indices.graphicsFamily = i;
-		}
-
-		if (physicalDevice.getSurfaceSupportKHR(i, surface))
-		{
-			indices.presentFamily = i;
-		}
-
-		if (indices.IsComplete())
-		{
-			break;
-		}
-
-		i++;
-	}
-
-	return indices;
-}
-
-vk::PhysicalDevice FindPhysicalDevice(vk::Instance instance, vk::SurfaceKHR surface, std::span<const char*> requiredExtensions)
-{
-	// Look for a discrete GPU
-	auto physicalDevices = instance.enumeratePhysicalDevices();
-	if (physicalDevices.empty())
-	{
-		throw VulkanError("No GPU found!");
-	}
-
-	// Prefer discrete GPUs to integrated GPUs
-	std::ranges::sort(physicalDevices, [](vk::PhysicalDevice a, vk::PhysicalDevice b) {
-		return (a.getProperties().deviceType == vk::PhysicalDeviceType::eDiscreteGpu)
-		    > (b.getProperties().deviceType == vk::PhysicalDeviceType::eIntegratedGpu);
-	});
-
-	// Find the first device that supports all the queue families we need
-	const auto it = std::ranges::find_if(physicalDevices, [&](vk::PhysicalDevice device) {
-		// Check that all required extensions are supported
-		const auto supportedExtensions = device.enumerateDeviceExtensionProperties();
-		const bool supportsAllExtensions = std::ranges::all_of(requiredExtensions, [&](std::string_view extensionName) {
-			return std::ranges::count(supportedExtensions, extensionName, &vk::ExtensionProperties::extensionName) > 0;
-		});
-
-		if (!supportsAllExtensions)
-		{
-			return false;
-		}
-
-		// Check all required features are supported
-		const auto supportedFeatures = device.getFeatures();
-		if (!supportedFeatures.samplerAnisotropy)
-		{
-			return false;
-		}
-
-		// Check for adequate swap chain support
-		if (device.getSurfaceFormatsKHR(surface).empty())
-		{
-			return false;
-		}
-		if (device.getSurfacePresentModesKHR(surface).empty())
-		{
-			return false;
-		}
-
-		// Check that all required queue families are supported
-		const auto indices = FindQueueFamilies(device, surface);
-		return indices.IsComplete();
-	});
-	if (it == physicalDevices.end())
-	{
-		throw VulkanError("No suitable GPU found!");
-	}
-
-	vk::PhysicalDevice physicalDevice = *it;
-	spdlog::info("Selected physical device: {}", physicalDevice.getProperties().deviceName);
-	return physicalDevice;
-}
-
-vk::UniqueDevice
-CreateDevice(vk::PhysicalDevice physicalDevice, std::span<const uint32_t> queueFamilyIndices, std::span<const char*> extensions)
-{
-	// Make a list of create infos for each unique queue we wish to create
-	const float queuePriority = 1.0f;
-	std::vector<vk::DeviceQueueCreateInfo> queueCreateInfos;
-	for (const uint32_t index : queueFamilyIndices)
-	{
-		if (std::ranges::count(queueCreateInfos, index, &vk::DeviceQueueCreateInfo::queueFamilyIndex) == 0)
-		{
-			queueCreateInfos.push_back({.queueFamilyIndex = index, .queueCount = 1, .pQueuePriorities = &queuePriority});
-		}
-	}
-
-	const auto deviceFeatures = vk::PhysicalDeviceFeatures{
-	    .samplerAnisotropy = true,
-	};
-
-	const auto availableLayers = physicalDevice.enumerateDeviceLayerProperties();
-	const auto availableExtensions = physicalDevice.enumerateDeviceExtensionProperties();
-
-	std::vector<const char*> layers;
-	if constexpr (IsDebugBuild)
-	{
-		EnableOptionalVulkanLayer(layers, availableLayers, "VK_LAYER_KHRONOS_validation");
-	}
-
-	const auto deviceCreateInfo = vk::DeviceCreateInfo{
-	    .queueCreateInfoCount = size32(queueCreateInfos),
-	    .pQueueCreateInfos = data(queueCreateInfos),
-	    .enabledLayerCount = size32(layers),
-	    .ppEnabledLayerNames = data(layers),
-	    .enabledExtensionCount = size32(extensions),
-	    .ppEnabledExtensionNames = data(extensions),
-	    .pEnabledFeatures = &deviceFeatures};
-
-	return physicalDevice.createDeviceUnique(deviceCreateInfo, s_allocator);
-}
-
 template <class T, std::size_t N>
 std::vector<T> ToVector(const std::array<T, N>& arr)
 {
 	auto ret = std::vector<T>(N);
 	std::ranges::copy(arr, ret.begin());
 	return ret;
-}
-
-void CopyBufferToImage(vk::CommandBuffer cmdBuffer, vk::Buffer source, vk::Image destination, vk::Extent3D extent)
-{
-	const auto copyRegion = vk::BufferImageCopy
-	{
-		.bufferOffset = 0,
-		.bufferRowLength = 0,
-		.bufferImageHeight = 0, .imageSubresource = {
-			.aspectMask = vk::ImageAspectFlagBits::eColor,
-			.mipLevel = 0,
-			.baseArrayLayer = 0,
-			.layerCount = 1,
-		},
-		.imageOffset = {0,0,0},
-		.imageExtent = extent,
-	};
-	cmdBuffer.copyBufferToImage(source, destination, vk::ImageLayout::eTransferDstOptimal, copyRegion);
-}
-
-vk::ImageAspectFlags GetImageAspect(vk::Format format)
-{
-	if (HasDepthComponent(format) && HasStencilComponent(format))
-	{
-		return vk::ImageAspectFlagBits::eDepth | vk::ImageAspectFlagBits::eStencil;
-	}
-	if (HasDepthComponent(format))
-	{
-		return vk::ImageAspectFlagBits::eDepth;
-	}
-	if (HasStencilComponent(format))
-	{
-		return vk::ImageAspectFlagBits::eStencil;
-	}
-	return vk::ImageAspectFlagBits::eColor;
-}
-
-struct UniformBuffer
-{
-	std::array<Buffer, MaxFramesInFlight> buffers;
-	vk::DeviceSize size = 0;
-
-	void SetData(int currentFrame, BytesView data) { buffers[currentFrame % MaxFramesInFlight].SetData(data); }
-};
-
-UniformBuffer CreateUniformBuffer(size_t bufferSize, vk::Device device, MemoryAllocator& allocator)
-{
-	UniformBuffer ret;
-	ret.size = bufferSize;
-	for (auto& buffer : ret.buffers)
-	{
-		buffer = CreateBuffer(
-		    device, allocator, bufferSize, vk::BufferUsageFlagBits::eUniformBuffer,
-		    vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
-	}
-	return ret;
-}
-
-DescriptorSet CreateDescriptorSet(
-    vk::DescriptorSetLayout layout, vk::DescriptorPool descriptorPool, vk::Device device,
-    const UniformBuffer& uniformBuffer, std::span<const Texture* const> textures = {})
-{
-	const auto layouts = std::vector<vk::DescriptorSetLayout>(MaxFramesInFlight, layout);
-	const auto allocInfo = vk::DescriptorSetAllocateInfo{
-	    .descriptorPool = descriptorPool,
-	    .descriptorSetCount = size32(layouts),
-	    .pSetLayouts = data(layouts),
-	};
-
-	DescriptorSet descriptorSets = {device.allocateDescriptorSets(allocInfo)};
-
-	for (size_t i = 0; i < layouts.size(); i++)
-	{
-		std::vector<vk::WriteDescriptorSet> descriptorWrites;
-
-		if (uniformBuffer.size > 0)
-		{
-			const auto bufferInfo = vk::DescriptorBufferInfo{
-			    .buffer = uniformBuffer.buffers[i].buffer.get(),
-			    .offset = 0,
-			    .range = uniformBuffer.size,
-			};
-
-			descriptorWrites.push_back({
-			    .dstSet = descriptorSets.sets[i],
-			    .dstBinding = 0,
-			    .dstArrayElement = 0,
-			    .descriptorCount = 1,
-			    .descriptorType = vk::DescriptorType::eUniformBuffer,
-			    .pBufferInfo = &bufferInfo,
-			});
-		}
-
-		std::vector<vk::DescriptorImageInfo> imageInfos;
-		imageInfos.resize(textures.size());
-		for (const auto& texture : textures)
-		{
-			imageInfos.push_back({
-			    .sampler = texture->sampler.get(),
-			    .imageView = texture->imageView.get(),
-			    .imageLayout = HasDepthOrStencilComponent(texture->format) ? vk::ImageLayout::eDepthStencilReadOnlyOptimal
-			                                                               : vk::ImageLayout::eShaderReadOnlyOptimal,
-			});
-
-			descriptorWrites.push_back({
-			    .dstSet = descriptorSets.sets[i],
-			    .dstBinding = 1,
-			    .dstArrayElement = 0,
-			    .descriptorCount = 1,
-			    .descriptorType = vk::DescriptorType::eCombinedImageSampler,
-			    .pImageInfo = &imageInfos.back(),
-			});
-		}
-
-		device.updateDescriptorSets(descriptorWrites, {});
-	}
-
-	return descriptorSets;
-}
-
-vk::UniqueDescriptorSetLayout
-CreateDescriptorSetLayout(vk::Device device, std::span<const vk::DescriptorSetLayoutBinding> layoutBindings)
-{
-	const auto createInfo = vk::DescriptorSetLayoutCreateInfo{
-	    .bindingCount = size32(layoutBindings),
-	    .pBindings = data(layoutBindings),
-	};
-
-	return device.createDescriptorSetLayoutUnique(createInfo, s_allocator);
 }
 
 vk::UniquePipeline CreateGraphicsPipeline(
@@ -748,24 +321,7 @@ vk::UniquePipeline CreateGraphicsPipeline(
 	return std::move(pipeline);
 }
 
-vk::UniquePipelineLayout
-CreateGraphicsPipelineLayout(vk::Device device, Shader& shader, std::span<const vk::PushConstantRange> pushConstantRanges)
-{
-	const auto setLayouts = std::array{
-	    shader.sceneDescriptorSetLayout.get(), shader.viewDescriptorSetLayout.get(),
-	    shader.materialDescriptorSetLayout.get()};
-
-	const auto createInfo = vk::PipelineLayoutCreateInfo{
-	    .setLayoutCount = size32(setLayouts),
-	    .pSetLayouts = data(setLayouts),
-	    .pushConstantRangeCount = size32(pushConstantRanges),
-	    .pPushConstantRanges = data(pushConstantRanges),
-	};
-
-	return device.createPipelineLayoutUnique(createInfo, s_allocator);
-}
-
-vk::UniqueRenderPass CreateShadowRenderPass(vk::Device device, vk::Format format)
+vk::UniqueRenderPass CreateShadowRenderPass(GraphicsDevice& device, vk::Format format)
 {
 	const auto attachment = vk::AttachmentDescription{
 	    .format = format,
@@ -798,7 +354,7 @@ vk::UniqueRenderPass CreateShadowRenderPass(vk::Device device, vk::Format format
 	    .pSubpasses = &subpass,
 	};
 
-	return device.createRenderPassUnique(createInfo, s_allocator);
+	return device.CreateRenderPass(createInfo);
 }
 
 } // namespace
@@ -810,46 +366,15 @@ public:
 	static constexpr float CameraZoomSpeed = 0.002f;
 	static constexpr float CameraMoveSpeed = 0.001f;
 
-	explicit Application(SDL_Window* window, const char* imageFilename, const char* modelFilename) : m_window{window}
+	explicit Application(SDL_Window* window, const char* imageFilename, const char* modelFilename) :
+	    m_window{window}, m_device(window), m_surface{m_device.CreateSurface(window, UseMSAA)}, m_renderer{m_device.CreateRenderer()}
 	{
-		vk::DynamicLoader dl;
-		VULKAN_HPP_DEFAULT_DISPATCHER.init(dl.getProcAddress<PFN_vkGetInstanceProcAddr>("vkGetInstanceProcAddr"));
-
-		m_instance = CreateInstance(window);
-		VULKAN_HPP_DEFAULT_DISPATCHER.init(m_instance.get());
-
-		if constexpr (IsDebugBuild)
-		{
-			m_debugMessenger = m_instance->createDebugUtilsMessengerEXTUnique(DebugCreateInfo, s_allocator);
-		}
-
-		auto surface = CreateVulkanSurface(window, m_instance.get());
-
-		std::array deviceExtensions = {"VK_KHR_swapchain"};
-
-		m_physicalDevice = FindPhysicalDevice(m_instance.get(), surface.get(), deviceExtensions);
-
-		const auto queueFamilies = FindQueueFamilies(m_physicalDevice, surface.get());
-		m_graphicsQueueFamily = queueFamilies.graphicsFamily.value();
-		m_presentQueueFamily = queueFamilies.presentFamily.value();
-		const auto queueFamilyIndices = std::vector{m_graphicsQueueFamily, m_presentQueueFamily};
-		m_device = CreateDevice(m_physicalDevice, queueFamilyIndices, deviceExtensions);
-		m_graphicsQueue = m_device->getQueue(m_graphicsQueueFamily, 0);
-		m_generalAllocator.emplace(m_device.get(), m_physicalDevice);
-
-		m_setupCommandPool = CreateCommandPool(m_graphicsQueueFamily, m_device.get());
-
-		m_surface.emplace(
-		    m_window, std::move(surface), m_device.get(), m_physicalDevice, queueFamilyIndices,
-		    m_setupCommandPool.get(), m_graphicsQueue, UseMSAA);
-		m_renderer.emplace(m_device.get(), m_graphicsQueueFamily, m_presentQueueFamily);
-
 		const auto shaderData = CompileShader(VertexShader, PixelShader, ShaderLang);
-		m_shader = std::make_unique<Shader>(CreateShader(shaderData, "ModelShader"));
+		m_shader = std::make_unique<Shader>(m_device.CreateShader(shaderData, "ModelShader"));
 
 		m_pipeline = CreateGraphicsPipeline(
 		    m_shader->vertexShader.get(), m_shader->pixelShader.get(), m_shader->pipelineLayout.get(),
-		    m_surface->GetVulkanRenderPass(), m_surface->GetSampleCount(), m_device.get());
+		    m_surface.GetVulkanRenderPass(), m_surface.GetSampleCount(), m_device.get());
 
 		CreateMesh(modelFilename);
 		CreateUniformBuffers();
@@ -862,9 +387,9 @@ public:
 
 	void OnRender()
 	{
-		vk::Fence fence = m_renderer->BeginFrame(m_currentFrame);
+		vk::Fence fence = m_renderer.BeginFrame(m_currentFrame);
 
-		const auto result = m_surface->AcquireNextImage(fence);
+		const auto result = m_surface.AcquireNextImage(fence);
 		if (!result.has_value())
 		{
 			return;
@@ -950,7 +475,7 @@ public:
 			    }},
 			};
 
-			m_renderer->RenderToTexture(*m_shadowMap, m_shadowMapFramebuffer.get(), renderList);
+			m_renderer.RenderToTexture(*m_shadowMap, m_shadowMapFramebuffer.get(), renderList);
 		}
 
 		//
@@ -965,7 +490,7 @@ public:
 			};
 
 			// Update view uniforms
-			const auto extent = m_surface->GetExtent();
+			const auto extent = m_surface.GetExtent();
 			const float aspectRatio = static_cast<float>(extent.width) / static_cast<float>(extent.height);
 
 			const Geo::Matrix4 rotation = Geo::Matrix4::RotationZ(m_cameraYaw) * Geo::Matrix4::RotationX(m_cameraPitch);
@@ -984,7 +509,7 @@ public:
 			m_viewUniformBuffers[1].SetData(m_currentFrame, viewUniforms);
 
 			RenderList renderList = {
-			    .renderPass = m_surface->GetVulkanRenderPass(),
+			    .renderPass = m_surface.GetVulkanRenderPass(),
 			    .clearValues = clearValues,
 			    .sceneDescriptorSet = &m_globalDescriptorSet,
 			    .viewDescriptorSet = &m_viewDescriptorSets[1],
@@ -999,15 +524,15 @@ public:
 			    }},
 			};
 
-			m_renderer->RenderToSurface(image, renderList);
+			m_renderer.RenderToSurface(image, renderList);
 		}
 
-		m_renderer->EndFrame(image);
+		m_renderer.EndFrame(image);
 
 		m_currentFrame = (m_currentFrame + 1) % MaxFramesInFlight;
 	}
 
-	void OnResize() { m_surface->OnResize(); }
+	void OnResize() { m_surface.OnResize(); }
 
 	bool OnEvent(const SDL_Event& event)
 	{
@@ -1087,28 +612,22 @@ public:
 
 			running &= OnUpdate();
 			OnRender();
-		}
 
-		m_device->waitIdle();
+			m_device.WaitIdle();
+		}
 	}
 
 private:
-	auto OneShotCommands() { return OneShotCommandBuffer(m_device.get(), m_setupCommandPool.get(), m_graphicsQueue); }
-
 	void CreateVertexBuffer(BytesView data)
 	{
-		m_vertexBuffer = CreateBufferWithData(
-		    m_device.get(), m_generalAllocator.value(), m_setupCommandPool.get(), m_graphicsQueue, data,
-		    vk::BufferUsageFlagBits::eVertexBuffer, vk::MemoryPropertyFlagBits::eDeviceLocal);
-		SetDebugName(m_vertexBuffer.buffer, "VertexBuffer");
+		m_vertexBuffer = m_device.CreateBufferWithData(
+		    data, vk::BufferUsageFlagBits::eVertexBuffer, vk::MemoryPropertyFlagBits::eDeviceLocal, "VertexBuffer");
 	}
 
 	void CreateIndexBuffer(std::span<const uint16_t> data)
 	{
-		m_indexBuffer = CreateBufferWithData(
-		    m_device.get(), m_generalAllocator.value(), m_setupCommandPool.get(), m_graphicsQueue, data,
-		    vk::BufferUsageFlagBits::eIndexBuffer, vk::MemoryPropertyFlagBits::eDeviceLocal);
-		SetDebugName(m_indexBuffer.buffer, "IndexBuffer");
+		m_indexBuffer = m_device.CreateBufferWithData(
+		    data, vk::BufferUsageFlagBits::eIndexBuffer, vk::MemoryPropertyFlagBits::eDeviceLocal, "IndexBuffer");
 		m_indexCount = size32(data);
 	}
 
@@ -1202,36 +721,19 @@ private:
 
 	void CreateUniformBuffers()
 	{
-		m_globalUniformBuffer = CreateUniformBuffer(sizeof(GlobalUniforms), m_device.get(), *m_generalAllocator);
+		m_globalUniformBuffer = m_device.CreateUniformBuffer(sizeof(GlobalUniforms), "Scene");
 
 		for (uint32_t pass = 0; pass < m_passCount; pass++)
 		{
-			m_viewUniformBuffers.push_back(CreateUniformBuffer(sizeof(ViewUniforms), m_device.get(), *m_generalAllocator));
+			m_viewUniformBuffers.push_back(m_device.CreateUniformBuffer(sizeof(ViewUniforms), "View"));
 		}
 	}
 
 	void CreateDescriptorSets()
 	{
-		const auto poolSizes = std::array{
-		    vk::DescriptorPoolSize{
-		        .type = vk::DescriptorType::eUniformBuffer,
-		        .descriptorCount = MaxFramesInFlight * (2 + m_passCount),
-		    },
-		    vk::DescriptorPoolSize{
-		        .type = vk::DescriptorType::eCombinedImageSampler,
-		        .descriptorCount = MaxFramesInFlight * (1 + m_passCount),
-		    },
-		};
-
-		const auto poolCreateInfo = vk::DescriptorPoolCreateInfo{
-			.maxSets = MaxFramesInFlight * (2 + m_passCount),
-		}.setPoolSizes(poolSizes);
-
-		auto descriptorPool = m_device->createDescriptorPoolUnique(poolCreateInfo, s_allocator);
-
 		// Global descriptor set
-		m_globalDescriptorSet = CreateDescriptorSet(
-		    m_shader->sceneDescriptorSetLayout.get(), descriptorPool.get(), m_device.get(), m_globalUniformBuffer);
+		m_globalDescriptorSet
+		    = m_device.CreateDescriptorSet(m_shader->sceneDescriptorSetLayout.get(), m_globalUniformBuffer);
 
 		// View desriptor sets
 		m_viewDescriptorSets.clear();
@@ -1241,18 +743,14 @@ private:
 			// Include shadow maps only after shadow pass
 			const auto images = i >= 1 ? shadowMapImages : std::span<Texture* const>{};
 
-			m_viewDescriptorSets.push_back(CreateDescriptorSet(
-			    m_shader->viewDescriptorSetLayout.get(), descriptorPool.get(), m_device.get(), m_viewUniformBuffers[i],
-			    images));
+			m_viewDescriptorSets.push_back(
+			    m_device.CreateDescriptorSet(m_shader->viewDescriptorSetLayout.get(), m_viewUniformBuffers[i], images));
 		}
 
 		// Material desriptor set
 		const auto materialTextures = std::array{m_texture.get()};
-		m_materialDescriptorSet = CreateDescriptorSet(
-		    m_shader->materialDescriptorSetLayout.get(), descriptorPool.get(), m_device.get(), UniformBuffer{},
-		    materialTextures);
-
-		m_descriptorPool = std::move(descriptorPool);
+		m_materialDescriptorSet
+		    = m_device.CreateDescriptorSet(m_shader->materialDescriptorSetLayout.get(), UniformBuffer{}, materialTextures);
 	}
 
 	void LoadTexture(const char* filename)
@@ -1280,7 +778,7 @@ private:
 		    .pixels = std::span(pixels.get(), imageSize),
 		};
 
-		m_texture = std::make_unique<Texture>(CreateTexture(data, filename));
+		m_texture = std::make_unique<Texture>(m_device.CreateTexture(data, filename));
 	}
 
 	void CreateShadowMap()
@@ -1298,17 +796,17 @@ private:
 		        .addressModeV = vk::SamplerAddressMode::eRepeat,
 		        .addressModeW = vk::SamplerAddressMode::eRepeat,
 		        .anisotropyEnable = true,
-		        .maxAnisotropy = m_physicalDevice.getProperties().limits.maxSamplerAnisotropy,
+		        .maxAnisotropy = m_device.GetProperties().limits.maxSamplerAnisotropy,
 		        .compareEnable = true,
 		        .compareOp = vk::CompareOp::eLess,
 		        .borderColor = vk::BorderColor::eFloatOpaqueWhite,
 		    },
 		};
 
-		m_shadowMap = std::make_unique<Texture>(CreateRenderableTexture(data, "ShadowMap"));
+		m_shadowMap = std::make_unique<Texture>(m_device.CreateRenderableTexture(data, "ShadowMap"));
 
 		// Create render pass
-		m_shadowRenderPass = CreateShadowRenderPass(m_device.get(), m_shadowMap->format);
+		m_shadowRenderPass = CreateShadowRenderPass(m_device, m_shadowMap->format);
 		SetDebugName(m_shadowRenderPass, "ShadowRenderPass");
 
 		// Create framebuffer
@@ -1321,7 +819,7 @@ private:
 		    .layers = 1,
 		};
 
-		m_shadowMapFramebuffer = m_device->createFramebufferUnique(framebufferCreateInfo, s_allocator);
+		m_shadowMapFramebuffer = m_device.CreateFramebuffer(framebufferCreateInfo);
 
 		// Depth bias (and slope) are used to avoid shadowing artifacts
 		// Constant depth bias factor (always applied)
@@ -1339,181 +837,12 @@ private:
 	// Device functions
 	//
 
-	Shader CreateShader(const ShaderData& data, const char* debugName)
-	{
-		const auto vertexCreateInfo = vk::ShaderModuleCreateInfo{
-		    .codeSize = data.vertexShaderSpirv.size() * sizeof(uint32_t),
-		    .pCode = data.vertexShaderSpirv.data(),
-		};
-		const auto pixelCreateInfo = vk::ShaderModuleCreateInfo{
-		    .codeSize = data.pixelShaderSpirv.size() * sizeof(uint32_t),
-		    .pCode = data.pixelShaderSpirv.data(),
-		};
-
-		auto shader = Shader{
-		    .vertexShader = m_device->createShaderModuleUnique(vertexCreateInfo, s_allocator),
-		    .pixelShader = m_device->createShaderModuleUnique(pixelCreateInfo, s_allocator),
-		    .sceneDescriptorSetLayout = CreateDescriptorSetLayout(m_device.get(), data.sceneBindings),
-		    .viewDescriptorSetLayout = CreateDescriptorSetLayout(m_device.get(), data.viewBindings),
-		    .materialDescriptorSetLayout = CreateDescriptorSetLayout(m_device.get(), data.materialBindings),
-		};
-
-		shader.pipelineLayout = CreateGraphicsPipelineLayout(m_device.get(), shader, data.pushConstantRanges);
-
-		SetDebugName(shader.vertexShader, "{}:Vertex", debugName);
-		SetDebugName(shader.pixelShader, "{}:Pixel", debugName);
-
-		return shader;
-	}
-
-	Texture CreateTexture(const TextureData& data, const char* debugName)
-	{
-		auto cmdBuffer = OneShotCommands();
-
-		auto texture = CreateTextureImpl(data, vk::ImageUsageFlagBits::eSampled, cmdBuffer, debugName);
-
-		if (data.mipLevelCount > 1)
-		{
-			texture.GenerateMipmaps(cmdBuffer);
-		}
-		else
-		{
-			// Transition into samplable image, but only if mipmaps were not generated
-			// (if so, the mipmap generation already transitioned to image to be samplable)
-			texture.TransitionToShaderInput(cmdBuffer);
-		}
-
-		return texture;
-	}
-
-	Texture CreateRenderableTexture(const TextureData& data, const char* debugName)
-	{
-		const auto renderUsage = HasDepthOrStencilComponent(data.format) ? vk::ImageUsageFlagBits::eDepthStencilAttachment
-		                                                                 : vk::ImageUsageFlagBits::eColorAttachment;
-
-		auto cmdBuffer = OneShotCommands();
-
-		auto texture = CreateTextureImpl(data, renderUsage | vk::ImageUsageFlagBits::eSampled, cmdBuffer, debugName);
-
-		if (renderUsage & vk::ImageUsageFlagBits::eColorAttachment)
-		{
-			texture.TransitionToColorTarget(cmdBuffer);
-		}
-		else if (renderUsage & vk::ImageUsageFlagBits::eDepthStencilAttachment)
-		{
-			texture.TransitionToDepthStencilTarget(cmdBuffer);
-		}
-
-		return texture;
-	}
-
-	Texture CreateTextureImpl(const TextureData& data, vk::ImageUsageFlags usage, OneShotCommandBuffer& cmdBuffer, const char* debugName)
-	{
-		if (!data.pixels.empty())
-		{
-			// Need to transfer image data into image
-			usage |= vk::ImageUsageFlagBits::eTransferDst;
-		}
-
-		if (data.mipLevelCount > 1)
-		{
-			// Need to transfer pixels between mip levels in order to generate mipmaps
-			usage |= vk::ImageUsageFlagBits::eTransferSrc | vk::ImageUsageFlagBits::eTransferDst;
-		}
-
-		auto initialLayout = vk::ImageLayout::eUndefined;
-
-		// Create image
-		const auto imageExtent = vk::Extent3D{data.size.width, data.size.height, 1};
-		const auto imageInfo = vk::ImageCreateInfo{
-		    .imageType = vk::ImageType::e2D,
-		    .format = data.format,
-		    .extent = imageExtent,
-		    .mipLevels = data.mipLevelCount,
-		    .arrayLayers = 1,
-		    .samples = data.samples,
-		    .tiling = vk::ImageTiling::eOptimal,
-		    .usage = usage,
-		    .sharingMode = vk::SharingMode::eExclusive,
-		    .initialLayout = initialLayout,
-		};
-
-		auto image = m_device->createImageUnique(imageInfo, s_allocator);
-		const auto memory = m_generalAllocator->Allocate(
-		    m_device->getImageMemoryRequirements(image.get()), vk::MemoryPropertyFlagBits::eDeviceLocal);
-		m_device->bindImageMemory(image.get(), memory.memory, memory.offset);
-
-		if (!data.pixels.empty())
-		{
-			// Create staging buffer
-			auto stagingBuffer = CreateBuffer(
-			    m_device.get(), *m_generalAllocator, data.pixels.size(), vk::BufferUsageFlagBits::eTransferSrc,
-			    vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
-			stagingBuffer.SetData(data.pixels);
-
-			// Copy staging buffer to image
-			TransitionImageLayout(
-			    cmdBuffer, image.get(), imageInfo.format, data.mipLevelCount, imageInfo.initialLayout,
-			    vk::ImageLayout::eTransferDstOptimal, vk::PipelineStageFlagBits::eTopOfPipe,
-			    vk::PipelineStageFlagBits::eTransfer);
-			initialLayout = vk::ImageLayout::eTransferDstOptimal;
-			CopyBufferToImage(cmdBuffer, stagingBuffer.buffer.get(), image.get(), imageExtent);
-
-			cmdBuffer.TakeOwnership(std::move(stagingBuffer.buffer));
-		}
-
-		// Create image view
-		const auto viewInfo = vk::ImageViewCreateInfo{
-			.image = image.get(),
-			.viewType = vk::ImageViewType::e2D,
-			.format = data.format,
-			.subresourceRange = {
-				.aspectMask =  GetImageAspect(data.format),
-				.baseMipLevel = 0,
-				.levelCount = data.mipLevelCount,
-				.baseArrayLayer = 0,
-				.layerCount = 1,
-			},
-		};
-		auto imageView = m_device->createImageViewUnique(viewInfo, s_allocator);
-		auto sampler = m_device->createSamplerUnique(data.samplerInfo, s_allocator);
-
-		auto ret = Texture{
-		    .image = std::move(image),
-		    .memory = memory,
-		    .imageView = std::move(imageView),
-		    .sampler = std::move(sampler),
-		    .size = {imageExtent.width, imageExtent.height},
-		    .format = data.format,
-		    .mipLevelCount = data.mipLevelCount,
-		    .samples = data.samples,
-		    .layout = initialLayout,
-		};
-
-		SetDebugName(ret.image, debugName);
-		SetDebugName(ret.imageView, "{}:View", debugName);
-		SetDebugName(ret.sampler, "{}:Sampler", debugName);
-
-		return ret;
-	}
-
 	SDL_Window* m_window;
 
 	std::chrono::high_resolution_clock::time_point m_startTime = std::chrono::high_resolution_clock::now();
 
-	vk::UniqueInstance m_instance;
-	vk::UniqueDebugUtilsMessengerEXT m_debugMessenger;
-	vk::PhysicalDevice m_physicalDevice;
-	vk::UniqueDevice m_device;
-
-	std::optional<MemoryAllocator> m_generalAllocator; // Allocator for objects that live a long time
-
-	std::optional<Surface> m_surface;
-	uint32_t m_graphicsQueueFamily;
-	uint32_t m_presentQueueFamily;
-	vk::Queue m_graphicsQueue;
-	vk::UniqueDescriptorPool m_descriptorPool;
-	vk::UniqueCommandPool m_setupCommandPool;
+	GraphicsDevice m_device;
+	Surface m_surface;
 
 	// Object setup
 	std::unique_ptr<Shader> m_shader;
@@ -1549,7 +878,7 @@ private:
 	float m_cameraDistance = 3.0f;
 
 	// Rendering
-	std::optional<Renderer> m_renderer;
+	Renderer m_renderer;
 	uint32_t m_currentFrame = 0;
 };
 

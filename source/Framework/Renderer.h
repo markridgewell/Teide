@@ -11,11 +11,7 @@
 #include <cstdint>
 
 struct Texture;
-
-struct DescriptorSet
-{
-	std::vector<vk::DescriptorSet> sets;
-};
+struct DescriptorSet;
 
 struct RenderObject
 {

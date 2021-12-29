@@ -1,6 +1,7 @@
 
 #include "Framework/Renderer.h"
 
+#include "Framework/GraphicsDevice.h"
 #include "Framework/Texture.h"
 #include "Framework/Vulkan.h"
 
