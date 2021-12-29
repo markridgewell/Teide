@@ -33,6 +33,11 @@ jobs:
       with:
         vcpkgGitCommitId: '2a31089e777fc187f1cc05338250b8e1810cfb52'
 
+    - name: Setup OpenCppCoverage
+      run: |
+        choco install OpenCppCoverage -y
+        echo "C:\Program Files\OpenCppCoverage" >> $env:GITHUB_PATH
+
     - name: Configure CMake
       run: cmake -B ${{github.workspace}}/build --preset ${{matrix.preset}}
 
@@ -41,7 +46,14 @@ jobs:
 
     - name: Test
       working-directory: ${{github.workspace}}/build
-      run: ctest -C ${{matrix.buildtype}}
+      run: OpenCppCoverage --export_type cobertura:${{github.workspace}}/coverage.xml --modules "*.exe" --cover_children -- ctest -C ${{matrix.buildtype}}
+
+    - name: Upload coverage report
+      uses: codecov/codecov-action@v1.3.2
+      with:
+        files: ./coverage.xml
+        fail_ci_if_error: true
+        functionalities: fix
 
   linux:
     strategy:
