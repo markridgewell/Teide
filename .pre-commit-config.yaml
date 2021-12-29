@@ -1,5 +1,10 @@
 repos:
--   repo: https://github.com/pre-commit/mirrors-clang-format
-    rev: 'v13.0.0'  # Use the sha / tag you want to point at
+  - repo: https://github.com/pre-commit/mirrors-clang-format
+    rev: 'v13.0.0'
     hooks:
-    -   id: clang-format
+    - id: clang-format
+    
+  - repo: https://github.com/cheshirekow/cmake-format-precommit
+    rev: v0.6.13
+    hooks:
+    - id: cmake-format
