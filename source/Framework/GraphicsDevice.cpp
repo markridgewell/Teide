@@ -10,6 +10,8 @@
 
 #include <cassert>
 
+VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE;
+
 namespace
 {
 constexpr bool BreakOnVulkanWarning = false;

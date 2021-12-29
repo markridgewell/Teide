@@ -38,8 +38,6 @@
 #	include <windows.h>
 #endif
 
-VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE;
-
 using namespace Geo::Literals;
 
 namespace
@@ -200,14 +198,6 @@ struct ObjectUniforms
 constexpr auto ShaderLang = ShaderLanguage::Glsl;
 
 static const vk::Optional<const vk::AllocationCallbacks> s_allocator = nullptr;
-
-template <class T, std::size_t N>
-std::vector<T> ToVector(const std::array<T, N>& arr)
-{
-	auto ret = std::vector<T>(N);
-	std::ranges::copy(arr, ret.begin());
-	return ret;
-}
 
 vk::UniquePipeline CreateGraphicsPipeline(
     vk::ShaderModule vertexShader, vk::ShaderModule pixelShader, vk::PipelineLayout layout, vk::RenderPass renderPass,
