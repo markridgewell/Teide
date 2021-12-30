@@ -7,7 +7,6 @@
 
 struct BufferData
 {
-	vk::DeviceSize size;
 	vk::BufferUsageFlags usage;
 	vk::MemoryPropertyFlags memoryFlags;
 	BytesView data;
@@ -15,8 +14,15 @@ struct BufferData
 
 struct Buffer
 {
+	vk::DeviceSize size = 0;
 	vk::UniqueBuffer buffer;
 	MemoryAllocation allocation;
+};
 
-	void SetData(BytesView data);
+struct DynamicBuffer
+{
+	vk::DeviceSize size = 0;
+	std::array<Buffer, 2> buffers;
+
+	void SetData(int currentFrame, BytesView data);
 };

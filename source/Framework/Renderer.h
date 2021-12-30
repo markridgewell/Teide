@@ -18,7 +18,7 @@ struct RenderObject
 	BufferPtr indexBuffer;
 	uint32_t indexCount = 0;
 	PipelinePtr pipeline;
-	const DescriptorSet* materialDescriptorSet = nullptr;
+	ParameterBlockPtr materialParameters;
 	BytesView pushConstants;
 };
 
@@ -26,8 +26,8 @@ struct RenderList
 {
 	std::vector<vk::ClearValue> clearValues;
 
-	const DescriptorSet* sceneDescriptorSet = nullptr;
-	const DescriptorSet* viewDescriptorSet = nullptr;
+	ParameterBlockPtr sceneParameters;
+	ParameterBlockPtr viewParameters;
 
 	std::vector<RenderObject> objects;
 };
@@ -65,7 +65,7 @@ private:
 
 	static std::vector<ThreadResources> CreateThreadResources(vk::Device device, uint32_t queueFamilyIndex, uint32_t numThreads);
 
-	vk::DescriptorSet GetDescriptorSet(const DescriptorSet* descriptorSet) const;
+	vk::DescriptorSet GetDescriptorSet(const ParameterBlock* parameterBlock) const;
 
 	vk::Device m_device;
 	vk::Queue m_graphicsQueue;

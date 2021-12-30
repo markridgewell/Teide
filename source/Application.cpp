@@ -18,7 +18,6 @@
 #include <assimp/scene.h>
 #include <spdlog/sinks/msvc_sink.h>
 #include <spdlog/spdlog.h>
-#include <vulkan/vulkan.hpp>
 
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
@@ -43,19 +42,6 @@ using namespace Geo::Literals;
 namespace
 {
 constexpr bool UseMSAA = true;
-
-template <class... Args>
-std::string DebugFormat(fmt::format_string<Args...> fmt [[maybe_unused]], Args&&... args [[maybe_unused]])
-{
-	if constexpr (IsDebugBuild)
-	{
-		return fmt::vformat(fmt, fmt::make_format_args(std::forward<Args>(args)...));
-	}
-	else
-	{
-		return "";
-	}
-}
 
 constexpr std::string_view VertexShader = R"--(
 layout(location = 0) in vec3 inPosition;
@@ -275,10 +261,9 @@ public:
 		m_pipeline = m_device.CreatePipeline(*m_shader, VertexLayoutDesc, MakeRenderStates(), m_surface);
 
 		CreateMesh(modelFilename);
-		CreateUniformBuffers();
 		LoadTexture(imageFilename);
 		CreateShadowMap();
-		CreateDescriptorSets();
+		CreateParameterBlocks();
 
 		spdlog::info("Vulkan initialised successfully");
 	}
@@ -333,13 +318,12 @@ public:
 		    .ambientColorBottom = {0.003f, 0.003f, 0.002f},
 		    .shadowMatrix = m_shadowMatrix,
 		};
-		m_globalUniformBuffer.SetData(m_currentFrame, globalUniforms);
+		m_sceneParams->SetUniformData(m_currentFrame, globalUniforms);
 
 		// Update object uniforms
 		m_objectUniforms = {
 		    .model = modelMatrix,
 		};
-
 
 		//
 		// Pass 0. Draw shadows
@@ -355,23 +339,23 @@ public:
 			    .viewProj = m_shadowMatrix,
 			};
 
-			m_viewUniformBuffers[0].SetData(m_currentFrame, viewUniforms);
+			m_viewParams[0]->SetUniformData(m_currentFrame, viewUniforms);
 
 			RenderList renderList = {
 			    .clearValues = clearValues,
-			    .sceneDescriptorSet = &m_globalDescriptorSet,
-			    .viewDescriptorSet = &m_viewDescriptorSets[0],
+			    .sceneParameters = m_sceneParams,
+			    .viewParameters = m_viewParams[0],
 			    .objects = {{
 			        .vertexBuffer = m_vertexBuffer,
 			        .indexBuffer = m_indexBuffer,
 			        .indexCount = m_indexCount,
 			        .pipeline = m_shadowMapPipeline,
-			        .materialDescriptorSet = &m_materialDescriptorSet,
+			        .materialParameters = m_materialParams,
 			        .pushConstants = m_objectUniforms,
 			    }},
 			};
 
-			m_renderer.RenderToTexture(*m_shadowMap, renderList);
+			m_renderer.RenderToTexture(*m_shadowMap, std::move(renderList));
 		}
 
 		//
@@ -402,23 +386,23 @@ public:
 			const auto viewUniforms = ViewUniforms{
 			    .viewProj = viewProj,
 			};
-			m_viewUniformBuffers[1].SetData(m_currentFrame, viewUniforms);
+			m_viewParams[1]->SetUniformData(m_currentFrame, viewUniforms);
 
 			RenderList renderList = {
 			    .clearValues = clearValues,
-			    .sceneDescriptorSet = &m_globalDescriptorSet,
-			    .viewDescriptorSet = &m_viewDescriptorSets[1],
+			    .sceneParameters = m_sceneParams,
+			    .viewParameters = m_viewParams[1],
 			    .objects = {{
 			        .vertexBuffer = m_vertexBuffer,
 			        .indexBuffer = m_indexBuffer,
 			        .indexCount = m_indexCount,
 			        .pipeline = m_pipeline,
-			        .materialDescriptorSet = &m_materialDescriptorSet,
+			        .materialParameters = m_materialParams,
 			        .pushConstants = m_objectUniforms,
 			    }},
 			};
 
-			m_renderer.RenderToSurface(image, renderList);
+			m_renderer.RenderToSurface(image, std::move(renderList));
 		}
 
 		m_renderer.EndFrame(image);
@@ -617,39 +601,35 @@ private:
 		}
 	}
 
-	void CreateUniformBuffers()
+	void CreateParameterBlocks()
 	{
-		m_globalUniformBuffer = m_device.CreateUniformBuffer(sizeof(GlobalUniforms), "SceneUniformBuffer");
+		const auto sceneData = ParameterBlockData{
+		    .layout = m_shader->sceneDescriptorSetLayout.get(),
+		    .uniformBufferSize = sizeof(GlobalUniforms),
+		};
+		m_sceneParams = m_device.CreateDynamicParameterBlock(sceneData, "Scene");
 
+		m_viewParams.clear();
 		for (uint32_t pass = 0; pass < m_passCount; pass++)
 		{
-			const auto name = DebugFormat("Pass{}:ViewUniformBuffer", pass);
-			m_viewUniformBuffers.push_back(m_device.CreateUniformBuffer(sizeof(ViewUniforms), name.c_str()));
-		}
-	}
+			const auto viewData = ParameterBlockData{
+			    .layout = m_shader->viewDescriptorSetLayout.get(),
+			    .uniformBufferSize = sizeof(ViewUniforms),
+			    // Include shadow maps only after shadow pass
+			    .textures = {pass > 0 ? m_shadowMap.get() : nullptr},
+			};
 
-	void CreateDescriptorSets()
-	{
-		// Global descriptor set
-		m_globalDescriptorSet
-		    = m_device.CreateDescriptorSet(m_shader->sceneDescriptorSetLayout.get(), m_globalUniformBuffer);
+			const auto name = DebugFormat("Pass{}:View", pass);
 
-		// View desriptor sets
-		m_viewDescriptorSets.clear();
-		const auto shadowMapImages = std::array<const Texture*, 1>{m_shadowMap.get()};
-		for (size_t i = 0; i < m_passCount; i++)
-		{
-			// Include shadow maps only after shadow pass
-			const auto images = i >= 1 ? shadowMapImages : std::span<const Texture* const>{};
-
-			m_viewDescriptorSets.push_back(
-			    m_device.CreateDescriptorSet(m_shader->viewDescriptorSetLayout.get(), m_viewUniformBuffers[i], images));
+			m_viewParams.push_back(m_device.CreateDynamicParameterBlock(viewData, name.c_str()));
 		}
 
-		// Material desriptor set
-		const auto materialTextures = std::array{m_texture.get()};
-		m_materialDescriptorSet
-		    = m_device.CreateDescriptorSet(m_shader->materialDescriptorSetLayout.get(), UniformBuffer{}, materialTextures);
+		const auto materialData = ParameterBlockData{
+		    .layout = m_shader->materialDescriptorSetLayout.get(),
+		    .uniformBufferSize = 0,
+		    .textures = {m_texture.get()},
+		};
+		m_materialParams = m_device.CreateParameterBlock(materialData, "Material");
 	}
 
 	void LoadTexture(const char* filename)
@@ -737,12 +717,10 @@ private:
 	TexturePtr m_texture;
 
 	const uint32_t m_passCount = 2;
-	UniformBuffer m_globalUniformBuffer;
-	std::vector<UniformBuffer> m_viewUniformBuffers;
 	ObjectUniforms m_objectUniforms;
-	DescriptorSet m_globalDescriptorSet;
-	std::vector<DescriptorSet> m_viewDescriptorSets;
-	DescriptorSet m_materialDescriptorSet;
+	DynamicParameterBlockPtr m_sceneParams;
+	std::vector<DynamicParameterBlockPtr> m_viewParams;
+	ParameterBlockPtr m_materialParams;
 
 	// Lights
 	Geo::Angle m_lightYaw = 45.0_deg;

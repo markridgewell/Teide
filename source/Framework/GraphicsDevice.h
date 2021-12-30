@@ -4,25 +4,13 @@
 #include "Framework/Buffer.h"
 #include "Framework/ForwardDeclare.h"
 #include "Framework/MemoryAllocator.h"
+#include "Framework/ParameterBlock.h"
 #include "Framework/Renderer.h"
 #include "Framework/Surface.h"
 #include "Framework/Vulkan.h"
 
 #include <optional>
 #include <unordered_map>
-
-struct DescriptorSet
-{
-	std::vector<vk::DescriptorSet> sets;
-};
-
-struct UniformBuffer
-{
-	std::array<Buffer, MaxFramesInFlight> buffers;
-	vk::DeviceSize size = 0;
-
-	void SetData(int currentFrame, BytesView data);
-};
 
 class GraphicsDevice
 {
@@ -33,9 +21,7 @@ public:
 	Renderer CreateRenderer();
 
 	BufferPtr CreateBuffer(const BufferData& data, const char* name);
-	WritableBufferPtr CreateWritableBuffer(const BufferData& data, const char* name);
-
-	UniformBuffer CreateUniformBuffer(vk::DeviceSize bufferSize, const char* name);
+	DynamicBufferPtr CreateDynamicBuffer(vk::DeviceSize bufferSize, vk::BufferUsageFlags usage, const char* name);
 
 	ShaderPtr CreateShader(const ShaderData& data, const char* name);
 
@@ -48,24 +34,22 @@ public:
 	    const Shader& shader, const VertexLayout& vertexLayout, const RenderStates& renderStates,
 	    const RenderableTexture& texture);
 
-	DescriptorSet CreateDescriptorSet(
-	    vk::DescriptorSetLayout layout, const UniformBuffer& uniformBuffer, std::span<const Texture* const> textures = {});
-
-	vk::UniqueFramebuffer CreateFramebuffer(const vk::FramebufferCreateInfo& createInfo) const;
-	vk::UniqueRenderPass CreateRenderPass(const vk::RenderPassCreateInfo& createInfo) const;
+	ParameterBlockPtr CreateParameterBlock(const ParameterBlockData& data, const char* name);
+	DynamicParameterBlockPtr CreateDynamicParameterBlock(const ParameterBlockData& data, const char* name);
 
 	const vk::PhysicalDeviceProperties GetProperties() const { return m_physicalDevice.getProperties(); }
 
 	void WaitIdle() const { m_device->waitIdle(); }
-
-	// TODO no direct access to vk device
-	vk::Device get() { return m_device.get(); }
 
 private:
 	auto OneShotCommands() { return OneShotCommandBuffer(m_device.get(), m_setupCommandPool.get(), m_graphicsQueue); }
 
 	Texture CreateTextureImpl(
 	    const TextureData& data, vk::ImageUsageFlags usage, OneShotCommandBuffer& cmdBuffer, const char* debugName);
+
+	std::vector<vk::UniqueDescriptorSet> CreateDescriptorSets(
+	    vk::DescriptorSetLayout layout, size_t numSets, const DynamicBuffer& uniformBuffer,
+	    std::span<const Texture* const> textures, const char* name);
 
 	vk::UniqueInstance m_instance;
 	vk::UniqueDebugUtilsMessengerEXT m_debugMessenger;

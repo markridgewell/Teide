@@ -205,18 +205,17 @@ void Renderer::Render(
 	commandBuffer.setViewport(0, viewport);
 	commandBuffer.setScissor(0, vk::Rect2D{.extent = framebufferSize});
 
-	const auto sceneSet = GetDescriptorSet(renderList.sceneDescriptorSet);
-	const auto viewSet = GetDescriptorSet(renderList.viewDescriptorSet);
+	const auto descriptorSets = std::array{
+	    GetDescriptorSet(renderList.sceneParameters.get()),
+	    GetDescriptorSet(renderList.viewParameters.get()),
+	};
+	commandBuffer.bindDescriptorSets(
+	    vk::PipelineBindPoint::eGraphics, renderList.objects.front().pipeline->layout, 0, descriptorSets, {});
 
 	for (const RenderObject& obj : renderList.objects)
 	{
-		const auto descriptorSets = std::array{
-		    sceneSet,
-		    viewSet,
-		    GetDescriptorSet(obj.materialDescriptorSet),
-		};
-
-		commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, obj.pipeline->layout, 0, descriptorSets, {});
+		commandBuffer.bindDescriptorSets(
+		    vk::PipelineBindPoint::eGraphics, obj.pipeline->layout, 2, GetDescriptorSet(obj.materialParameters.get()), {});
 		commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, obj.pipeline->pipeline.get());
 		commandBuffer.bindVertexBuffers(0, obj.vertexBuffer->buffer.get(), vk::DeviceSize{0});
 		commandBuffer.bindIndexBuffer(obj.indexBuffer->buffer.get(), vk::DeviceSize{0}, vk::IndexType::eUint16);
@@ -253,9 +252,11 @@ Renderer::CreateThreadResources(vk::Device device, uint32_t queueFamilyIndex, ui
 	return ret;
 }
 
-vk::DescriptorSet Renderer::GetDescriptorSet(const DescriptorSet* descriptorSet) const
+vk::DescriptorSet Renderer::GetDescriptorSet(const ParameterBlock* parameterBlock) const
 {
-	if (descriptorSet == nullptr)
-		return nullptr;
-	return descriptorSet->sets[m_frameNumber];
+	if (parameterBlock == nullptr)
+	{
+		return {};
+	}
+	return parameterBlock->descriptorSet[m_frameNumber % parameterBlock->descriptorSet.size()].get();
 }

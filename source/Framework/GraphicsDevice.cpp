@@ -334,6 +334,12 @@ Buffer CreateBufferUninitialized(
 	return ret;
 }
 
+void SetBufferData(Buffer& buffer, BytesView data)
+{
+	assert(buffer.allocation.mappedData);
+	memcpy(buffer.allocation.mappedData, data.data(), data.size());
+}
+
 void CopyBuffer(vk::CommandBuffer cmdBuffer, vk::Buffer source, vk::Buffer destination, vk::DeviceSize size)
 {
 	const auto copyRegion = vk::BufferCopy{
@@ -354,7 +360,7 @@ Buffer CreateBufferWithData(
 		auto stagingBuffer = CreateBufferUninitialized(
 		    data.size(), vk::BufferUsageFlagBits::eTransferSrc,
 		    vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent, device, allocator);
-		stagingBuffer.SetData(data);
+		SetBufferData(stagingBuffer, data);
 
 		// Create device-local buffer
 		Buffer ret = CreateBufferUninitialized(
@@ -367,7 +373,7 @@ Buffer CreateBufferWithData(
 	{
 		Buffer ret
 		    = CreateBufferUninitialized(data.size(), vk::BufferUsageFlagBits::eTransferSrc, memoryFlags, device, allocator);
-		ret.SetData(data);
+		SetBufferData(ret, data);
 		return ret;
 	}
 }
@@ -529,11 +535,6 @@ vk::SubpassDescription MakeSubpassDescription(const vk::AttachmentReference& att
 
 //---------------------------------------------------------------------------------------------------------------------
 
-void UniformBuffer::SetData(int currentFrame, BytesView data)
-{
-	buffers[currentFrame % MaxFramesInFlight].SetData(data);
-}
-
 GraphicsDevice::GraphicsDevice(SDL_Window* window)
 {
 	vk::DynamicLoader dl;
@@ -579,8 +580,11 @@ GraphicsDevice::GraphicsDevice(SDL_Window* window)
 	};
 
 	const auto poolCreateInfo = vk::DescriptorPoolCreateInfo{
-			.maxSets = MaxFramesInFlight * 10,
-		}.setPoolSizes(poolSizes);
+	    .flags = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet,
+	    .maxSets = MaxFramesInFlight * 10,
+	    .poolSizeCount = size32(poolSizes),
+	    .pPoolSizes = data(poolSizes),
+	};
 
 	m_descriptorPool = m_device->createDescriptorPoolUnique(poolCreateInfo, s_allocator);
 	SetDebugName(m_descriptorPool, "DescriptorPool");
@@ -619,26 +623,18 @@ BufferPtr GraphicsDevice::CreateBuffer(const BufferData& data, const char* name)
 	return std::make_shared<const Buffer>(std::move(ret));
 }
 
-WritableBufferPtr GraphicsDevice::CreateWritableBuffer(const BufferData& data, const char* name)
+DynamicBufferPtr GraphicsDevice::CreateDynamicBuffer(vk::DeviceSize bufferSize, vk::BufferUsageFlags usage, const char* name)
 {
-	auto ret = CreateBufferUninitialized(data.size, data.usage, data.memoryFlags, m_device.get(), *m_allocator);
-	SetDebugName(ret.buffer, name);
-	return std::make_shared<Buffer>(std::move(ret));
-}
-
-UniformBuffer GraphicsDevice::CreateUniformBuffer(vk::DeviceSize bufferSize, const char* name)
-{
-	UniformBuffer ret;
+	DynamicBuffer ret;
 	ret.size = bufferSize;
 	for (auto& buffer : ret.buffers)
 	{
 		buffer = CreateBufferUninitialized(
-		    bufferSize, vk::BufferUsageFlagBits::eUniformBuffer,
-		    vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent, m_device.get(),
-		    *m_allocator);
+		    bufferSize, usage, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent,
+		    m_device.get(), *m_allocator);
 		SetDebugName(buffer.buffer, name);
 	}
-	return ret;
+	return std::make_shared<DynamicBuffer>(std::move(ret));
 }
 
 ShaderPtr GraphicsDevice::CreateShader(const ShaderData& data, const char* name)
@@ -817,7 +813,7 @@ Texture GraphicsDevice::CreateTextureImpl(
 		    data.pixels.size(), vk::BufferUsageFlagBits::eTransferSrc,
 		    vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent, m_device.get(),
 		    *m_allocator);
-		stagingBuffer.SetData(data.pixels);
+		SetBufferData(stagingBuffer, data.pixels);
 
 		// Copy staging buffer to image
 		TransitionImageLayout(
@@ -865,21 +861,30 @@ Texture GraphicsDevice::CreateTextureImpl(
 	return ret;
 }
 
-DescriptorSet GraphicsDevice::CreateDescriptorSet(
-    vk::DescriptorSetLayout layout, const UniformBuffer& uniformBuffer, std::span<const Texture* const> textures)
+std::vector<vk::UniqueDescriptorSet> GraphicsDevice::CreateDescriptorSets(
+    vk::DescriptorSetLayout layout, size_t numSets, const DynamicBuffer& uniformBuffer,
+    std::span<const Texture* const> textures, const char* name)
 {
-	const auto layouts = std::vector<vk::DescriptorSetLayout>(MaxFramesInFlight, layout);
+	// TODO support multiple textures in descriptor sets
+	assert(textures.size() <= 1 && "Multiple textures not yet supported!");
+
+	const auto layouts = std::vector<vk::DescriptorSetLayout>(numSets, layout);
 	const auto allocInfo = vk::DescriptorSetAllocateInfo{
 	    .descriptorPool = m_descriptorPool.get(),
 	    .descriptorSetCount = size32(layouts),
 	    .pSetLayouts = data(layouts),
 	};
 
-	DescriptorSet descriptorSets = {m_device->allocateDescriptorSets(allocInfo)};
+	auto descriptorSets = m_device->allocateDescriptorSetsUnique(allocInfo);
 
 	for (size_t i = 0; i < layouts.size(); i++)
 	{
+		SetDebugName(descriptorSets[i], name);
+
+		const auto numUniformBuffers = uniformBuffer.size > 0 ? 1 : 0;
+
 		std::vector<vk::WriteDescriptorSet> descriptorWrites;
+		descriptorWrites.reserve(numUniformBuffers + textures.size());
 
 		const auto bufferInfo = vk::DescriptorBufferInfo{
 		    .buffer = uniformBuffer.buffers[i].buffer.get(),
@@ -890,7 +895,7 @@ DescriptorSet GraphicsDevice::CreateDescriptorSet(
 		if (uniformBuffer.size > 0)
 		{
 			descriptorWrites.push_back({
-			    .dstSet = descriptorSets.sets[i],
+			    .dstSet = descriptorSets[i].get(),
 			    .dstBinding = 0,
 			    .dstArrayElement = 0,
 			    .descriptorCount = 1,
@@ -900,9 +905,12 @@ DescriptorSet GraphicsDevice::CreateDescriptorSet(
 		}
 
 		std::vector<vk::DescriptorImageInfo> imageInfos;
-		imageInfos.resize(textures.size());
+		imageInfos.reserve(textures.size());
 		for (const auto& texture : textures)
 		{
+			if (!texture)
+				continue;
+
 			imageInfos.push_back({
 			    .sampler = texture->sampler.get(),
 			    .imageView = texture->imageView.get(),
@@ -911,7 +919,7 @@ DescriptorSet GraphicsDevice::CreateDescriptorSet(
 			});
 
 			descriptorWrites.push_back({
-			    .dstSet = descriptorSets.sets[i],
+			    .dstSet = descriptorSets[i].get(),
 			    .dstBinding = 1,
 			    .dstArrayElement = 0,
 			    .descriptorCount = 1,
@@ -926,12 +934,29 @@ DescriptorSet GraphicsDevice::CreateDescriptorSet(
 	return descriptorSets;
 }
 
-vk::UniqueFramebuffer GraphicsDevice::CreateFramebuffer(const vk::FramebufferCreateInfo& createInfo) const
+ParameterBlockPtr GraphicsDevice::CreateParameterBlock(const ParameterBlockData& data, const char* name)
 {
-	return m_device->createFramebufferUnique(createInfo);
+	// TODO support creating parameter blocks with static uniform buffers
+	return CreateDynamicParameterBlock(data, name);
 }
 
-vk::UniqueRenderPass GraphicsDevice::CreateRenderPass(const vk::RenderPassCreateInfo& createInfo) const
+DynamicParameterBlockPtr GraphicsDevice::CreateDynamicParameterBlock(const ParameterBlockData& data, const char* name)
 {
-	return m_device->createRenderPassUnique(createInfo, s_allocator);
+	const auto descriptorSetName = DebugFormat("{}DescriptorSet", name);
+
+	ParameterBlock ret;
+	if (data.uniformBufferSize == 0)
+	{
+		ret.descriptorSet = CreateDescriptorSets(data.layout, 1, DynamicBuffer{}, data.textures, descriptorSetName.c_str());
+	}
+	else
+	{
+		const auto uniformBufferName = DebugFormat("{}UniformBuffer", name);
+
+		ret.uniformBuffer = CreateDynamicBuffer(
+		    data.uniformBufferSize, vk::BufferUsageFlagBits::eUniformBuffer, uniformBufferName.c_str());
+		ret.descriptorSet = CreateDescriptorSets(
+		    data.layout, ret.uniformBuffer->buffers.size(), *ret.uniformBuffer, data.textures, descriptorSetName.c_str());
+	}
+	return std::make_unique<ParameterBlock>(std::move(ret));
 }

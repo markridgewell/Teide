@@ -50,6 +50,19 @@ void SetDebugName(
 	}
 }
 
+template <class... Args>
+std::string DebugFormat(fmt::format_string<Args...> fmt [[maybe_unused]], Args&&... args [[maybe_unused]])
+{
+	if constexpr (IsDebugBuild)
+	{
+		return fmt::vformat(fmt, fmt::make_format_args(std::forward<Args>(args)...));
+	}
+	else
+	{
+		return "";
+	}
+}
+
 class OneShotCommandBuffer
 {
 public:

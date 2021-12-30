@@ -73,9 +73,12 @@ set(sources
     source/Framework/GraphicsDevice.cpp
     source/Framework/MemoryAllocator.h
     source/Framework/MemoryAllocator.cpp
+    source/Framework/ParameterBlock.h
+    source/Framework/ParameterBlock.cpp
     source/Framework/Pipeline.h
     source/Framework/Renderer.h
     source/Framework/Renderer.cpp
+    source/Framework/Shader.h
     source/Framework/Surface.h
     source/Framework/Surface.cpp
     source/Framework/Texture.h
