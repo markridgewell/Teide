@@ -45,7 +45,7 @@ namespace
 constexpr bool UseMSAA = true;
 
 template <class... Args>
-std::string DebugFormat(fmt::format_string<Args...> fmt, Args&&... args [[maybe_unused]])
+std::string DebugFormat(fmt::format_string<Args...> fmt [[maybe_unused]], Args&&... args [[maybe_unused]])
 {
 	if constexpr (IsDebugBuild)
 	{
