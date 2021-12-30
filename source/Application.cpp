@@ -44,6 +44,19 @@ namespace
 {
 constexpr bool UseMSAA = true;
 
+template <class... Args>
+std::string DebugFormat(fmt::format_string<Args...> fmt, Args&&... args [[maybe_unused]])
+{
+	if constexpr (IsDebugBuild)
+	{
+		return fmt::vformat(fmt, fmt::make_format_args(std::forward<Args>(args)...));
+	}
+	else
+	{
+		return "";
+	}
+}
+
 constexpr std::string_view VertexShader = R"--(
 layout(location = 0) in vec3 inPosition;
 layout(location = 1) in vec2 inTexCoord;
@@ -257,7 +270,7 @@ public:
 	    m_window{window}, m_device(window), m_surface{m_device.CreateSurface(window, UseMSAA)}, m_renderer{m_device.CreateRenderer()}
 	{
 		const auto shaderData = CompileShader(VertexShader, PixelShader, ShaderLang);
-		m_shader = std::make_unique<Shader>(m_device.CreateShader(shaderData, "ModelShader"));
+		m_shader = m_device.CreateShader(shaderData, "ModelShader");
 
 		m_pipeline = m_device.CreatePipeline(*m_shader, VertexLayoutDesc, MakeRenderStates(), m_surface);
 
@@ -349,8 +362,8 @@ public:
 			    .sceneDescriptorSet = &m_globalDescriptorSet,
 			    .viewDescriptorSet = &m_viewDescriptorSets[0],
 			    .objects = {{
-			        .vertexBuffer = m_vertexBuffer.buffer.get(),
-			        .indexBuffer = m_indexBuffer.buffer.get(),
+			        .vertexBuffer = m_vertexBuffer,
+			        .indexBuffer = m_indexBuffer,
 			        .indexCount = m_indexCount,
 			        .pipeline = m_shadowMapPipeline,
 			        .materialDescriptorSet = &m_materialDescriptorSet,
@@ -396,8 +409,8 @@ public:
 			    .sceneDescriptorSet = &m_globalDescriptorSet,
 			    .viewDescriptorSet = &m_viewDescriptorSets[1],
 			    .objects = {{
-			        .vertexBuffer = m_vertexBuffer.buffer.get(),
-			        .indexBuffer = m_indexBuffer.buffer.get(),
+			        .vertexBuffer = m_vertexBuffer,
+			        .indexBuffer = m_indexBuffer,
 			        .indexCount = m_indexCount,
 			        .pipeline = m_pipeline,
 			        .materialDescriptorSet = &m_materialDescriptorSet,
@@ -501,14 +514,18 @@ public:
 private:
 	void CreateVertexBuffer(BytesView data)
 	{
-		m_vertexBuffer = m_device.CreateBufferWithData(
-		    data, vk::BufferUsageFlagBits::eVertexBuffer, vk::MemoryPropertyFlagBits::eDeviceLocal, "VertexBuffer");
+		m_vertexBuffer = m_device.CreateBuffer(
+		    {.usage = vk::BufferUsageFlagBits::eVertexBuffer,
+		     .memoryFlags = vk::MemoryPropertyFlagBits::eDeviceLocal,
+		     .data = data},
+		    "VertexBuffer");
 	}
 
 	void CreateIndexBuffer(std::span<const uint16_t> data)
 	{
-		m_indexBuffer = m_device.CreateBufferWithData(
-		    data, vk::BufferUsageFlagBits::eIndexBuffer, vk::MemoryPropertyFlagBits::eDeviceLocal, "IndexBuffer");
+		m_indexBuffer = m_device.CreateBuffer(
+		    {.usage = vk::BufferUsageFlagBits::eIndexBuffer, .memoryFlags = vk::MemoryPropertyFlagBits::eDeviceLocal, .data = data},
+		    "IndexBuffer");
 		m_indexCount = size32(data);
 	}
 
@@ -602,11 +619,12 @@ private:
 
 	void CreateUniformBuffers()
 	{
-		m_globalUniformBuffer = m_device.CreateUniformBuffer(sizeof(GlobalUniforms), "Scene");
+		m_globalUniformBuffer = m_device.CreateUniformBuffer(sizeof(GlobalUniforms), "SceneUniformBuffer");
 
 		for (uint32_t pass = 0; pass < m_passCount; pass++)
 		{
-			m_viewUniformBuffers.push_back(m_device.CreateUniformBuffer(sizeof(ViewUniforms), "View"));
+			const auto name = DebugFormat("Pass{}:ViewUniformBuffer", pass);
+			m_viewUniformBuffers.push_back(m_device.CreateUniformBuffer(sizeof(ViewUniforms), name.c_str()));
 		}
 	}
 
@@ -659,7 +677,7 @@ private:
 		    .pixels = std::span(pixels.get(), imageSize),
 		};
 
-		m_texture = std::make_unique<Texture>(m_device.CreateTexture(data, filename));
+		m_texture = m_device.CreateTexture(data, filename);
 	}
 
 	void CreateShadowMap()
@@ -684,7 +702,7 @@ private:
 		    },
 		};
 
-		m_shadowMap = std::make_unique<RenderableTexture>(m_device.CreateRenderableTexture(data, "ShadowMap"));
+		m_shadowMap = m_device.CreateRenderableTexture(data, "ShadowMap");
 
 		// Depth bias (and slope) are used to avoid shadowing artifacts
 		// Constant depth bias factor (always applied)
@@ -709,14 +727,14 @@ private:
 	Surface m_surface;
 
 	// Object setup
-	std::unique_ptr<Shader> m_shader;
+	ShaderPtr m_shader;
 	PipelinePtr m_pipeline;
 	Geo::Point3 m_meshBoundsMin;
 	Geo::Point3 m_meshBoundsMax;
-	Buffer m_vertexBuffer;
-	Buffer m_indexBuffer;
+	BufferPtr m_vertexBuffer;
+	BufferPtr m_indexBuffer;
 	uint32_t m_indexCount;
-	std::unique_ptr<const Texture> m_texture;
+	TexturePtr m_texture;
 
 	const uint32_t m_passCount = 2;
 	UniformBuffer m_globalUniformBuffer;
@@ -729,7 +747,7 @@ private:
 	// Lights
 	Geo::Angle m_lightYaw = 45.0_deg;
 	Geo::Angle m_lightPitch = -45.0_deg;
-	std::unique_ptr<RenderableTexture> m_shadowMap;
+	RenderableTexturePtr m_shadowMap;
 	PipelinePtr m_shadowMapPipeline;
 	Geo::Matrix4 m_shadowMatrix;
 

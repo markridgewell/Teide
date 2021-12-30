@@ -68,6 +68,7 @@ set(sources
     source/Framework/Buffer.h
     source/Framework/Buffer.cpp
     source/Framework/BytesView.h
+    source/Framework/ForwardDeclare.h
     source/Framework/GraphicsDevice.h
     source/Framework/GraphicsDevice.cpp
     source/Framework/MemoryAllocator.h

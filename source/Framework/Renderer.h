@@ -2,6 +2,7 @@
 #pragma once
 
 #include "Framework/BytesView.h"
+#include "Framework/ForwardDeclare.h"
 #include "Framework/Pipeline.h"
 #include "Framework/Surface.h"
 #include "Framework/Vulkan.h"
@@ -11,14 +12,10 @@
 #include <array>
 #include <cstdint>
 
-struct DescriptorSet;
-struct RenderableTexture;
-struct Texture;
-
 struct RenderObject
 {
-	vk::Buffer vertexBuffer;
-	vk::Buffer indexBuffer;
+	BufferPtr vertexBuffer;
+	BufferPtr indexBuffer;
 	uint32_t indexCount = 0;
 	PipelinePtr pipeline;
 	const DescriptorSet* materialDescriptorSet = nullptr;
@@ -56,13 +53,9 @@ private:
 		vk::UniqueCommandBuffer commandBuffer;
 		bool usedThisFrame = false;
 		uint32_t sequenceIndex = 0;
+		uint32_t threadIndex = 0;
 
-		void Reset(vk::Device device)
-		{
-			device.resetCommandPool(commandPool.get());
-			usedThisFrame = false;
-			sequenceIndex = 0;
-		}
+		void Reset(vk::Device device);
 	};
 
 	vk::CommandBuffer GetCommandBuffer(uint32_t threadIndex, uint32_t sequenceIndex);

@@ -122,6 +122,16 @@ void Renderer::EndFrame(const SurfaceImage& image)
 	EndFrame(std::span(&image, 1));
 }
 
+void Renderer::ThreadResources::Reset(vk::Device device)
+{
+	device.resetCommandPool(commandPool.get());
+	usedThisFrame = false;
+	sequenceIndex = 0;
+
+	// Resetting also resets the command buffer's debug name
+	SetDebugName(commandBuffer, "RenderThread{}:CommandBuffer", threadIndex);
+}
+
 vk::CommandBuffer Renderer::GetCommandBuffer(uint32_t threadIndex, uint32_t sequenceIndex)
 {
 	auto& threadResources = m_frameResources[m_frameNumber][threadIndex];
@@ -208,8 +218,8 @@ void Renderer::Render(
 
 		commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, obj.pipeline->layout, 0, descriptorSets, {});
 		commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, obj.pipeline->pipeline.get());
-		commandBuffer.bindVertexBuffers(0, obj.vertexBuffer, vk::DeviceSize{0});
-		commandBuffer.bindIndexBuffer(obj.indexBuffer, vk::DeviceSize{0}, vk::IndexType::eUint16);
+		commandBuffer.bindVertexBuffers(0, obj.vertexBuffer->buffer.get(), vk::DeviceSize{0});
+		commandBuffer.bindIndexBuffer(obj.indexBuffer->buffer.get(), vk::DeviceSize{0}, vk::IndexType::eUint16);
 		commandBuffer.pushConstants(
 		    obj.pipeline->layout, vk::ShaderStageFlagBits::eVertex, 0, size32(obj.pushConstants), data(obj.pushConstants));
 		commandBuffer.drawIndexed(obj.indexCount, 1, 0, 0, 0);
@@ -223,15 +233,20 @@ Renderer::CreateThreadResources(vk::Device device, uint32_t queueFamilyIndex, ui
 {
 	std::vector<ThreadResources> ret;
 	ret.resize(numThreads);
+	int i = 0;
 	std::ranges::generate(ret, [&] {
 		ThreadResources res;
 		res.commandPool = CreateCommandPool(queueFamilyIndex, device);
+		SetDebugName(res.commandPool, "RenderThread{}:CommandPool", i);
 		const auto allocateInfo = vk::CommandBufferAllocateInfo{
 		    .commandPool = res.commandPool.get(),
 		    .level = vk::CommandBufferLevel::ePrimary,
 		    .commandBufferCount = 1,
 		};
 		res.commandBuffer = std::move(device.allocateCommandBuffersUnique(allocateInfo).front());
+		SetDebugName(res.commandBuffer, "RenderThread{}:CommandBuffer", i);
+		res.threadIndex = i;
+		i++;
 		return res;
 	});
 

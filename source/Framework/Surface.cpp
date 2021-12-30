@@ -110,6 +110,7 @@ CreateSwapchainImageViews(vk::Format swapchainFormat, std::span<const vk::Image>
 		    = {.aspectMask = vk::ImageAspectFlagBits::eColor, .baseMipLevel = 0, .levelCount = 1, .baseArrayLayer = 0, .layerCount = 1,},};
 
 		imageViews[i] = device.createImageViewUnique(createInfo, s_allocator);
+		SetDebugName(imageViews[i], "SwapchainImageView[{}]", i);
 	}
 
 	return imageViews;
@@ -241,6 +242,7 @@ std::vector<vk::UniqueFramebuffer> CreateFramebuffers(
 		};
 
 		framebuffers[i] = device.createFramebufferUnique(createInfo, s_allocator);
+		SetDebugName(framebuffers[i], "SwapchainFramebuffer[{}]", i);
 	}
 
 	return framebuffers;
@@ -446,6 +448,7 @@ void Surface::CreateSwapchainAndImages()
 	CreateDepthBuffer(cmdBuffer);
 
 	m_renderPass = CreateRenderPass(m_device, surfaceFormat.format, m_depthFormat, m_msaaSampleCount);
+	SetDebugName(m_renderPass, "SwapchainRenderPass");
 	m_swapchainFramebuffers = CreateFramebuffers(
 	    m_swapchainImageViews, m_colorImageView.get(), m_depthImageView.get(), m_renderPass.get(), m_surfaceExtent, m_device);
 }

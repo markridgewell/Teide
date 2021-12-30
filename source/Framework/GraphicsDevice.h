@@ -2,19 +2,14 @@
 #pragma once
 
 #include "Framework/Buffer.h"
+#include "Framework/ForwardDeclare.h"
 #include "Framework/MemoryAllocator.h"
-#include "Framework/Pipeline.h"
 #include "Framework/Renderer.h"
 #include "Framework/Surface.h"
 #include "Framework/Vulkan.h"
 
 #include <optional>
 #include <unordered_map>
-
-struct Shader;
-struct ShaderData;
-struct Texture;
-struct TextureData;
 
 struct DescriptorSet
 {
@@ -26,7 +21,7 @@ struct UniformBuffer
 	std::array<Buffer, MaxFramesInFlight> buffers;
 	vk::DeviceSize size = 0;
 
-	void SetData(int currentFrame, BytesView data) { buffers[currentFrame % MaxFramesInFlight].SetData(data); }
+	void SetData(int currentFrame, BytesView data);
 };
 
 class GraphicsDevice
@@ -37,15 +32,15 @@ public:
 	Surface CreateSurface(SDL_Window* window, bool multisampled);
 	Renderer CreateRenderer();
 
-	Buffer CreateBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage, vk::MemoryPropertyFlags memoryFlags, const char* name);
-	Buffer CreateBufferWithData(BytesView data, vk::BufferUsageFlags usage, vk::MemoryPropertyFlags memoryFlags, const char* name);
+	BufferPtr CreateBuffer(const BufferData& data, const char* name);
+	WritableBufferPtr CreateWritableBuffer(const BufferData& data, const char* name);
 
 	UniformBuffer CreateUniformBuffer(vk::DeviceSize bufferSize, const char* name);
 
-	Shader CreateShader(const ShaderData& data, const char* name);
+	ShaderPtr CreateShader(const ShaderData& data, const char* name);
 
-	Texture CreateTexture(const TextureData& data, const char* name);
-	RenderableTexture CreateRenderableTexture(const TextureData& data, const char* name);
+	TexturePtr CreateTexture(const TextureData& data, const char* name);
+	RenderableTexturePtr CreateRenderableTexture(const TextureData& data, const char* name);
 
 	PipelinePtr CreatePipeline(
 	    const Shader& shader, const VertexLayout& vertexLayout, const RenderStates& renderStates, const Surface& surface);

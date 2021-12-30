@@ -1,6 +1,7 @@
 
 #include "Framework/GraphicsDevice.h"
 
+#include "Framework/Buffer.h"
 #include "Framework/Shader.h"
 #include "Framework/Texture.h"
 
@@ -315,6 +316,24 @@ CreateDevice(vk::PhysicalDevice physicalDevice, std::span<const uint32_t> queueF
 	return physicalDevice.createDeviceUnique(deviceCreateInfo, s_allocator);
 }
 
+Buffer CreateBufferUninitialized(
+    vk::DeviceSize size, vk::BufferUsageFlags usage, vk::MemoryPropertyFlags memoryFlags, vk::Device device,
+    MemoryAllocator& allocator)
+{
+	Buffer ret{};
+
+	const auto createInfo = vk::BufferCreateInfo{
+	    .size = size,
+	    .usage = usage,
+	    .sharingMode = vk::SharingMode::eExclusive,
+	};
+	ret.buffer = device.createBufferUnique(createInfo, s_allocator);
+	ret.allocation = allocator.Allocate(device.getBufferMemoryRequirements(ret.buffer.get()), memoryFlags);
+	device.bindBufferMemory(ret.buffer.get(), ret.allocation.memory, ret.allocation.offset);
+
+	return ret;
+}
+
 void CopyBuffer(vk::CommandBuffer cmdBuffer, vk::Buffer source, vk::Buffer destination, vk::DeviceSize size)
 {
 	const auto copyRegion = vk::BufferCopy{
@@ -323,6 +342,34 @@ void CopyBuffer(vk::CommandBuffer cmdBuffer, vk::Buffer source, vk::Buffer desti
 	    .size = size,
 	};
 	cmdBuffer.copyBuffer(source, destination, copyRegion);
+}
+
+Buffer CreateBufferWithData(
+    BytesView data, vk::BufferUsageFlags usage, vk::MemoryPropertyFlags memoryFlags, vk::Device device,
+    MemoryAllocator& allocator, vk::CommandPool commandPool, vk::Queue queue)
+{
+	if ((memoryFlags & vk::MemoryPropertyFlagBits::eHostCoherent) == vk::MemoryPropertyFlags{})
+	{
+		// Create staging buffer
+		auto stagingBuffer = CreateBufferUninitialized(
+		    data.size(), vk::BufferUsageFlagBits::eTransferSrc,
+		    vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent, device, allocator);
+		stagingBuffer.SetData(data);
+
+		// Create device-local buffer
+		Buffer ret = CreateBufferUninitialized(
+		    data.size(), usage | vk::BufferUsageFlagBits::eTransferDst, memoryFlags, device, allocator);
+		const auto cmdBuffer = OneShotCommandBuffer(device, commandPool, queue);
+		CopyBuffer(cmdBuffer, stagingBuffer.buffer.get(), ret.buffer.get(), data.size());
+		return ret;
+	}
+	else
+	{
+		Buffer ret
+		    = CreateBufferUninitialized(data.size(), vk::BufferUsageFlagBits::eTransferSrc, memoryFlags, device, allocator);
+		ret.SetData(data);
+		return ret;
+	}
 }
 
 vk::UniqueDescriptorSetLayout
@@ -482,6 +529,11 @@ vk::SubpassDescription MakeSubpassDescription(const vk::AttachmentReference& att
 
 //---------------------------------------------------------------------------------------------------------------------
 
+void UniformBuffer::SetData(int currentFrame, BytesView data)
+{
+	buffers[currentFrame % MaxFramesInFlight].SetData(data);
+}
+
 GraphicsDevice::GraphicsDevice(SDL_Window* window)
 {
 	vk::DynamicLoader dl;
@@ -510,6 +562,7 @@ GraphicsDevice::GraphicsDevice(SDL_Window* window)
 	m_allocator.emplace(m_device.get(), m_physicalDevice);
 
 	m_setupCommandPool = CreateCommandPool(m_graphicsQueueFamily, m_device.get());
+	SetDebugName(m_setupCommandPool, "SetupCommandPool");
 
 	m_pendingWindowSurfaces[window] = std::move(surface);
 
@@ -530,6 +583,7 @@ GraphicsDevice::GraphicsDevice(SDL_Window* window)
 		}.setPoolSizes(poolSizes);
 
 	m_descriptorPool = m_device->createDescriptorPoolUnique(poolCreateInfo, s_allocator);
+	SetDebugName(m_descriptorPool, "DescriptorPool");
 }
 
 Surface GraphicsDevice::CreateSurface(SDL_Window* window, bool multisampled)
@@ -557,47 +611,19 @@ Renderer GraphicsDevice::CreateRenderer()
 	return Renderer(m_device.get(), m_graphicsQueueFamily, m_presentQueueFamily);
 }
 
-Buffer GraphicsDevice::CreateBuffer(
-    vk::DeviceSize size, vk::BufferUsageFlags usage, vk::MemoryPropertyFlags memoryFlags, const char* name)
+BufferPtr GraphicsDevice::CreateBuffer(const BufferData& data, const char* name)
 {
-	Buffer ret{};
-
-	const auto createInfo = vk::BufferCreateInfo{
-	    .size = size,
-	    .usage = usage,
-	    .sharingMode = vk::SharingMode::eExclusive,
-	};
-	ret.buffer = m_device->createBufferUnique(createInfo, s_allocator);
-	ret.allocation = m_allocator->Allocate(m_device->getBufferMemoryRequirements(ret.buffer.get()), memoryFlags);
-	m_device->bindBufferMemory(ret.buffer.get(), ret.allocation.memory, ret.allocation.offset);
-
+	auto ret = CreateBufferWithData(
+	    data.data, data.usage, data.memoryFlags, m_device.get(), *m_allocator, m_setupCommandPool.get(), m_graphicsQueue);
 	SetDebugName(ret.buffer, name);
-
-	return ret;
+	return std::make_shared<const Buffer>(std::move(ret));
 }
 
-Buffer GraphicsDevice::CreateBufferWithData(
-    BytesView data, vk::BufferUsageFlags usage, vk::MemoryPropertyFlags memoryFlags, const char* name)
+WritableBufferPtr GraphicsDevice::CreateWritableBuffer(const BufferData& data, const char* name)
 {
-	if ((memoryFlags & vk::MemoryPropertyFlagBits::eHostCoherent) == vk::MemoryPropertyFlags{})
-	{
-		// Create staging buffer
-		auto stagingBuffer = CreateBuffer(
-		    data.size(), vk::BufferUsageFlagBits::eTransferSrc,
-		    vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent, "");
-		stagingBuffer.SetData(data);
-
-		// Create device-local buffer
-		Buffer ret = CreateBuffer(data.size(), usage | vk::BufferUsageFlagBits::eTransferDst, memoryFlags, name);
-		CopyBuffer(OneShotCommands(), stagingBuffer.buffer.get(), ret.buffer.get(), data.size());
-		return ret;
-	}
-	else
-	{
-		Buffer ret = CreateBuffer(data.size(), vk::BufferUsageFlagBits::eTransferSrc, memoryFlags, name);
-		ret.SetData(data);
-		return ret;
-	}
+	auto ret = CreateBufferUninitialized(data.size, data.usage, data.memoryFlags, m_device.get(), *m_allocator);
+	SetDebugName(ret.buffer, name);
+	return std::make_shared<Buffer>(std::move(ret));
 }
 
 UniformBuffer GraphicsDevice::CreateUniformBuffer(vk::DeviceSize bufferSize, const char* name)
@@ -606,14 +632,16 @@ UniformBuffer GraphicsDevice::CreateUniformBuffer(vk::DeviceSize bufferSize, con
 	ret.size = bufferSize;
 	for (auto& buffer : ret.buffers)
 	{
-		buffer = CreateBuffer(
+		buffer = CreateBufferUninitialized(
 		    bufferSize, vk::BufferUsageFlagBits::eUniformBuffer,
-		    vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent, name);
+		    vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent, m_device.get(),
+		    *m_allocator);
+		SetDebugName(buffer.buffer, name);
 	}
 	return ret;
 }
 
-Shader GraphicsDevice::CreateShader(const ShaderData& data, const char* name)
+ShaderPtr GraphicsDevice::CreateShader(const ShaderData& data, const char* name)
 {
 	const auto vertexCreateInfo = vk::ShaderModuleCreateInfo{
 	    .codeSize = data.vertexShaderSpirv.size() * sizeof(uint32_t),
@@ -636,11 +664,12 @@ Shader GraphicsDevice::CreateShader(const ShaderData& data, const char* name)
 
 	SetDebugName(shader.vertexShader, "{}:Vertex", name);
 	SetDebugName(shader.pixelShader, "{}:Pixel", name);
+	SetDebugName(shader.pipelineLayout, "{}:PipelineLayout", name);
 
-	return shader;
+	return std::make_shared<const Shader>(std::move(shader));
 }
 
-Texture GraphicsDevice::CreateTexture(const TextureData& data, const char* name)
+TexturePtr GraphicsDevice::CreateTexture(const TextureData& data, const char* name)
 {
 	auto cmdBuffer = OneShotCommands();
 
@@ -657,10 +686,10 @@ Texture GraphicsDevice::CreateTexture(const TextureData& data, const char* name)
 		texture.TransitionToShaderInput(cmdBuffer);
 	}
 
-	return texture;
+	return std::make_shared<const Texture>(std::move(texture));
 }
 
-RenderableTexture GraphicsDevice::CreateRenderableTexture(const TextureData& data, const char* name)
+RenderableTexturePtr GraphicsDevice::CreateRenderableTexture(const TextureData& data, const char* name)
 {
 	const bool isColorTarget = !HasDepthOrStencilComponent(data.format);
 	const auto renderUsage
@@ -722,7 +751,7 @@ RenderableTexture GraphicsDevice::CreateRenderableTexture(const TextureData& dat
 	texture.framebuffer = m_device->createFramebufferUnique(framebufferCreateInfo, s_allocator);
 	SetDebugName(texture.framebuffer, "{}:Framebuffer", name);
 
-	return texture;
+	return std::make_shared<RenderableTexture>(std::move(texture));
 }
 
 PipelinePtr GraphicsDevice::CreatePipeline(
@@ -784,9 +813,10 @@ Texture GraphicsDevice::CreateTextureImpl(
 	if (!data.pixels.empty())
 	{
 		// Create staging buffer
-		auto stagingBuffer = CreateBuffer(
+		auto stagingBuffer = CreateBufferUninitialized(
 		    data.pixels.size(), vk::BufferUsageFlagBits::eTransferSrc,
-		    vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent, "");
+		    vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent, m_device.get(),
+		    *m_allocator);
 		stagingBuffer.SetData(data.pixels);
 
 		// Copy staging buffer to image

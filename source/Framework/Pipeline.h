@@ -3,7 +3,6 @@
 
 #include "Framework/Vulkan.h"
 
-#include <memory>
 #include <vector>
 
 struct VertexLayout
@@ -29,5 +28,3 @@ struct Pipeline
 	vk::UniquePipeline pipeline;
 	vk::PipelineLayout layout;
 };
-
-using PipelinePtr = std::shared_ptr<const Pipeline>;

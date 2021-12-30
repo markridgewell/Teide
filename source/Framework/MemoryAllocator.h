@@ -44,6 +44,7 @@ private:
 		uint32_t memoryType;
 		vk::UniqueDeviceMemory memory;
 		MappedMemory mappedData;
+		uint32_t id;
 	};
 
 	MemoryBlock& FindMemoryBlock(uint32_t memoryType, vk::DeviceSize availableSize, vk::DeviceSize alignment);

@@ -9,6 +9,8 @@
 
 namespace
 {
+static uint32_t s_nextBlockID = 0;
+
 uint32_t FindMemoryType(vk::PhysicalDevice physicalDevice, uint32_t typeFilter, vk::MemoryPropertyFlags flags)
 {
 	const auto memoryProperties = physicalDevice.getMemoryProperties();
@@ -88,18 +90,24 @@ MemoryAllocator::FindMemoryBlock(uint32_t memoryType, vk::DeviceSize availableSi
 		    .consumedSize = 0,
 		    .memoryType = memoryType,
 		    .memory = m_device.allocateMemoryUnique(allocInfo),
+		    .id = s_nextBlockID++,
 		});
+		auto& block = m_memoryBlocks.back();
 
 		// Persistently map memory if it's host visible
 		const auto memoryProperties = m_physicalDevice.getMemoryProperties().memoryTypes[memoryType];
 		if ((memoryProperties.propertyFlags & vk::MemoryPropertyFlagBits::eHostVisible) != vk::MemoryPropertyFlags{})
 		{
-			auto& block = m_memoryBlocks.back();
 			block.mappedData = MappedMemory(
 			    m_device.mapMemory(block.memory.get(), 0, block.capacity), MemoryUnmapper{m_device, block.memory.get()});
 		}
 
-		return m_memoryBlocks.back();
+		const bool isDeviceLocal
+		    = (memoryProperties.propertyFlags & vk::MemoryPropertyFlagBits::eDeviceLocal) != vk::MemoryPropertyFlags{};
+		SetDebugName(
+		    block.memory, "{}Memory{} ({} MB)", isDeviceLocal ? "Device" : "Host", block.id, newBlockSize / 1024 / 1024);
+
+		return block;
 	}
 	return *it;
 }
