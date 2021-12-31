@@ -65,7 +65,11 @@ vk::UniqueSwapchainKHR CreateSwapchain(
 
 	const auto mode = ChoosePresentMode(physicalDevice.getSurfacePresentModesKHR(surface));
 
-	const uint32_t imageCount = std::min(surfaceCapabilities.minImageCount + 1, surfaceCapabilities.maxImageCount);
+	uint32_t imageCount = surfaceCapabilities.minImageCount + 1;
+	if (surfaceCapabilities.maxImageCount > 0)
+	{
+		imageCount = std::min(imageCount, surfaceCapabilities.maxImageCount);
+	}
 
 	std::vector<uint32_t> queueFamiliesCopy;
 	std::ranges::copy(queueFamilyIndices, std::back_inserter(queueFamiliesCopy));
