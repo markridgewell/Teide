@@ -60,6 +60,13 @@ jobs:
       working-directory: ${{github.workspace}}/build
       run: OpenCppCoverage --export_type cobertura:${{github.workspace}}/coverage.xml --modules "*.exe" --sources source --cover_children -- ctest -C ${{matrix.buildtype}}
 
+    - name: Upload test log
+      if: failure()
+      uses: actions/upload-artifact@v2
+      with:
+        name: TestLog-Windows-${{matrix.buildtype}}
+        path: build/Testing/Temporary/LastTest.log
+
     - name: Upload coverage report
       uses: codecov/codecov-action@v1.3.2
       with:
@@ -127,3 +134,10 @@ jobs:
     - name: Test
       working-directory: ${{github.workspace}}/build
       run: ctest -C ${{matrix.buildtype}}
+
+    - name: Upload test log
+      if: failure()
+      uses: actions/upload-artifact@v2
+      with:
+        name: TestLog-Linux-${{matrix.buildtype}}
+        path: build/Testing/Temporary/LastTest.log
