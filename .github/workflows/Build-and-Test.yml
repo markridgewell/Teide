@@ -56,6 +56,9 @@ jobs:
     - name: Build
       run: cmake --build ${{github.workspace}}/build --config ${{matrix.buildtype}}
 
+    - name: Enable Swiftshader
+      run: copy ${{github.workspace}}\thirdparty\swiftshader\vulkan-1.dll ${{github.workspace}}\build\${{matrix.buildtype}}\
+
     - name: Test
       working-directory: ${{github.workspace}}/build
       run: OpenCppCoverage --export_type cobertura:${{github.workspace}}/coverage.xml --modules "*.exe" --sources source --cover_children -- ctest -C ${{matrix.buildtype}}
@@ -96,7 +99,7 @@ jobs:
       run: |
           sudo apt-get update
           sudo apt install libgl1-mesa-dev libxxf86vm-dev
-    
+
     - name: Cache Vulkan SDK
       uses: actions/cache@v2
       id: cache-vulkan
@@ -130,6 +133,9 @@ jobs:
 
     - name: Build
       run: cmake --build ${{github.workspace}}/build --config ${{matrix.buildtype}}
+
+    - name: Enable Swiftshader
+      run: cp ${{github.workspace}}/thirdparty/swiftshader/vulkan-1.so ${{github.workspace}}/build/
 
     - name: Test
       working-directory: ${{github.workspace}}/build
