@@ -57,7 +57,9 @@ jobs:
       run: cmake --build ${{github.workspace}}/build --config ${{matrix.buildtype}}
 
     - name: Enable Swiftshader
-      run: copy ${{github.workspace}}\thirdparty\swiftshader\vulkan-1.dll ${{github.workspace}}\build\${{matrix.buildtype}}\
+      run: |
+        copy ${{github.workspace}}\thirdparty\swiftshader\vulkan-1.dll ${{github.workspace}}\build\${{matrix.buildtype}}\
+        dir ${{github.workspace}}\build\${{matrix.buildtype}}\
 
     - name: Test
       working-directory: ${{github.workspace}}/build
