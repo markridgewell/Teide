@@ -17,7 +17,7 @@ find_package(Taskflow CONFIG REQUIRED)
 find_path(STB_INCLUDE_DIRS "stb.h")
 
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
-set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT Teide)
+set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT Application)
 
 if(MSVC)
     # Current Visual Studio versions require /std:c++latest for some C++20 features, which requires cxx_std_23
@@ -58,13 +58,9 @@ target_compile_features(GeoLibTest PRIVATE ${cxx_standard})
 target_link_libraries(GeoLibTest PRIVATE GeoLib GTest::gtest GTest::gmock fmt::fmt)
 add_test(NAME GeoLibTest COMMAND GeoLibTest)
 
-# ----- Application -----
+# ----- Framework -----
 
 set(sources
-    source/Application.cpp
-    source/ShaderCompiler.h
-    source/ShaderCompiler.cpp
-    source/Definitions.h
     source/Framework/Buffer.h
     source/Framework/Buffer.cpp
     source/Framework/BytesView.h
@@ -87,16 +83,42 @@ set(sources
     source/Framework/Vulkan.cpp
     Vulkan.natvis)
 
-add_executable(Teide WIN32 ${sources})
-source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${sources})
-target_compile_features(Teide PRIVATE ${cxx_standard})
-target_compile_definitions(Teide PRIVATE VULKAN_HPP_NO_STRUCT_CONSTRUCTORS VULKAN_HPP_DISPATCH_LOADER_DYNAMIC=1)
-set_property(TARGET Teide PROPERTY VS_DPI_AWARE "PerMonitor")
+add_library(Framework ${sources})
 
 target_link_libraries(
-    Teide
+    Framework
+    PUBLIC Vulkan::Vulkan
+           SDL2::SDL2
+           fmt::fmt
+           spdlog::spdlog
+           Taskflow::Taskflow)
+
+target_compile_definitions(Framework PUBLIC VULKAN_HPP_NO_STRUCT_CONSTRUCTORS VULKAN_HPP_DISPATCH_LOADER_DYNAMIC=1)
+target_compile_features(Framework PRIVATE ${cxx_standard})
+target_include_directories(Framework PUBLIC source)
+
+# ----- FrameworkTest -----
+
+set(sources test/Framework/Main.cpp test/Framework/GraphicsDeviceTest.cpp)
+
+add_executable(FrameworkTest ${sources})
+target_compile_features(FrameworkTest PRIVATE ${cxx_standard})
+target_link_libraries(FrameworkTest PRIVATE Framework GTest::gtest GTest::gmock fmt::fmt)
+add_test(NAME FrameworkTest COMMAND FrameworkTest)
+
+# ----- Application -----
+
+set(sources source/Application.cpp source/ShaderCompiler.h source/ShaderCompiler.cpp source/Definitions.h)
+
+add_executable(Application WIN32 ${sources})
+source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${sources})
+target_compile_features(Application PRIVATE ${cxx_standard})
+set_property(TARGET Application PROPERTY VS_DPI_AWARE "PerMonitor")
+
+target_link_libraries(
+    Application
     PRIVATE GeoLib
-            Vulkan::Vulkan
+            Framework
             SDL2::SDL2
             SDL2::SDL2main
             fmt::fmt
@@ -107,10 +129,10 @@ target_link_libraries(
             OGLCompiler
             assimp::assimp
             Taskflow::Taskflow)
-target_include_directories(Teide PRIVATE ${STB_INCLUDE_DIRS})
+target_include_directories(Application PRIVATE ${STB_INCLUDE_DIRS})
 
 # Visual Studio debugging environment, from preset
-set_property(TARGET Teide PROPERTY VS_DEBUGGER_COMMAND ${TEIDE_VS_DEBUGGER_COMMAND})
-set_property(TARGET Teide PROPERTY VS_DEBUGGER_COMMAND_ARGUMENTS ${TEIDE_VS_DEBUGGER_COMMAND_ARGUMENTS})
-set_property(TARGET Teide PROPERTY VS_DEBUGGER_ENVIRONMENT ${TEIDE_VS_DEBUGGER_ENVIRONMENT})
-set_property(TARGET Teide PROPERTY VS_DEBUGGER_WORKING_DIRECTORY ${TEIDE_VS_DEBUGGER_WORKING_DIRECTORY})
+set_property(TARGET Application PROPERTY VS_DEBUGGER_COMMAND ${TEIDE_VS_DEBUGGER_COMMAND})
+set_property(TARGET Application PROPERTY VS_DEBUGGER_COMMAND_ARGUMENTS ${TEIDE_VS_DEBUGGER_COMMAND_ARGUMENTS})
+set_property(TARGET Application PROPERTY VS_DEBUGGER_ENVIRONMENT ${TEIDE_VS_DEBUGGER_ENVIRONMENT})
+set_property(TARGET Application PROPERTY VS_DEBUGGER_WORKING_DIRECTORY ${TEIDE_VS_DEBUGGER_WORKING_DIRECTORY})

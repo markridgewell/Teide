@@ -17,12 +17,14 @@ static const vk::Optional<const vk::AllocationCallbacks> s_allocator = nullptr;
 
 } // namespace
 
-Renderer::Renderer(vk::Device device, uint32_t graphicsFamilyIndex, uint32_t presentFamilyIndex, uint32_t numThreads) :
-    m_device{device},
-    m_graphicsQueue{device.getQueue(graphicsFamilyIndex, 0)},
-    m_presentQueue{device.getQueue(presentFamilyIndex, 0)},
-    m_executor(numThreads)
+Renderer::Renderer(vk::Device device, uint32_t graphicsFamilyIndex, std::optional<uint32_t> presentFamilyIndex, uint32_t numThreads) :
+    m_device{device}, m_graphicsQueue{device.getQueue(graphicsFamilyIndex, 0)}, m_executor(numThreads)
 {
+	if (presentFamilyIndex)
+	{
+		m_presentQueue = device.getQueue(*presentFamilyIndex, 0);
+	}
+
 	std::ranges::generate(
 	    m_frameResources, [=] { return CreateThreadResources(device, graphicsFamilyIndex, numThreads); });
 	std::ranges::generate(m_renderFinished, [=] { return CreateSemaphore(device); });
@@ -39,7 +41,6 @@ vk::Fence Renderer::BeginFrame(uint32_t frameNumber)
 	[[maybe_unused]] const auto waitResult = m_device.waitForFences(m_inFlightFences[frameNumber].get(), true, timeout);
 	assert(waitResult == vk::Result::eSuccess); // TODO check if waitForFences can fail with no timeout
 
-	m_taskflow.clear();
 	m_nextSequenceIndex = 0;
 
 	auto& frameResources = m_frameResources[frameNumber];
@@ -53,6 +54,8 @@ vk::Fence Renderer::BeginFrame(uint32_t frameNumber)
 
 void Renderer::EndFrame(std::span<const SurfaceImage> images)
 {
+	assert(m_presentQueue && "Can't present without a present queue");
+
 	auto swapchains = std::vector<vk::SwapchainKHR>(images.size());
 	auto imageIndices = std::vector<uint32_t>(images.size());
 	auto waitSemaphores = std::vector<vk::Semaphore>(images.size());
@@ -70,6 +73,7 @@ void Renderer::EndFrame(std::span<const SurfaceImage> images)
 	auto fenceToSignal = m_inFlightFences[m_frameNumber].get();
 
 	m_executor.run(m_taskflow).wait();
+	m_taskflow.clear();
 
 	// Submit the command buffer(s)
 	std::vector<vk::CommandBuffer> commandBuffersToSubmit;

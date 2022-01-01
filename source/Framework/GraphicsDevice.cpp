@@ -22,6 +22,11 @@ static const vk::Optional<const vk::AllocationCallbacks> s_allocator = nullptr;
 
 vk::UniqueSurfaceKHR CreateVulkanSurface(SDL_Window* window, vk::Instance instance)
 {
+	if (window == nullptr)
+	{
+		return {};
+	}
+
 	VkSurfaceKHR surfaceTmp = {};
 	if (!SDL_Vulkan_CreateSurface(window, instance, &surfaceTmp))
 	{
@@ -128,10 +133,14 @@ constexpr auto DebugCreateInfo = [] {
 
 vk::UniqueInstance CreateInstance(SDL_Window* window)
 {
-	uint32_t extensionCount = 0;
-	SDL_Vulkan_GetInstanceExtensions(window, &extensionCount, nullptr);
-	auto extensions = std::vector<const char*>(extensionCount);
-	SDL_Vulkan_GetInstanceExtensions(window, &extensionCount, extensions.data());
+	std::vector<const char*> extensions;
+	if (window)
+	{
+		uint32_t extensionCount = 0;
+		SDL_Vulkan_GetInstanceExtensions(window, &extensionCount, nullptr);
+		extensions.resize(extensionCount);
+		SDL_Vulkan_GetInstanceExtensions(window, &extensionCount, extensions.data());
+	}
 
 	vk::ApplicationInfo applicationInfo{
 	    .apiVersion = VK_API_VERSION_1_0,
@@ -186,7 +195,10 @@ struct QueueFamilyIndices
 	std::optional<uint32_t> graphicsFamily;
 	std::optional<uint32_t> presentFamily;
 
-	bool IsComplete() const { return graphicsFamily.has_value() && presentFamily.has_value(); }
+	bool IsComplete(bool needPresent) const
+	{
+		return graphicsFamily.has_value() && (!needPresent || presentFamily.has_value());
+	}
 };
 
 QueueFamilyIndices FindQueueFamilies(vk::PhysicalDevice physicalDevice, vk::SurfaceKHR surface)
@@ -202,12 +214,12 @@ QueueFamilyIndices FindQueueFamilies(vk::PhysicalDevice physicalDevice, vk::Surf
 			indices.graphicsFamily = i;
 		}
 
-		if (physicalDevice.getSurfaceSupportKHR(i, surface))
+		if (surface && physicalDevice.getSurfaceSupportKHR(i, surface))
 		{
 			indices.presentFamily = i;
 		}
 
-		if (indices.IsComplete())
+		if (indices.IsComplete(surface))
 		{
 			break;
 		}
@@ -253,19 +265,22 @@ vk::PhysicalDevice FindPhysicalDevice(vk::Instance instance, vk::SurfaceKHR surf
 			return false;
 		}
 
-		// Check for adequate swap chain support
-		if (device.getSurfaceFormatsKHR(surface).empty())
+		if (surface)
 		{
-			return false;
-		}
-		if (device.getSurfacePresentModesKHR(surface).empty())
-		{
-			return false;
+			// Check for adequate swap chain support
+			if (device.getSurfaceFormatsKHR(surface).empty())
+			{
+				return false;
+			}
+			if (device.getSurfacePresentModesKHR(surface).empty())
+			{
+				return false;
+			}
 		}
 
 		// Check that all required queue families are supported
 		const auto indices = FindQueueFamilies(device, surface);
-		return indices.IsComplete();
+		return indices.IsComplete(surface);
 	});
 	if (it == physicalDevices.end())
 	{
@@ -327,6 +342,7 @@ Buffer CreateBufferUninitialized(
 	    .usage = usage,
 	    .sharingMode = vk::SharingMode::eExclusive,
 	};
+	ret.size = size;
 	ret.buffer = device.createBufferUnique(createInfo, s_allocator);
 	ret.allocation = allocator.Allocate(device.getBufferMemoryRequirements(ret.buffer.get()), memoryFlags);
 	device.bindBufferMemory(ret.buffer.get(), ret.allocation.memory, ret.allocation.offset);
@@ -550,14 +566,22 @@ GraphicsDevice::GraphicsDevice(SDL_Window* window)
 
 	auto surface = CreateVulkanSurface(window, m_instance.get());
 
-	std::array deviceExtensions = {"VK_KHR_swapchain"};
-
+	std::vector<const char*> deviceExtensions;
+	if (window)
+	{
+		deviceExtensions.push_back("VK_KHR_swapchain");
+	}
 	m_physicalDevice = FindPhysicalDevice(m_instance.get(), surface.get(), deviceExtensions);
 
 	const auto queueFamilies = FindQueueFamilies(m_physicalDevice, surface.get());
 	m_graphicsQueueFamily = queueFamilies.graphicsFamily.value();
-	m_presentQueueFamily = queueFamilies.presentFamily.value();
-	const auto queueFamilyIndices = std::array{m_graphicsQueueFamily, m_presentQueueFamily};
+	m_presentQueueFamily = queueFamilies.presentFamily;
+	std::vector<uint32_t> queueFamilyIndices;
+	queueFamilyIndices.push_back(m_graphicsQueueFamily);
+	if (m_presentQueueFamily)
+	{
+		queueFamilyIndices.push_back(*m_presentQueueFamily);
+	};
 	m_device = CreateDevice(m_physicalDevice, queueFamilyIndices, deviceExtensions);
 	m_graphicsQueue = m_device->getQueue(m_graphicsQueueFamily, 0);
 	m_allocator.emplace(m_device.get(), m_physicalDevice);
@@ -593,7 +617,6 @@ GraphicsDevice::GraphicsDevice(SDL_Window* window)
 Surface GraphicsDevice::CreateSurface(SDL_Window* window, bool multisampled)
 {
 	vk::UniqueSurfaceKHR surface;
-
 	const auto it = m_pendingWindowSurfaces.find(window);
 	if (it != m_pendingWindowSurfaces.end())
 	{
@@ -605,8 +628,15 @@ Surface GraphicsDevice::CreateSurface(SDL_Window* window, bool multisampled)
 		surface = CreateVulkanSurface(window, m_instance.get());
 	}
 
+	if (!m_presentQueueFamily.has_value())
+	{
+		const auto queueFamilies = FindQueueFamilies(m_physicalDevice, surface.get());
+		m_presentQueueFamily = queueFamilies.presentFamily;
+		assert(m_presentQueueFamily && "GraphicsDevice cannot create a surface for this window");
+	}
+
 	return Surface(
-	    window, std::move(surface), m_device.get(), m_physicalDevice, {m_graphicsQueueFamily, m_presentQueueFamily},
+	    window, std::move(surface), m_device.get(), m_physicalDevice, {m_graphicsQueueFamily, *m_presentQueueFamily},
 	    m_setupCommandPool.get(), m_graphicsQueue, multisampled);
 }
 

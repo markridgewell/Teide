@@ -36,7 +36,7 @@ class Renderer
 {
 public:
 	explicit Renderer(
-	    vk::Device device, uint32_t graphicsFamilyIndex, uint32_t presentFamilyIndex,
+	    vk::Device device, uint32_t graphicsFamilyIndex, std::optional<uint32_t> presentFamilyIndex,
 	    uint32_t numThreads = std::thread::hardware_concurrency());
 
 	vk::Fence BeginFrame(uint32_t frameNumber);

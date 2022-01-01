@@ -15,7 +15,7 @@
 class GraphicsDevice
 {
 public:
-	explicit GraphicsDevice(SDL_Window* window);
+	explicit GraphicsDevice(SDL_Window* window = nullptr);
 
 	Surface CreateSurface(SDL_Window* window, bool multisampled);
 	Renderer CreateRenderer();
@@ -57,7 +57,7 @@ private:
 	vk::UniqueDevice m_device;
 
 	uint32_t m_graphicsQueueFamily;
-	uint32_t m_presentQueueFamily;
+	std::optional<uint32_t> m_presentQueueFamily;
 	vk::Queue m_graphicsQueue;
 	vk::UniqueDescriptorPool m_descriptorPool;
 	vk::UniqueCommandPool m_setupCommandPool;
