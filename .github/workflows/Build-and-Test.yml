@@ -26,6 +26,8 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v2
+      with:
+        lfs: true
     
     - name: Cache Vulkan SDK
       uses: actions/cache@v2
@@ -94,6 +96,8 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v2
+      with:
+        lfs: true
 
     # This step is only needed as long as assimp depends on irrlicht.
     # If the dependency is removed, this step can be removed.
