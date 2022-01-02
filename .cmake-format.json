@@ -12,15 +12,7 @@
     "line_ending": "auto",
     "command_case": "canonical",
     "keyword_case": "upper",
-    "_help_enable_sort": [
-      "If true, the argument lists which are known to be sortable",
-      "will be sorted lexicographicall"
-    ],
     "enable_sort": true,
-    "_help_autosort": [
-      "If true, the parsers may infer whether or not an argument",
-      "list is sortable (without annotation)."
-    ],
     "autosort": true
   }
 }

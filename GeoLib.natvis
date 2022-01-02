@@ -12,5 +12,5 @@
   <Type Name="Geo::Vector&lt;*,4,*&gt;">
     <DisplayString>{x}, {y}, {z}, {w}</DisplayString>
   </Type>
-  
+
 </AutoVisualizer>
