@@ -42,6 +42,12 @@ jobs:
       with:
         vulkan-version: sdk-${{env.VULKAN_VERSION}}
 
+    - name: Save SDK (test)
+      uses: actions/upload-artifact@v2
+      with:
+        name: Vulkan-SDK-Windows-${{matrix.buildtype}}
+        path: VULKAN_SDK
+
     - name: Setup vcpkg
       uses: lukka/run-vcpkg@v10
       with:
@@ -62,7 +68,7 @@ jobs:
       run: |
         copy ${{github.workspace}}\thirdparty\swiftshader\vulkan-1.dll ${{github.workspace}}\build\${{matrix.buildtype}}\
         dir ${{github.workspace}}\build\${{matrix.buildtype}}\
-
+        
     - name: Test
       working-directory: ${{github.workspace}}/build
       run: OpenCppCoverage --export_type cobertura:${{github.workspace}}/coverage.xml --modules "*.exe" --sources source --cover_children -- ctest -C ${{matrix.buildtype}}
@@ -134,18 +140,29 @@ jobs:
           sudo apt-get update
           sudo apt install gcc-11 g++-11
 
+    - name: Download SwiftShader binaries
+      uses: robinraju/release-downloader@v1.3
+      with: 
+        repository: "google/gfbuild-swiftshader"
+        tag: "github/google/gfbuild-swiftshader/8f075627d16bdd2a8d861e9d81df541f5cf68e2e"
+        fileName: "gfbuild-swiftshader-8f075627d16bdd2a8d861e9d81df541f5cf68e2e-Linux_x64_Release.zip"
+        out-file-path: "swiftshader"
+
+    - name: Activate SwiftShader
+      run: |
+        unzip ${{github.workspace}}/swiftshader/*.zip -d ${{github.workspace}}/swiftshader
+
     - name: Configure CMake
       run: cmake -B ${{github.workspace}}/build --preset ${{matrix.preset}} -DCMAKE_CXX_COMPILER=g++-11
 
     - name: Build
       run: cmake --build ${{github.workspace}}/build --config ${{matrix.buildtype}}
 
-    - name: Enable Swiftshader
-      run: cp ${{github.workspace}}/thirdparty/swiftshader/vulkan-1.so ${{github.workspace}}/build/
-
     - name: Test
       working-directory: ${{github.workspace}}/build
-      run: ctest -C ${{matrix.buildtype}}
+      run: |
+        export VK_ICD_FILENAMES=${{github.workspace}}/swiftshader/lib/vk_swiftshader_icd.json
+        ctest -C ${{matrix.buildtype}}
 
     - name: Upload test log
       if: failure()
