@@ -130,10 +130,10 @@ struct Vertex
 };
 
 constexpr auto QuadVertices = std::array<Vertex, 4>{{
-    {{-0.5f, -0.5f, 0.0f}, {0.0f, 0.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 1.0f}},
-    {{0.5f, -0.5f, 0.0f}, {1.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f, 1.0f}},
-    {{0.5f, 0.5f, 0.0f}, {1.0f, 1.0f}, {0.0f, 0.0f, 1.0f}, {1.0f, 1.0f, 1.0f}},
-    {{-0.5f, 0.5f, 0.0f}, {0.0f, 1.0f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f, 1.0f}},
+    {{-0.5f, -0.5f, 0.0f}, {0.0f, 0.0f}, {0.0f, 0.0f, -1.0f}, {1.0f, 1.0f, 1.0f}},
+    {{0.5f, -0.5f, 0.0f}, {1.0f, 0.0f}, {0.0f, 0.0f, -1.0f}, {1.0f, 1.0f, 1.0f}},
+    {{0.5f, 0.5f, 0.0f}, {1.0f, 1.0f}, {0.0f, 0.0f, -1.0f}, {1.0f, 1.0f, 1.0f}},
+    {{-0.5f, 0.5f, 0.0f}, {0.0f, 1.0f}, {0.0f, 0.0f, -1.0f}, {1.0f, 1.0f, 1.0f}},
 }};
 
 constexpr auto QuadIndices = std::array<uint16_t, 6>{{0, 1, 2, 2, 3, 0}};
@@ -634,6 +634,33 @@ private:
 
 	void LoadTexture(const char* filename)
 	{
+		if (filename == nullptr)
+		{
+			// Create default checkerboard texture
+			constexpr auto c0 = std::uint32_t{0xffffffff};
+			constexpr auto c1 = std::uint32_t{0xffff00ff};
+			constexpr auto pixels = std::array{
+			    c0, c1, c0, c1, c0, c1, c0, c1, //
+			    c1, c0, c1, c0, c1, c0, c1, c0, //
+			    c0, c1, c0, c1, c0, c1, c0, c1, //
+			    c1, c0, c1, c0, c1, c0, c1, c0, //
+			    c0, c1, c0, c1, c0, c1, c0, c1, //
+			    c1, c0, c1, c0, c1, c0, c1, c0, //
+			    c0, c1, c0, c1, c0, c1, c0, c1, //
+			    c1, c0, c1, c0, c1, c0, c1, c0,
+			};
+			const auto data = TextureData{
+			    .size = {8, 8},
+			    .format = vk::Format::eR8G8B8A8Srgb,
+			    .mipLevelCount = static_cast<uint32_t>(std::floor(std::log2(8))) + 1,
+			    .samplerInfo={.magFilter = vk::Filter::eNearest,.minFilter = vk::Filter::eNearest,},
+			    .pixels = pixels,
+			};
+
+			m_texture = m_device.CreateTexture(data, "DefaulTexture");
+			return;
+		}
+
 		struct StbiDeleter
 		{
 			void operator()(stbi_uc* p) { stbi_image_free(p); }
@@ -654,6 +681,7 @@ private:
 		    .size = {static_cast<uint32_t>(width), static_cast<uint32_t>(height)},
 		    .format = vk::Format::eR8G8B8A8Srgb,
 		    .mipLevelCount = static_cast<uint32_t>(std::floor(std::log2(std::max(width, height)))) + 1,
+			.samplerInfo={.magFilter = vk::Filter::eLinear,.minFilter = vk::Filter::eLinear,},
 		    .pixels = std::span(pixels.get(), imageSize),
 		};
 
