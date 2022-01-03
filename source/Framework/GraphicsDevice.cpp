@@ -22,16 +22,14 @@ static const vk::Optional<const vk::AllocationCallbacks> s_allocator = nullptr;
 
 vk::UniqueSurfaceKHR CreateVulkanSurface(SDL_Window* window, vk::Instance instance)
 {
-	if (window == nullptr)
-	{
-		return {};
-	}
-
+	spdlog::info("Creating a Vulkan surface for a window");
 	VkSurfaceKHR surfaceTmp = {};
 	if (!SDL_Vulkan_CreateSurface(window, instance, &surfaceTmp))
 	{
-		return {};
+		throw VulkanError("Failed to create Vulkan surface for window");
 	}
+	assert(surfaceTmp);
+	spdlog::info("Surface created successfully");
 	vk::ObjectDestroy<vk::Instance, vk::DispatchLoaderDynamic> deleter(instance, s_allocator, VULKAN_HPP_DEFAULT_DISPATCHER);
 	return vk::UniqueSurfaceKHR(surfaceTmp, deleter);
 }
@@ -555,16 +553,26 @@ GraphicsDevice::GraphicsDevice(SDL_Window* window)
 {
 	vk::DynamicLoader dl;
 	VULKAN_HPP_DEFAULT_DISPATCHER.init(dl.getProcAddress<PFN_vkGetInstanceProcAddr>("vkGetInstanceProcAddr"));
+	spdlog::info("Loaded Vulkan library");
 
 	m_instance = CreateInstance(window);
 	VULKAN_HPP_DEFAULT_DISPATCHER.init(m_instance.get());
+	spdlog::info("Creatad Vulkan instance");
 
 	if constexpr (IsDebugBuild)
 	{
 		m_debugMessenger = m_instance->createDebugUtilsMessengerEXTUnique(DebugCreateInfo, s_allocator);
 	}
 
-	auto surface = CreateVulkanSurface(window, m_instance.get());
+	vk::UniqueSurfaceKHR surface;
+	if (window)
+	{
+		surface = CreateVulkanSurface(window, m_instance.get());
+	}
+	else
+	{
+		spdlog::info("No window provided (headless mode");
+	}
 
 	std::vector<const char*> deviceExtensions;
 	if (window)
@@ -576,6 +584,10 @@ GraphicsDevice::GraphicsDevice(SDL_Window* window)
 	const auto queueFamilies = FindQueueFamilies(m_physicalDevice, surface.get());
 	m_graphicsQueueFamily = queueFamilies.graphicsFamily.value();
 	m_presentQueueFamily = queueFamilies.presentFamily;
+	if (window)
+	{
+		assert(m_presentQueueFamily.has_value());
+	}
 	std::vector<uint32_t> queueFamilyIndices;
 	queueFamilyIndices.push_back(m_graphicsQueueFamily);
 	if (m_presentQueueFamily)
@@ -625,6 +637,7 @@ Surface GraphicsDevice::CreateSurface(SDL_Window* window, bool multisampled)
 	}
 	else
 	{
+		spdlog::info("Creating a new surface for a window");
 		surface = CreateVulkanSurface(window, m_instance.get());
 	}
 
