@@ -8,22 +8,31 @@ using namespace testing;
 
 namespace
 {
+struct SDLWindowDeleter
+{
+	void operator()(SDL_Window* window) { SDL_DestroyWindow(window); }
+};
+
+using UniqueSDLWindow = std::unique_ptr<SDL_Window, SDLWindowDeleter>;
+
 TEST(GraphicsDeviceTest, CreateSurface)
 {
-	SDL_Window* window = SDL_CreateWindow("Test", 0, 0, 800, 600, SDL_WINDOW_VULKAN | SDL_WINDOW_HIDDEN);
+	const auto window = UniqueSDLWindow(SDL_CreateWindow("Test", 0, 0, 800, 600, SDL_WINDOW_VULKAN | SDL_WINDOW_HIDDEN));
+	ASSERT_THAT(window, NotNull());
 
-	auto device = GraphicsDevice(window);
-	auto surface = device.CreateSurface(window, false);
+	auto device = GraphicsDevice(window.get());
+	auto surface = device.CreateSurface(window.get(), false);
 	EXPECT_THAT(surface.GetExtent().width, Eq(800u));
 	EXPECT_THAT(surface.GetExtent().height, Eq(600u));
 }
 
 TEST(GraphicsDeviceTest, CreateSurfaceMultisampled)
 {
-	SDL_Window* window = SDL_CreateWindow("Test", 0, 0, 800, 600, SDL_WINDOW_VULKAN | SDL_WINDOW_HIDDEN);
+	auto window = UniqueSDLWindow(SDL_CreateWindow("Test", 0, 0, 800, 600, SDL_WINDOW_VULKAN | SDL_WINDOW_HIDDEN));
+	ASSERT_THAT(window, NotNull());
 
-	auto device = GraphicsDevice(window);
-	auto surface = device.CreateSurface(window, true);
+	auto device = GraphicsDevice(window.get());
+	auto surface = device.CreateSurface(window.get(), true);
 	EXPECT_THAT(surface.GetExtent().width, Eq(800u));
 	EXPECT_THAT(surface.GetExtent().height, Eq(600u));
 }
