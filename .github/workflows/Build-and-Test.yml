@@ -154,6 +154,7 @@ jobs:
     - name: Activate SwiftShader
       run: |
         unzip ${{github.workspace}}/swiftshader/*.zip -d ${{github.workspace}}/swiftshader
+        cp ${{github.workspace}}/swiftshader/lib/libvulkan.so.1 ${{github.workspace}}/build
         echo "LD_LIBRARY_PATH=${{env.LD_LIBRARY_PATH}}/lib:${{github.workspace}}/swiftshader/lib" >> $env:GITHUB_ENV
 
     - name: Configure CMake
