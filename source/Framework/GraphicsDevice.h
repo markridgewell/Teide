@@ -51,6 +51,7 @@ private:
 	    vk::DescriptorSetLayout layout, size_t numSets, const DynamicBuffer& uniformBuffer,
 	    std::span<const Texture* const> textures, const char* name);
 
+	vk::DynamicLoader m_loader;
 	vk::UniqueInstance m_instance;
 	vk::UniqueDebugUtilsMessengerEXT m_debugMessenger;
 	vk::PhysicalDevice m_physicalDevice;

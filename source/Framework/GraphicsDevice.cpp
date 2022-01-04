@@ -551,8 +551,7 @@ vk::SubpassDescription MakeSubpassDescription(const vk::AttachmentReference& att
 
 GraphicsDevice::GraphicsDevice(SDL_Window* window)
 {
-	vk::DynamicLoader dl;
-	VULKAN_HPP_DEFAULT_DISPATCHER.init(dl.getProcAddress<PFN_vkGetInstanceProcAddr>("vkGetInstanceProcAddr"));
+	VULKAN_HPP_DEFAULT_DISPATCHER.init(m_loader.getProcAddress<PFN_vkGetInstanceProcAddr>("vkGetInstanceProcAddr"));
 	spdlog::info("Loaded Vulkan library");
 
 	m_instance = CreateInstance(window);
