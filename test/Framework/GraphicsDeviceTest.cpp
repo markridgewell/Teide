@@ -18,7 +18,7 @@ using UniqueSDLWindow = std::unique_ptr<SDL_Window, SDLWindowDeleter>;
 TEST(GraphicsDeviceTest, CreateSurface)
 {
 	const auto window = UniqueSDLWindow(SDL_CreateWindow("Test", 0, 0, 800, 600, SDL_WINDOW_VULKAN | SDL_WINDOW_HIDDEN));
-	ASSERT_THAT(window, NotNull());
+	ASSERT_THAT(window, NotNull()) << SDL_GetError();
 
 	auto device = GraphicsDevice(window.get());
 	auto surface = device.CreateSurface(window.get(), false);
@@ -29,7 +29,7 @@ TEST(GraphicsDeviceTest, CreateSurface)
 TEST(GraphicsDeviceTest, CreateSurfaceMultisampled)
 {
 	auto window = UniqueSDLWindow(SDL_CreateWindow("Test", 0, 0, 800, 600, SDL_WINDOW_VULKAN | SDL_WINDOW_HIDDEN));
-	ASSERT_THAT(window, NotNull());
+	ASSERT_THAT(window, NotNull()) << SDL_GetError();
 
 	auto device = GraphicsDevice(window.get());
 	auto surface = device.CreateSurface(window.get(), true);

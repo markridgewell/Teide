@@ -52,16 +52,25 @@ jobs:
         choco install OpenCppCoverage -y
         echo "C:\Program Files\OpenCppCoverage" >> $env:GITHUB_PATH
 
+    - name: Download SwiftShader binaries
+      uses: robinraju/release-downloader@v1.3
+      with:
+        repository: "google/gfbuild-swiftshader"
+        tag: "github/google/gfbuild-swiftshader/8f075627d16bdd2a8d861e9d81df541f5cf68e2e"
+        fileName: "gfbuild-swiftshader-8f075627d16bdd2a8d861e9d81df541f5cf68e2e-Windows_x64_Release.zip"
+        out-file-path: "swiftshader"
+
     - name: Configure CMake
       run: cmake -B ${{github.workspace}}/build --preset ${{matrix.preset}}
 
     - name: Build
       run: cmake --build ${{github.workspace}}/build --config ${{matrix.buildtype}}
 
-    - name: Copy Vulkan library to output directory
+    - name: Activate SwiftShader
+      shell: powershell
       run: |
-        copy ${{env.VULKAN_SDK}}\bin\vulkan-1.dll ${{github.workspace}}\build\${{matrix.buildtype}}\
-        dir ${{github.workspace}}\build\${{matrix.buildtype}}\
+        Expand-Archive ${{github.workspace}}\swiftshader\*.zip -d ${{github.workspace}}\swiftshader
+        Copy-Item ${{github.workspace}}\swiftshader\lib\vulkan-1.dll ${{github.workspace}}\build\${{matrix.buildtype}}\
 
     - name: Test
       working-directory: ${{github.workspace}}/build
