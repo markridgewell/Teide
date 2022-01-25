@@ -99,7 +99,7 @@ target_include_directories(Framework PUBLIC source)
 
 # ----- FrameworkTest -----
 
-set(sources test/Framework/Main.cpp test/Framework/GraphicsDeviceTest.cpp)
+set(sources test/Framework/Main.cpp test/Framework/GraphicsDeviceTest.cpp test/Framework/SurfaceTest.cpp)
 
 add_executable(FrameworkTest ${sources})
 target_compile_features(FrameworkTest PRIVATE ${cxx_standard})

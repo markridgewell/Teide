@@ -99,5 +99,53 @@
       "name": "mingw-debug",
       "configurePreset": "mingw"
     }
+  ],
+  "testPresets": [
+    {
+      "name": "_headless",
+      "hidden": true,
+      "environment": {
+        "GTEST_FILTER": "-SurfaceTest.*"
+      }
+    },
+    {
+      "name": "msvc2019-debug",
+      "configurePreset": "msvc2019",
+      "configuration": "Debug"
+    },
+    {
+      "name": "msvc2019-release",
+      "configurePreset": "msvc2019",
+      "configuration": "Release"
+    },
+    {
+      "name": "msvc2022-debug",
+      "configurePreset": "msvc2022",
+      "configuration": "Debug"
+    },
+    {
+      "name": "msvc2022-release",
+      "configurePreset": "msvc2022",
+      "configuration": "Release"
+    },
+    {
+      "name": "mingw-debug",
+      "configurePreset": "mingw"
+    },
+    {
+      "name": "unix-debug",
+      "configurePreset": "unix",
+      "configuration": "Debug"
+    },
+    {
+      "name": "unix-release",
+      "configurePreset": "unix",
+      "configuration": "Release"
+    },
+    {
+      "name": "unix-headless",
+      "inherits": "_headless",
+      "configurePreset": "unix"
+    }
   ]
 }
