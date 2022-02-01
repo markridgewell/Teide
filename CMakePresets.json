@@ -51,12 +51,20 @@
       "toolset": "ClangCL"
     },
     {
-      "name": "unix",
+      "name": "linux",
       "inherits": "_common",
-      "displayName": "Unix",
+      "displayName": "Linux",
       "generator": "Unix Makefiles",
       "cacheVariables": {
         "CMAKE_CXX_FLAGS": "--std=c++2a -DSDL_main=main -Wall -Werror -Wno-attributes -ggdb -fsanitize=address -fno-omit-frame-pointer -static-libasan"
+      }
+    },
+    {
+      "name": "linux-coverage",
+      "inherits": "linux",
+      "displayName": "Linux + Coverage",
+      "cacheVariables": {
+        "CMAKE_CXX_FLAGS_DEBUG": "-O0 -g --coverage"
       }
     },
     {
@@ -102,13 +110,6 @@
   ],
   "testPresets": [
     {
-      "name": "_headless",
-      "hidden": true,
-      "environment": {
-        "GTEST_FILTER": "-SurfaceTest.*"
-      }
-    },
-    {
       "name": "msvc2019-debug",
       "configurePreset": "msvc2019",
       "configuration": "Debug"
@@ -133,19 +134,14 @@
       "configurePreset": "mingw"
     },
     {
-      "name": "unix-debug",
-      "configurePreset": "unix",
+      "name": "linux-debug",
+      "configurePreset": "linux",
       "configuration": "Debug"
     },
     {
-      "name": "unix-release",
-      "configurePreset": "unix",
+      "name": "linux-release",
+      "configurePreset": "linux",
       "configuration": "Release"
-    },
-    {
-      "name": "unix-headless",
-      "inherits": "_headless",
-      "configurePreset": "unix"
     }
   ]
 }

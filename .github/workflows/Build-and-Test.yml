@@ -95,7 +95,7 @@ jobs:
     strategy:
       matrix:
         buildtype: [Debug, Release]
-        preset: [unix]
+        preset: [linux-coverage]
 
     name: Build-and-Test-Linux-${{matrix.buildtype}}
     runs-on: ubuntu-latest
@@ -146,6 +146,11 @@ jobs:
           sudo apt-get update
           sudo apt install gcc-11 g++-11
 
+    - name: Install lcov
+      run: |
+          sudo apt-get update
+          sudo apt install lcov
+
     - name: Download SwiftShader binaries
       uses: robinraju/release-downloader@v1.3
       with:
@@ -174,3 +179,19 @@ jobs:
       with:
         name: TestLog-Linux-${{matrix.buildtype}}
         path: Testing/Temporary/LastTest.log
+
+    - name: Create coverage report
+      if: matrix.buildtype == 'Debug'
+      run: |
+        lcov --capture --directory ${{github.workspace}}/build --output-file coverage.info
+        lcov --remove coverage.info '/usr/*' --output-file coverage.info # filter system-files
+        lcov --remove coverage.info 'test/*' --output-file coverage.info # filter test files
+        lcov --list coverage.info # debug info
+
+    - name: Upload coverage report
+      if: matrix.buildtype == 'Debug'
+      uses: codecov/codecov-action@v1.3.2
+      with:
+        files: ./coverage.info
+        fail_ci_if_error: true
+        functionalities: fix
