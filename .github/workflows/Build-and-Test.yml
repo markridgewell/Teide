@@ -102,7 +102,7 @@ jobs:
 
     env:
       CMAKE_BUILD_TYPE: ${{matrix.buildtype}}
-      GTEST_FILTER: "-SurfaceTest.*"
+      GTEST_FILTER: -SurfaceTest.*
       ASAN_OPTIONS: detect_leaks=0 # Vulkan on Linux appears to leak memory, so disable leak checks
 
     steps:
@@ -171,7 +171,8 @@ jobs:
 
     - name: Test
       run: |
-        VK_ICD_FILENAMES=${{github.workspace}}/swiftshader/lib/vk_swiftshader_icd.json ctest --test-dir ${{github.workspace}}/build --output-on-failure -C ${{matrix.buildtype}}
+        #VK_ICD_FILENAMES=${{github.workspace}}/swiftshader/lib/vk_swiftshader_icd.json ctest --test-dir ${{github.workspace}}/build --verbose -C ${{matrix.buildtype}}
+        VK_ICD_FILENAMES=${{github.workspace}}/swiftshader/lib/vk_swiftshader_icd.json ${{github.workspace}}/build/*Test
 
     - name: Upload test log
       if: failure()
@@ -184,8 +185,10 @@ jobs:
       if: matrix.buildtype == 'Debug'
       run: |
         lcov --capture --directory ${{github.workspace}}/build --output-file coverage.info
-        lcov --remove coverage.info '/usr/*' --output-file coverage.info # filter system-files
-        lcov --remove coverage.info 'test/*' --output-file coverage.info # filter test files
+        lcov --remove coverage.info "/usr/*" --output-file coverage.info
+        lcov --remove coverage.info "${{github.workspace}}/test/*" --output-file coverage.info
+        lcov --remove coverage.info "${{github.workspace}}/VULKAN_SDK/*" --output-file coverage.info
+        lcov --remove coverage.info "${{github.workspace}}/build/vcpkg_installed/*" --output-file coverage.info
         lcov --list coverage.info # debug info
 
     - name: Upload coverage report
