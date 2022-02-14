@@ -657,7 +657,7 @@ private:
 			    .pixels = pixels,
 			};
 
-			m_texture = m_device.CreateTexture(data, "DefaulTexture");
+			m_texture = m_device.CreateTexture(data, "DefaultTexture");
 			return;
 		}
 

@@ -97,18 +97,41 @@ target_compile_definitions(Framework PUBLIC VULKAN_HPP_NO_STRUCT_CONSTRUCTORS VU
 target_compile_features(Framework PRIVATE ${cxx_standard})
 target_include_directories(Framework PUBLIC source)
 
+# ----- ShaderCompiler -----
+
+set(sources source/ShaderCompiler/ShaderCompiler.h source/ShaderCompiler/ShaderCompiler.cpp)
+
+add_library(ShaderCompiler ${sources})
+
+target_link_libraries(
+    ShaderCompiler
+    PUBLIC Framework
+           HLSL
+           SPIRV
+           glslang
+           OGLCompiler)
+
+target_compile_features(ShaderCompiler PRIVATE ${cxx_standard})
+target_include_directories(ShaderCompiler PUBLIC source/ShaderCompiler)
+
 # ----- FrameworkTest -----
 
 set(sources test/Framework/Main.cpp test/Framework/GraphicsDeviceTest.cpp test/Framework/SurfaceTest.cpp)
 
 add_executable(FrameworkTest ${sources})
 target_compile_features(FrameworkTest PRIVATE ${cxx_standard})
-target_link_libraries(FrameworkTest PRIVATE Framework GTest::gtest GTest::gmock fmt::fmt)
+target_link_libraries(
+    FrameworkTest
+    PRIVATE Framework
+            ShaderCompiler
+            GTest::gtest
+            GTest::gmock
+            fmt::fmt)
 add_test(NAME FrameworkTest COMMAND FrameworkTest)
 
 # ----- Application -----
 
-set(sources source/Application.cpp source/ShaderCompiler.h source/ShaderCompiler.cpp source/Definitions.h)
+set(sources source/Application.cpp source/Definitions.h)
 
 add_executable(Application WIN32 ${sources})
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${sources})
@@ -119,14 +142,11 @@ target_link_libraries(
     Application
     PRIVATE GeoLib
             Framework
+            ShaderCompiler
             SDL2::SDL2
             SDL2::SDL2main
             fmt::fmt
             spdlog::spdlog
-            HLSL
-            SPIRV
-            glslang
-            OGLCompiler
             assimp::assimp
             Taskflow::Taskflow)
 target_include_directories(Application PRIVATE ${STB_INCLUDE_DIRS})

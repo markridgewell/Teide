@@ -827,6 +827,7 @@ Texture GraphicsDevice::CreateTextureImpl(
 	}
 
 	auto initialLayout = vk::ImageLayout::eUndefined;
+	auto initialPipelineStage = vk::PipelineStageFlagBits::eTopOfPipe;
 
 	// Create image
 	const auto imageExtent = vk::Extent3D{data.size.width, data.size.height, 1};
@@ -863,6 +864,7 @@ Texture GraphicsDevice::CreateTextureImpl(
 		    vk::ImageLayout::eTransferDstOptimal, vk::PipelineStageFlagBits::eTopOfPipe,
 		    vk::PipelineStageFlagBits::eTransfer);
 		initialLayout = vk::ImageLayout::eTransferDstOptimal;
+		initialPipelineStage = vk::PipelineStageFlagBits::eTransfer;
 		CopyBufferToImage(cmdBuffer, stagingBuffer.buffer.get(), image.get(), imageExtent);
 
 		cmdBuffer.TakeOwnership(std::move(stagingBuffer.buffer));
@@ -894,6 +896,7 @@ Texture GraphicsDevice::CreateTextureImpl(
 	    .mipLevelCount = data.mipLevelCount,
 	    .samples = data.samples,
 	    .layout = initialLayout,
+	    .lastPipelineStageUsage = initialPipelineStage,
 	};
 
 	SetDebugName(ret.image, name);
