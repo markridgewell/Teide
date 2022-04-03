@@ -11,6 +11,9 @@
 
 #include <array>
 #include <cstdint>
+#include <deque>
+
+class GraphicsDevice;
 
 struct RenderObject
 {
@@ -32,11 +35,21 @@ struct RenderList
 	std::vector<RenderObject> objects;
 };
 
+template <class T>
+class Future
+{
+public:
+	const T& Get() { return m_value; }
+
+private:
+	T m_value;
+};
+
 class Renderer
 {
 public:
 	explicit Renderer(
-	    vk::Device device, uint32_t graphicsFamilyIndex, std::optional<uint32_t> presentFamilyIndex,
+	    GraphicsDevice& device, uint32_t graphicsFamilyIndex, std::optional<uint32_t> presentFamilyIndex,
 	    uint32_t numThreads = std::thread::hardware_concurrency());
 
 	vk::Fence BeginFrame(uint32_t frameNumber);
@@ -46,19 +59,20 @@ public:
 	void RenderToTexture(RenderableTexture& texture, RenderList renderList);
 	void RenderToSurface(const SurfaceImage& surfaceImage, RenderList renderList);
 
+	Future<TextureData> CopyTextureData(RenderableTexture& texture);
+
 private:
 	struct ThreadResources
 	{
 		vk::UniqueCommandPool commandPool;
-		vk::UniqueCommandBuffer commandBuffer;
-		bool usedThisFrame = false;
-		uint32_t sequenceIndex = 0;
-		uint32_t threadIndex = 0;
+		std::deque<CommandBuffer> commandBuffers;
+		std::uint32_t numUsedCommandBuffers = 0;
+		std::uint32_t threadIndex = 0;
 
 		void Reset(vk::Device device);
 	};
 
-	vk::CommandBuffer GetCommandBuffer(uint32_t threadIndex, uint32_t sequenceIndex);
+	CommandBuffer& GetCommandBuffer(uint32_t threadIndex);
 	void Render(
 	    const RenderList& renderList, vk::RenderPass renderPass, vk::Framebuffer framebuffer,
 	    vk::Extent2D framebufferSize, vk::CommandBuffer commandBuffer);
@@ -67,14 +81,20 @@ private:
 
 	vk::DescriptorSet GetDescriptorSet(const ParameterBlock* parameterBlock) const;
 
-	vk::Device m_device;
+	std::uint32_t AddCommandBufferSlot();
+	void SubmitCommandBuffer(std::uint32_t index, vk::CommandBuffer commandBuffer);
+
+	GraphicsDevice& m_device;
 	vk::Queue m_graphicsQueue;
 	vk::Queue m_presentQueue;
 	tf::Executor m_executor;
 	tf::Taskflow m_taskflow;
-	uint32_t m_nextSequenceIndex = 0;
 	std::array<vk::UniqueSemaphore, MaxFramesInFlight> m_renderFinished;
 	std::array<vk::UniqueFence, MaxFramesInFlight> m_inFlightFences;
 	std::array<std::vector<ThreadResources>, MaxFramesInFlight> m_frameResources;
 	uint32_t m_frameNumber = 0;
+
+	std::mutex m_readyCommandBuffersMutex;
+	std::vector<vk::CommandBuffer> m_readyCommandBuffers;
+	// std::size_t m_numSubmittedCommandBuffers = 0;
 };

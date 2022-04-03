@@ -41,6 +41,10 @@ public:
 
 	void WaitIdle() const { m_device->waitIdle(); }
 
+	// Internal
+	vk::Device GetVulkanDevice() { return m_device.get(); }
+	MemoryAllocator& GetMemoryAllocator() { return m_allocator.value(); }
+
 private:
 	auto OneShotCommands() { return OneShotCommandBuffer(m_device.get(), m_setupCommandPool.get(), m_graphicsQueue); }
 

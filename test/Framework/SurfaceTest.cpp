@@ -76,4 +76,31 @@ TEST(SurfaceTest, CreatePipelineForSurface)
 	EXPECT_THAT(pipeline->pipeline, IsTrue());
 }
 
+TEST(SurfaceTest, RenderToSurface)
+{
+	auto window = UniqueSDLWindow(SDL_CreateWindow("Test", 0, 0, 800, 600, SDL_WINDOW_VULKAN | SDL_WINDOW_HIDDEN));
+	ASSERT_THAT(window, NotNull()) << SDL_GetError();
+
+	auto device = GraphicsDevice(window.get());
+	auto surface = device.CreateSurface(window.get(), true);
+	auto renderer = device.CreateRenderer();
+
+	const auto fence = renderer.BeginFrame(0);
+	const auto image = surface.AcquireNextImage(fence);
+	ASSERT_THAT(image.has_value(), IsTrue());
+	const auto clearColor = std::array{255, 0, 0, 255};
+	const auto clearDepthStencil = vk::ClearDepthStencilValue{1.0f, 0};
+	const auto clearValues = std::vector{
+	    vk::ClearValue{clearColor},
+	    vk::ClearValue{clearDepthStencil},
+	};
+	const auto renderList = RenderList{
+	    .clearValues = clearValues,
+	};
+	renderer.RenderToSurface(image.value(), renderList);
+	renderer.EndFrame(image.value());
+
+	device.WaitIdle();
+}
+
 } // namespace

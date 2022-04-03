@@ -63,7 +63,27 @@ std::string DebugFormat(fmt::format_string<Args...> fmt [[maybe_unused]], Args&&
 	}
 }
 
-class OneShotCommandBuffer
+class CommandBuffer
+{
+public:
+	explicit CommandBuffer(vk::UniqueCommandBuffer commandBuffer);
+
+	void TakeOwnership(vk::UniqueBuffer buffer);
+	void Reset();
+
+	vk::UniqueCommandBuffer& Get() { return m_cmdBuffer; }
+
+	operator vk::CommandBuffer() const;
+
+protected:
+	CommandBuffer() = default;
+
+	vk::UniqueCommandBuffer m_cmdBuffer;
+
+	std::vector<vk::UniqueBuffer> m_ownedBuffers;
+};
+
+class OneShotCommandBuffer : public CommandBuffer
 {
 public:
 	explicit OneShotCommandBuffer(vk::Device device, vk::CommandPool commandPool, vk::Queue queue);
@@ -74,15 +94,8 @@ public:
 	OneShotCommandBuffer& operator=(const OneShotCommandBuffer&) = delete;
 	OneShotCommandBuffer& operator=(OneShotCommandBuffer&&) = delete;
 
-	operator vk::CommandBuffer() const;
-
-	void TakeOwnership(vk::UniqueBuffer buffer);
-
 private:
-	vk::UniqueCommandBuffer m_cmdBuffer;
 	vk::Queue m_queue;
-
-	std::vector<vk::UniqueBuffer> m_ownedBuffers;
 };
 
 class VulkanError : public vk::Error, public std::exception
@@ -95,3 +108,10 @@ public:
 private:
 	std::string m_what;
 };
+
+vk::ImageAspectFlags GetImageAspect(vk::Format format);
+
+void CopyBufferToImage(
+    vk::CommandBuffer cmdBuffer, vk::Buffer source, vk::Image destination, vk::Format imageFormat, vk::Extent3D imageExtent);
+void CopyImageToBuffer(
+    vk::CommandBuffer cmdBuffer, vk::Image source, vk::Buffer destination, vk::Format imageFormat, vk::Extent3D imageExtent);

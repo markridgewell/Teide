@@ -4,6 +4,9 @@
 #include <Framework/BytesView.h>
 #include <Framework/MemoryAllocator.h>
 #include <Framework/Vulkan.h>
+#include <taskflow/core/taskflow.hpp>
+
+#include <vector>
 
 struct TextureData
 {
@@ -12,8 +15,10 @@ struct TextureData
 	uint32_t mipLevelCount = 1;
 	vk::SampleCountFlagBits samples = vk::SampleCountFlagBits::e1;
 	vk::SamplerCreateInfo samplerInfo;
-	BytesView pixels;
+	std::vector<std::byte> pixels;
 };
+
+std::vector<std::byte> CopyBytes(BytesView src);
 
 struct Texture
 {
@@ -40,9 +45,11 @@ struct RenderableTexture : public Texture
 {
 	vk::UniqueRenderPass renderPass;
 	vk::UniqueFramebuffer framebuffer;
+	tf::Future<void> future;
 
 	void DiscardContents();
 
 	void TransitionToColorTarget(vk::CommandBuffer cmdBuffer);
 	void TransitionToDepthStencilTarget(vk::CommandBuffer cmdBuffer);
+	void TransitionToTransferSrc(vk::CommandBuffer cmdBuffer);
 };

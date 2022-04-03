@@ -654,7 +654,7 @@ private:
 			    .format = vk::Format::eR8G8B8A8Srgb,
 			    .mipLevelCount = static_cast<uint32_t>(std::floor(std::log2(8))) + 1,
 			    .samplerInfo={.magFilter = vk::Filter::eNearest,.minFilter = vk::Filter::eNearest,},
-			    .pixels = pixels,
+			    .pixels = CopyBytes(pixels),
 			};
 
 			m_texture = m_device.CreateTexture(data, "DefaultTexture");
@@ -682,7 +682,7 @@ private:
 		    .format = vk::Format::eR8G8B8A8Srgb,
 		    .mipLevelCount = static_cast<uint32_t>(std::floor(std::log2(std::max(width, height)))) + 1,
 			.samplerInfo={.magFilter = vk::Filter::eLinear,.minFilter = vk::Filter::eLinear,},
-		    .pixels = std::span(pixels.get(), imageSize),
+		    .pixels = CopyBytes(std::span(pixels.get(), imageSize)),
 		};
 
 		m_texture = m_device.CreateTexture(data, filename);

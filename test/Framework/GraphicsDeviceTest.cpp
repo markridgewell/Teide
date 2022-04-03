@@ -68,15 +68,16 @@ TEST(GraphicsDeviceTest, CreateShader)
 
 TEST(GraphicsDeviceTest, CreateTexture)
 {
+	constexpr auto B00 = std::byte{0x00};
+	constexpr auto Bff = std::byte{0xff};
 	auto device = GraphicsDevice();
-	const auto pixelData = std::array<std::uint32_t, 4>{0xff0000ff, 0x00ff00ff, 0xff00ffff, 0x0000ffff};
 	const auto textureData = TextureData{
 	    .size = {2, 2},
 	    .format = vk::Format::eR8G8B8A8Srgb,
 	    .mipLevelCount = 1,
 	    .samples = vk::SampleCountFlagBits::e1,
 	    .samplerInfo = {},
-	    .pixels = pixelData,
+	    .pixels = {Bff, B00, B00, Bff, B00, Bff, B00, Bff, Bff, B00, Bff, Bff, B00, B00, Bff, Bff},
 	};
 	const auto texture = device.CreateTexture(textureData, "Texture");
 	EXPECT_THAT(texture.get(), NotNull());

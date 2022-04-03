@@ -45,6 +45,7 @@ MemoryAllocation MemoryAllocator::Allocate(const vk::MemoryRequirements& require
 	return {
 	    .memory = block.memory.get(),
 	    .offset = offset,
+	    .size = requirements.size,
 	    .mappedData = mappedData ? static_cast<char*>(mappedData) + offset : nullptr,
 	};
 }

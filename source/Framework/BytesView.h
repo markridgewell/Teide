@@ -20,7 +20,21 @@ concept TrivialObject
 
 class BytesView
 {
+	using span_type = std::span<const std::byte>;
+
 public:
+	using element_type = span_type::element_type;
+	using value_type = span_type::value_type;
+	using size_type = span_type::size_type;
+	using difference_type = span_type::difference_type;
+	using pointer = span_type::pointer;
+	using const_pointer = span_type::const_pointer;
+	using reference = span_type::reference;
+	using const_reference = span_type::const_reference;
+	using iterator = span_type::iterator;
+	using const_iterator = span_type::iterator;
+	using reverse_iterator = span_type::reverse_iterator;
+
 	BytesView() = default;
 	BytesView(const BytesView&) = default;
 	BytesView(BytesView&&) = default;
@@ -46,5 +60,5 @@ public:
 	auto rend() const { return m_span.rend(); }
 
 private:
-	std::span<const std::byte> m_span;
+	span_type m_span;
 };

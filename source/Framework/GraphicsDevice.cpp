@@ -329,25 +329,6 @@ CreateDevice(vk::PhysicalDevice physicalDevice, std::span<const uint32_t> queueF
 	return physicalDevice.createDeviceUnique(deviceCreateInfo, s_allocator);
 }
 
-Buffer CreateBufferUninitialized(
-    vk::DeviceSize size, vk::BufferUsageFlags usage, vk::MemoryPropertyFlags memoryFlags, vk::Device device,
-    MemoryAllocator& allocator)
-{
-	Buffer ret{};
-
-	const auto createInfo = vk::BufferCreateInfo{
-	    .size = size,
-	    .usage = usage,
-	    .sharingMode = vk::SharingMode::eExclusive,
-	};
-	ret.size = size;
-	ret.buffer = device.createBufferUnique(createInfo, s_allocator);
-	ret.allocation = allocator.Allocate(device.getBufferMemoryRequirements(ret.buffer.get()), memoryFlags);
-	device.bindBufferMemory(ret.buffer.get(), ret.allocation.memory, ret.allocation.offset);
-
-	return ret;
-}
-
 void SetBufferData(Buffer& buffer, BytesView data)
 {
 	assert(buffer.allocation.mappedData);
@@ -418,41 +399,6 @@ CreateGraphicsPipelineLayout(vk::Device device, Shader& shader, std::span<const 
 	};
 
 	return device.createPipelineLayoutUnique(createInfo, s_allocator);
-}
-
-vk::ImageAspectFlags GetImageAspect(vk::Format format)
-{
-	if (HasDepthComponent(format) && HasStencilComponent(format))
-	{
-		return vk::ImageAspectFlagBits::eDepth | vk::ImageAspectFlagBits::eStencil;
-	}
-	if (HasDepthComponent(format))
-	{
-		return vk::ImageAspectFlagBits::eDepth;
-	}
-	if (HasStencilComponent(format))
-	{
-		return vk::ImageAspectFlagBits::eStencil;
-	}
-	return vk::ImageAspectFlagBits::eColor;
-}
-
-void CopyBufferToImage(vk::CommandBuffer cmdBuffer, vk::Buffer source, vk::Image destination, vk::Extent3D extent)
-{
-	const auto copyRegion = vk::BufferImageCopy
-	{
-		.bufferOffset = 0,
-		.bufferRowLength = 0,
-		.bufferImageHeight = 0, .imageSubresource = {
-			.aspectMask = vk::ImageAspectFlagBits::eColor,
-			.mipLevel = 0,
-			.baseArrayLayer = 0,
-			.layerCount = 1,
-		},
-		.imageOffset = {0,0,0},
-		.imageExtent = extent,
-	};
-	cmdBuffer.copyBufferToImage(source, destination, vk::ImageLayout::eTransferDstOptimal, copyRegion);
 }
 
 vk::UniquePipeline CreateGraphicsPipeline(
@@ -654,7 +600,7 @@ Surface GraphicsDevice::CreateSurface(SDL_Window* window, bool multisampled)
 
 Renderer GraphicsDevice::CreateRenderer()
 {
-	return Renderer(m_device.get(), m_graphicsQueueFamily, m_presentQueueFamily);
+	return Renderer(*this, m_graphicsQueueFamily, m_presentQueueFamily);
 }
 
 BufferPtr GraphicsDevice::CreateBuffer(const BufferData& data, const char* name)
@@ -733,10 +679,14 @@ RenderableTexturePtr GraphicsDevice::CreateRenderableTexture(const TextureData& 
 	const auto renderUsage
 	    = isColorTarget ? vk::ImageUsageFlagBits::eColorAttachment : vk::ImageUsageFlagBits::eDepthStencilAttachment;
 
+	const auto usage = renderUsage
+	    | vk::ImageUsageFlagBits::eSampled
+	    // For now, all renderable textures will be created with TransferSrc so they can be copied from
+	    | vk::ImageUsageFlagBits::eTransferSrc;
+
 	auto cmdBuffer = OneShotCommands();
 
-	auto texture
-	    = RenderableTexture{{CreateTextureImpl(data, renderUsage | vk::ImageUsageFlagBits::eSampled, cmdBuffer, name)}};
+	auto texture = RenderableTexture{{CreateTextureImpl(data, usage, cmdBuffer, name)}};
 
 	if (isColorTarget)
 	{
@@ -865,7 +815,7 @@ Texture GraphicsDevice::CreateTextureImpl(
 		    vk::PipelineStageFlagBits::eTransfer);
 		initialLayout = vk::ImageLayout::eTransferDstOptimal;
 		initialPipelineStage = vk::PipelineStageFlagBits::eTransfer;
-		CopyBufferToImage(cmdBuffer, stagingBuffer.buffer.get(), image.get(), imageExtent);
+		CopyBufferToImage(cmdBuffer, stagingBuffer.buffer.get(), image.get(), imageInfo.format, imageExtent);
 
 		cmdBuffer.TakeOwnership(std::move(stagingBuffer.buffer));
 	}

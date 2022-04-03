@@ -1,6 +1,11 @@
 
 #include "Framework/Texture.h"
 
+std::vector<std::byte> CopyBytes(BytesView src)
+{
+	return std::vector<std::byte>(src.begin(), src.end());
+}
+
 void Texture::GenerateMipmaps(vk::CommandBuffer cmdBuffer)
 {
 	const auto makeBarrier = [&](vk::AccessFlags srcAccessMask, vk::AccessFlags dstAccessMask,
@@ -134,4 +139,9 @@ void RenderableTexture::TransitionToDepthStencilTarget(vk::CommandBuffer cmdBuff
 	DoTransition(
 	    cmdBuffer, vk::ImageLayout::eDepthStencilAttachmentOptimal,
 	    vk::PipelineStageFlagBits::eEarlyFragmentTests | vk::PipelineStageFlagBits::eLateFragmentTests);
+}
+
+void RenderableTexture::TransitionToTransferSrc(vk::CommandBuffer cmdBuffer)
+{
+	DoTransition(cmdBuffer, vk::ImageLayout::eTransferSrcOptimal, vk::PipelineStageFlagBits::eTransfer);
 }

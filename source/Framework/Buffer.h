@@ -26,3 +26,7 @@ struct DynamicBuffer
 
 	void SetData(int currentFrame, BytesView data);
 };
+
+Buffer CreateBufferUninitialized(
+    vk::DeviceSize size, vk::BufferUsageFlags usage, vk::MemoryPropertyFlags memoryFlags, vk::Device device,
+    MemoryAllocator& allocator);

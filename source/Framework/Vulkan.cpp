@@ -3,7 +3,7 @@
 
 namespace
 {
-static const vk::Optional<const vk::AllocationCallbacks> s_allocator = nullptr;
+const vk::Optional<const vk::AllocationCallbacks> s_allocator = nullptr;
 
 struct TransitionAccessMasks
 {
@@ -11,62 +11,48 @@ struct TransitionAccessMasks
 	vk::AccessFlags destination;
 };
 
-TransitionAccessMasks GetTransitionAccessMasks(vk::ImageLayout oldLayout, vk::ImageLayout newLayout)
+vk::AccessFlags GetTransitionAccessMask(vk::ImageLayout layout)
 {
 	using enum vk::ImageLayout;
 	using Access = vk::AccessFlagBits;
 
-	if (oldLayout == eUndefined && newLayout == eTransferDstOptimal)
+	switch (layout)
 	{
-		return {{}, Access::eTransferWrite};
-	}
-	else if (oldLayout == eTransferDstOptimal && newLayout == eShaderReadOnlyOptimal)
-	{
-		return {Access::eTransferWrite, Access::eShaderRead};
-	}
-	else if (oldLayout == eUndefined && newLayout == eColorAttachmentOptimal)
-	{
-		return {{}, Access::eColorAttachmentRead | Access::eColorAttachmentWrite};
-	}
-	else if (oldLayout == eUndefined && newLayout == eDepthAttachmentOptimal)
-	{
-		return {{}, Access::eDepthStencilAttachmentRead | Access::eDepthStencilAttachmentWrite};
-	}
-	else if (oldLayout == eUndefined && newLayout == eStencilAttachmentOptimal)
-	{
-		return {{}, Access::eDepthStencilAttachmentRead | Access::eDepthStencilAttachmentWrite};
-	}
-	else if (oldLayout == eUndefined && newLayout == eDepthStencilAttachmentOptimal)
-	{
-		return {{}, Access::eDepthStencilAttachmentRead | Access::eDepthStencilAttachmentWrite};
-	}
-	else if (oldLayout == eColorAttachmentOptimal && newLayout == eShaderReadOnlyOptimal)
-	{
-		return {Access::eColorAttachmentWrite, Access::eShaderRead};
-	}
-	else if (oldLayout == eDepthStencilAttachmentOptimal && newLayout == eShaderReadOnlyOptimal)
-	{
-		return {Access::eDepthStencilAttachmentRead | Access::eDepthStencilAttachmentWrite, Access::eShaderRead};
-	}
-	else if (oldLayout == eDepthStencilAttachmentOptimal && newLayout == eDepthStencilReadOnlyOptimal)
-	{
-		return {Access::eDepthStencilAttachmentRead | Access::eDepthStencilAttachmentWrite, Access::eShaderRead};
-	}
-	else if (oldLayout == eDepthAttachmentOptimal && newLayout == eShaderReadOnlyOptimal)
-	{
-		return {Access::eDepthStencilAttachmentRead | Access::eDepthStencilAttachmentWrite, Access::eShaderRead};
-	}
-	else if (oldLayout == eStencilAttachmentOptimal && newLayout == eShaderReadOnlyOptimal)
-	{
-		return {Access::eDepthStencilAttachmentRead | Access::eDepthStencilAttachmentWrite, Access::eShaderRead};
-	}
-	else if (oldLayout == eShaderReadOnlyOptimal && newLayout == eDepthStencilAttachmentOptimal)
-	{
-		return {Access::eShaderRead, Access::eDepthStencilAttachmentRead | Access::eDepthStencilAttachmentWrite};
+		case eUndefined:
+			return {};
+
+		case eTransferDstOptimal:
+			return Access::eTransferWrite;
+
+		case eColorAttachmentOptimal:
+			return Access::eColorAttachmentRead | Access::eColorAttachmentWrite;
+
+		case eDepthStencilAttachmentOptimal:
+			return Access::eDepthStencilAttachmentRead | Access::eDepthStencilAttachmentWrite;
+
+		case eDepthAttachmentOptimal:
+			return Access::eDepthStencilAttachmentRead | Access::eDepthStencilAttachmentWrite;
+
+		case eStencilAttachmentOptimal:
+			return Access::eDepthStencilAttachmentRead | Access::eDepthStencilAttachmentWrite;
+
+		case eShaderReadOnlyOptimal:
+			return Access::eShaderRead;
+
+		case eTransferSrcOptimal:
+			return Access::eTransferRead;
+
+		case eDepthStencilReadOnlyOptimal:
+			return Access::eShaderRead;
 	}
 
 	assert(false && "Unsupported image transition");
 	return {};
+}
+
+TransitionAccessMasks GetTransitionAccessMasks(vk::ImageLayout oldLayout, vk::ImageLayout newLayout)
+{
+	return {GetTransitionAccessMask(oldLayout), GetTransitionAccessMask(newLayout)};
 }
 
 vk::ImageAspectFlags GetAspectMask(vk::Format format)
@@ -156,6 +142,24 @@ vk::UniqueCommandPool CreateCommandPool(uint32_t queueFamilyIndex, vk::Device de
 	return device.createCommandPoolUnique(createInfo, s_allocator);
 }
 
+CommandBuffer::CommandBuffer(vk::UniqueCommandBuffer commandBuffer) : m_cmdBuffer(std::move(commandBuffer))
+{}
+
+void CommandBuffer::TakeOwnership(vk::UniqueBuffer buffer)
+{
+	m_ownedBuffers.push_back(std::move(buffer));
+}
+
+void CommandBuffer::Reset()
+{
+	m_ownedBuffers.clear();
+}
+
+CommandBuffer::operator vk::CommandBuffer() const
+{
+	assert(m_cmdBuffer);
+	return m_cmdBuffer.get();
+}
 OneShotCommandBuffer::OneShotCommandBuffer(vk::Device device, vk::CommandPool commandPool, vk::Queue queue) :
     m_queue{queue}
 {
@@ -181,13 +185,57 @@ OneShotCommandBuffer::~OneShotCommandBuffer()
 	m_cmdBuffer.reset();
 }
 
-OneShotCommandBuffer::operator vk::CommandBuffer() const
+vk::ImageAspectFlags GetImageAspect(vk::Format format)
 {
-	assert(m_cmdBuffer);
-	return m_cmdBuffer.get();
+	if (HasDepthComponent(format) && HasStencilComponent(format))
+	{
+		return vk::ImageAspectFlagBits::eDepth | vk::ImageAspectFlagBits::eStencil;
+	}
+	if (HasDepthComponent(format))
+	{
+		return vk::ImageAspectFlagBits::eDepth;
+	}
+	if (HasStencilComponent(format))
+	{
+		return vk::ImageAspectFlagBits::eStencil;
+	}
+	return vk::ImageAspectFlagBits::eColor;
 }
 
-void OneShotCommandBuffer::TakeOwnership(vk::UniqueBuffer buffer)
+void CopyBufferToImage(vk::CommandBuffer cmdBuffer, vk::Buffer source, vk::Image destination, vk::Format imageFormat, vk::Extent3D imageExtent)
 {
-	m_ownedBuffers.push_back(std::move(buffer));
+	const auto copyRegion = vk::BufferImageCopy
+	{
+		.bufferOffset = 0,
+		.bufferRowLength = 0,
+		.bufferImageHeight = 0,
+		.imageSubresource = {
+			.aspectMask = GetImageAspect(imageFormat),
+			.mipLevel = 0,
+			.baseArrayLayer = 0,
+			.layerCount = 1,
+		},
+		.imageOffset = {0,0,0},
+		.imageExtent = imageExtent,
+	};
+	cmdBuffer.copyBufferToImage(source, destination, vk::ImageLayout::eTransferDstOptimal, copyRegion);
+}
+
+void CopyImageToBuffer(vk::CommandBuffer cmdBuffer, vk::Image source, vk::Buffer destination, vk::Format imageFormat, vk::Extent3D imageExtent)
+{
+	const auto copyRegion = vk::BufferImageCopy
+	{
+		.bufferOffset = 0,
+		.bufferRowLength = 0,
+		.bufferImageHeight = 0,
+		.imageSubresource = {
+			.aspectMask = GetImageAspect(imageFormat),
+			.mipLevel = 0,
+			.baseArrayLayer = 0,
+			.layerCount = 1,
+		},
+		.imageOffset = {0,0,0},
+		.imageExtent = imageExtent,
+	};
+	cmdBuffer.copyImageToBuffer(source, vk::ImageLayout::eTransferSrcOptimal, destination, copyRegion);
 }
