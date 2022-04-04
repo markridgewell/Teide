@@ -52,7 +52,8 @@ public:
 	    GraphicsDevice& device, uint32_t graphicsFamilyIndex, std::optional<uint32_t> presentFamilyIndex,
 	    uint32_t numThreads = std::thread::hardware_concurrency());
 
-	vk::Fence BeginFrame(uint32_t frameNumber);
+	std::uint32_t GetFrameNumber() const;
+	vk::Fence BeginFrame();
 	void EndFrame(std::span<const SurfaceImage> images);
 	void EndFrame(const SurfaceImage& image);
 
@@ -84,11 +85,26 @@ private:
 	std::uint32_t AddCommandBufferSlot();
 	void SubmitCommandBuffer(std::uint32_t index, vk::CommandBuffer commandBuffer);
 
+	template <typename F, typename... ArgsT>
+	auto LaunchTask(F&& f, ArgsT&&... args)
+	{
+		m_tasks.push_back(m_executor.async(std::forward<F>(f), std::forward<ArgsT>(args)...));
+	}
+
+	void WaitForTasks()
+	{
+		for (auto& task : m_tasks)
+		{
+			task.wait();
+		}
+		m_tasks.clear();
+	}
+
 	GraphicsDevice& m_device;
 	vk::Queue m_graphicsQueue;
 	vk::Queue m_presentQueue;
 	tf::Executor m_executor;
-	tf::Taskflow m_taskflow;
+	std::vector<tf::Future<void>> m_tasks;
 	std::array<vk::UniqueSemaphore, MaxFramesInFlight> m_renderFinished;
 	std::array<vk::UniqueFence, MaxFramesInFlight> m_inFlightFences;
 	std::array<std::vector<ThreadResources>, MaxFramesInFlight> m_frameResources;

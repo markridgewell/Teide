@@ -48,9 +48,6 @@ public:
 private:
 	auto OneShotCommands() { return OneShotCommandBuffer(m_device.get(), m_setupCommandPool.get(), m_graphicsQueue); }
 
-	Texture CreateTextureImpl(
-	    const TextureData& data, vk::ImageUsageFlags usage, OneShotCommandBuffer& cmdBuffer, const char* debugName);
-
 	std::vector<vk::UniqueDescriptorSet> CreateDescriptorSets(
 	    vk::DescriptorSetLayout layout, size_t numSets, const DynamicBuffer& uniformBuffer,
 	    std::span<const Texture* const> textures, const char* name);

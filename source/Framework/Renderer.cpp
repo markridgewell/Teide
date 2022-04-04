@@ -38,24 +38,22 @@ Renderer::Renderer(GraphicsDevice& device, uint32_t graphicsFamilyIndex, std::op
 	std::ranges::generate(m_inFlightFences, [=] { return CreateFence(vkdevice); });
 }
 
-vk::Fence Renderer::BeginFrame(uint32_t frameNumber)
+std::uint32_t Renderer::GetFrameNumber() const
+{
+	return m_frameNumber;
+}
+
+vk::Fence Renderer::BeginFrame()
 {
 	constexpr uint64_t timeout = std::numeric_limits<uint64_t>::max();
 
-	assert(m_frameNumber == 0 || (m_frameNumber + 1) % MaxFramesInFlight == frameNumber);
-	m_frameNumber = frameNumber;
+	m_frameNumber = (m_frameNumber + 1) % MaxFramesInFlight;
 
 	[[maybe_unused]] const auto waitResult
-	    = m_device.GetVulkanDevice().waitForFences(m_inFlightFences[frameNumber].get(), true, timeout);
+	    = m_device.GetVulkanDevice().waitForFences(m_inFlightFences[m_frameNumber].get(), true, timeout);
 	assert(waitResult == vk::Result::eSuccess); // TODO check if waitForFences can fail with no timeout
 
-	auto& frameResources = m_frameResources[frameNumber];
-	for (auto& threadResources : frameResources)
-	{
-		threadResources.Reset(m_device.GetVulkanDevice());
-	}
-
-	return m_inFlightFences[frameNumber].get();
+	return m_inFlightFences[m_frameNumber].get();
 }
 
 void Renderer::EndFrame(std::span<const SurfaceImage> images)
@@ -78,8 +76,7 @@ void Renderer::EndFrame(std::span<const SurfaceImage> images)
 	auto signalSemaphores = std::span(&m_renderFinished[m_frameNumber].get(), 1);
 	auto fenceToSignal = m_inFlightFences[m_frameNumber].get();
 
-	m_executor.run(m_taskflow).wait();
-	m_taskflow.clear();
+	WaitForTasks();
 
 	m_device.GetVulkanDevice().resetFences(fenceToSignal);
 
@@ -113,6 +110,13 @@ void Renderer::EndFrame(std::span<const SurfaceImage> images)
 	if (presentResult == vk::Result::eSuboptimalKHR)
 	{
 		spdlog::warn("Suboptimal swapchain image");
+	}
+
+	// Reset resources for the next frame
+	auto& nextFrameResources = m_frameResources[(m_frameNumber + 1) % MaxFramesInFlight];
+	for (auto& threadResources : nextFrameResources)
+	{
+		threadResources.Reset(m_device.GetVulkanDevice());
 	}
 }
 
@@ -167,17 +171,17 @@ void Renderer::RenderToTexture(RenderableTexture& texture, RenderList renderList
 {
 	const std::uint32_t sequenceIndex = AddCommandBufferSlot();
 
-	m_taskflow.emplace([=, renderList = std::move(renderList), &texture] {
+	LaunchTask([=, renderList = std::move(renderList), &texture] {
 		const uint32_t taskIndex = m_executor.this_worker_id();
 
 		CommandBuffer& commandBuffer = GetCommandBuffer(taskIndex);
 
-		texture.DiscardContents();
-		texture.TransitionToDepthStencilTarget(commandBuffer);
+		TextureState textureState;
+		texture.TransitionToRenderTarget(textureState, commandBuffer);
 
 		Render(renderList, texture.renderPass.get(), texture.framebuffer.get(), texture.size, commandBuffer);
 
-		texture.TransitionToShaderInput(commandBuffer);
+		texture.TransitionToShaderInput(textureState, commandBuffer);
 
 		SubmitCommandBuffer(sequenceIndex, commandBuffer);
 	});
@@ -189,7 +193,8 @@ void Renderer::RenderToSurface(const SurfaceImage& surfaceImage, RenderList rend
 
 	const auto framebuffer = surfaceImage.framebuffer;
 	const auto extent = surfaceImage.extent;
-	m_taskflow.emplace([=, renderList = std::move(renderList)] {
+
+	LaunchTask([=, renderList = std::move(renderList)] {
 		const uint32_t taskIndex = m_executor.this_worker_id();
 
 		CommandBuffer& commandBuffer = GetCommandBuffer(taskIndex);
@@ -204,7 +209,7 @@ Future<TextureData> Renderer::CopyTextureData(RenderableTexture& texture)
 {
 	const std::uint32_t sequenceIndex = AddCommandBufferSlot();
 
-	const auto copyToBuffer = m_executor.async([=, &texture] {
+	LaunchTask([=, &texture] {
 		const uint32_t taskIndex = m_executor.this_worker_id();
 
 		auto buffer = CreateBufferUninitialized(
@@ -213,11 +218,15 @@ Future<TextureData> Renderer::CopyTextureData(RenderableTexture& texture)
 
 		CommandBuffer& commandBuffer = GetCommandBuffer(taskIndex);
 
-		texture.TransitionToTransferSrc(commandBuffer);
+		TextureState textureState = {
+		    .layout = vk::ImageLayout::eShaderReadOnlyOptimal,
+		    .lastPipelineStageUsage = vk::PipelineStageFlagBits::eFragmentShader,
+		};
+		texture.TransitionToTransferSrc(textureState, commandBuffer);
 		const auto extent = vk::Extent3D{texture.size.width, texture.size.height, 1};
 		CopyImageToBuffer(commandBuffer, texture.image.get(), buffer.buffer.get(), texture.format, extent);
 		commandBuffer.TakeOwnership(std::move(buffer.buffer));
-		texture.TransitionToShaderInput(commandBuffer);
+		texture.TransitionToShaderInput(textureState, commandBuffer);
 
 		SubmitCommandBuffer(sequenceIndex, commandBuffer);
 	});

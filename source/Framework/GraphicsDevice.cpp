@@ -373,6 +373,109 @@ Buffer CreateBufferWithData(
 	}
 }
 
+struct TextureAndState
+{
+	Texture texture;
+	TextureState state;
+};
+
+TextureAndState CreateTextureImpl(
+    const TextureData& data, vk::Device device, MemoryAllocator& allocator, vk::ImageUsageFlags usage,
+    OneShotCommandBuffer& cmdBuffer, const char* debugName)
+{
+	if (!data.pixels.empty())
+	{
+		// Need to transfer image data into image
+		usage |= vk::ImageUsageFlagBits::eTransferDst;
+	}
+
+	if (data.mipLevelCount > 1)
+	{
+		// Need to transfer pixels between mip levels in order to generate mipmaps
+		usage |= vk::ImageUsageFlagBits::eTransferSrc | vk::ImageUsageFlagBits::eTransferDst;
+	}
+
+	auto initialState = TextureState{
+	    .layout = vk::ImageLayout::eUndefined,
+	    .lastPipelineStageUsage = vk::PipelineStageFlagBits::eTopOfPipe,
+	};
+
+	// Create image
+	const auto imageExtent = vk::Extent3D{data.size.width, data.size.height, 1};
+	const auto imageInfo = vk::ImageCreateInfo{
+	    .imageType = vk::ImageType::e2D,
+	    .format = data.format,
+	    .extent = imageExtent,
+	    .mipLevels = data.mipLevelCount,
+	    .arrayLayers = 1,
+	    .samples = data.samples,
+	    .tiling = vk::ImageTiling::eOptimal,
+	    .usage = usage,
+	    .sharingMode = vk::SharingMode::eExclusive,
+	    .initialLayout = initialState.layout,
+	};
+
+	auto image = device.createImageUnique(imageInfo, s_allocator);
+	const auto memory
+	    = allocator.Allocate(device.getImageMemoryRequirements(image.get()), vk::MemoryPropertyFlagBits::eDeviceLocal);
+	device.bindImageMemory(image.get(), memory.memory, memory.offset);
+
+	if (!data.pixels.empty())
+	{
+		// Create staging buffer
+		auto stagingBuffer = CreateBufferUninitialized(
+		    data.pixels.size(), vk::BufferUsageFlagBits::eTransferSrc,
+		    vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent, device, allocator);
+		SetBufferData(stagingBuffer, data.pixels);
+
+		// Copy staging buffer to image
+		TransitionImageLayout(
+		    cmdBuffer, image.get(), imageInfo.format, data.mipLevelCount, imageInfo.initialLayout,
+		    vk::ImageLayout::eTransferDstOptimal, vk::PipelineStageFlagBits::eTopOfPipe,
+		    vk::PipelineStageFlagBits::eTransfer);
+		initialState = {
+		    .layout = vk::ImageLayout::eTransferDstOptimal,
+		    .lastPipelineStageUsage = vk::PipelineStageFlagBits::eTransfer,
+		};
+		CopyBufferToImage(cmdBuffer, stagingBuffer.buffer.get(), image.get(), imageInfo.format, imageExtent);
+
+		cmdBuffer.TakeOwnership(std::move(stagingBuffer.buffer));
+	}
+
+	// Create image view
+	const auto viewInfo = vk::ImageViewCreateInfo{
+		.image = image.get(),
+		.viewType = vk::ImageViewType::e2D,
+		.format = data.format,
+		.subresourceRange = {
+			.aspectMask =  GetImageAspect(data.format),
+			.baseMipLevel = 0,
+			.levelCount = data.mipLevelCount,
+			.baseArrayLayer = 0,
+			.layerCount = 1,
+		},
+	};
+	auto imageView = device.createImageViewUnique(viewInfo, s_allocator);
+	auto sampler = device.createSamplerUnique(data.samplerInfo, s_allocator);
+
+	auto ret = Texture{
+	    .image = std::move(image),
+	    .memory = memory,
+	    .imageView = std::move(imageView),
+	    .sampler = std::move(sampler),
+	    .size = {imageExtent.width, imageExtent.height},
+	    .format = data.format,
+	    .mipLevelCount = data.mipLevelCount,
+	    .samples = data.samples,
+	};
+
+	SetDebugName(ret.image, debugName);
+	SetDebugName(ret.imageView, "{}:View", debugName);
+	SetDebugName(ret.sampler, "{}:Sampler", debugName);
+
+	return {std::move(ret), initialState};
+}
+
 vk::UniqueDescriptorSetLayout
 CreateDescriptorSetLayout(vk::Device device, std::span<const vk::DescriptorSetLayoutBinding> layoutBindings)
 {
@@ -657,17 +760,18 @@ TexturePtr GraphicsDevice::CreateTexture(const TextureData& data, const char* na
 {
 	auto cmdBuffer = OneShotCommands();
 
-	auto texture = CreateTextureImpl(data, vk::ImageUsageFlagBits::eSampled, cmdBuffer, name);
+	auto [texture, state]
+	    = CreateTextureImpl(data, m_device.get(), m_allocator.value(), vk::ImageUsageFlagBits::eSampled, cmdBuffer, name);
 
 	if (data.mipLevelCount > 1)
 	{
-		texture.GenerateMipmaps(cmdBuffer);
+		texture.GenerateMipmaps(state, cmdBuffer);
 	}
 	else
 	{
 		// Transition into samplable image, but only if mipmaps were not generated
 		// (if so, the mipmap generation already transitioned to image to be samplable)
-		texture.TransitionToShaderInput(cmdBuffer);
+		texture.TransitionToShaderInput(state, cmdBuffer);
 	}
 
 	return std::make_shared<const Texture>(std::move(texture));
@@ -686,15 +790,16 @@ RenderableTexturePtr GraphicsDevice::CreateRenderableTexture(const TextureData& 
 
 	auto cmdBuffer = OneShotCommands();
 
-	auto texture = RenderableTexture{{CreateTextureImpl(data, usage, cmdBuffer, name)}};
+	auto [createdTexture, state] = CreateTextureImpl(data, m_device.get(), m_allocator.value(), usage, cmdBuffer, name);
+	auto texture = RenderableTexture{{std::move(createdTexture)}};
 
 	if (isColorTarget)
 	{
-		texture.TransitionToColorTarget(cmdBuffer);
+		texture.TransitionToColorTarget(state, cmdBuffer);
 	}
 	else
 	{
-		texture.TransitionToDepthStencilTarget(cmdBuffer);
+		texture.TransitionToDepthStencilTarget(state, cmdBuffer);
 	}
 
 	// Create render pass
@@ -706,12 +811,12 @@ RenderableTexturePtr GraphicsDevice::CreateRenderableTexture(const TextureData& 
 	    .stencilLoadOp = vk::AttachmentLoadOp::eDontCare,
 	    .stencilStoreOp = vk::AttachmentStoreOp::eDontCare,
 	    .initialLayout = vk::ImageLayout::eUndefined,
-	    .finalLayout = texture.layout,
+	    .finalLayout = state.layout,
 	};
 
 	const auto attachmentRef = vk::AttachmentReference{
 	    .attachment = 0,
-	    .layout = texture.layout,
+	    .layout = state.layout,
 	};
 
 	const auto subpass = MakeSubpassDescription(attachmentRef, isColorTarget);
@@ -759,101 +864,6 @@ PipelinePtr GraphicsDevice::CreatePipeline(
 	    CreateGraphicsPipeline(
 	        shader, vertexLayout, renderStates, texture.renderPass.get(), texture.format, texture.samples, m_device.get()),
 	    shader.pipelineLayout.get());
-}
-
-Texture GraphicsDevice::CreateTextureImpl(
-    const TextureData& data, vk::ImageUsageFlags usage, OneShotCommandBuffer& cmdBuffer, const char* name)
-{
-	if (!data.pixels.empty())
-	{
-		// Need to transfer image data into image
-		usage |= vk::ImageUsageFlagBits::eTransferDst;
-	}
-
-	if (data.mipLevelCount > 1)
-	{
-		// Need to transfer pixels between mip levels in order to generate mipmaps
-		usage |= vk::ImageUsageFlagBits::eTransferSrc | vk::ImageUsageFlagBits::eTransferDst;
-	}
-
-	auto initialLayout = vk::ImageLayout::eUndefined;
-	auto initialPipelineStage = vk::PipelineStageFlagBits::eTopOfPipe;
-
-	// Create image
-	const auto imageExtent = vk::Extent3D{data.size.width, data.size.height, 1};
-	const auto imageInfo = vk::ImageCreateInfo{
-	    .imageType = vk::ImageType::e2D,
-	    .format = data.format,
-	    .extent = imageExtent,
-	    .mipLevels = data.mipLevelCount,
-	    .arrayLayers = 1,
-	    .samples = data.samples,
-	    .tiling = vk::ImageTiling::eOptimal,
-	    .usage = usage,
-	    .sharingMode = vk::SharingMode::eExclusive,
-	    .initialLayout = initialLayout,
-	};
-
-	auto image = m_device->createImageUnique(imageInfo, s_allocator);
-	const auto memory
-	    = m_allocator->Allocate(m_device->getImageMemoryRequirements(image.get()), vk::MemoryPropertyFlagBits::eDeviceLocal);
-	m_device->bindImageMemory(image.get(), memory.memory, memory.offset);
-
-	if (!data.pixels.empty())
-	{
-		// Create staging buffer
-		auto stagingBuffer = CreateBufferUninitialized(
-		    data.pixels.size(), vk::BufferUsageFlagBits::eTransferSrc,
-		    vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent, m_device.get(),
-		    *m_allocator);
-		SetBufferData(stagingBuffer, data.pixels);
-
-		// Copy staging buffer to image
-		TransitionImageLayout(
-		    cmdBuffer, image.get(), imageInfo.format, data.mipLevelCount, imageInfo.initialLayout,
-		    vk::ImageLayout::eTransferDstOptimal, vk::PipelineStageFlagBits::eTopOfPipe,
-		    vk::PipelineStageFlagBits::eTransfer);
-		initialLayout = vk::ImageLayout::eTransferDstOptimal;
-		initialPipelineStage = vk::PipelineStageFlagBits::eTransfer;
-		CopyBufferToImage(cmdBuffer, stagingBuffer.buffer.get(), image.get(), imageInfo.format, imageExtent);
-
-		cmdBuffer.TakeOwnership(std::move(stagingBuffer.buffer));
-	}
-
-	// Create image view
-	const auto viewInfo = vk::ImageViewCreateInfo{
-		.image = image.get(),
-		.viewType = vk::ImageViewType::e2D,
-		.format = data.format,
-		.subresourceRange = {
-			.aspectMask =  GetImageAspect(data.format),
-			.baseMipLevel = 0,
-			.levelCount = data.mipLevelCount,
-			.baseArrayLayer = 0,
-			.layerCount = 1,
-		},
-	};
-	auto imageView = m_device->createImageViewUnique(viewInfo, s_allocator);
-	auto sampler = m_device->createSamplerUnique(data.samplerInfo, s_allocator);
-
-	auto ret = Texture{
-	    .image = std::move(image),
-	    .memory = memory,
-	    .imageView = std::move(imageView),
-	    .sampler = std::move(sampler),
-	    .size = {imageExtent.width, imageExtent.height},
-	    .format = data.format,
-	    .mipLevelCount = data.mipLevelCount,
-	    .samples = data.samples,
-	    .layout = initialLayout,
-	    .lastPipelineStageUsage = initialPipelineStage,
-	};
-
-	SetDebugName(ret.image, name);
-	SetDebugName(ret.imageView, "{}:View", name);
-	SetDebugName(ret.sampler, "{}:Sampler", name);
-
-	return ret;
 }
 
 std::vector<vk::UniqueDescriptorSet> GraphicsDevice::CreateDescriptorSets(

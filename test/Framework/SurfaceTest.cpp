@@ -85,7 +85,7 @@ TEST(SurfaceTest, RenderToSurface)
 	auto surface = device.CreateSurface(window.get(), true);
 	auto renderer = device.CreateRenderer();
 
-	const auto fence = renderer.BeginFrame(0);
+	const auto fence = renderer.BeginFrame();
 	const auto image = surface.AcquireNextImage(fence);
 	ASSERT_THAT(image.has_value(), IsTrue());
 	const auto clearColor = std::array{255, 0, 0, 255};

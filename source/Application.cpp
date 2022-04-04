@@ -270,7 +270,7 @@ public:
 
 	void OnRender()
 	{
-		vk::Fence fence = m_renderer.BeginFrame(m_currentFrame);
+		vk::Fence fence = m_renderer.BeginFrame();
 
 		const auto result = m_surface.AcquireNextImage(fence);
 		if (!result.has_value())
@@ -318,7 +318,7 @@ public:
 		    .ambientColorBottom = {0.003f, 0.003f, 0.002f},
 		    .shadowMatrix = m_shadowMatrix,
 		};
-		m_sceneParams->SetUniformData(m_currentFrame, globalUniforms);
+		m_sceneParams->SetUniformData(m_renderer.GetFrameNumber(), globalUniforms);
 
 		// Update object uniforms
 		m_objectUniforms = {
@@ -339,7 +339,7 @@ public:
 			    .viewProj = m_shadowMatrix,
 			};
 
-			m_viewParams[0]->SetUniformData(m_currentFrame, viewUniforms);
+			m_viewParams[0]->SetUniformData(m_renderer.GetFrameNumber(), viewUniforms);
 
 			RenderList renderList = {
 			    .clearValues = clearValues,
@@ -386,7 +386,7 @@ public:
 			const auto viewUniforms = ViewUniforms{
 			    .viewProj = viewProj,
 			};
-			m_viewParams[1]->SetUniformData(m_currentFrame, viewUniforms);
+			m_viewParams[1]->SetUniformData(m_renderer.GetFrameNumber(), viewUniforms);
 
 			RenderList renderList = {
 			    .clearValues = clearValues,
@@ -406,8 +406,6 @@ public:
 		}
 
 		m_renderer.EndFrame(image);
-
-		m_currentFrame = (m_currentFrame + 1) % MaxFramesInFlight;
 	}
 
 	void OnResize() { m_surface.OnResize(); }
@@ -765,7 +763,6 @@ private:
 
 	// Rendering
 	Renderer m_renderer;
-	uint32_t m_currentFrame = 0;
 };
 
 struct SDLWindowDeleter

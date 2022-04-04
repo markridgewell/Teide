@@ -20,6 +20,12 @@ struct TextureData
 
 std::vector<std::byte> CopyBytes(BytesView src);
 
+struct TextureState
+{
+	vk::ImageLayout layout = vk::ImageLayout::eUndefined;
+	vk::PipelineStageFlags lastPipelineStageUsage = vk::PipelineStageFlagBits::eTopOfPipe;
+};
+
 struct Texture
 {
 	vk::UniqueImage image;
@@ -30,26 +36,24 @@ struct Texture
 	vk::Format format;
 	uint32_t mipLevelCount = 1;
 	vk::SampleCountFlagBits samples = vk::SampleCountFlagBits::e1;
-	vk::ImageLayout layout = vk::ImageLayout::eUndefined;
-	vk::PipelineStageFlags lastPipelineStageUsage = vk::PipelineStageFlagBits::eTopOfPipe;
 
-	void GenerateMipmaps(vk::CommandBuffer cmdBuffer);
+	void GenerateMipmaps(TextureState& state, vk::CommandBuffer cmdBuffer);
 
-	void TransitionToShaderInput(vk::CommandBuffer cmdBuffer);
+	void TransitionToShaderInput(TextureState& state, vk::CommandBuffer cmdBuffer);
 
 protected:
-	void DoTransition(vk::CommandBuffer cmdBuffer, vk::ImageLayout newLayout, vk::PipelineStageFlags newPipelineStageFlags);
+	void DoTransition(
+	    TextureState& state, vk::CommandBuffer cmdBuffer, vk::ImageLayout newLayout,
+	    vk::PipelineStageFlags newPipelineStageFlags);
 };
 
 struct RenderableTexture : public Texture
 {
 	vk::UniqueRenderPass renderPass;
 	vk::UniqueFramebuffer framebuffer;
-	tf::Future<void> future;
 
-	void DiscardContents();
-
-	void TransitionToColorTarget(vk::CommandBuffer cmdBuffer);
-	void TransitionToDepthStencilTarget(vk::CommandBuffer cmdBuffer);
-	void TransitionToTransferSrc(vk::CommandBuffer cmdBuffer);
+	void TransitionToRenderTarget(TextureState& state, vk::CommandBuffer cmdBuffer);
+	void TransitionToColorTarget(TextureState& state, vk::CommandBuffer cmdBuffer);
+	void TransitionToDepthStencilTarget(TextureState& state, vk::CommandBuffer cmdBuffer);
+	void TransitionToTransferSrc(TextureState& state, vk::CommandBuffer cmdBuffer);
 };

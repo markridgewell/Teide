@@ -6,7 +6,7 @@ std::vector<std::byte> CopyBytes(BytesView src)
 	return std::vector<std::byte>(src.begin(), src.end());
 }
 
-void Texture::GenerateMipmaps(vk::CommandBuffer cmdBuffer)
+void Texture::GenerateMipmaps(TextureState& state, vk::CommandBuffer cmdBuffer)
 {
 	const auto makeBarrier = [&](vk::AccessFlags srcAccessMask, vk::AccessFlags dstAccessMask,
 	                             vk::ImageLayout oldLayout, vk::ImageLayout newLayout, uint32_t mipLevel) {
@@ -92,56 +92,64 @@ void Texture::GenerateMipmaps(vk::CommandBuffer cmdBuffer)
 	cmdBuffer.pipelineBarrier(
 	    vk::PipelineStageFlagBits::eTransfer, vk::PipelineStageFlagBits::eFragmentShader, {}, {}, {}, finalBarrier);
 
-	layout = vk::ImageLayout::eShaderReadOnlyOptimal;
+	state.layout = vk::ImageLayout::eShaderReadOnlyOptimal;
 }
 
-void Texture::TransitionToShaderInput(vk::CommandBuffer cmdBuffer)
+void Texture::TransitionToShaderInput(TextureState& state, vk::CommandBuffer cmdBuffer)
 {
 	auto newLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
-	if (layout == vk::ImageLayout::eDepthStencilAttachmentOptimal)
+	if (state.layout == vk::ImageLayout::eDepthStencilAttachmentOptimal)
 	{
 		newLayout = vk::ImageLayout::eDepthStencilReadOnlyOptimal;
 	}
-	DoTransition(cmdBuffer, newLayout, vk::PipelineStageFlagBits::eFragmentShader);
+	DoTransition(state, cmdBuffer, newLayout, vk::PipelineStageFlagBits::eFragmentShader);
 }
 
-void Texture::DoTransition(vk::CommandBuffer cmdBuffer, vk::ImageLayout newLayout, vk::PipelineStageFlags newPipelineStageFlags)
+void Texture::DoTransition(
+    TextureState& state, vk::CommandBuffer cmdBuffer, vk::ImageLayout newLayout, vk::PipelineStageFlags newPipelineStageFlags)
 {
-	if (newLayout == layout && newPipelineStageFlags == lastPipelineStageUsage)
+	if (newLayout == state.layout && newPipelineStageFlags == state.lastPipelineStageUsage)
 	{
 		return;
 	}
 
 	TransitionImageLayout(
-	    cmdBuffer, image.get(), format, mipLevelCount, layout, newLayout, lastPipelineStageUsage, newPipelineStageFlags);
+	    cmdBuffer, image.get(), format, mipLevelCount, state.layout, newLayout, state.lastPipelineStageUsage,
+	    newPipelineStageFlags);
 
-	layout = newLayout;
-	lastPipelineStageUsage = newPipelineStageFlags;
+	state.layout = newLayout;
+	state.lastPipelineStageUsage = newPipelineStageFlags;
 }
 
-void RenderableTexture::DiscardContents()
+void RenderableTexture::TransitionToRenderTarget(TextureState& state, vk::CommandBuffer cmdBuffer)
 {
-	layout = vk::ImageLayout::eUndefined;
-	lastPipelineStageUsage = vk::PipelineStageFlagBits::eTopOfPipe;
+	if (HasDepthOrStencilComponent(format))
+	{
+		TransitionToDepthStencilTarget(state, cmdBuffer);
+	}
+	else
+	{
+		TransitionToColorTarget(state, cmdBuffer);
+	}
 }
 
-void RenderableTexture::TransitionToColorTarget(vk::CommandBuffer cmdBuffer)
+void RenderableTexture::TransitionToColorTarget(TextureState& state, vk::CommandBuffer cmdBuffer)
 {
 	assert(!HasDepthOrStencilComponent(format));
 
-	DoTransition(cmdBuffer, vk::ImageLayout::eColorAttachmentOptimal, vk::PipelineStageFlagBits::eColorAttachmentOutput);
+	DoTransition(state, cmdBuffer, vk::ImageLayout::eColorAttachmentOptimal, vk::PipelineStageFlagBits::eColorAttachmentOutput);
 }
 
-void RenderableTexture::TransitionToDepthStencilTarget(vk::CommandBuffer cmdBuffer)
+void RenderableTexture::TransitionToDepthStencilTarget(TextureState& state, vk::CommandBuffer cmdBuffer)
 {
 	assert(HasDepthOrStencilComponent(format));
 
 	DoTransition(
-	    cmdBuffer, vk::ImageLayout::eDepthStencilAttachmentOptimal,
+	    state, cmdBuffer, vk::ImageLayout::eDepthStencilAttachmentOptimal,
 	    vk::PipelineStageFlagBits::eEarlyFragmentTests | vk::PipelineStageFlagBits::eLateFragmentTests);
 }
 
-void RenderableTexture::TransitionToTransferSrc(vk::CommandBuffer cmdBuffer)
+void RenderableTexture::TransitionToTransferSrc(TextureState& state, vk::CommandBuffer cmdBuffer)
 {
-	DoTransition(cmdBuffer, vk::ImageLayout::eTransferSrcOptimal, vk::PipelineStageFlagBits::eTransfer);
+	DoTransition(state, cmdBuffer, vk::ImageLayout::eTransferSrcOptimal, vk::PipelineStageFlagBits::eTransfer);
 }
