@@ -16,10 +16,10 @@ jobs:
     strategy:
       matrix:
         buildtype: [Debug, Release]
-        preset: [msvc2019]
+        msvcver: [2019, 2022]
 
-    name: Build-and-Test-Windows-${{matrix.buildtype}}
-    runs-on: windows-latest
+    name: Build-and-Test-Windows-${{matrix.msvcver}}-${{matrix.buildtype}}
+    runs-on: windows-${{matrix.msvcver}}
 
     env:
       CMAKE_BUILD_TYPE: ${{matrix.buildtype}}
@@ -62,7 +62,7 @@ jobs:
         out-file-path: "swiftshader"
 
     - name: Configure CMake
-      run: cmake -B ${{github.workspace}}/build --preset ${{matrix.preset}}
+      run: cmake -B ${{github.workspace}}/build --preset msvc${{matrix.msvcver}}
 
     - name: Build
       run: cmake --build ${{github.workspace}}/build --config ${{matrix.buildtype}}
