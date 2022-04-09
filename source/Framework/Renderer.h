@@ -4,6 +4,7 @@
 #include "Framework/BytesView.h"
 #include "Framework/ForwardDeclare.h"
 #include "Framework/Internal/CommandBuffer.h"
+#include "Framework/Internal/GpuExecutor.h"
 #include "Framework/Internal/Vulkan.h"
 #include "Framework/Pipeline.h"
 #include "Framework/Surface.h"
@@ -81,11 +82,6 @@ private:
 
 	vk::DescriptorSet GetDescriptorSet(const ParameterBlock* parameterBlock) const;
 
-	using CompletionHandler = std::function<void()>;
-
-	std::uint32_t AddCommandBufferSlot();
-	void SubmitCommandBuffer(std::uint32_t index, vk::CommandBuffer commandBuffer, CompletionHandler function = {});
-
 	template <typename F, typename... ArgsT>
 	auto LaunchTask(F&& f, ArgsT&&... args)
 	{
@@ -108,17 +104,12 @@ private:
 	std::stop_source m_schedulerStopSource;
 	struct ScheduledTask
 	{
-		vk::Fence fence;
+		std::shared_future<void> future;
 		std::function<void()> callback;
 	};
 	std::vector<ScheduledTask> m_scheduledTasks;
 
-	std::mutex m_readyCommandBuffersMutex;
-	std::vector<vk::CommandBuffer> m_readyCommandBuffers;
-	std::unordered_map<vk::CommandBuffer, CompletionHandler> m_completionHandlers;
-	std::queue<vk::UniqueFence> m_unusedSubmitFences;
-	std::vector<vk::UniqueFence> m_submitFences;
-	std::size_t m_numSubmittedCommandBuffers = 0;
+	GpuExecutor m_gpuExecutor;
 
 	std::mutex m_surfaceCommandBuffersMutex;
 	std::vector<vk::CommandBuffer> m_surfaceCommandBuffers;

@@ -23,8 +23,13 @@ void SetCommandBufferDebugName(vk::UniqueCommandBuffer& commandBuffer, std::uint
 } // namespace
 
 Renderer::Renderer(GraphicsDevice& device, uint32_t graphicsFamilyIndex, std::optional<uint32_t> presentFamilyIndex, uint32_t numThreads) :
-    m_device{device}, m_graphicsQueue{device.GetVulkanDevice().getQueue(graphicsFamilyIndex, 0)}, m_executor(numThreads)
+    m_device{device},
+    m_graphicsQueue{device.GetVulkanDevice().getQueue(graphicsFamilyIndex, 0)},
+    m_executor(numThreads),
+    m_gpuExecutor(m_device.GetVulkanDevice(), m_graphicsQueue)
 {
+	using namespace std::chrono_literals;
+
 	const auto vkdevice = device.GetVulkanDevice();
 
 	if (presentFamilyIndex)
@@ -38,49 +43,29 @@ Renderer::Renderer(GraphicsDevice& device, uint32_t graphicsFamilyIndex, std::op
 	std::ranges::generate(m_inFlightFences, [=] { return CreateFence(vkdevice, vk::FenceCreateFlagBits::eSignaled); });
 
 	m_schedulerThread = std::jthread([this, stop_token = m_schedulerStopSource.get_token()] {
-		constexpr auto timeout = std::chrono::milliseconds{2};
-
-		std::vector<vk::Fence> fences;
-		const auto device = m_device.GetVulkanDevice();
+		constexpr auto timeout = 2ms;
 
 		while (!stop_token.stop_requested())
 		{
-			fences.clear();
+			std::this_thread::sleep_for(timeout);
+
+			auto lock = std::scoped_lock(m_schedulerMutex);
+
+			// If there are futures, check if any have a value
+			for (auto& [future, callback] : m_scheduledTasks)
 			{
-				auto lock = std::scoped_lock(m_schedulerMutex);
-
-				// Make a list of fence handles of all scheduled tasks
-				std::ranges::transform(m_scheduledTasks, std::back_inserter(fences), &ScheduledTask::fence);
-			}
-
-			// If there are no fences to wait on, sleep for a bit and try again
-			if (fences.empty())
-			{
-				std::this_thread::sleep_for(timeout);
-				continue;
-			}
-
-			// If there are fences, wait on them and see if any are signalled
-			if (device.waitForFences(fences, false, Timeout(timeout)) == vk::Result::eSuccess)
-			{
-				auto lock = std::scoped_lock(m_schedulerMutex);
-
-				// A fence was signalled, but we don't know which one yet, iterate them to find out
-				for (auto& [fence, callback] : m_scheduledTasks)
+				if (future.wait_for(0s) == std::future_status::ready)
 				{
-					if (device.waitForFences(fence, false, 0) == vk::Result::eSuccess)
-					{
-						// Found one, execute the attached callback
-						LaunchTask(callback);
+					// Found one, execute the attached callback
+					LaunchTask(callback);
 
-						// Mark it as done
-						callback = nullptr;
-					}
+					// Mark it as done
+					callback = nullptr;
 				}
-
-				// Remove done tasks
-				std::erase_if(m_scheduledTasks, [](const auto& entry) { return entry.callback == nullptr; });
 			}
+
+			// Remove done tasks
+			std::erase_if(m_scheduledTasks, [](const auto& entry) { return entry.callback == nullptr; });
 		}
 	});
 }
@@ -93,12 +78,13 @@ Renderer::~Renderer()
 
 	auto fences = std::vector<vk::Fence>();
 	std::ranges::transform(m_inFlightFences, std::back_inserter(fences), [](const auto& f) { return f.get(); });
-	std::ranges::transform(m_submitFences, std::back_inserter(fences), [](const auto& f) { return f.get(); });
-
-	constexpr auto timeout = Timeout(std::chrono::seconds{1});
-	if (m_device.GetVulkanDevice().waitForFences(fences, true, timeout) == vk::Result::eTimeout)
+	if (!fences.empty())
 	{
-		spdlog::error("Timeout while waiting for command buffer execution to complete!");
+		constexpr auto timeout = Timeout(std::chrono::seconds{1});
+		if (m_device.GetVulkanDevice().waitForFences(fences, true, timeout) == vk::Result::eTimeout)
+		{
+			spdlog::error("Timeout while waiting for command buffer execution to complete!");
+		}
 	}
 }
 
@@ -183,17 +169,6 @@ void Renderer::EndFrame(std::span<const SurfaceImage> images)
 	{
 		spdlog::warn("Suboptimal swapchain image");
 	}
-
-	// Reuse fences for finished submits
-	for (auto& fence : m_submitFences)
-	{
-		if (device.waitForFences(fence.get(), false, 0) == vk::Result::eSuccess)
-		{
-			device.resetFences(fence.get());
-			m_unusedSubmitFences.push(std::exchange(fence, {}));
-		}
-	}
-	std::erase_if(m_submitFences, [](const vk::UniqueFence& fence) { return !fence; });
 }
 
 void Renderer::EndFrame(const SurfaceImage& image)
@@ -245,7 +220,7 @@ CommandBuffer& Renderer::GetCommandBuffer(uint32_t threadIndex)
 
 void Renderer::RenderToTexture(RenderableTexturePtr texture, RenderList renderList)
 {
-	const std::uint32_t sequenceIndex = AddCommandBufferSlot();
+	const std::uint32_t sequenceIndex = m_gpuExecutor.AddCommandBufferSlot();
 
 	LaunchTask([=, renderList = std::move(renderList), texture = std::move(texture)] {
 		const uint32_t taskIndex = m_executor.this_worker_id();
@@ -260,7 +235,7 @@ void Renderer::RenderToTexture(RenderableTexturePtr texture, RenderList renderLi
 
 		texture->TransitionToShaderInput(textureState, commandBuffer);
 
-		SubmitCommandBuffer(sequenceIndex, commandBuffer);
+		m_gpuExecutor.SubmitCommandBuffer(sequenceIndex, commandBuffer);
 	});
 }
 
@@ -283,7 +258,7 @@ void Renderer::RenderToSurface(const SurfaceImage& surfaceImage, RenderList rend
 
 std::future<TextureData> Renderer::CopyTextureData(RenderableTexturePtr texture)
 {
-	const std::uint32_t sequenceIndex = AddCommandBufferSlot();
+	const std::uint32_t sequenceIndex = m_gpuExecutor.AddCommandBufferSlot();
 
 	auto promise = std::make_shared<std::promise<TextureData>>();
 	auto future = promise->get_future();
@@ -317,7 +292,11 @@ std::future<TextureData> Renderer::CopyTextureData(RenderableTexturePtr texture)
 		    .samples = texture->samples,
 		};
 
-		SubmitCommandBuffer(sequenceIndex, commandBuffer, [bufferData, textureData, promise]() {
+		std::shared_future<void> future = m_gpuExecutor.SubmitCommandBuffer(sequenceIndex, commandBuffer);
+
+		const auto lock = std::scoped_lock(m_schedulerMutex);
+
+		m_scheduledTasks.emplace_back(std::move(future), [bufferData, textureData, promise]() {
 			const auto data = static_cast<const std::byte*>(bufferData.mappedData);
 
 			const auto size = textureData.size.width * textureData.size.height * GetFormatElementSize(textureData.format);
@@ -416,65 +395,4 @@ vk::DescriptorSet Renderer::GetDescriptorSet(const ParameterBlock* parameterBloc
 		return {};
 	}
 	return parameterBlock->descriptorSet[m_frameNumber % parameterBlock->descriptorSet.size()].get();
-}
-
-std::uint32_t Renderer::AddCommandBufferSlot()
-{
-	const auto lock = std::scoped_lock(m_readyCommandBuffersMutex);
-
-	m_readyCommandBuffers.emplace_back();
-	return static_cast<std::uint32_t>(m_readyCommandBuffers.size() - 1);
-}
-
-void Renderer::SubmitCommandBuffer(std::uint32_t index, vk::CommandBuffer commandBuffer, CompletionHandler function)
-{
-	const auto getFence = [this] {
-		if (m_unusedSubmitFences.empty())
-		{
-			return CreateFence(m_device.GetVulkanDevice());
-		}
-
-		auto nextFence = std::move(m_unusedSubmitFences.front());
-		m_unusedSubmitFences.pop();
-		return nextFence;
-	};
-
-	const auto lock = std::scoped_lock(m_readyCommandBuffersMutex);
-
-	if (function)
-	{
-		m_completionHandlers.emplace(commandBuffer, std::move(function));
-	}
-
-	commandBuffer.end();
-	m_readyCommandBuffers.at(index) = commandBuffer;
-
-	const auto unsubmittedCommandBuffers = std::span(m_readyCommandBuffers).subspan(m_numSubmittedCommandBuffers);
-
-	const auto end = std::ranges::find(unsubmittedCommandBuffers, vk::CommandBuffer{});
-	const auto commandBuffersToSubmit = std::span(unsubmittedCommandBuffers.begin(), end);
-
-	if (!commandBuffersToSubmit.empty())
-	{
-		const auto fence = m_submitFences.emplace_back(getFence()).get();
-		m_numSubmittedCommandBuffers += commandBuffersToSubmit.size();
-
-		const auto submitInfo = vk::SubmitInfo{
-		    .commandBufferCount = size32(commandBuffersToSubmit),
-		    .pCommandBuffers = data(commandBuffersToSubmit),
-		};
-		m_graphicsQueue.submit(submitInfo, fence);
-
-		// Queue up completion handlers
-		for (vk::CommandBuffer cb : commandBuffersToSubmit)
-		{
-			const auto lock2 = std::scoped_lock(m_schedulerMutex);
-
-			const auto completionHandler = m_completionHandlers.extract(cb);
-			if (completionHandler)
-			{
-				m_scheduledTasks.emplace_back(fence, std::move(completionHandler.mapped()));
-			}
-		}
-	}
 }

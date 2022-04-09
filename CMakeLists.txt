@@ -79,6 +79,8 @@ set(sources
     source/Framework/Texture.cpp
     source/Framework/Internal/CommandBuffer.h
     source/Framework/Internal/CommandBuffer.cpp
+    source/Framework/Internal/GpuExecutor.h
+    source/Framework/Internal/GpuExecutor.cpp
     source/Framework/Internal/MemoryAllocator.h
     source/Framework/Internal/MemoryAllocator.cpp
     source/Framework/Internal/Vulkan.h
