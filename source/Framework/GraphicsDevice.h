@@ -3,11 +3,11 @@
 
 #include "Framework/Buffer.h"
 #include "Framework/ForwardDeclare.h"
-#include "Framework/MemoryAllocator.h"
+#include "Framework/Internal/MemoryAllocator.h"
+#include "Framework/Internal/Vulkan.h"
 #include "Framework/ParameterBlock.h"
 #include "Framework/Renderer.h"
 #include "Framework/Surface.h"
-#include "Framework/Vulkan.h"
 
 #include <optional>
 #include <unordered_map>

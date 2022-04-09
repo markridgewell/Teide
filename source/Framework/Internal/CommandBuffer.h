@@ -1,6 +1,6 @@
 
 #include "Framework/ForwardDeclare.h"
-#include "Framework/Vulkan.h"
+#include "Framework/Internal/Vulkan.h"
 
 class CommandBuffer
 {

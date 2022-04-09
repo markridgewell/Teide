@@ -3,7 +3,7 @@
 
 #include "Framework/BytesView.h"
 #include "Framework/ForwardDeclare.h"
-#include "Framework/Vulkan.h"
+#include "Framework/Internal/Vulkan.h"
 
 #include <vector>
 

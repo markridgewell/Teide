@@ -2,11 +2,11 @@
 #pragma once
 
 #include "Framework/BytesView.h"
-#include "Framework/CommandBuffer.h"
 #include "Framework/ForwardDeclare.h"
+#include "Framework/Internal/CommandBuffer.h"
+#include "Framework/Internal/Vulkan.h"
 #include "Framework/Pipeline.h"
 #include "Framework/Surface.h"
-#include "Framework/Vulkan.h"
 
 #include <taskflow/taskflow.hpp>
 

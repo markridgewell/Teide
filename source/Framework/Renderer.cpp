@@ -2,8 +2,8 @@
 #include "Framework/Renderer.h"
 
 #include "Framework/GraphicsDevice.h"
+#include "Framework/Internal/Vulkan.h"
 #include "Framework/Texture.h"
-#include "Framework/Vulkan.h"
 
 #include <spdlog/spdlog.h>
 #include <vulkan/vulkan.hpp>

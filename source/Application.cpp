@@ -2,7 +2,6 @@
 #include "Definitions.h"
 #include "Framework/Buffer.h"
 #include "Framework/GraphicsDevice.h"
-#include "Framework/MemoryAllocator.h"
 #include "Framework/Renderer.h"
 #include "Framework/Shader.h"
 #include "Framework/Surface.h"

@@ -1,5 +1,5 @@
 
-#include "Framework/CommandBuffer.h"
+#include "Framework/Internal/CommandBuffer.h"
 
 CommandBuffer::CommandBuffer(vk::UniqueCommandBuffer commandBuffer) : m_cmdBuffer(std::move(commandBuffer))
 {}

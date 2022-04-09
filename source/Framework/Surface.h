@@ -1,8 +1,8 @@
 
 #pragma once
 
-#include "Framework/MemoryAllocator.h"
-#include "Framework/Vulkan.h"
+#include "Framework/Internal/MemoryAllocator.h"
+#include "Framework/Internal/Vulkan.h"
 
 #include <array>
 #include <optional>

@@ -63,14 +63,10 @@ add_test(NAME GeoLibTest COMMAND GeoLibTest)
 set(sources
     source/Framework/Buffer.h
     source/Framework/Buffer.cpp
-    source/Framework/CommandBuffer.h
-    source/Framework/CommandBuffer.cpp
     source/Framework/BytesView.h
     source/Framework/ForwardDeclare.h
     source/Framework/GraphicsDevice.h
     source/Framework/GraphicsDevice.cpp
-    source/Framework/MemoryAllocator.h
-    source/Framework/MemoryAllocator.cpp
     source/Framework/ParameterBlock.h
     source/Framework/ParameterBlock.cpp
     source/Framework/Pipeline.h
@@ -81,8 +77,12 @@ set(sources
     source/Framework/Surface.cpp
     source/Framework/Texture.h
     source/Framework/Texture.cpp
-    source/Framework/Vulkan.h
-    source/Framework/Vulkan.cpp
+    source/Framework/Internal/CommandBuffer.h
+    source/Framework/Internal/CommandBuffer.cpp
+    source/Framework/Internal/MemoryAllocator.h
+    source/Framework/Internal/MemoryAllocator.cpp
+    source/Framework/Internal/Vulkan.h
+    source/Framework/Internal/Vulkan.cpp
     Vulkan.natvis)
 
 add_library(Framework ${sources})
