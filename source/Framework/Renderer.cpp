@@ -35,7 +35,71 @@ Renderer::Renderer(GraphicsDevice& device, uint32_t graphicsFamilyIndex, std::op
 	std::ranges::generate(
 	    m_frameResources, [=] { return CreateThreadResources(vkdevice, graphicsFamilyIndex, numThreads); });
 	std::ranges::generate(m_renderFinished, [=] { return CreateSemaphore(vkdevice); });
-	std::ranges::generate(m_inFlightFences, [=] { return CreateFence(vkdevice); });
+	std::ranges::generate(m_inFlightFences, [=] { return CreateFence(vkdevice, vk::FenceCreateFlagBits::eSignaled); });
+
+	m_schedulerThread = std::jthread([this, stop_token = m_schedulerStopSource.get_token()] {
+		constexpr auto timeout = std::chrono::milliseconds{2};
+
+		std::vector<vk::Fence> fences;
+		const auto device = m_device.GetVulkanDevice();
+
+		while (!stop_token.stop_requested())
+		{
+			fences.clear();
+			{
+				auto lock = std::scoped_lock(m_schedulerMutex);
+
+				// Make a list of fence handles of all scheduled tasks
+				std::ranges::transform(m_scheduledTasks, std::back_inserter(fences), &ScheduledTask::fence);
+			}
+
+			// If there are no fences to wait on, sleep for a bit and try again
+			if (fences.empty())
+			{
+				std::this_thread::sleep_for(timeout);
+				continue;
+			}
+
+			// If there are fences, wait on them and see if any are signalled
+			if (device.waitForFences(fences, false, Timeout(timeout)) == vk::Result::eSuccess)
+			{
+				auto lock = std::scoped_lock(m_schedulerMutex);
+
+				// A fence was signalled, but we don't know which one yet, iterate them to find out
+				for (auto& [fence, callback] : m_scheduledTasks)
+				{
+					if (device.waitForFences(fence, false, 0) == vk::Result::eSuccess)
+					{
+						// Found one, execute the attached callback
+						LaunchTask(callback);
+
+						// Mark it as done
+						callback = nullptr;
+					}
+				}
+
+				// Remove done tasks
+				std::erase_if(m_scheduledTasks, [](const auto& entry) { return entry.callback == nullptr; });
+			}
+		}
+	});
+}
+
+Renderer::~Renderer()
+{
+	m_schedulerStopSource.request_stop();
+
+	WaitForTasks();
+
+	auto fences = std::vector<vk::Fence>();
+	std::ranges::transform(m_inFlightFences, std::back_inserter(fences), [](const auto& f) { return f.get(); });
+	std::ranges::transform(m_submitFences, std::back_inserter(fences), [](const auto& f) { return f.get(); });
+
+	constexpr auto timeout = Timeout(std::chrono::seconds{1});
+	if (m_device.GetVulkanDevice().waitForFences(fences, true, timeout) == vk::Result::eTimeout)
+	{
+		spdlog::error("Timeout while waiting for command buffer execution to complete!");
+	}
 }
 
 std::uint32_t Renderer::GetFrameNumber() const
@@ -53,12 +117,20 @@ vk::Fence Renderer::BeginFrame()
 	    = m_device.GetVulkanDevice().waitForFences(m_inFlightFences[m_frameNumber].get(), true, timeout);
 	assert(waitResult == vk::Result::eSuccess); // TODO check if waitForFences can fail with no timeout
 
+	auto& frameResources = m_frameResources[m_frameNumber];
+	for (auto& threadResources : frameResources)
+	{
+		threadResources.Reset(m_device.GetVulkanDevice());
+	}
+
 	return m_inFlightFences[m_frameNumber].get();
 }
 
 void Renderer::EndFrame(std::span<const SurfaceImage> images)
 {
 	assert(m_presentQueue && "Can't present without a present queue");
+
+	const auto device = m_device.GetVulkanDevice();
 
 	auto swapchains = std::vector<vk::SwapchainKHR>(images.size());
 	auto imageIndices = std::vector<uint32_t>(images.size());
@@ -78,23 +150,23 @@ void Renderer::EndFrame(std::span<const SurfaceImage> images)
 
 	WaitForTasks();
 
-	m_device.GetVulkanDevice().resetFences(fenceToSignal);
+	device.resetFences(fenceToSignal);
 
-	// Submit the command buffer(s)
+	// Submit the surface command buffer(s)
 	{
-		const auto lock = std::scoped_lock(m_readyCommandBuffersMutex);
+		const auto lock = std::scoped_lock(m_surfaceCommandBuffersMutex);
 		const auto submitInfo = vk::SubmitInfo{
 		    .waitSemaphoreCount = size32(waitSemaphores),
 		    .pWaitSemaphores = data(waitSemaphores),
 		    .pWaitDstStageMask = data(waitStages),
-		    .commandBufferCount = size32(m_readyCommandBuffers),
-		    .pCommandBuffers = data(m_readyCommandBuffers),
+		    .commandBufferCount = size32(m_surfaceCommandBuffers),
+		    .pCommandBuffers = data(m_surfaceCommandBuffers),
 		    .signalSemaphoreCount = size32(signalSemaphores),
 		    .pSignalSemaphores = data(signalSemaphores),
 		};
 		m_graphicsQueue.submit(submitInfo, fenceToSignal);
 
-		m_readyCommandBuffers.clear();
+		m_surfaceCommandBuffers.clear();
 	}
 
 	// Present
@@ -112,12 +184,16 @@ void Renderer::EndFrame(std::span<const SurfaceImage> images)
 		spdlog::warn("Suboptimal swapchain image");
 	}
 
-	// Reset resources for the next frame
-	auto& nextFrameResources = m_frameResources[(m_frameNumber + 1) % MaxFramesInFlight];
-	for (auto& threadResources : nextFrameResources)
+	// Reuse fences for finished submits
+	for (auto& fence : m_submitFences)
 	{
-		threadResources.Reset(m_device.GetVulkanDevice());
+		if (device.waitForFences(fence.get(), false, 0) == vk::Result::eSuccess)
+		{
+			device.resetFences(fence.get());
+			m_unusedSubmitFences.push(std::exchange(fence, {}));
+		}
 	}
+	std::erase_if(m_submitFences, [](const vk::UniqueFence& fence) { return !fence; });
 }
 
 void Renderer::EndFrame(const SurfaceImage& image)
@@ -167,21 +243,22 @@ CommandBuffer& Renderer::GetCommandBuffer(uint32_t threadIndex)
 	return commandBuffer;
 }
 
-void Renderer::RenderToTexture(RenderableTexture& texture, RenderList renderList)
+void Renderer::RenderToTexture(RenderableTexturePtr texture, RenderList renderList)
 {
 	const std::uint32_t sequenceIndex = AddCommandBufferSlot();
 
-	LaunchTask([=, renderList = std::move(renderList), &texture] {
+	LaunchTask([=, renderList = std::move(renderList), texture = std::move(texture)] {
 		const uint32_t taskIndex = m_executor.this_worker_id();
 
 		CommandBuffer& commandBuffer = GetCommandBuffer(taskIndex);
+		commandBuffer.AddTexture(texture);
 
 		TextureState textureState;
-		texture.TransitionToRenderTarget(textureState, commandBuffer);
+		texture->TransitionToRenderTarget(textureState, commandBuffer);
 
-		Render(renderList, texture.renderPass.get(), texture.framebuffer.get(), texture.size, commandBuffer);
+		BuildCommandBuffer(commandBuffer, renderList, texture->renderPass.get(), texture->framebuffer.get(), texture->size);
 
-		texture.TransitionToShaderInput(textureState, commandBuffer);
+		texture->TransitionToShaderInput(textureState, commandBuffer);
 
 		SubmitCommandBuffer(sequenceIndex, commandBuffer);
 	});
@@ -189,8 +266,6 @@ void Renderer::RenderToTexture(RenderableTexture& texture, RenderList renderList
 
 void Renderer::RenderToSurface(const SurfaceImage& surfaceImage, RenderList renderList)
 {
-	const std::uint32_t sequenceIndex = AddCommandBufferSlot();
-
 	const auto framebuffer = surfaceImage.framebuffer;
 	const auto extent = surfaceImage.extent;
 
@@ -199,45 +274,72 @@ void Renderer::RenderToSurface(const SurfaceImage& surfaceImage, RenderList rend
 
 		CommandBuffer& commandBuffer = GetCommandBuffer(taskIndex);
 
-		Render(renderList, surfaceImage.renderPass, framebuffer, extent, commandBuffer);
+		BuildCommandBuffer(commandBuffer, renderList, surfaceImage.renderPass, framebuffer, extent);
 
-		SubmitCommandBuffer(sequenceIndex, commandBuffer);
+		commandBuffer.Get()->end();
+		m_surfaceCommandBuffers.push_back(commandBuffer);
 	});
 }
 
-Future<TextureData> Renderer::CopyTextureData(RenderableTexture& texture)
+std::future<TextureData> Renderer::CopyTextureData(RenderableTexturePtr texture)
 {
 	const std::uint32_t sequenceIndex = AddCommandBufferSlot();
 
-	LaunchTask([=, &texture] {
+	auto promise = std::make_shared<std::promise<TextureData>>();
+	auto future = promise->get_future();
+
+	LaunchTask([=, &texture, promise = std::move(promise)]() {
 		const uint32_t taskIndex = m_executor.this_worker_id();
 
 		auto buffer = CreateBufferUninitialized(
-		    texture.memory.size, vk::BufferUsageFlagBits::eTransferDst, vk::MemoryPropertyFlagBits::eHostVisible,
+		    texture->memory.size, vk::BufferUsageFlagBits::eTransferDst, vk::MemoryPropertyFlagBits::eHostVisible,
 		    m_device.GetVulkanDevice(), m_device.GetMemoryAllocator());
 
+		const auto& bufferData = buffer.allocation;
+
 		CommandBuffer& commandBuffer = GetCommandBuffer(taskIndex);
+		commandBuffer.AddTexture(texture);
 
 		TextureState textureState = {
 		    .layout = vk::ImageLayout::eShaderReadOnlyOptimal,
 		    .lastPipelineStageUsage = vk::PipelineStageFlagBits::eFragmentShader,
 		};
-		texture.TransitionToTransferSrc(textureState, commandBuffer);
-		const auto extent = vk::Extent3D{texture.size.width, texture.size.height, 1};
-		CopyImageToBuffer(commandBuffer, texture.image.get(), buffer.buffer.get(), texture.format, extent);
+		texture->TransitionToTransferSrc(textureState, commandBuffer);
+		const auto extent = vk::Extent3D{texture->size.width, texture->size.height, 1};
+		CopyImageToBuffer(commandBuffer, texture->image.get(), buffer.buffer.get(), texture->format, extent);
 		commandBuffer.TakeOwnership(std::move(buffer.buffer));
-		texture.TransitionToShaderInput(textureState, commandBuffer);
+		texture->TransitionToShaderInput(textureState, commandBuffer);
 
-		SubmitCommandBuffer(sequenceIndex, commandBuffer);
+		const TextureData textureData = {
+		    .size = texture->size,
+		    .format = texture->format,
+		    .mipLevelCount = texture->mipLevelCount,
+		    .samples = texture->samples,
+		};
+
+		SubmitCommandBuffer(sequenceIndex, commandBuffer, [bufferData, textureData, promise]() {
+			const auto data = static_cast<const std::byte*>(bufferData.mappedData);
+
+			const auto size = textureData.size.width * textureData.size.height * GetFormatElementSize(textureData.format);
+
+			TextureData ret = textureData;
+			ret.pixels.resize(size);
+			std::copy(data, data + size, ret.pixels.data());
+
+			promise->set_value(ret);
+		});
 	});
-	return {};
+
+	return future;
 }
 
-void Renderer::Render(
-    const RenderList& renderList, vk::RenderPass renderPass, vk::Framebuffer framebuffer, vk::Extent2D framebufferSize,
-    vk::CommandBuffer commandBuffer)
+void Renderer::BuildCommandBuffer(
+    CommandBuffer& commandBufferWrapper, const RenderList& renderList, vk::RenderPass renderPass,
+    vk::Framebuffer framebuffer, vk::Extent2D framebufferSize)
 {
 	using std::data;
+
+	vk::CommandBuffer commandBuffer = commandBufferWrapper;
 
 	const auto renderPassBegin = vk::RenderPassBeginInfo{
 	    .renderPass = renderPass,
@@ -271,6 +373,8 @@ void Renderer::Render(
 
 		for (const RenderObject& obj : renderList.objects)
 		{
+			commandBufferWrapper.AddParameterBlock(obj.materialParameters);
+
 			commandBuffer.bindDescriptorSets(
 			    vk::PipelineBindPoint::eGraphics, obj.pipeline->layout, 2,
 			    GetDescriptorSet(obj.materialParameters.get()), {});
@@ -322,10 +426,55 @@ std::uint32_t Renderer::AddCommandBufferSlot()
 	return static_cast<std::uint32_t>(m_readyCommandBuffers.size() - 1);
 }
 
-void Renderer::SubmitCommandBuffer(std::uint32_t index, vk::CommandBuffer commandBuffer)
+void Renderer::SubmitCommandBuffer(std::uint32_t index, vk::CommandBuffer commandBuffer, CompletionHandler function)
 {
+	const auto getFence = [this] {
+		if (m_unusedSubmitFences.empty())
+		{
+			return CreateFence(m_device.GetVulkanDevice());
+		}
+
+		auto nextFence = std::move(m_unusedSubmitFences.front());
+		m_unusedSubmitFences.pop();
+		return nextFence;
+	};
+
 	const auto lock = std::scoped_lock(m_readyCommandBuffersMutex);
+
+	if (function)
+	{
+		m_completionHandlers.emplace(commandBuffer, std::move(function));
+	}
 
 	commandBuffer.end();
 	m_readyCommandBuffers.at(index) = commandBuffer;
+
+	const auto unsubmittedCommandBuffers = std::span(m_readyCommandBuffers).subspan(m_numSubmittedCommandBuffers);
+
+	const auto end = std::ranges::find(unsubmittedCommandBuffers, vk::CommandBuffer{});
+	const auto commandBuffersToSubmit = std::span(unsubmittedCommandBuffers.begin(), end);
+
+	if (!commandBuffersToSubmit.empty())
+	{
+		const auto fence = m_submitFences.emplace_back(getFence()).get();
+		m_numSubmittedCommandBuffers += commandBuffersToSubmit.size();
+
+		const auto submitInfo = vk::SubmitInfo{
+		    .commandBufferCount = size32(commandBuffersToSubmit),
+		    .pCommandBuffers = data(commandBuffersToSubmit),
+		};
+		m_graphicsQueue.submit(submitInfo, fence);
+
+		// Queue up completion handlers
+		for (vk::CommandBuffer cb : commandBuffersToSubmit)
+		{
+			const auto lock2 = std::scoped_lock(m_schedulerMutex);
+
+			const auto completionHandler = m_completionHandlers.extract(cb);
+			if (completionHandler)
+			{
+				m_scheduledTasks.emplace_back(fence, std::move(completionHandler.mapped()));
+			}
+		}
+	}
 }

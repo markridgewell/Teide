@@ -6,6 +6,9 @@
 #include <fmt/core.h>
 #include <vulkan/vulkan.hpp>
 
+#include <chrono>
+#include <unordered_set>
+
 template <class T>
 inline uint32_t size32(const T& cont)
 {
@@ -22,8 +25,13 @@ void TransitionImageLayout(
     vk::ImageLayout newLayout, vk::PipelineStageFlags srcStageMask, vk::PipelineStageFlags dstStageMask);
 
 vk::UniqueSemaphore CreateSemaphore(vk::Device device);
-vk::UniqueFence CreateFence(vk::Device device);
+vk::UniqueFence CreateFence(vk::Device device, vk::FenceCreateFlags flags = {});
 vk::UniqueCommandPool CreateCommandPool(uint32_t queueFamilyIndex, vk::Device device);
+
+auto GetHandle()
+{
+	return []<class T, class Dispatch>(const vk::UniqueHandle<T, Dispatch>& uniqueHandle) { return uniqueHandle.get(); };
+}
 
 template <class Type, class Dispatch>
 void SetDebugName(vk::UniqueHandle<Type, Dispatch>& handle [[maybe_unused]], const char* debugName [[maybe_unused]])
@@ -63,41 +71,6 @@ std::string DebugFormat(fmt::format_string<Args...> fmt [[maybe_unused]], Args&&
 	}
 }
 
-class CommandBuffer
-{
-public:
-	explicit CommandBuffer(vk::UniqueCommandBuffer commandBuffer);
-
-	void TakeOwnership(vk::UniqueBuffer buffer);
-	void Reset();
-
-	vk::UniqueCommandBuffer& Get() { return m_cmdBuffer; }
-
-	operator vk::CommandBuffer() const;
-
-protected:
-	CommandBuffer() = default;
-
-	vk::UniqueCommandBuffer m_cmdBuffer;
-
-	std::vector<vk::UniqueBuffer> m_ownedBuffers;
-};
-
-class OneShotCommandBuffer : public CommandBuffer
-{
-public:
-	explicit OneShotCommandBuffer(vk::Device device, vk::CommandPool commandPool, vk::Queue queue);
-	~OneShotCommandBuffer();
-
-	OneShotCommandBuffer(const OneShotCommandBuffer&) = delete;
-	OneShotCommandBuffer(OneShotCommandBuffer&&) = delete;
-	OneShotCommandBuffer& operator=(const OneShotCommandBuffer&) = delete;
-	OneShotCommandBuffer& operator=(OneShotCommandBuffer&&) = delete;
-
-private:
-	vk::Queue m_queue;
-};
-
 class VulkanError : public vk::Error, public std::exception
 {
 public:
@@ -115,3 +88,11 @@ void CopyBufferToImage(
     vk::CommandBuffer cmdBuffer, vk::Buffer source, vk::Image destination, vk::Format imageFormat, vk::Extent3D imageExtent);
 void CopyImageToBuffer(
     vk::CommandBuffer cmdBuffer, vk::Image source, vk::Buffer destination, vk::Format imageFormat, vk::Extent3D imageExtent);
+
+std::uint32_t GetFormatElementSize(vk::Format format);
+
+template <class Rep, class Period>
+constexpr std::uint64_t Timeout(std::chrono::duration<Rep, Period> duration)
+{
+	return std::chrono::nanoseconds(duration).count();
+}

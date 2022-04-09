@@ -48,15 +48,15 @@ TEST(RendererTest, RenderToTexture)
 	    .samples = vk::SampleCountFlagBits::e1,
 	};
 	const auto texture = device.CreateRenderableTexture(textureData, "Texture");
+
 	const auto clearColor = std::array{1.0f, 0.0f, 0.0f, 1.0f};
 	const auto renderList = RenderList{
 	    .clearValues = {{clearColor}},
 	};
 
-	renderer.RenderToTexture(*texture, renderList);
+	renderer.RenderToTexture(texture, renderList);
 
-	Future<TextureData> futureData = renderer.CopyTextureData(*texture);
-	const TextureData& outputData = futureData.Get();
+	const TextureData outputData = renderer.CopyTextureData(texture).get();
 
 	EXPECT_THAT(outputData.size, Eq(textureData.size));
 	EXPECT_THAT(outputData.format, Eq(textureData.format));

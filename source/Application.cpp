@@ -355,7 +355,7 @@ public:
 			    }},
 			};
 
-			m_renderer.RenderToTexture(*m_shadowMap, std::move(renderList));
+			m_renderer.RenderToTexture(m_shadowMap, std::move(renderList));
 		}
 
 		//
@@ -488,8 +488,6 @@ public:
 
 			running &= OnUpdate();
 			OnRender();
-
-			m_device.WaitIdle();
 		}
 	}
 

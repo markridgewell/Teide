@@ -99,8 +99,6 @@ TEST(SurfaceTest, RenderToSurface)
 	};
 	renderer.RenderToSurface(image.value(), renderList);
 	renderer.EndFrame(image.value());
-
-	device.WaitIdle();
 }
 
 } // namespace

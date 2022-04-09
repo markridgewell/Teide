@@ -674,6 +674,11 @@ GraphicsDevice::GraphicsDevice(SDL_Window* window)
 	SetDebugName(m_descriptorPool, "DescriptorPool");
 }
 
+GraphicsDevice::~GraphicsDevice()
+{
+	m_device->waitIdle();
+}
+
 Surface GraphicsDevice::CreateSurface(SDL_Window* window, bool multisampled)
 {
 	vk::UniqueSurfaceKHR surface;

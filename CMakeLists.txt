@@ -63,6 +63,8 @@ add_test(NAME GeoLibTest COMMAND GeoLibTest)
 set(sources
     source/Framework/Buffer.h
     source/Framework/Buffer.cpp
+    source/Framework/CommandBuffer.h
+    source/Framework/CommandBuffer.cpp
     source/Framework/BytesView.h
     source/Framework/ForwardDeclare.h
     source/Framework/GraphicsDevice.h

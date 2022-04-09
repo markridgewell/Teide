@@ -17,6 +17,13 @@ class GraphicsDevice
 public:
 	explicit GraphicsDevice(SDL_Window* window = nullptr);
 
+	~GraphicsDevice();
+
+	GraphicsDevice(const GraphicsDevice&) = delete;
+	GraphicsDevice(GraphicsDevice&&) = delete;
+	GraphicsDevice& operator=(const GraphicsDevice&) = delete;
+	GraphicsDevice& operator=(GraphicsDevice&&) = delete;
+
 	Surface CreateSurface(SDL_Window* window, bool multisampled);
 	Renderer CreateRenderer();
 
@@ -38,8 +45,6 @@ public:
 	DynamicParameterBlockPtr CreateDynamicParameterBlock(const ParameterBlockData& data, const char* name);
 
 	const vk::PhysicalDeviceProperties GetProperties() const { return m_physicalDevice.getProperties(); }
-
-	void WaitIdle() const { m_device->waitIdle(); }
 
 	// Internal
 	vk::Device GetVulkanDevice() { return m_device.get(); }

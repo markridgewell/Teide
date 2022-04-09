@@ -1,6 +1,8 @@
 
 #include "Framework/Surface.h"
 
+#include "Framework/CommandBuffer.h"
+
 #include <SDL_vulkan.h>
 #include <spdlog/spdlog.h>
 
