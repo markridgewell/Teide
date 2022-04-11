@@ -5,6 +5,8 @@
 
 #include <spdlog/spdlog.h>
 
+#include <span>
+
 GpuExecutor::GpuExecutor(vk::Device device, vk::Queue queue) : m_device{device}, m_queue{queue}
 {
 	m_nextSubmitFuture = m_nextSubmitPromise.get_future().share();

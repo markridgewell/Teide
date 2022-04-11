@@ -1,4 +1,6 @@
 
+#pragma once
+
 #include "Framework/ForwardDeclare.h"
 #include "Framework/Internal/Vulkan.h"
 

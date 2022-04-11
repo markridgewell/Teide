@@ -28,7 +28,7 @@ vk::UniqueSemaphore CreateSemaphore(vk::Device device);
 vk::UniqueFence CreateFence(vk::Device device, vk::FenceCreateFlags flags = {});
 vk::UniqueCommandPool CreateCommandPool(uint32_t queueFamilyIndex, vk::Device device);
 
-auto GetHandle()
+inline auto GetHandle()
 {
 	return []<class T, class Dispatch>(const vk::UniqueHandle<T, Dispatch>& uniqueHandle) { return uniqueHandle.get(); };
 }

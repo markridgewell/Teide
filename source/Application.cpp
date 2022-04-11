@@ -785,10 +785,10 @@ int Run(int argc, char* argv[])
 		return 1;
 	}
 
-	std::optional<Application> application;
 	try
 	{
-		application.emplace(window.get(), imageFilename, modelFilename);
+		auto application = Application(window.get(), imageFilename, modelFilename);
+		application.MainLoop();
 	}
 	catch (const vk::Error& e)
 	{
@@ -805,7 +805,6 @@ int Run(int argc, char* argv[])
 		return 1;
 	}
 
-	application->MainLoop();
 
 	return 0;
 }

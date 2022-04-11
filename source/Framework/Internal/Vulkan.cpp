@@ -44,10 +44,11 @@ vk::AccessFlags GetTransitionAccessMask(vk::ImageLayout layout)
 
 		case eDepthStencilReadOnlyOptimal:
 			return Access::eShaderRead;
-	}
 
-	assert(false && "Unsupported image transition");
-	return {};
+		default:
+			assert(false && "Unsupported image transition");
+			return {};
+	}
 }
 
 TransitionAccessMasks GetTransitionAccessMasks(vk::ImageLayout oldLayout, vk::ImageLayout newLayout)

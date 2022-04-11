@@ -222,7 +222,7 @@ void Renderer::RenderToTexture(RenderableTexturePtr texture, RenderList renderLi
 {
 	const std::uint32_t sequenceIndex = m_gpuExecutor.AddCommandBufferSlot();
 
-	LaunchTask([=, renderList = std::move(renderList), texture = std::move(texture)] {
+	LaunchTask([=, this, renderList = std::move(renderList), texture = std::move(texture)] {
 		const uint32_t taskIndex = m_executor.this_worker_id();
 
 		CommandBuffer& commandBuffer = GetCommandBuffer(taskIndex);
@@ -244,7 +244,7 @@ void Renderer::RenderToSurface(const SurfaceImage& surfaceImage, RenderList rend
 	const auto framebuffer = surfaceImage.framebuffer;
 	const auto extent = surfaceImage.extent;
 
-	LaunchTask([=, renderList = std::move(renderList)] {
+	LaunchTask([=, this, renderList = std::move(renderList)] {
 		const uint32_t taskIndex = m_executor.this_worker_id();
 
 		CommandBuffer& commandBuffer = GetCommandBuffer(taskIndex);
@@ -263,7 +263,7 @@ std::future<TextureData> Renderer::CopyTextureData(RenderableTexturePtr texture)
 	auto promise = std::make_shared<std::promise<TextureData>>();
 	auto future = promise->get_future();
 
-	LaunchTask([=, &texture, promise = std::move(promise)]() {
+	LaunchTask([=, this, &texture, promise = std::move(promise)]() {
 		const uint32_t taskIndex = m_executor.this_worker_id();
 
 		auto buffer = CreateBufferUninitialized(

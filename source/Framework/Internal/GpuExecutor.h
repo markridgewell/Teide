@@ -1,4 +1,6 @@
 
+#pragma once
+
 #include <vulkan/vulkan.hpp>
 
 #include <future>
@@ -23,8 +25,8 @@ public:
 	std::shared_future<void> SubmitCommandBuffer(std::uint32_t index, vk::CommandBuffer commandBuffer);
 
 private:
-	vk::Queue m_queue;
 	vk::Device m_device;
+	vk::Queue m_queue;
 
 	std::mutex m_readyCommandBuffersMutex;
 	std::promise<void> m_nextSubmitPromise;
