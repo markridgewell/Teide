@@ -9,6 +9,21 @@
 #include <chrono>
 #include <unordered_set>
 
+struct SDL_Window;
+
+void EnableOptionalVulkanLayer(
+    std::vector<const char*>& enabledLayers, const std::vector<vk::LayerProperties>& availableLayers, const char* layerName);
+void EnableRequiredVulkanExtension(
+    std::vector<const char*>& enabledExtensions, const std::vector<vk::ExtensionProperties>& availableExtensions,
+    const char* extensionName);
+
+vk::DebugUtilsMessengerCreateInfoEXT GetDebugCreateInfo();
+
+vk::UniqueInstance CreateInstance(SDL_Window* window = nullptr);
+
+vk::UniqueDevice CreateDevice(
+    vk::PhysicalDevice physicalDevice, std::span<const uint32_t> queueFamilyIndices, std::span<const char*> extensions = {});
+
 template <class T>
 inline uint32_t size32(const T& cont)
 {

@@ -15,9 +15,6 @@ VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE;
 
 namespace
 {
-constexpr bool BreakOnVulkanWarning = false;
-constexpr bool BreakOnVulkanError = true;
-
 static const vk::Optional<const vk::AllocationCallbacks> s_allocator = nullptr;
 
 vk::UniqueSurfaceKHR CreateVulkanSurface(SDL_Window* window, vk::Instance instance)
@@ -32,160 +29,6 @@ vk::UniqueSurfaceKHR CreateVulkanSurface(SDL_Window* window, vk::Instance instan
 	spdlog::info("Surface created successfully");
 	vk::ObjectDestroy<vk::Instance, vk::DispatchLoaderDynamic> deleter(instance, s_allocator, VULKAN_HPP_DEFAULT_DISPATCHER);
 	return vk::UniqueSurfaceKHR(surfaceTmp, deleter);
-}
-
-void EnableOptionalVulkanLayer(
-    std::vector<const char*>& enabledLayers, const std::vector<vk::LayerProperties>& availableLayers, const char* layerName)
-{
-	std::string_view layerNameSV = layerName;
-	if (std::ranges::find_if(availableLayers, [layerNameSV](const auto& x) { return x.layerName == layerNameSV; })
-	    != availableLayers.end())
-	{
-		spdlog::info("Enabling Vulkan layer {}", layerName);
-		enabledLayers.push_back(layerName);
-	}
-	else
-	{
-		spdlog::warn("Vulkan layer {} not enabled!", layerName);
-	}
-}
-
-void EnableRequiredVulkanExtension(
-    std::vector<const char*>& enabledExtensions, const std::vector<vk::ExtensionProperties>& availableExtensions,
-    const char* extensionName)
-{
-	std::string_view name = extensionName;
-	if (std::ranges::find_if(availableExtensions, [name](const auto& x) { return x.extensionName == name; })
-	    != availableExtensions.end())
-	{
-		spdlog::info("Enabling Vulkan extension {}", extensionName);
-		enabledExtensions.push_back(extensionName);
-	}
-	else
-	{
-		throw vk::ExtensionNotPresentError(extensionName);
-	}
-}
-
-VKAPI_ATTR VkBool32 VKAPI_CALL DebugCallback(
-    VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, [[maybe_unused]] VkDebugUtilsMessageTypeFlagsEXT messageType,
-    const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, [[maybe_unused]] void* pUserData)
-{
-	using MessageType = vk::DebugUtilsMessageTypeFlagBitsEXT;
-	using MessageSeverity = vk::DebugUtilsMessageSeverityFlagBitsEXT;
-
-	// Filter unwanted messages
-	if (pCallbackData->messageIdNumber == 767975156)
-	{
-		// UNASSIGNED-BestPractices-vkCreateInstance-specialuse-extension
-		return VK_FALSE;
-	}
-
-	const char* prefix = "";
-	switch (MessageType(messageType))
-	{
-		case MessageType::eGeneral:
-			prefix = "";
-			break;
-		case MessageType::eValidation:
-			prefix = "[validation] ";
-			break;
-		case MessageType::ePerformance:
-			prefix = "[performance] ";
-			break;
-	}
-
-	switch (MessageSeverity(messageSeverity))
-	{
-		case MessageSeverity::eVerbose:
-			spdlog::debug("{}{}", prefix, pCallbackData->pMessage);
-			break;
-
-		case MessageSeverity::eInfo:
-			spdlog::info("{}{}", prefix, pCallbackData->pMessage);
-			break;
-
-		case MessageSeverity::eWarning:
-			spdlog::warn("{}{}", prefix, pCallbackData->pMessage);
-			assert(!BreakOnVulkanWarning);
-			break;
-
-		case MessageSeverity::eError:
-			spdlog::error("{}{}", prefix, pCallbackData->pMessage);
-			assert(!BreakOnVulkanError);
-			break;
-	}
-	return VK_FALSE;
-}
-
-constexpr auto DebugCreateInfo = [] {
-	using MessageType = vk::DebugUtilsMessageTypeFlagBitsEXT;
-	using MessageSeverity = vk::DebugUtilsMessageSeverityFlagBitsEXT;
-
-	return vk::DebugUtilsMessengerCreateInfoEXT{
-	    .messageSeverity = MessageSeverity ::eError | MessageSeverity ::eWarning | MessageSeverity ::eInfo,
-	    .messageType = MessageType::eGeneral | MessageType::eValidation | MessageType::ePerformance,
-	    .pfnUserCallback = DebugCallback,
-	};
-}();
-
-vk::UniqueInstance CreateInstance(SDL_Window* window)
-{
-	std::vector<const char*> extensions;
-	if (window)
-	{
-		uint32_t extensionCount = 0;
-		SDL_Vulkan_GetInstanceExtensions(window, &extensionCount, nullptr);
-		extensions.resize(extensionCount);
-		SDL_Vulkan_GetInstanceExtensions(window, &extensionCount, extensions.data());
-	}
-
-	vk::ApplicationInfo applicationInfo{
-	    .apiVersion = VK_API_VERSION_1_0,
-	};
-
-	const auto availableLayers = vk::enumerateInstanceLayerProperties();
-	const auto availableExtensions = vk::enumerateInstanceExtensionProperties();
-
-	std::vector<const char*> layers;
-	if constexpr (IsDebugBuild)
-	{
-		EnableOptionalVulkanLayer(layers, availableLayers, "VK_LAYER_KHRONOS_validation");
-		EnableRequiredVulkanExtension(extensions, availableExtensions, "VK_EXT_debug_utils");
-
-		const auto enabledFeatures = std::array{
-		    vk::ValidationFeatureEnableEXT::eSynchronizationValidation,
-		    vk::ValidationFeatureEnableEXT::eBestPractices,
-		};
-
-		const auto createInfo = vk::StructureChain{
-		    vk::InstanceCreateInfo{
-		        .pApplicationInfo = &applicationInfo,
-		        .enabledLayerCount = size32(layers),
-		        .ppEnabledLayerNames = data(layers),
-		        .enabledExtensionCount = size32(extensions),
-		        .ppEnabledExtensionNames = data(extensions)},
-		    vk::ValidationFeaturesEXT{
-		        .enabledValidationFeatureCount = size32(enabledFeatures),
-		        .pEnabledValidationFeatures = data(enabledFeatures),
-		    },
-		    DebugCreateInfo,
-		};
-
-		return vk::createInstanceUnique(createInfo.get<vk::InstanceCreateInfo>(), s_allocator);
-	}
-	else
-	{
-		const auto createInfo = vk::InstanceCreateInfo{
-		    .pApplicationInfo = &applicationInfo,
-		    .enabledLayerCount = size32(layers),
-		    .ppEnabledLayerNames = data(layers),
-		    .enabledExtensionCount = size32(extensions),
-		    .ppEnabledExtensionNames = data(extensions),
-		};
-
-		return vk::createInstanceUnique(createInfo, s_allocator);
-	}
 }
 
 struct QueueFamilyIndices
@@ -288,45 +131,6 @@ vk::PhysicalDevice FindPhysicalDevice(vk::Instance instance, vk::SurfaceKHR surf
 	vk::PhysicalDevice physicalDevice = *it;
 	spdlog::info("Selected physical device: {}", physicalDevice.getProperties().deviceName);
 	return physicalDevice;
-}
-
-vk::UniqueDevice
-CreateDevice(vk::PhysicalDevice physicalDevice, std::span<const uint32_t> queueFamilyIndices, std::span<const char*> extensions)
-{
-	// Make a list of create infos for each unique queue we wish to create
-	const float queuePriority = 1.0f;
-	std::vector<vk::DeviceQueueCreateInfo> queueCreateInfos;
-	for (const uint32_t index : queueFamilyIndices)
-	{
-		if (std::ranges::count(queueCreateInfos, index, &vk::DeviceQueueCreateInfo::queueFamilyIndex) == 0)
-		{
-			queueCreateInfos.push_back({.queueFamilyIndex = index, .queueCount = 1, .pQueuePriorities = &queuePriority});
-		}
-	}
-
-	const auto deviceFeatures = vk::PhysicalDeviceFeatures{
-	    .samplerAnisotropy = true,
-	};
-
-	const auto availableLayers = physicalDevice.enumerateDeviceLayerProperties();
-	const auto availableExtensions = physicalDevice.enumerateDeviceExtensionProperties();
-
-	std::vector<const char*> layers;
-	if constexpr (IsDebugBuild)
-	{
-		EnableOptionalVulkanLayer(layers, availableLayers, "VK_LAYER_KHRONOS_validation");
-	}
-
-	const auto deviceCreateInfo = vk::DeviceCreateInfo{
-	    .queueCreateInfoCount = size32(queueCreateInfos),
-	    .pQueueCreateInfos = data(queueCreateInfos),
-	    .enabledLayerCount = size32(layers),
-	    .ppEnabledLayerNames = data(layers),
-	    .enabledExtensionCount = size32(extensions),
-	    .ppEnabledExtensionNames = data(extensions),
-	    .pEnabledFeatures = &deviceFeatures};
-
-	return physicalDevice.createDeviceUnique(deviceCreateInfo, s_allocator);
 }
 
 void SetBufferData(Buffer& buffer, BytesView data)
@@ -609,7 +413,7 @@ GraphicsDevice::GraphicsDevice(SDL_Window* window)
 
 	if constexpr (IsDebugBuild)
 	{
-		m_debugMessenger = m_instance->createDebugUtilsMessengerEXTUnique(DebugCreateInfo, s_allocator);
+		m_debugMessenger = m_instance->createDebugUtilsMessengerEXTUnique(GetDebugCreateInfo(), s_allocator);
 	}
 
 	vk::UniqueSurfaceKHR surface;
