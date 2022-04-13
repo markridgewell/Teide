@@ -7,6 +7,7 @@
 #include <vulkan/vulkan.hpp>
 
 #include <chrono>
+#include <span>
 #include <unordered_set>
 
 struct SDL_Window;

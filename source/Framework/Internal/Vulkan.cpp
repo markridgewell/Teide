@@ -202,9 +202,6 @@ vk::UniqueInstance CreateInstance(SDL_Window* window)
 	std::vector<const char*> layers;
 	if constexpr (IsDebugBuild)
 	{
-		using MessageType = vk::DebugUtilsMessageTypeFlagBitsEXT;
-		using MessageSeverity = vk::DebugUtilsMessageSeverityFlagBitsEXT;
-
 		EnableOptionalVulkanLayer(layers, availableLayers, "VK_LAYER_KHRONOS_validation");
 		EnableRequiredVulkanExtension(extensions, availableExtensions, "VK_EXT_debug_utils");
 
