@@ -79,6 +79,8 @@ set(sources
     source/Framework/Texture.cpp
     source/Framework/Internal/CommandBuffer.h
     source/Framework/Internal/CommandBuffer.cpp
+    source/Framework/Internal/CpuExecutor.h
+    source/Framework/Internal/CpuExecutor.cpp
     source/Framework/Internal/GpuExecutor.h
     source/Framework/Internal/GpuExecutor.cpp
     source/Framework/Internal/MemoryAllocator.h
@@ -123,6 +125,7 @@ target_include_directories(ShaderCompiler PUBLIC source/ShaderCompiler)
 set(sources
     test/Framework/Main.cpp
     test/Framework/GraphicsDeviceTest.cpp
+    test/Framework/CpuExecutorTest.cpp
     test/Framework/GpuExecutorTest.cpp
     test/Framework/RendererTest.cpp
     test/Framework/SurfaceTest.cpp)

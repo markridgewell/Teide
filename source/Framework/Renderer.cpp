@@ -25,11 +25,9 @@ void SetCommandBufferDebugName(vk::UniqueCommandBuffer& commandBuffer, std::uint
 Renderer::Renderer(GraphicsDevice& device, uint32_t graphicsFamilyIndex, std::optional<uint32_t> presentFamilyIndex, uint32_t numThreads) :
     m_device{device},
     m_graphicsQueue{device.GetVulkanDevice().getQueue(graphicsFamilyIndex, 0)},
-    m_executor(numThreads),
+    m_cpuExecutor(numThreads),
     m_gpuExecutor(m_device.GetVulkanDevice(), m_graphicsQueue)
 {
-	using namespace std::chrono_literals;
-
 	const auto vkdevice = device.GetVulkanDevice();
 
 	if (presentFamilyIndex)
@@ -41,41 +39,10 @@ Renderer::Renderer(GraphicsDevice& device, uint32_t graphicsFamilyIndex, std::op
 	    m_frameResources, [=] { return CreateThreadResources(vkdevice, graphicsFamilyIndex, numThreads); });
 	std::ranges::generate(m_renderFinished, [=] { return CreateSemaphore(vkdevice); });
 	std::ranges::generate(m_inFlightFences, [=] { return CreateFence(vkdevice, vk::FenceCreateFlagBits::eSignaled); });
-
-	m_schedulerThread = std::jthread([this, stop_token = m_schedulerStopSource.get_token()] {
-		constexpr auto timeout = 2ms;
-
-		while (!stop_token.stop_requested())
-		{
-			std::this_thread::sleep_for(timeout);
-
-			auto lock = std::scoped_lock(m_schedulerMutex);
-
-			// If there are futures, check if any have a value
-			for (auto& [future, callback] : m_scheduledTasks)
-			{
-				if (future.wait_for(0s) == std::future_status::ready)
-				{
-					// Found one, execute the attached callback
-					LaunchTask(callback);
-
-					// Mark it as done
-					callback = nullptr;
-				}
-			}
-
-			// Remove done tasks
-			std::erase_if(m_scheduledTasks, [](const auto& entry) { return entry.callback == nullptr; });
-		}
-	});
 }
 
 Renderer::~Renderer()
 {
-	m_schedulerStopSource.request_stop();
-
-	WaitForTasks();
-
 	auto fences = std::vector<vk::Fence>();
 	std::ranges::transform(m_inFlightFences, std::back_inserter(fences), [](const auto& f) { return f.get(); });
 	if (!fences.empty())
@@ -134,7 +101,7 @@ void Renderer::EndFrame(std::span<const SurfaceImage> images)
 	auto signalSemaphores = std::span(&m_renderFinished[m_frameNumber].get(), 1);
 	auto fenceToSignal = m_inFlightFences[m_frameNumber].get();
 
-	WaitForTasks();
+	m_cpuExecutor.WaitForTasks();
 
 	device.resetFences(fenceToSignal);
 
@@ -222,9 +189,7 @@ void Renderer::RenderToTexture(RenderableTexturePtr texture, RenderList renderLi
 {
 	const std::uint32_t sequenceIndex = m_gpuExecutor.AddCommandBufferSlot();
 
-	LaunchTask([=, this, renderList = std::move(renderList), texture = std::move(texture)] {
-		const uint32_t taskIndex = m_executor.this_worker_id();
-
+	m_cpuExecutor.LaunchTask([=, this, renderList = std::move(renderList), texture = std::move(texture)](uint32_t taskIndex) {
 		CommandBuffer& commandBuffer = GetCommandBuffer(taskIndex);
 		commandBuffer.AddTexture(texture);
 
@@ -244,9 +209,7 @@ void Renderer::RenderToSurface(const SurfaceImage& surfaceImage, RenderList rend
 	const auto framebuffer = surfaceImage.framebuffer;
 	const auto extent = surfaceImage.extent;
 
-	LaunchTask([=, this, renderList = std::move(renderList)] {
-		const uint32_t taskIndex = m_executor.this_worker_id();
-
+	m_cpuExecutor.LaunchTask([=, this, renderList = std::move(renderList)](uint32_t taskIndex) {
 		CommandBuffer& commandBuffer = GetCommandBuffer(taskIndex);
 
 		BuildCommandBuffer(commandBuffer, renderList, surfaceImage.renderPass, framebuffer, extent);
@@ -263,9 +226,7 @@ std::future<TextureData> Renderer::CopyTextureData(RenderableTexturePtr texture)
 	auto promise = std::make_shared<std::promise<TextureData>>();
 	auto future = promise->get_future();
 
-	LaunchTask([=, this, &texture, promise = std::move(promise)]() {
-		const uint32_t taskIndex = m_executor.this_worker_id();
-
+	m_cpuExecutor.LaunchTask([=, this, &texture, promise = std::move(promise)](uint32_t taskIndex) {
 		auto buffer = CreateBufferUninitialized(
 		    texture->memory.size, vk::BufferUsageFlagBits::eTransferDst, vk::MemoryPropertyFlagBits::eHostVisible,
 		    m_device.GetVulkanDevice(), m_device.GetMemoryAllocator());
@@ -294,19 +255,20 @@ std::future<TextureData> Renderer::CopyTextureData(RenderableTexturePtr texture)
 
 		std::shared_future<void> future = m_gpuExecutor.SubmitCommandBuffer(sequenceIndex, commandBuffer);
 
-		const auto lock = std::scoped_lock(m_schedulerMutex);
+		m_cpuExecutor.LaunchTask(
+		    [bufferData, textureData, promise]() {
+			    const auto data = static_cast<const std::byte*>(bufferData.mappedData);
 
-		m_scheduledTasks.emplace_back(std::move(future), [bufferData, textureData, promise]() {
-			const auto data = static_cast<const std::byte*>(bufferData.mappedData);
+			    const auto size
+			        = textureData.size.width * textureData.size.height * GetFormatElementSize(textureData.format);
 
-			const auto size = textureData.size.width * textureData.size.height * GetFormatElementSize(textureData.format);
+			    TextureData ret = textureData;
+			    ret.pixels.resize(size);
+			    std::copy(data, data + size, ret.pixels.data());
 
-			TextureData ret = textureData;
-			ret.pixels.resize(size);
-			std::copy(data, data + size, ret.pixels.data());
-
-			promise->set_value(ret);
-		});
+			    promise->set_value(ret);
+		    },
+		    std::move(future));
 	});
 
 	return future;

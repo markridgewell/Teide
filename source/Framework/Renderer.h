@@ -4,17 +4,16 @@
 #include "Framework/BytesView.h"
 #include "Framework/ForwardDeclare.h"
 #include "Framework/Internal/CommandBuffer.h"
+#include "Framework/Internal/CpuExecutor.h"
 #include "Framework/Internal/GpuExecutor.h"
 #include "Framework/Internal/Vulkan.h"
 #include "Framework/Pipeline.h"
 #include "Framework/Surface.h"
 
-#include <taskflow/taskflow.hpp>
-
 #include <array>
 #include <cstdint>
 #include <deque>
-#include <thread>
+#include <mutex>
 
 class GraphicsDevice;
 
@@ -82,33 +81,15 @@ private:
 
 	vk::DescriptorSet GetDescriptorSet(const ParameterBlock* parameterBlock) const;
 
-	template <typename F, typename... ArgsT>
-	auto LaunchTask(F&& f, ArgsT&&... args)
-	{
-		return m_executor.async(std::forward<F>(f), std::forward<ArgsT>(args)...);
-	}
-
-	void WaitForTasks() { m_executor.wait_for_all(); }
-
 	GraphicsDevice& m_device;
 	vk::Queue m_graphicsQueue;
 	vk::Queue m_presentQueue;
-	tf::Executor m_executor;
 	std::array<vk::UniqueSemaphore, MaxFramesInFlight> m_renderFinished;
 	std::array<vk::UniqueFence, MaxFramesInFlight> m_inFlightFences;
 	std::array<std::vector<ThreadResources>, MaxFramesInFlight> m_frameResources;
 	uint32_t m_frameNumber = 0;
 
-	std::mutex m_schedulerMutex;
-	std::jthread m_schedulerThread;
-	std::stop_source m_schedulerStopSource;
-	struct ScheduledTask
-	{
-		std::shared_future<void> future;
-		std::function<void()> callback;
-	};
-	std::vector<ScheduledTask> m_scheduledTasks;
-
+	CpuExecutor m_cpuExecutor;
 	GpuExecutor m_gpuExecutor;
 
 	std::mutex m_surfaceCommandBuffersMutex;
