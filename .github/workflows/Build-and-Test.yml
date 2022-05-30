@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
 
 env:
-  VULKAN_VERSION: 1.2.198
+  VULKAN_VERSION: 1.2.198.1
   VULKAN_SDK: ./VULKAN_SDK
 
 jobs:
@@ -30,18 +30,12 @@ jobs:
       with:
         lfs: true
 
-    - name: Cache Vulkan SDK
-      uses: actions/cache@v2
-      id: cache-vulkan
-      with:
-        path: ${{env.VULKAN_SDK}}
-        key: vulkan-${{env.VULKAN_VERSION}}-${{runner.os}}
-
     - name: Setup Vulkan SDK
-      if: steps.cache-vulkan.outputs.cache-hit != 'true'
-      uses: humbletim/setup-vulkan-sdk@v1.0.3
+      uses: humbletim/setup-vulkan-sdk@v1.2.0
       with:
-        vulkan-version: sdk-${{env.VULKAN_VERSION}}
+        vulkan-query-version: ${{env.VULKAN_VERSION}}
+        vulkan-components: Vulkan-Headers, Vulkan-Loader
+        vulkan-use-cache: true
 
     - name: Setup vcpkg
       uses: lukka/run-vcpkg@v10
@@ -118,18 +112,12 @@ jobs:
           sudo apt-get update
           sudo apt install libgl1-mesa-dev libxxf86vm-dev
 
-    - name: Cache Vulkan SDK
-      uses: actions/cache@v2
-      id: cache-vulkan
-      with:
-        path: ${{env.VULKAN_SDK}}
-        key: vulkan-${{env.VULKAN_VERSION}}-${{runner.os}}
-
     - name: Setup Vulkan SDK
-      if: steps.cache-vulkan.outputs.cache-hit != 'true'
-      uses: humbletim/setup-vulkan-sdk@v1.0.3
+      uses: humbletim/setup-vulkan-sdk@v1.2.0
       with:
-        vulkan-version: sdk-${{env.VULKAN_VERSION}}
+        vulkan-query-version: ${{env.VULKAN_VERSION}}
+        vulkan-components: Vulkan-Headers, Vulkan-Loader
+        vulkan-use-cache: true
 
     - name: Install Irrlicht dependencies
       run: |
