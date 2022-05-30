@@ -85,6 +85,8 @@ set(sources
     source/Framework/Internal/GpuExecutor.cpp
     source/Framework/Internal/MemoryAllocator.h
     source/Framework/Internal/MemoryAllocator.cpp
+    source/Framework/Internal/Scheduler.h
+    source/Framework/Internal/Scheduler.cpp
     source/Framework/Internal/Vulkan.h
     source/Framework/Internal/Vulkan.cpp
     Vulkan.natvis)

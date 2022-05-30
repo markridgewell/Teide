@@ -28,9 +28,9 @@ public:
 	template <std::invocable<uint32_t> F>
 	auto LaunchTask(F&& f) -> std::shared_future<void>
 	{
-		return LaunchTask([this, f = std::forward<F>(f)] {
+		return LaunchTask([this, f = std::forward<F>(f)]() mutable {
 			const uint32_t taskIndex = m_executor.this_worker_id();
-			f(taskIndex);
+			std::forward<F>(f)(taskIndex);
 		});
 	}
 
