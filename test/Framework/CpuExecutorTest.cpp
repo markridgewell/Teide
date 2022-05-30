@@ -142,4 +142,45 @@ TEST(CpuExecutorTest, LaunchDependentTasksAndWaitIndividually)
 
 	EXPECT_THAT(result, ElementsAre(42, 21, 84, 24));
 }
+
+TEST(CpuExecutorTest, LaunchOneTaskAndReturnValue)
+{
+	auto executor = CpuExecutor(2);
+
+	const auto task0 = executor.LaunchTask([&] {
+		sleep_for(100ms);
+		return 42;
+	});
+
+	auto x = task0.get();
+
+	EXPECT_THAT(task0.get(), Eq(42));
+}
+
+TEST(CpuExecutorTest, LaunchDependentTasksAndPassValues)
+{
+	auto executor = CpuExecutor(2);
+
+	const auto task0 = executor.LaunchTask([&] {
+		sleep_for(100ms);
+		return 42;
+	});
+
+	const auto task1 = executor.LaunchTask(
+	    [&](int value) {
+		    sleep_for(100ms);
+		    return value / 2;
+	    },
+	    task0);
+
+	const auto task2 = executor.LaunchTask(
+	    [&](int value) {
+		    sleep_for(100ms);
+		    return std::to_string(value);
+	    },
+	    task1);
+
+	EXPECT_THAT(task2.get(), Eq("21"));
+}
+
 } // namespace

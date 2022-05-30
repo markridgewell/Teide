@@ -7,9 +7,6 @@
 
 #include <vector>
 
-template <class T = void>
-using Task = std::shared_future<T>;
-
 class Scheduler
 {
 public:

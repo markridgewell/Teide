@@ -15,23 +15,13 @@ CpuExecutor::CpuExecutor(std::uint32_t numThreads) : m_executor(numThreads)
 			auto lock = std::scoped_lock(m_schedulerMutex);
 
 			// If there are futures, check if any have a value
-			for (auto& [future, callback, promise] : m_scheduledTasks)
+			for (auto& task : m_scheduledTasks)
 			{
-				if (future.wait_for(0s) == std::future_status::ready)
-				{
-					// Found one; execute the scheduled task
-					LaunchTaskImpl([callback, promise] {
-						callback();
-						promise->set_value();
-					});
-
-					// Mark it as done
-					callback = nullptr;
-				}
+				task->ExecuteIfReady(*this);
 			}
 
 			// Remove done tasks
-			std::erase_if(m_scheduledTasks, [](const auto& entry) { return entry.callback == nullptr; });
+			std::erase_if(m_scheduledTasks, [](const auto& entry) { return entry->done; });
 		}
 	});
 }
