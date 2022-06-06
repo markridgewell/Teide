@@ -30,6 +30,8 @@ uint32_t FindMemoryType(vk::PhysicalDevice physicalDevice, uint32_t typeFilter, 
 
 MemoryAllocation MemoryAllocator::Allocate(const vk::MemoryRequirements& requirements, vk::MemoryPropertyFlags flags)
 {
+	const auto lock = std::scoped_lock(m_mutex);
+
 	const uint32_t memoryType = FindMemoryType(m_physicalDevice, requirements.memoryTypeBits, flags);
 
 	MemoryBlock& block = FindMemoryBlock(memoryType, requirements.size, requirements.alignment);
@@ -52,6 +54,8 @@ MemoryAllocation MemoryAllocator::Allocate(const vk::MemoryRequirements& require
 
 void MemoryAllocator::DeallocateAll()
 {
+	const auto lock = std::scoped_lock(m_mutex);
+
 	for (MemoryBlock& block : m_memoryBlocks)
 	{
 		block.consumedSize = 0;

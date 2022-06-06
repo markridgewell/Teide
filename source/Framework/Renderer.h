@@ -58,7 +58,7 @@ public:
 	void RenderToTexture(RenderableTexturePtr texture, RenderList renderList);
 	void RenderToSurface(const SurfaceImage& surfaceImage, RenderList renderList);
 
-	std::future<TextureData> CopyTextureData(RenderableTexturePtr texture);
+	Task<TextureData> CopyTextureData(RenderableTexturePtr texture);
 
 private:
 	void BuildCommandBuffer(

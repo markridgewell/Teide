@@ -61,7 +61,7 @@ public:
 	template <std::invocable<> F>
 	auto LaunchTask(F&& f) -> TaskForCallable<F>
 	{
-		return LaunchTaskImpl(std::forward<F>(f)).share();
+		return LaunchTaskImpl(std::forward<F>(f));
 	}
 
 	template <std::invocable<uint32_t> F>
@@ -112,10 +112,9 @@ private:
 
 	struct AbstractScheduledTask
 	{
-		bool done = false;
-
 		virtual ~AbstractScheduledTask() = default;
-		virtual void ExecuteIfReady(CpuExecutor& executor) = 0;
+		virtual bool IsReady() const = 0;
+		virtual void Execute(CpuExecutor& executor) = 0;
 	};
 
 	template <class T, class U>
@@ -153,21 +152,15 @@ private:
 		    future{std::move(future)}, callback{std::move(callback)}
 		{}
 
-		void ExecuteIfReady(CpuExecutor& executor) override
+		bool IsReady() const override { return future.wait_for(std::chrono::seconds{0}) == std::future_status::ready; }
+
+		void Execute(CpuExecutor& executor) override
 		{
-			using namespace std::chrono_literals;
+			// Make sure the future actually has a result (get will throw exception if not)
+			static_cast<void>(future.get());
 
-			if (future.wait_for(0s) == std::future_status::ready)
-			{
-				// Make sure the future actually has a result (get will throw exception if not)
-				static_cast<void>(future.get());
-
-				// Found one; execute the scheduled task
-				executor.LaunchTaskImpl([t = this->shared_from_this()]() { t->ExecuteTask(); });
-
-				// Mark it as done
-				done = true;
-			}
+			// Found one; execute the scheduled task
+			executor.LaunchTaskImpl([t = this->shared_from_this()]() { t->ExecuteTask(); });
 		}
 
 		Task<U> GetFuture() { return promise.get_future(); }

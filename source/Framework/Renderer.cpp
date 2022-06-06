@@ -133,7 +133,8 @@ void Renderer::EndFrame(const SurfaceImage& image)
 
 void Renderer::RenderToTexture(RenderableTexturePtr texture, RenderList renderList)
 {
-	m_scheduler.Schedule([this, renderList = std::move(renderList), texture = std::move(texture)](CommandBuffer& commandBuffer) {
+	m_scheduler.ScheduleGpu([this, renderList = std::move(renderList),
+	                         texture = std::move(texture)](CommandBuffer& commandBuffer) {
 		commandBuffer.AddTexture(texture);
 
 		TextureState textureState;
@@ -160,21 +161,20 @@ void Renderer::RenderToSurface(const SurfaceImage& surfaceImage, RenderList rend
 	});
 }
 
-std::future<TextureData> Renderer::CopyTextureData(RenderableTexturePtr texture)
+Task<TextureData> Renderer::CopyTextureData(RenderableTexturePtr texture)
 {
-	const std::uint32_t sequenceIndex = m_scheduler.m_gpuExecutor.AddCommandBufferSlot();
+	const TextureData textureData = {
+	    .size = texture->size,
+	    .format = texture->format,
+	    .mipLevelCount = texture->mipLevelCount,
+	    .samples = texture->samples,
+	};
 
-	auto promise = std::make_shared<std::promise<TextureData>>();
-	auto future = promise->get_future();
-
-	m_scheduler.m_cpuExecutor.LaunchTask([=, this, promise = std::move(promise)](uint32_t taskIndex) {
-		auto buffer = CreateBufferUninitialized(
+	auto task = m_scheduler.ScheduleGpu([this, texture = std::move(texture)](CommandBuffer& commandBuffer) {
+		auto buffer = std::make_shared<Buffer>(CreateBufferUninitialized(
 		    texture->memory.size, vk::BufferUsageFlagBits::eTransferDst, vk::MemoryPropertyFlagBits::eHostVisible,
-		    m_device.GetVulkanDevice(), m_device.GetMemoryAllocator());
+		    m_device.GetVulkanDevice(), m_device.GetMemoryAllocator()));
 
-		const auto& bufferData = buffer.allocation;
-
-		CommandBuffer& commandBuffer = m_scheduler.GetCommandBuffer(taskIndex);
 		commandBuffer.AddTexture(texture);
 
 		TextureState textureState = {
@@ -183,39 +183,22 @@ std::future<TextureData> Renderer::CopyTextureData(RenderableTexturePtr texture)
 		};
 		texture->TransitionToTransferSrc(textureState, commandBuffer);
 		const auto extent = vk::Extent3D{texture->size.width, texture->size.height, 1};
-		CopyImageToBuffer(commandBuffer, texture->image.get(), buffer.buffer.get(), texture->format, extent);
-		commandBuffer.TakeOwnership(std::move(buffer.buffer));
+		CopyImageToBuffer(commandBuffer, texture->image.get(), buffer->buffer.get(), texture->format, extent);
 		texture->TransitionToShaderInput(textureState, commandBuffer);
 
-		const TextureData textureData = {
-		    .size = texture->size,
-		    .format = texture->format,
-		    .mipLevelCount = texture->mipLevelCount,
-		    .samples = texture->samples,
-		};
-
-		std::promise<void> promise2;
-		std::future<void> future = promise2.get_future();
-		m_scheduler.m_gpuExecutor.SubmitCommandBuffer(
-		    sequenceIndex, commandBuffer, [p = std::move(promise2)]() mutable { p.set_value(); });
-
-		m_scheduler.m_cpuExecutor.LaunchTask(
-		    [bufferData, textureData, promise]() {
-			    const auto data = static_cast<const std::byte*>(bufferData.mappedData);
-
-			    const auto size
-			        = textureData.size.width * textureData.size.height * GetFormatElementSize(textureData.format);
-
-			    TextureData ret = textureData;
-			    ret.pixels.resize(size);
-			    std::copy(data, data + size, ret.pixels.data());
-
-			    promise->set_value(ret);
-		    },
-		    std::move(future.share()));
+		return buffer;
 	});
 
-	return future;
+	return m_scheduler.ScheduleAfter(task, [textureData](const BufferPtr& buffer) {
+		const auto data = static_cast<const std::byte*>(buffer->allocation.mappedData);
+
+		const auto size = textureData.size.width * textureData.size.height * GetFormatElementSize(textureData.format);
+
+		TextureData ret = textureData;
+		ret.pixels.resize(size);
+		std::copy(data, data + size, ret.pixels.data());
+		return ret;
+	});
 }
 
 void Renderer::BuildCommandBuffer(

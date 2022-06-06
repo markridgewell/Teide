@@ -17,11 +17,15 @@ CpuExecutor::CpuExecutor(std::uint32_t numThreads) : m_executor(numThreads)
 			// If there are futures, check if any have a value
 			for (auto& task : m_scheduledTasks)
 			{
-				task->ExecuteIfReady(*this);
+				if (task->IsReady())
+				{
+					auto t = std::exchange(task, nullptr);
+					t->Execute(*this);
+				}
 			}
 
 			// Remove done tasks
-			std::erase_if(m_scheduledTasks, [](const auto& entry) { return entry->done; });
+			std::erase(m_scheduledTasks, nullptr);
 		}
 	});
 }

@@ -3,6 +3,7 @@
 
 #include <vulkan/vulkan.hpp>
 
+#include <mutex>
 #include <vector>
 
 constexpr vk::DeviceSize MemoryBlockSize = 64 * 1024 * 1024;
@@ -50,6 +51,7 @@ private:
 
 	MemoryBlock& FindMemoryBlock(uint32_t memoryType, vk::DeviceSize availableSize, vk::DeviceSize alignment);
 
+	std::mutex m_mutex;
 	vk::Device m_device;
 	vk::PhysicalDevice m_physicalDevice;
 	std::vector<MemoryBlock> m_memoryBlocks;

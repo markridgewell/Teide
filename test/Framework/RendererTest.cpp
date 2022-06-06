@@ -56,7 +56,7 @@ TEST(RendererTest, RenderToTexture)
 
 	renderer.RenderToTexture(texture, renderList);
 
-	const TextureData outputData = renderer.CopyTextureData(texture).get();
+	const TextureData outputData = renderer.CopyTextureData(texture).get().value();
 
 	EXPECT_THAT(outputData.size, Eq(textureData.size));
 	EXPECT_THAT(outputData.format, Eq(textureData.format));
