@@ -1,6 +1,7 @@
 
 #pragma once
 
+#include <function2/function2.hpp>
 #include <vulkan/vulkan.hpp>
 
 #include <future>
@@ -13,6 +14,8 @@
 class GpuExecutor
 {
 public:
+	using OnCompleteFunction = fu2::unique_function<void()>;
+
 	GpuExecutor(vk::Device device, vk::Queue queue);
 	~GpuExecutor();
 
@@ -22,23 +25,23 @@ public:
 	GpuExecutor& operator=(GpuExecutor&&) = delete;
 
 	std::uint32_t AddCommandBufferSlot();
-	std::shared_future<void> SubmitCommandBuffer(std::uint32_t index, vk::CommandBuffer commandBuffer);
+	void SubmitCommandBuffer(std::uint32_t index, vk::CommandBuffer commandBuffer, OnCompleteFunction func = nullptr);
 
 private:
 	vk::Device m_device;
 	vk::Queue m_queue;
 
 	std::mutex m_readyCommandBuffersMutex;
-	std::promise<void> m_nextSubmitPromise;
-	std::shared_future<void> m_nextSubmitFuture;
+
 	std::vector<vk::CommandBuffer> m_readyCommandBuffers;
+	std::vector<OnCompleteFunction> m_completionHandlers;
 	std::queue<vk::UniqueFence> m_unusedSubmitFences;
 	std::size_t m_numSubmittedCommandBuffers = 0;
 
 	struct InFlightSubmit
 	{
 		vk::UniqueFence fence;
-		std::promise<void> promise;
+		std::vector<OnCompleteFunction> callbacks;
 	};
 	std::vector<InFlightSubmit> m_inFlightSubmits;
 	std::jthread m_schedulerThread;

@@ -5,12 +5,11 @@
 
 #include <spdlog/spdlog.h>
 
+#include <ranges>
 #include <span>
 
 GpuExecutor::GpuExecutor(vk::Device device, vk::Queue queue) : m_device{device}, m_queue{queue}
 {
-	m_nextSubmitFuture = m_nextSubmitPromise.get_future().share();
-
 	m_schedulerThread = std::jthread([this, stop_token = m_schedulerStopSource.get_token()] {
 		constexpr auto timeout = std::chrono::milliseconds{2};
 
@@ -40,12 +39,15 @@ GpuExecutor::GpuExecutor(vk::Device device, vk::Queue queue) : m_device{device},
 				auto lock = std::scoped_lock(m_readyCommandBuffersMutex);
 
 				// A fence was signalled, but we don't know which one yet, iterate them to find out
-				for (auto& [fence, promise] : m_inFlightSubmits)
+				for (auto& [fence, callbacks] : m_inFlightSubmits)
 				{
 					if (m_device.waitForFences(fence.get(), false, 0) == vk::Result::eSuccess)
 					{
-						// Found one, fulfil the attached promise
-						promise.set_value();
+						// Found one, call the attached callbacks (if any)
+						for (auto& callback : std::exchange(callbacks, {}))
+						{
+							callback();
+						}
 
 						// Reuse the fence for later and mark the task as done
 						m_device.resetFences(fence.get());
@@ -81,10 +83,11 @@ std::uint32_t GpuExecutor::AddCommandBufferSlot()
 	const auto lock = std::scoped_lock(m_readyCommandBuffersMutex);
 
 	m_readyCommandBuffers.emplace_back();
+	m_completionHandlers.emplace_back();
 	return static_cast<std::uint32_t>(m_readyCommandBuffers.size() - 1);
 }
 
-std::shared_future<void> GpuExecutor::SubmitCommandBuffer(std::uint32_t index, vk::CommandBuffer commandBuffer)
+void GpuExecutor::SubmitCommandBuffer(std::uint32_t index, vk::CommandBuffer commandBuffer, OnCompleteFunction func)
 {
 	const auto getFence = [this] {
 		if (m_unusedSubmitFences.empty())
@@ -101,19 +104,16 @@ std::shared_future<void> GpuExecutor::SubmitCommandBuffer(std::uint32_t index, v
 
 	commandBuffer.end();
 	m_readyCommandBuffers.at(index) = commandBuffer;
+	m_completionHandlers.at(index) = std::move(func);
 
 	const auto unsubmittedCommandBuffers = std::span(m_readyCommandBuffers).subspan(m_numSubmittedCommandBuffers);
+	const auto unsubmittedCompletionHandlers = std::span(m_completionHandlers).subspan(m_numSubmittedCommandBuffers);
 
 	const auto end = std::ranges::find(unsubmittedCommandBuffers, vk::CommandBuffer{});
 	const auto commandBuffersToSubmit = std::span(unsubmittedCommandBuffers.begin(), end);
 
-	const auto future = m_nextSubmitFuture;
-
 	if (!commandBuffersToSubmit.empty())
 	{
-		auto promise = std::exchange(m_nextSubmitPromise, {});
-		m_nextSubmitFuture = m_nextSubmitPromise.get_future().share();
-
 		auto fence = getFence();
 		m_numSubmittedCommandBuffers += commandBuffersToSubmit.size();
 
@@ -123,8 +123,10 @@ std::shared_future<void> GpuExecutor::SubmitCommandBuffer(std::uint32_t index, v
 		};
 		m_queue.submit(submitInfo, fence.get());
 
-		m_inFlightSubmits.emplace_back(std::move(fence), std::move(promise));
+		std::vector<OnCompleteFunction> callbacks;
+		std::ranges::move(
+		    unsubmittedCompletionHandlers | std::views::filter([](const auto& x) { return x != nullptr; }),
+		    std::back_inserter(callbacks));
+		m_inFlightSubmits.emplace_back(std::move(fence), std::move(callbacks));
 	}
-
-	return future;
 }

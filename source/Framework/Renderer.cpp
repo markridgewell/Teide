@@ -167,7 +167,7 @@ std::future<TextureData> Renderer::CopyTextureData(RenderableTexturePtr texture)
 	auto promise = std::make_shared<std::promise<TextureData>>();
 	auto future = promise->get_future();
 
-	m_scheduler.m_cpuExecutor.LaunchTask([=, this, &texture, promise = std::move(promise)](uint32_t taskIndex) {
+	m_scheduler.m_cpuExecutor.LaunchTask([=, this, promise = std::move(promise)](uint32_t taskIndex) {
 		auto buffer = CreateBufferUninitialized(
 		    texture->memory.size, vk::BufferUsageFlagBits::eTransferDst, vk::MemoryPropertyFlagBits::eHostVisible,
 		    m_device.GetVulkanDevice(), m_device.GetMemoryAllocator());
@@ -194,7 +194,10 @@ std::future<TextureData> Renderer::CopyTextureData(RenderableTexturePtr texture)
 		    .samples = texture->samples,
 		};
 
-		std::shared_future<void> future = m_scheduler.m_gpuExecutor.SubmitCommandBuffer(sequenceIndex, commandBuffer);
+		std::promise<void> promise2;
+		std::future<void> future = promise2.get_future();
+		m_scheduler.m_gpuExecutor.SubmitCommandBuffer(
+		    sequenceIndex, commandBuffer, [p = std::move(promise2)]() mutable { p.set_value(); });
 
 		m_scheduler.m_cpuExecutor.LaunchTask(
 		    [bufferData, textureData, promise]() {
@@ -209,7 +212,7 @@ std::future<TextureData> Renderer::CopyTextureData(RenderableTexturePtr texture)
 
 			    promise->set_value(ret);
 		    },
-		    std::move(future));
+		    std::move(future.share()));
 	});
 
 	return future;

@@ -36,6 +36,10 @@
     {
       "name": "taskflow",
       "version>=": "3.2.0"
+    },
+    {
+      "name": "function2",
+      "version>=": "4.2.0"
     }
   ],
   "builtin-baseline": "bd1ef2df46303989eeb048eb7aa9b816aa46365e"

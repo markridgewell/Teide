@@ -58,6 +58,15 @@ protected:
 		    *m_allocator);
 	}
 
+	std::future<void> SubmitCommandBuffer(GpuExecutor& executor, std::uint32_t index, vk::CommandBuffer commandBuffer)
+	{
+		std::promise<void> promise;
+		std::future<void> future = promise.get_future();
+		executor.SubmitCommandBuffer(
+		    index, commandBuffer, [promise = std::move(promise)]() mutable { promise.set_value(); });
+		return future;
+	}
+
 private:
 	std::optional<std::uint32_t> GetTransferQueueIndex(vk::PhysicalDevice physicalDevice)
 	{
@@ -122,7 +131,7 @@ TEST_F(GpuExecutorTest, OneCommandBuffer)
 	cmdBuffer->fillBuffer(buffer.buffer.get(), 0, 12, 0x01010101);
 
 	const auto slot = executor.AddCommandBufferSlot();
-	const auto future = executor.SubmitCommandBuffer(slot, cmdBuffer.get());
+	const auto future = SubmitCommandBuffer(executor, slot, cmdBuffer.get());
 	ASSERT_THAT(future.valid(), IsTrue());
 	future.wait();
 	EXPECT_THAT(future.wait_for(0s), Eq(std::future_status::ready));
@@ -147,8 +156,8 @@ TEST_F(GpuExecutorTest, TwoCommandBuffers)
 
 	const auto slot1 = executor.AddCommandBufferSlot();
 	const auto slot2 = executor.AddCommandBufferSlot();
-	const auto future1 = executor.SubmitCommandBuffer(slot1, cmdBuffer1.get());
-	const auto future2 = executor.SubmitCommandBuffer(slot2, cmdBuffer2.get());
+	const auto future1 = SubmitCommandBuffer(executor, slot1, cmdBuffer1.get());
+	const auto future2 = SubmitCommandBuffer(executor, slot2, cmdBuffer2.get());
 	ASSERT_THAT(future1.valid(), IsTrue());
 	ASSERT_THAT(future2.valid(), IsTrue());
 	future2.wait();
@@ -176,8 +185,8 @@ TEST_F(GpuExecutorTest, TwoCommandBuffersOutOfOrder)
 
 	const auto slot1 = executor.AddCommandBufferSlot();
 	const auto slot2 = executor.AddCommandBufferSlot();
-	const auto future2 = executor.SubmitCommandBuffer(slot2, cmdBuffer2.get()); // submission order switched
-	const auto future1 = executor.SubmitCommandBuffer(slot1, cmdBuffer1.get());
+	const auto future2 = SubmitCommandBuffer(executor, slot2, cmdBuffer2.get()); // submission order switched
+	const auto future1 = SubmitCommandBuffer(executor, slot1, cmdBuffer1.get());
 	ASSERT_THAT(future1.valid(), IsTrue());
 	ASSERT_THAT(future2.valid(), IsTrue());
 	future2.wait();

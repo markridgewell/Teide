@@ -1,10 +1,11 @@
 
 #pragma once
 
+#include <function2/function2.hpp>
 #include <taskflow/taskflow.hpp>
 
-#include <functional>
 #include <future>
+#include <memory>
 #include <mutex>
 #include <thread>
 
@@ -78,7 +79,7 @@ public:
 		const auto lock = std::scoped_lock(m_schedulerMutex);
 
 		auto newTask = MakeScheduledTask<void>(std::move(dependency), std::forward<F>(f));
-		auto future = newTask->promise->get_future().share();
+		auto future = newTask->GetFuture();
 		m_scheduledTasks.emplace_back(std::move(newTask));
 		return future;
 	}
@@ -89,7 +90,7 @@ public:
 		const auto lock = std::scoped_lock(m_schedulerMutex);
 
 		auto newTask = MakeScheduledTask<T>(std::move(dependency), std::forward<F>(f));
-		auto future = newTask->promise->get_future().share();
+		auto future = newTask->GetFuture();
 		m_scheduledTasks.emplace_back(std::move(newTask));
 		return future;
 	}
@@ -107,7 +108,7 @@ private:
 	tf::Executor m_executor;
 
 	template <class Ret, class Arg = void>
-	using UnaryFunction = std::function<Ret(Arg)>;
+	using UnaryFunction = fu2::unique_function<Ret(Arg)>;
 
 	struct AbstractScheduledTask
 	{
@@ -118,14 +119,38 @@ private:
 	};
 
 	template <class T, class U>
-	struct ConcreteScheduledTask : AbstractScheduledTask
+	struct ConcreteScheduledTask : AbstractScheduledTask, public std::enable_shared_from_this<ConcreteScheduledTask<T, U>>
 	{
 		Task<T> future;
-		std::function<U(T)> callback;
-		std::shared_ptr<Promise<U>> promise;
+		fu2::unique_function<U(T)> callback;
+		Promise<U> promise;
 
-		ConcreteScheduledTask(Task<T> future, std::function<U(T)> callback, std::shared_ptr<Promise<U>> promise) :
-		    future{std::move(future)}, callback{std::move(callback)}, promise{std::move(promise)}
+		void ExecuteTask() requires std::is_void_v<T> && std::is_void_v<U>
+		{
+			callback();
+			promise.set_value();
+		}
+
+		void ExecuteTask() requires std::is_void_v<T> && !std::is_void_v<U>
+		{
+			auto value = callback();
+			promise.set_value(std::move(value));
+		}
+
+		void ExecuteTask() requires !std::is_void_v<T> && std::is_void_v<U>
+		{
+			callback(future.get().value());
+			promise.set_value();
+		}
+
+		void ExecuteTask() requires !std::is_void_v<T> && !std::is_void_v<U>
+		{
+			auto value = callback(future.get().value());
+			promise.set_value(std::move(value));
+		}
+
+		ConcreteScheduledTask(Task<T> future, fu2::unique_function<U(T)> callback) :
+		    future{std::move(future)}, callback{std::move(callback)}
 		{}
 
 		void ExecuteIfReady(CpuExecutor& executor) override
@@ -134,59 +159,46 @@ private:
 
 			if (future.wait_for(0s) == std::future_status::ready)
 			{
+				// Make sure the future actually has a result (get will throw exception if not)
+				static_cast<void>(future.get());
+
 				// Found one; execute the scheduled task
-				executor.LaunchTaskImpl([future = future, callback = callback, promise = promise] {
-					if constexpr (std::is_void_v<T> && std::is_void_v<U>)
-					{
-						callback();
-						promise->set_value();
-					}
-					else if constexpr (std::is_void_v<T> && !std::is_void_v<U>)
-					{
-						auto value = callback();
-						promise->set_value(std::move(value));
-					}
-					else if constexpr (!std::is_void_v<T> && std::is_void_v<U>)
-					{
-						callback(future.get().value());
-						promise->set_value();
-					}
-					else if constexpr (!std::is_void_v<T> && !std::is_void_v<U>)
-					{
-						auto value = callback(future.get().value());
-						promise->set_value(std::move(value));
-					}
-				});
+				executor.LaunchTaskImpl([t = this->shared_from_this()]() { t->ExecuteTask(); });
 
 				// Mark it as done
 				done = true;
 			}
 		}
+
+		Task<U> GetFuture() { return promise.get_future(); }
 	};
 
 	template <class T, class U>
 	auto MakeScheduledTask(Task<T> future, UnaryFunction<U, T> callback)
 	{
-		return std::make_unique<ConcreteScheduledTask<T, U>>(
-		    std::move(future), std::move(callback), std::make_shared<Promise<U>>());
+		return std::make_shared<ConcreteScheduledTask<T, U>>(std::move(future), std::move(callback));
 	}
 
 	template <class T, class F>
-	auto MakeScheduledTask(Task<T> future, F callback)
+	auto MakeScheduledTask(Task<T> future, F&& callback)
 	{
 		if constexpr (!std::is_void_v<T>)
 		{
 			using U = std::invoke_result_t<F, T>;
-			return MakeScheduledTask<T, U>(std::move(future), std::move(callback));
+			return MakeScheduledTask<T, U>(std::move(future), std::forward<F>(callback));
 		}
 		else if constexpr (std::is_void_v<T>)
 		{
 			using U = std::invoke_result_t<F>;
-			return MakeScheduledTask<T, U>(std::move(future), std::move(callback));
+			return MakeScheduledTask<T, U>(std::move(future), std::forward<F>(callback));
 		}
 	}
 
-	std::vector<std::unique_ptr<AbstractScheduledTask>> m_scheduledTasks;
+	// Ideally we'd store unique_ptrs here. However, the Taskflow library doesn't support move-only
+	// function types, which causes problems as std::future and std::promise are both move-only.
+	// This means the lambda that invokes a scheduled task will also be move-only, *unless* we store
+	// the task object in a shared_ptr and capture it by copy.
+	std::vector<std::shared_ptr<AbstractScheduledTask>> m_scheduledTasks;
 
 	std::mutex m_schedulerMutex;
 	std::stop_source m_schedulerStopSource;
