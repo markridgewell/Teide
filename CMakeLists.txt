@@ -100,7 +100,8 @@ target_link_libraries(
            SDL2::SDL2
            fmt::fmt
            spdlog::spdlog
-           Taskflow::Taskflow)
+           Taskflow::Taskflow
+           function2::function2)
 
 target_compile_definitions(Framework PUBLIC VULKAN_HPP_NO_STRUCT_CONSTRUCTORS VULKAN_HPP_DISPATCH_LOADER_DYNAMIC=1)
 target_compile_features(Framework PRIVATE ${cxx_standard})

@@ -34,6 +34,19 @@ struct PromiseHelper<void>
 {
 	using type = std::promise<void>;
 };
+
+template <class Ret, class Arg>
+struct UnaryFunctionHelper
+{
+	using type = fu2::unique_function<Ret(Arg)>;
+};
+
+template <class Ret>
+struct UnaryFunctionHelper<Ret, void>
+{
+	using type = fu2::unique_function<Ret()>;
+};
+
 } // namespace detail
 
 template <class T = void>
@@ -98,6 +111,9 @@ public:
 	void WaitForTasks();
 
 private:
+	template <class Ret, class Arg>
+	using UnaryFunction = detail::UnaryFunctionHelper<Ret, Arg>::type;
+
 	template <class F, class... Args>
 		requires std::invocable<F, Args...>
 	auto LaunchTaskImpl(F&& f, Args&&... args)
@@ -106,9 +122,6 @@ private:
 	}
 
 	tf::Executor m_executor;
-
-	template <class Ret, class Arg = void>
-	using UnaryFunction = fu2::unique_function<Ret(Arg)>;
 
 	struct AbstractScheduledTask
 	{
@@ -123,7 +136,7 @@ private:
 	    public std::enable_shared_from_this<ConcreteScheduledTask<InT, OutT>>
 	{
 		Task<InT> future;
-		fu2::unique_function<OutT(InT)> callback;
+		UnaryFunction<OutT, InT> callback;
 		Promise<OutT> promise;
 
 		OutT InvokeCallback() requires std::is_void_v<InT> { return callback(); }
@@ -142,7 +155,7 @@ private:
 			promise.set_value(std::move(value));
 		}
 
-		ConcreteScheduledTask(Task<InT> future, fu2::unique_function<OutT(InT)> callback) :
+		ConcreteScheduledTask(Task<InT> future, UnaryFunction<OutT, InT> callback) :
 		    future{std::move(future)}, callback{std::move(callback)}
 		{}
 

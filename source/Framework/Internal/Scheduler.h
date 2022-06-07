@@ -73,7 +73,9 @@ public:
 
 	void WaitForTasks() { m_cpuExecutor.WaitForTasks(); }
 
-	// private:
+	CommandBuffer& GetCommandBuffer(uint32_t threadIndex);
+
+private:
 	static constexpr uint32_t MaxFramesInFlight = 2;
 
 	struct ThreadResources
@@ -87,8 +89,6 @@ public:
 	};
 
 	static std::vector<ThreadResources> CreateThreadResources(vk::Device device, uint32_t queueFamilyIndex, uint32_t numThreads);
-
-	CommandBuffer& GetCommandBuffer(uint32_t threadIndex);
 
 	CpuExecutor m_cpuExecutor;
 	GpuExecutor m_gpuExecutor;

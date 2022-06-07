@@ -152,8 +152,6 @@ TEST(CpuExecutorTest, LaunchOneTaskAndReturnValue)
 		return 42;
 	});
 
-	auto x = task0.get();
-
 	EXPECT_THAT(task0.get(), Eq(42));
 }
 
