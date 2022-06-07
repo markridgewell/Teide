@@ -20,7 +20,7 @@ void EnableRequiredVulkanExtension(
 
 vk::DebugUtilsMessengerCreateInfoEXT GetDebugCreateInfo();
 
-vk::UniqueInstance CreateInstance(SDL_Window* window = nullptr);
+vk::UniqueInstance CreateInstance(vk::DynamicLoader& loader, SDL_Window* window = nullptr);
 
 vk::UniqueDevice CreateDevice(
     vk::PhysicalDevice physicalDevice, std::span<const uint32_t> queueFamilyIndices, std::span<const char*> extensions = {});

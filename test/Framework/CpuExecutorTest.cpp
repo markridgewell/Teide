@@ -173,14 +173,24 @@ TEST(CpuExecutorTest, LaunchDependentTasksAndPassValues)
 	    },
 	    task0);
 
+	std::string result;
 	const auto task2 = executor.LaunchTask(
 	    [&](int value) {
 		    sleep_for(100ms);
-		    return std::to_string(value);
+		    result = std::to_string(value);
 	    },
 	    task1);
 
-	EXPECT_THAT(task2.get(), Eq("21"));
+	const auto task3 = executor.LaunchTask(
+	    [&]() {
+		    sleep_for(100ms);
+		    return result;
+	    },
+	    task2);
+
+	task3.wait();
+
+	EXPECT_THAT(result, Eq("21"));
 }
 
 } // namespace

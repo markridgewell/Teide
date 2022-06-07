@@ -19,7 +19,7 @@ class GpuExecutorTest : public testing::Test
 public:
 	void SetUp()
 	{
-		m_instance = CreateInstance();
+		m_instance = CreateInstance(m_loader);
 		ASSERT_TRUE(m_instance);
 		m_physicalDevice = FindPhysicalDevice(m_instance.get());
 		ASSERT_TRUE(m_physicalDevice);
@@ -198,6 +198,46 @@ TEST_F(GpuExecutorTest, TwoCommandBuffersOutOfOrder)
 	const auto result = std::vector(resultSpan.begin(), resultSpan.end());
 	const auto expected = std::vector<std::uint8_t>{1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2};
 	EXPECT_THAT(result, Eq(expected));
+}
+
+TEST_F(GpuExecutorTest, DontWait)
+{
+	auto buffer = CreateHostVisibleBuffer(12);
+	auto cmdBuffer = CreateCommandBuffer();
+	{
+		auto executor = GpuExecutor(GetDevice(), GetQueue());
+
+		cmdBuffer->begin(vk::CommandBufferBeginInfo{});
+		cmdBuffer->fillBuffer(buffer.buffer.get(), 0, 12, 0x01010101);
+
+		const auto slot = executor.AddCommandBufferSlot();
+		const auto future = SubmitCommandBuffer(executor, slot, cmdBuffer.get());
+		ASSERT_THAT(future.valid(), IsTrue());
+	}
+}
+
+TEST_F(GpuExecutorTest, SubmitMultipleCommandBuffers)
+{
+	auto executor = GpuExecutor(GetDevice(), GetQueue());
+	for (int i = 0; i < 2; i++)
+	{
+		auto cmdBuffer = CreateCommandBuffer();
+		auto buffer = CreateHostVisibleBuffer(12);
+
+		cmdBuffer->begin(vk::CommandBufferBeginInfo{});
+		cmdBuffer->fillBuffer(buffer.buffer.get(), 0, 12, 0x01010101);
+
+		const auto slot = executor.AddCommandBufferSlot();
+		const auto future = SubmitCommandBuffer(executor, slot, cmdBuffer.get());
+		ASSERT_THAT(future.valid(), IsTrue());
+		future.wait();
+		EXPECT_THAT(future.wait_for(0s), Eq(std::future_status::ready));
+
+		const auto resultSpan = std::span(static_cast<std::uint8_t*>(buffer.allocation.mappedData), buffer.size);
+		const auto result = std::vector(resultSpan.begin(), resultSpan.end());
+		const auto expected = std::vector<std::uint8_t>{1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
+		EXPECT_THAT(result, Eq(expected));
+	}
 }
 
 } // namespace

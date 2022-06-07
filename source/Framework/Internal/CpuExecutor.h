@@ -117,38 +117,32 @@ private:
 		virtual void Execute(CpuExecutor& executor) = 0;
 	};
 
-	template <class T, class U>
-	struct ConcreteScheduledTask : AbstractScheduledTask, public std::enable_shared_from_this<ConcreteScheduledTask<T, U>>
+	template <class InT, class OutT>
+	struct ConcreteScheduledTask :
+	    AbstractScheduledTask,
+	    public std::enable_shared_from_this<ConcreteScheduledTask<InT, OutT>>
 	{
-		Task<T> future;
-		fu2::unique_function<U(T)> callback;
-		Promise<U> promise;
+		Task<InT> future;
+		fu2::unique_function<OutT(InT)> callback;
+		Promise<OutT> promise;
 
-		void ExecuteTask() requires std::is_void_v<T> && std::is_void_v<U>
+		OutT InvokeCallback() requires std::is_void_v<InT> { return callback(); }
+
+		OutT InvokeCallback() { return callback(future.get().value()); }
+
+		void ExecuteTask() requires std::is_void_v<OutT>
 		{
-			callback();
+			InvokeCallback();
 			promise.set_value();
 		}
 
-		void ExecuteTask() requires std::is_void_v<T> && !std::is_void_v<U>
+		void ExecuteTask()
 		{
-			auto value = callback();
+			auto value = InvokeCallback();
 			promise.set_value(std::move(value));
 		}
 
-		void ExecuteTask() requires !std::is_void_v<T> && std::is_void_v<U>
-		{
-			callback(future.get().value());
-			promise.set_value();
-		}
-
-		void ExecuteTask() requires !std::is_void_v<T> && !std::is_void_v<U>
-		{
-			auto value = callback(future.get().value());
-			promise.set_value(std::move(value));
-		}
-
-		ConcreteScheduledTask(Task<T> future, fu2::unique_function<U(T)> callback) :
+		ConcreteScheduledTask(Task<InT> future, fu2::unique_function<OutT(InT)> callback) :
 		    future{std::move(future)}, callback{std::move(callback)}
 		{}
 
@@ -163,7 +157,7 @@ private:
 			executor.LaunchTaskImpl([t = this->shared_from_this()]() { t->ExecuteTask(); });
 		}
 
-		Task<U> GetFuture() { return promise.get_future(); }
+		Task<OutT> GetFuture() { return promise.get_future(); }
 	};
 
 	template <class T, class U>
@@ -175,14 +169,14 @@ private:
 	template <class T, class F>
 	auto MakeScheduledTask(Task<T> future, F&& callback)
 	{
-		if constexpr (!std::is_void_v<T>)
-		{
-			using U = std::invoke_result_t<F, T>;
-			return MakeScheduledTask<T, U>(std::move(future), std::forward<F>(callback));
-		}
-		else if constexpr (std::is_void_v<T>)
+		if constexpr (std::is_void_v<T>)
 		{
 			using U = std::invoke_result_t<F>;
+			return MakeScheduledTask<T, U>(std::move(future), std::forward<F>(callback));
+		}
+		else
+		{
+			using U = std::invoke_result_t<F, T>;
 			return MakeScheduledTask<T, U>(std::move(future), std::forward<F>(callback));
 		}
 	}

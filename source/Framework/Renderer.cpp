@@ -157,6 +157,8 @@ void Renderer::RenderToSurface(const SurfaceImage& surfaceImage, RenderList rend
 		BuildCommandBuffer(commandBuffer, renderList, surfaceImage.renderPass, framebuffer, extent);
 
 		commandBuffer.Get()->end();
+
+		const auto lock = std::scoped_lock(m_surfaceCommandBuffersMutex);
 		m_surfaceCommandBuffers.push_back(commandBuffer);
 	});
 }

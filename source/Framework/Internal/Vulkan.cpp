@@ -4,6 +4,8 @@
 #include <SDL_vulkan.h>
 #include <spdlog/spdlog.h>
 
+VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE;
+
 namespace
 {
 constexpr bool BreakOnVulkanWarning = false;
@@ -181,8 +183,11 @@ void EnableRequiredVulkanExtension(
 		throw vk::ExtensionNotPresentError(extensionName);
 	}
 }
-vk::UniqueInstance CreateInstance(SDL_Window* window)
+
+vk::UniqueInstance CreateInstance(vk::DynamicLoader& loader, SDL_Window* window)
 {
+	VULKAN_HPP_DEFAULT_DISPATCHER.init(loader.getProcAddress<PFN_vkGetInstanceProcAddr>("vkGetInstanceProcAddr"));
+
 	std::vector<const char*> extensions;
 	if (window)
 	{
@@ -200,6 +205,8 @@ vk::UniqueInstance CreateInstance(SDL_Window* window)
 	const auto availableExtensions = vk::enumerateInstanceExtensionProperties();
 
 	std::vector<const char*> layers;
+
+	vk::UniqueInstance instance;
 	if constexpr (IsDebugBuild)
 	{
 		EnableOptionalVulkanLayer(layers, availableLayers, "VK_LAYER_KHRONOS_validation");
@@ -224,7 +231,7 @@ vk::UniqueInstance CreateInstance(SDL_Window* window)
 		    GetDebugCreateInfo(),
 		};
 
-		return vk::createInstanceUnique(createInfo.get<vk::InstanceCreateInfo>(), s_allocator);
+		instance = vk::createInstanceUnique(createInfo.get<vk::InstanceCreateInfo>(), s_allocator);
 	}
 	else
 	{
@@ -236,8 +243,11 @@ vk::UniqueInstance CreateInstance(SDL_Window* window)
 		    .ppEnabledExtensionNames = data(extensions),
 		};
 
-		return vk::createInstanceUnique(createInfo, s_allocator);
+		instance = vk::createInstanceUnique(createInfo, s_allocator);
 	}
+
+	VULKAN_HPP_DEFAULT_DISPATCHER.init(instance.get());
+	return instance;
 }
 
 vk::UniqueDevice
