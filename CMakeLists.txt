@@ -131,7 +131,10 @@ set(sources
     test/Framework/GraphicsDeviceTest.cpp
     test/Framework/CpuExecutorTest.cpp
     test/Framework/GpuExecutorTest.cpp
+    test/Framework/FrameworkTestUtils.cpp
+    test/Framework/FrameworkTestUtils.h
     test/Framework/RendererTest.cpp
+    test/Framework/SchedulerTest.cpp
     test/Framework/SurfaceTest.cpp)
 
 add_executable(FrameworkTest ${sources})

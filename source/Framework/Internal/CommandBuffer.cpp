@@ -24,10 +24,22 @@ void CommandBuffer::Reset()
 	m_ownedBuffers.clear();
 }
 
-CommandBuffer::operator vk::CommandBuffer() const
+CommandBuffer::operator vk::CommandBuffer()
 {
 	assert(m_cmdBuffer);
 	return m_cmdBuffer.get();
+}
+
+vk::CommandBuffer& CommandBuffer::operator*()
+{
+	assert(m_cmdBuffer);
+	return m_cmdBuffer.get();
+}
+
+vk::CommandBuffer* CommandBuffer::operator->()
+{
+	assert(m_cmdBuffer);
+	return &m_cmdBuffer.get();
 }
 
 OneShotCommandBuffer::OneShotCommandBuffer(vk::Device device, vk::CommandPool commandPool, vk::Queue queue) :

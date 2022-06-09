@@ -434,7 +434,7 @@ void Surface::CreateDepthBuffer(vk::CommandBuffer cmdBuffer)
 
 void Surface::CreateSwapchainAndImages()
 {
-	const auto cmdBuffer = OneShotCommandBuffer(m_device, m_commandPool, m_queue);
+	auto cmdBuffer = OneShotCommandBuffer(m_device, m_commandPool, m_queue);
 
 	const auto surfaceCapabilities = m_physicalDevice.getSurfaceCapabilitiesKHR(m_surface.get());
 	const auto surfaceFormat = ChooseSurfaceFormat(m_physicalDevice.getSurfaceFormatsKHR(m_surface.get()));

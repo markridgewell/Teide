@@ -17,7 +17,9 @@ public:
 
 	vk::UniqueCommandBuffer& Get() { return m_cmdBuffer; }
 
-	operator vk::CommandBuffer() const;
+	operator vk::CommandBuffer();
+	vk::CommandBuffer& operator*();
+	vk::CommandBuffer* operator->();
 
 protected:
 	CommandBuffer() = default;

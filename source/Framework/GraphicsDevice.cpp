@@ -162,7 +162,7 @@ Buffer CreateBufferWithData(
 		// Create device-local buffer
 		Buffer ret = CreateBufferUninitialized(
 		    data.size(), usage | vk::BufferUsageFlagBits::eTransferDst, memoryFlags, device, allocator);
-		const auto cmdBuffer = OneShotCommandBuffer(device, commandPool, queue);
+		auto cmdBuffer = OneShotCommandBuffer(device, commandPool, queue);
 		CopyBuffer(cmdBuffer, stagingBuffer.buffer.get(), ret.buffer.get(), data.size());
 		return ret;
 	}

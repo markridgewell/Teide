@@ -80,9 +80,9 @@ public:
 	template <std::invocable<uint32_t> F>
 	auto LaunchTask(F&& f) -> TaskForCallable<F, uint32_t>
 	{
-		return LaunchTask([this, f = std::forward<F>(f)]() mutable {
+		return LaunchTaskImpl([this, f = std::forward<F>(f)]() mutable {
 			const uint32_t taskIndex = m_executor.this_worker_id();
-			std::forward<F>(f)(taskIndex);
+			return std::forward<F>(f)(taskIndex);
 		});
 	}
 
@@ -180,18 +180,19 @@ private:
 	}
 
 	template <class T, class F>
+		requires(std::is_void_v<T>)
 	auto MakeScheduledTask(Task<T> future, F&& callback)
 	{
-		if constexpr (std::is_void_v<T>)
-		{
-			using U = std::invoke_result_t<F>;
-			return MakeScheduledTask<T, U>(std::move(future), std::forward<F>(callback));
-		}
-		else
-		{
-			using U = std::invoke_result_t<F, T>;
-			return MakeScheduledTask<T, U>(std::move(future), std::forward<F>(callback));
-		}
+		using U = std::invoke_result_t<F>;
+		return MakeScheduledTask<T, U>(std::move(future), std::forward<F>(callback));
+	}
+
+	template <class T, class F>
+		requires(!std::is_void_v<T>)
+	auto MakeScheduledTask(Task<T> future, F&& callback)
+	{
+		using U = std::invoke_result_t<F, T>;
+		return MakeScheduledTask<T, U>(std::move(future), std::forward<F>(callback));
 	}
 
 	// Ideally we'd store unique_ptrs here. However, the Taskflow library doesn't support move-only
