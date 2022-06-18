@@ -1,9 +1,9 @@
 
-#include "Framework/Renderer.h"
+#include "Renderer/Renderer.h"
 
-#include "Framework/GraphicsDevice.h"
-#include "Framework/Texture.h"
-#include "ShaderCompiler.h"
+#include "Renderer/GraphicsDevice.h"
+#include "Renderer/Texture.h"
+#include "ShaderCompiler/ShaderCompiler.h"
 
 #include <gmock/gmock.h>
 

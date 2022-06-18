@@ -1,6 +1,6 @@
 
-#include "Framework/GraphicsDevice.h"
-#include "ShaderCompiler.h"
+#include "Renderer/GraphicsDevice.h"
+#include "ShaderCompiler/ShaderCompiler.h"
 
 #include <SDL.h>
 #include <gmock/gmock.h>

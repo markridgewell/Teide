@@ -1,8 +1,8 @@
 
 #pragma once
 
-#include "Framework/ForwardDeclare.h"
-#include "Framework/Internal/Vulkan.h"
+#include "Renderer/ForwardDeclare.h"
+#include "Renderer/Internal/Vulkan.h"
 
 class CommandBuffer
 {

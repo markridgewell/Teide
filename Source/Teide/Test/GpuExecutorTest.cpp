@@ -1,9 +1,9 @@
 
-#include "Framework/Internal/GpuExecutor.h"
+#include "Renderer/Internal/GpuExecutor.h"
 
-#include "Framework/Buffer.h"
-#include "Framework/Internal/Vulkan.h"
-#include "FrameworkTestUtils.h"
+#include "Renderer/Buffer.h"
+#include "Renderer/Internal/Vulkan.h"
+#include "TestUtils.h"
 
 #include <gmock/gmock.h>
 

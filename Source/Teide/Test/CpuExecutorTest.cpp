@@ -1,8 +1,8 @@
 
-#include "Framework/Internal/CpuExecutor.h"
+#include "Renderer/Internal/CpuExecutor.h"
 
-#include "Framework/Buffer.h"
-#include "Framework/Internal/Vulkan.h"
+#include "Renderer/Buffer.h"
+#include "Renderer/Internal/Vulkan.h"
 
 #include <gmock/gmock.h>
 

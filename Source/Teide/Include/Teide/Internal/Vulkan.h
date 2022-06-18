@@ -1,7 +1,7 @@
 
 #pragma once
 
-#include "Definitions.h"
+#include "Renderer/Definitions.h"
 
 #include <fmt/core.h>
 #include <vulkan/vulkan.hpp>

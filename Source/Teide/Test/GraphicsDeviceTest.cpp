@@ -1,8 +1,8 @@
 
-#include "Framework/GraphicsDevice.h"
+#include "Renderer/GraphicsDevice.h"
 
-#include "Framework/Texture.h"
-#include "ShaderCompiler.h"
+#include "Renderer/Texture.h"
+#include "ShaderCompiler/ShaderCompiler.h"
 
 #include <SDL.h>
 #include <gmock/gmock.h>

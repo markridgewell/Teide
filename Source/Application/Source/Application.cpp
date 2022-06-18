@@ -1,14 +1,14 @@
 
-#include "Definitions.h"
-#include "Framework/Buffer.h"
-#include "Framework/GraphicsDevice.h"
-#include "Framework/Renderer.h"
-#include "Framework/Shader.h"
-#include "Framework/Surface.h"
-#include "Framework/Texture.h"
 #include "GeoLib/Matrix.h"
 #include "GeoLib/Vector.h"
-#include "ShaderCompiler.h"
+#include "Renderer/Buffer.h"
+#include "Renderer/Definitions.h"
+#include "Renderer/GraphicsDevice.h"
+#include "Renderer/Renderer.h"
+#include "Renderer/Shader.h"
+#include "Renderer/Surface.h"
+#include "Renderer/Texture.h"
+#include "ShaderCompiler/ShaderCompiler.h"
 
 #include <SDL.h>
 #include <assimp/Importer.hpp>

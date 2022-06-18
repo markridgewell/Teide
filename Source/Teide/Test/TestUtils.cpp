@@ -1,5 +1,5 @@
 
-#include "FrameworkTestUtils.h"
+#include "TestUtils.h"
 
 std::optional<std::uint32_t> GetTransferQueueIndex(vk::PhysicalDevice physicalDevice)
 {

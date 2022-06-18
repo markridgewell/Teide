@@ -1,9 +1,9 @@
 
 #pragma once
 
-#include "Framework/Internal/CommandBuffer.h"
-#include "Framework/Internal/CpuExecutor.h"
-#include "Framework/Internal/GpuExecutor.h"
+#include "Renderer/Internal/CommandBuffer.h"
+#include "Renderer/Internal/CpuExecutor.h"
+#include "Renderer/Internal/GpuExecutor.h"
 
 #include <vector>
 

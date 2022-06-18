@@ -1,9 +1,9 @@
 
-#include "Framework/Internal/Scheduler.h"
+#include "Renderer/Internal/Scheduler.h"
 
-#include "Framework/Buffer.h"
-#include "Framework/Internal/Vulkan.h"
-#include "FrameworkTestUtils.h"
+#include "Renderer/Buffer.h"
+#include "Renderer/Internal/Vulkan.h"
+#include "TestUtils.h"
 
 #include <gmock/gmock.h>
 
