@@ -16,7 +16,7 @@ jobs:
       uses: actions/checkout@v2
 
     - name: clang-format lint
-      uses: jidicula/clang-format-action@v4.3.0
+      uses: jidicula/clang-format-action@v4.6.2
       with:
-        clang-format-version: 12
+        clang-format-version: 13
         check-path: 'source'

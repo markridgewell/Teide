@@ -65,11 +65,11 @@ jobs:
       shell: powershell
       run: |
         Expand-Archive ${{github.workspace}}\swiftshader\*.zip -d ${{github.workspace}}\swiftshader
-        Copy-Item ${{github.workspace}}\swiftshader\lib\vulkan-1.dll ${{github.workspace}}\build\${{matrix.buildtype}}\
+        Copy-Item ${{github.workspace}}\swiftshader\lib\vulkan-1.dll C:\Windows\System32\
 
     - name: Test
       working-directory: ${{github.workspace}}/build
-      run: OpenCppCoverage --export_type cobertura:${{github.workspace}}/coverage.xml --modules "*.exe" --sources source --cover_children -- ctest --output-on-failure -C ${{matrix.buildtype}}
+      run: OpenCppCoverage --export_type cobertura:${{github.workspace}}/coverage.xml --modules "*.exe" --sources "Source\\" --excluded_sources "Test\\" --excluded_sources "build\\"  --cover_children -- ctest --output-on-failure -C ${{matrix.buildtype}}
 
     - name: Upload test log
       if: failure()
