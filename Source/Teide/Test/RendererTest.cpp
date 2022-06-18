@@ -1,9 +1,9 @@
 
-#include "Renderer/Renderer.h"
+#include "Teide/Renderer.h"
 
-#include "Renderer/GraphicsDevice.h"
-#include "Renderer/Texture.h"
 #include "ShaderCompiler/ShaderCompiler.h"
+#include "Teide/GraphicsDevice.h"
+#include "Teide/Texture.h"
 
 #include <gmock/gmock.h>
 

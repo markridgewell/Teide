@@ -4,7 +4,7 @@ set_property(TARGET Application PROPERTY VS_DPI_AWARE "PerMonitor")
 target_link_libraries(
     Application
     PRIVATE GeoLib
-            Renderer
+            Teide
             ShaderCompiler
             SDL2::SDL2
             SDL2::SDL2main

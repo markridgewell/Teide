@@ -1,13 +1,13 @@
 
 #pragma once
 
-#include "Framework/Buffer.h"
-#include "Framework/ForwardDeclare.h"
-#include "Framework/Internal/MemoryAllocator.h"
-#include "Framework/Internal/Vulkan.h"
-#include "Framework/ParameterBlock.h"
-#include "Framework/Renderer.h"
-#include "Framework/Surface.h"
+#include "Teide/Buffer.h"
+#include "Teide/ForwardDeclare.h"
+#include "Teide/Internal/MemoryAllocator.h"
+#include "Teide/Internal/Vulkan.h"
+#include "Teide/ParameterBlock.h"
+#include "Teide/Renderer.h"
+#include "Teide/Surface.h"
 
 #include <optional>
 #include <unordered_map>

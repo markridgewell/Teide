@@ -1,9 +1,9 @@
 
 #pragma once
 
-#include "Framework/BytesView.h"
-#include "Framework/Internal/MemoryAllocator.h"
-#include "Framework/Internal/Vulkan.h"
+#include "Teide/BytesView.h"
+#include "Teide/Internal/MemoryAllocator.h"
+#include "Teide/Internal/Vulkan.h"
 
 #include <taskflow/core/taskflow.hpp>
 

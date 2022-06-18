@@ -1,7 +1,7 @@
 
 #pragma once
 
-#include "Renderer/Shader.h"
+#include "Teide/Shader.h"
 
 #include <exception>
 #include <string>

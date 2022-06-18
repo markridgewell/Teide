@@ -1,13 +1,13 @@
 
 #pragma once
 
-#include "Framework/BytesView.h"
-#include "Framework/ForwardDeclare.h"
-#include "Framework/Internal/CommandBuffer.h"
-#include "Framework/Internal/Scheduler.h"
-#include "Framework/Internal/Vulkan.h"
-#include "Framework/Pipeline.h"
-#include "Framework/Surface.h"
+#include "Teide/BytesView.h"
+#include "Teide/ForwardDeclare.h"
+#include "Teide/Internal/CommandBuffer.h"
+#include "Teide/Internal/Scheduler.h"
+#include "Teide/Internal/Vulkan.h"
+#include "Teide/Pipeline.h"
+#include "Teide/Surface.h"
 
 #include <array>
 #include <cstdint>

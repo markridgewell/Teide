@@ -1,9 +1,9 @@
 
 #pragma once
 
-#include "Renderer/Internal/CommandBuffer.h"
-#include "Renderer/Internal/CpuExecutor.h"
-#include "Renderer/Internal/GpuExecutor.h"
+#include "Teide/Internal/CommandBuffer.h"
+#include "Teide/Internal/CpuExecutor.h"
+#include "Teide/Internal/GpuExecutor.h"
 
 #include <vector>
 

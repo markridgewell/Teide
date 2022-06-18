@@ -1,6 +1,6 @@
 
-#include "Renderer/GraphicsDevice.h"
 #include "ShaderCompiler/ShaderCompiler.h"
+#include "Teide/GraphicsDevice.h"
 
 #include <SDL.h>
 #include <gmock/gmock.h>

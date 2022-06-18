@@ -1,7 +1,7 @@
 
 #pragma once
 
-#include "Framework/Internal/Vulkan.h"
+#include "Teide/Internal/Vulkan.h"
 
 #include <vector>
 

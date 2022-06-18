@@ -53,3 +53,5 @@ td_add_test(
             Test/SurfaceTest.cpp
             Test/TestUtils.cpp
             Test/TestUtils.h)
+
+target_link_libraries(TeideTest PRIVATE Teide ShaderCompiler GTest::gtest GTest::gmock)

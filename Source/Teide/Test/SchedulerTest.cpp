@@ -1,8 +1,8 @@
 
-#include "Renderer/Internal/Scheduler.h"
+#include "Teide/Internal/Scheduler.h"
 
-#include "Renderer/Buffer.h"
-#include "Renderer/Internal/Vulkan.h"
+#include "Teide/Buffer.h"
+#include "Teide/Internal/Vulkan.h"
 #include "TestUtils.h"
 
 #include <gmock/gmock.h>

@@ -1,5 +1,5 @@
 
-#include "Framework/Texture.h"
+#include "Teide/Texture.h"
 
 std::vector<std::byte> CopyBytes(BytesView src)
 {

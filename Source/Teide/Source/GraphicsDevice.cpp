@@ -1,9 +1,9 @@
 
-#include "Framework/GraphicsDevice.h"
+#include "Teide/GraphicsDevice.h"
 
-#include "Framework/Buffer.h"
-#include "Framework/Shader.h"
-#include "Framework/Texture.h"
+#include "Teide/Buffer.h"
+#include "Teide/Shader.h"
+#include "Teide/Texture.h"
 
 #include <SDL.h>
 #include <SDL_vulkan.h>

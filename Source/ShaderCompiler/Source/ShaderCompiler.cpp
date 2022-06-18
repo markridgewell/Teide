@@ -1,7 +1,7 @@
 
 #include "ShaderCompiler/ShaderCompiler.h"
 
-#include "Renderer/Definitions.h"
+#include "Teide/Definitions.h"
 
 #include <glslang/Public/ShaderLang.h>
 #include <glslang/SPIRV/GlslangToSpv.h>

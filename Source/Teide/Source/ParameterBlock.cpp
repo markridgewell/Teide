@@ -1,7 +1,7 @@
 
-#include "Framework/ParameterBlock.h"
+#include "Teide/ParameterBlock.h"
 
-#include "Framework/Buffer.h"
+#include "Teide/Buffer.h"
 
 void ParameterBlock::SetUniformData(int currentFrame, BytesView data)
 {

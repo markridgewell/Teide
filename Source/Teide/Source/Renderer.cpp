@@ -1,9 +1,9 @@
 
-#include "Framework/Renderer.h"
+#include "Teide/Renderer.h"
 
-#include "Framework/GraphicsDevice.h"
-#include "Framework/Internal/Vulkan.h"
-#include "Framework/Texture.h"
+#include "Teide/GraphicsDevice.h"
+#include "Teide/Internal/Vulkan.h"
+#include "Teide/Texture.h"
 
 #include <spdlog/spdlog.h>
 #include <vulkan/vulkan.hpp>

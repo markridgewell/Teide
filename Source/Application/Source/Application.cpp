@@ -1,14 +1,14 @@
 
 #include "GeoLib/Matrix.h"
 #include "GeoLib/Vector.h"
-#include "Renderer/Buffer.h"
-#include "Renderer/Definitions.h"
-#include "Renderer/GraphicsDevice.h"
-#include "Renderer/Renderer.h"
-#include "Renderer/Shader.h"
-#include "Renderer/Surface.h"
-#include "Renderer/Texture.h"
 #include "ShaderCompiler/ShaderCompiler.h"
+#include "Teide/Buffer.h"
+#include "Teide/Definitions.h"
+#include "Teide/GraphicsDevice.h"
+#include "Teide/Renderer.h"
+#include "Teide/Shader.h"
+#include "Teide/Surface.h"
+#include "Teide/Texture.h"
 
 #include <SDL.h>
 #include <assimp/Importer.hpp>

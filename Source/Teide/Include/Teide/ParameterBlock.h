@@ -1,9 +1,9 @@
 
 #pragma once
 
-#include "Framework/BytesView.h"
-#include "Framework/ForwardDeclare.h"
-#include "Framework/Internal/Vulkan.h"
+#include "Teide/BytesView.h"
+#include "Teide/ForwardDeclare.h"
+#include "Teide/Internal/Vulkan.h"
 
 #include <vector>
 

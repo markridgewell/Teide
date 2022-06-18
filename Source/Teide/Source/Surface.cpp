@@ -1,7 +1,7 @@
 
-#include "Framework/Surface.h"
+#include "Teide/Surface.h"
 
-#include "Framework/Internal/CommandBuffer.h"
+#include "Teide/Internal/CommandBuffer.h"
 
 #include <SDL_vulkan.h>
 #include <spdlog/spdlog.h>
