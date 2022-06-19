@@ -238,23 +238,47 @@ void Renderer::BuildCommandBuffer(
 		    GetDescriptorSet(renderList.sceneParameters.get()),
 		    GetDescriptorSet(renderList.viewParameters.get()),
 		};
-		commandBuffer.bindDescriptorSets(
-		    vk::PipelineBindPoint::eGraphics, renderList.objects.front().pipeline->layout, 0, descriptorSets, {});
+		const auto firstIt = std::ranges::find_if(descriptorSets, [](const auto& x) { return x; });
+		const auto lastIt = std::ranges::find_if(firstIt, descriptorSets.end(), [](const auto& x) { return !x; });
+		const auto span = std::span(firstIt, lastIt);
+		const auto first = static_cast<std::uint32_t>(std::distance(descriptorSets.begin(), firstIt));
+
+		if (!span.empty())
+		{
+			commandBuffer.bindDescriptorSets(
+			    vk::PipelineBindPoint::eGraphics, renderList.objects.front().pipeline->layout, first, span, {});
+		}
 
 		for (const RenderObject& obj : renderList.objects)
 		{
 			commandBufferWrapper.AddParameterBlock(obj.materialParameters);
 
-			commandBuffer.bindDescriptorSets(
-			    vk::PipelineBindPoint::eGraphics, obj.pipeline->layout, 2,
-			    GetDescriptorSet(obj.materialParameters.get()), {});
+			if (obj.materialParameters)
+			{
+				commandBuffer.bindDescriptorSets(
+				    vk::PipelineBindPoint::eGraphics, obj.pipeline->layout, 2,
+				    GetDescriptorSet(obj.materialParameters.get()), {});
+			}
+
 			commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, obj.pipeline->pipeline.get());
 			commandBuffer.bindVertexBuffers(0, obj.vertexBuffer->buffer.get(), vk::DeviceSize{0});
-			commandBuffer.bindIndexBuffer(obj.indexBuffer->buffer.get(), vk::DeviceSize{0}, vk::IndexType::eUint16);
-			commandBuffer.pushConstants(
-			    obj.pipeline->layout, vk::ShaderStageFlagBits::eVertex, 0, size32(obj.pushConstants),
-			    data(obj.pushConstants));
-			commandBuffer.drawIndexed(obj.indexCount, 1, 0, 0, 0);
+
+			if (!obj.pushConstants.empty())
+			{
+				commandBuffer.pushConstants(
+				    obj.pipeline->layout, vk::ShaderStageFlagBits::eVertex, 0, size32(obj.pushConstants),
+				    data(obj.pushConstants));
+			}
+
+			if (obj.indexBuffer)
+			{
+				commandBuffer.bindIndexBuffer(obj.indexBuffer->buffer.get(), vk::DeviceSize{0}, vk::IndexType::eUint16);
+				commandBuffer.drawIndexed(obj.indexCount, 1, 0, 0, 0);
+			}
+			else
+			{
+				commandBuffer.draw(obj.indexCount, 1, 0, 0);
+			}
 		}
 	}
 

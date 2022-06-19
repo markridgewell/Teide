@@ -114,29 +114,6 @@ TransitionAccessMasks GetTransitionAccessMasks(vk::ImageLayout oldLayout, vk::Im
 {
 	return {GetTransitionAccessMask(oldLayout), GetTransitionAccessMask(newLayout)};
 }
-
-vk::ImageAspectFlags GetAspectMask(vk::Format format)
-{
-	if (HasDepthComponent(format))
-	{
-		if (HasStencilComponent(format))
-		{
-			return vk::ImageAspectFlagBits::eDepth | vk::ImageAspectFlagBits::eStencil;
-		}
-		else
-		{
-			return vk::ImageAspectFlagBits::eDepth;
-		}
-	}
-	else if (HasStencilComponent(format))
-	{
-		return vk::ImageAspectFlagBits::eStencil;
-	}
-	else
-	{
-		return vk::ImageAspectFlagBits::eColor;
-	}
-}
 } // namespace
 
 vk::DebugUtilsMessengerCreateInfoEXT GetDebugCreateInfo()
@@ -322,7 +299,7 @@ void TransitionImageLayout(
 	    .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
 	    .image = image,
 	    .subresourceRange = {
-	        .aspectMask = GetAspectMask(format),
+	        .aspectMask = GetImageAspect(format),
 	        .baseMipLevel = 0,
 	        .levelCount = mipLevelCount,
 	        .baseArrayLayer = 0,

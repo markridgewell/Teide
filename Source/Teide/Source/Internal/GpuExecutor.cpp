@@ -66,6 +66,7 @@ GpuExecutor::~GpuExecutor()
 {
 	m_schedulerStopSource.request_stop();
 
+	auto lock = std::scoped_lock(m_readyCommandBuffersMutex);
 	auto fences = std::vector<vk::Fence>();
 	std::ranges::transform(m_inFlightSubmits, std::back_inserter(fences), [](const auto& s) { return s.fence.get(); });
 	if (!fences.empty())

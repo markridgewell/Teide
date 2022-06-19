@@ -35,13 +35,12 @@ public:
 	using const_iterator = span_type::iterator;
 	using reverse_iterator = span_type::reverse_iterator;
 
-	BytesView() = default;
 	BytesView(const BytesView&) = default;
 	BytesView(BytesView&&) = default;
 	BytesView& operator=(const BytesView&) = default;
 	BytesView& operator=(BytesView&&) = default;
 
-	BytesView(std::span<const std::byte> bytes) : m_span{bytes} {}
+	BytesView(std::span<const std::byte> bytes = {}) : m_span{bytes} {}
 
 	template <TrivialSpan T>
 	BytesView(const T& data) : m_span{std::as_bytes(std::span(data))}
