@@ -18,10 +18,10 @@ class GraphicsDevice;
 
 struct RenderObject
 {
-	BufferPtr vertexBuffer;
-	BufferPtr indexBuffer;
+	BufferPtr vertexBuffer = nullptr;
+	BufferPtr indexBuffer = nullptr;
 	uint32_t indexCount = 0;
-	PipelinePtr pipeline;
+	PipelinePtr pipeline = nullptr;
 	ParameterBlockPtr materialParameters;
 	BytesView pushConstants;
 };
