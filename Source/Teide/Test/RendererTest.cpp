@@ -2,6 +2,7 @@
 #include "Teide/Renderer.h"
 
 #include "ShaderCompiler/ShaderCompiler.h"
+#include "Teide/Buffer.h"
 #include "Teide/GraphicsDevice.h"
 #include "Teide/Texture.h"
 
@@ -42,7 +43,7 @@ void main() {
 class RendererTest : public testing::Test
 {
 public:
-	RendererTest() : m_renderer{m_device.CreateRenderer()} {}
+	RendererTest() : m_device{CreateGraphicsDevice()}, m_renderer{m_device->CreateRenderer()} {}
 
 protected:
 	RenderableTexturePtr CreateRenderableTexture(vk::Extent2D size)
@@ -53,11 +54,11 @@ protected:
 		    .mipLevelCount = 1,
 		    .samples = vk::SampleCountFlagBits::e1,
 		};
-		return m_device.CreateRenderableTexture(textureData, "Texture");
+		return m_device->CreateRenderableTexture(textureData, "Texture");
 	}
 
-	GraphicsDevice m_device;
-	Renderer m_renderer;
+	GraphicsDevicePtr m_device;
+	RendererPtr m_renderer;
 };
 
 TEST_F(RendererTest, RenderNothing)
@@ -69,9 +70,9 @@ TEST_F(RendererTest, RenderNothing)
 	    .clearValues = {{clearColor}},
 	};
 
-	m_renderer.RenderToTexture(texture, renderList);
+	m_renderer->RenderToTexture(texture, renderList);
 
-	const TextureData outputData = m_renderer.CopyTextureData(texture).get().value();
+	const TextureData outputData = m_renderer->CopyTextureData(texture).get().value();
 
 	EXPECT_THAT(outputData.size, Eq(vk::Extent2D{2, 2}));
 	EXPECT_THAT(outputData.format, Eq(vk::Format::eR8G8B8A8Srgb));
@@ -88,7 +89,7 @@ TEST_F(RendererTest, RenderFullscreenTri)
 	const auto texture = CreateRenderableTexture({2, 2});
 
 	constexpr auto vertices = std::array{-1.0f, -1.0f, 3.0f, -1.0f, -1.0f, 3.0f};
-	const auto vbuffer = m_device.CreateBuffer(
+	const auto vbuffer = m_device->CreateBuffer(
 	    {.usage = vk::BufferUsageFlagBits::eVertexBuffer, .memoryFlags = vk::MemoryPropertyFlagBits::eDeviceLocal, .data = vertices},
 	    "VertexBuffer");
 	const auto vertexLayout = VertexLayout{
@@ -97,9 +98,9 @@ TEST_F(RendererTest, RenderFullscreenTri)
 	    .vertexInputAttributes = {{.location = 0, .binding = 0, .format = vk::Format::eR32G32Sfloat, .offset = 0}}};
 
 	const auto shaderData = CompileShader(SimpleVertexShader, SimplePixelShader, ShaderLanguage::Glsl);
-	const auto shader = m_device.CreateShader(shaderData, "SimpleShader");
+	const auto shader = m_device->CreateShader(shaderData, "SimpleShader");
 
-	const auto pipeline = m_device.CreatePipeline(
+	const auto pipeline = m_device->CreatePipeline(
 	    *shader, vertexLayout,
 	    RenderStates{
 	        .viewport = {0, 0, 2, 2},
@@ -112,9 +113,9 @@ TEST_F(RendererTest, RenderFullscreenTri)
 	    .clearValues = {{clearColor}},
 	    .objects = {RenderObject{.vertexBuffer = vbuffer, .indexCount = 3, .pipeline = pipeline}}};
 
-	m_renderer.RenderToTexture(texture, renderList);
+	m_renderer->RenderToTexture(texture, renderList);
 
-	const TextureData outputData = m_renderer.CopyTextureData(texture).get().value();
+	const TextureData outputData = m_renderer->CopyTextureData(texture).get().value();
 
 	EXPECT_THAT(outputData.size, Eq(vk::Extent2D{2, 2}));
 	EXPECT_THAT(outputData.format, Eq(vk::Format::eR8G8B8A8Srgb));

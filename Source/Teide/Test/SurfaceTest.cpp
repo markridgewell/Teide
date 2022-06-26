@@ -35,10 +35,10 @@ TEST(SurfaceTest, CreateSurface)
 	const auto window = UniqueSDLWindow(SDL_CreateWindow("Test", 0, 0, 800, 600, SDL_WINDOW_VULKAN | SDL_WINDOW_HIDDEN));
 	ASSERT_THAT(window, NotNull()) << SDL_GetError();
 
-	auto device = GraphicsDevice(window.get());
-	auto surface = device.CreateSurface(window.get(), false);
-	EXPECT_THAT(surface.GetExtent().width, Eq(800u));
-	EXPECT_THAT(surface.GetExtent().height, Eq(600u));
+	auto device = CreateGraphicsDevice(window.get());
+	auto surface = device->CreateSurface(window.get(), false);
+	EXPECT_THAT(surface->GetExtent().width, Eq(800u));
+	EXPECT_THAT(surface->GetExtent().height, Eq(600u));
 }
 
 TEST(SurfaceTest, CreateSurfaceMultisampled)
@@ -46,10 +46,10 @@ TEST(SurfaceTest, CreateSurfaceMultisampled)
 	auto window = UniqueSDLWindow(SDL_CreateWindow("Test", 0, 0, 800, 600, SDL_WINDOW_VULKAN | SDL_WINDOW_HIDDEN));
 	ASSERT_THAT(window, NotNull()) << SDL_GetError();
 
-	auto device = GraphicsDevice(window.get());
-	auto surface = device.CreateSurface(window.get(), true);
-	EXPECT_THAT(surface.GetExtent().width, Eq(800u));
-	EXPECT_THAT(surface.GetExtent().height, Eq(600u));
+	auto device = CreateGraphicsDevice(window.get());
+	auto surface = device->CreateSurface(window.get(), true);
+	EXPECT_THAT(surface->GetExtent().width, Eq(800u));
+	EXPECT_THAT(surface->GetExtent().height, Eq(600u));
 }
 
 TEST(SurfaceTest, CreatePipelineForSurface)
@@ -57,9 +57,9 @@ TEST(SurfaceTest, CreatePipelineForSurface)
 	const auto window = UniqueSDLWindow(SDL_CreateWindow("Test", 0, 0, 800, 600, SDL_WINDOW_VULKAN | SDL_WINDOW_HIDDEN));
 	ASSERT_THAT(window, NotNull()) << SDL_GetError();
 
-	auto device = GraphicsDevice(window.get());
+	auto device = CreateGraphicsDevice(window.get());
 	const auto shaderData = CompileShader(SimpleVertexShader, SimplePixelShader, ShaderLanguage::Glsl);
-	const auto shader = device.CreateShader(shaderData, "Shader");
+	const auto shader = device->CreateShader(shaderData, "Shader");
 	const auto vertexLayout = VertexLayout{
 	    .inputAssembly = {.topology = vk::PrimitiveTopology::eTriangleList},
 	    .vertexInputBindings = {{.binding = 0, .stride = 0}},
@@ -69,8 +69,8 @@ TEST(SurfaceTest, CreatePipelineForSurface)
 	    .viewport = {0, 0, 600, 400},
 	    .rasterizationState = {.lineWidth = 1.0f},
 	};
-	auto surface = device.CreateSurface(window.get(), true);
-	const auto pipeline = device.CreatePipeline(*shader, vertexLayout, renderStates, surface);
+	auto surface = device->CreateSurface(window.get(), true);
+	const auto pipeline = device->CreatePipeline(*shader, vertexLayout, renderStates, *surface);
 	EXPECT_THAT(pipeline.get(), NotNull());
 	EXPECT_THAT(pipeline->layout, IsTrue());
 	EXPECT_THAT(pipeline->pipeline, IsTrue());
@@ -81,13 +81,11 @@ TEST(SurfaceTest, RenderToSurface)
 	auto window = UniqueSDLWindow(SDL_CreateWindow("Test", 0, 0, 800, 600, SDL_WINDOW_VULKAN | SDL_WINDOW_HIDDEN));
 	ASSERT_THAT(window, NotNull()) << SDL_GetError();
 
-	auto device = GraphicsDevice(window.get());
-	auto surface = device.CreateSurface(window.get(), true);
-	auto renderer = device.CreateRenderer();
+	auto device = CreateGraphicsDevice(window.get());
+	auto surface = device->CreateSurface(window.get(), true);
+	auto renderer = device->CreateRenderer();
 
-	const auto fence = renderer.BeginFrame();
-	const auto image = surface.AcquireNextImage(fence);
-	ASSERT_THAT(image.has_value(), IsTrue());
+	renderer->BeginFrame();
 	const auto clearColor = std::array{255, 0, 0, 255};
 	const auto clearDepthStencil = vk::ClearDepthStencilValue{1.0f, 0};
 	const auto clearValues = std::vector{
@@ -97,8 +95,8 @@ TEST(SurfaceTest, RenderToSurface)
 	const auto renderList = RenderList{
 	    .clearValues = clearValues,
 	};
-	renderer.RenderToSurface(image.value(), renderList);
-	renderer.EndFrame(image.value());
+	renderer->RenderToSurface(*surface, renderList);
+	renderer->EndFrame();
 }
 
 } // namespace

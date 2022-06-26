@@ -15,9 +15,9 @@ td_add_library(
             Include/Teide/Renderer.h
             Include/Teide/Shader.h
             Include/Teide/Surface.h
+            Include/Teide/Task.h
             Include/Teide/Texture.h
             Source/Buffer.cpp
-            Source/GraphicsDevice.cpp
             Source/Internal/CommandBuffer.cpp
             Source/Internal/CpuExecutor.cpp
             Source/Internal/GpuExecutor.cpp
@@ -25,9 +25,13 @@ td_add_library(
             Source/Internal/Scheduler.cpp
             Source/Internal/Vulkan.cpp
             Source/ParameterBlock.cpp
-            Source/Renderer.cpp
-            Source/Surface.cpp
             Source/Texture.cpp
+            Source/VulkanGraphicsDevice.cpp
+            Source/VulkanGraphicsDevice.h
+            Source/VulkanRenderer.cpp
+            Source/VulkanRenderer.h
+            Source/VulkanSurface.cpp
+            Source/VulkanSurface.h
             Vulkan.natvis)
 
 target_link_libraries(

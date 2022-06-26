@@ -252,12 +252,15 @@ public:
 	static constexpr float CameraMoveSpeed = 0.001f;
 
 	explicit Application(SDL_Window* window, const char* imageFilename, const char* modelFilename) :
-	    m_window{window}, m_device(window), m_surface{m_device.CreateSurface(window, UseMSAA)}, m_renderer{m_device.CreateRenderer()}
+	    m_window{window},
+	    m_device{CreateGraphicsDevice(window)},
+	    m_surface{m_device->CreateSurface(window, UseMSAA)},
+	    m_renderer{m_device->CreateRenderer()}
 	{
 		const auto shaderData = CompileShader(VertexShader, PixelShader, ShaderLang);
-		m_shader = m_device.CreateShader(shaderData, "ModelShader");
+		m_shader = m_device->CreateShader(shaderData, "ModelShader");
 
-		m_pipeline = m_device.CreatePipeline(*m_shader, VertexLayoutDesc, MakeRenderStates(), m_surface);
+		m_pipeline = m_device->CreatePipeline(*m_shader, VertexLayoutDesc, MakeRenderStates(), *m_surface);
 
 		CreateMesh(modelFilename);
 		LoadTexture(imageFilename);
@@ -269,14 +272,7 @@ public:
 
 	void OnRender()
 	{
-		vk::Fence fence = m_renderer.BeginFrame();
-
-		const auto result = m_surface.AcquireNextImage(fence);
-		if (!result.has_value())
-		{
-			return;
-		}
-		const auto& image = result.value();
+		m_renderer->BeginFrame();
 
 		const Geo::Matrix4 lightRotation = Geo::Matrix4::RotationZ(m_lightYaw) * Geo::Matrix4::RotationX(m_lightPitch);
 		const Geo::Vector3 lightDirection = Geo::Normalise(lightRotation * Geo::Vector3{0.0f, 1.0f, 0.0f});
@@ -317,7 +313,7 @@ public:
 		    .ambientColorBottom = {0.003f, 0.003f, 0.002f},
 		    .shadowMatrix = m_shadowMatrix,
 		};
-		m_sceneParams->SetUniformData(m_renderer.GetFrameNumber(), globalUniforms);
+		m_sceneParams->SetUniformData(m_renderer->GetFrameNumber(), globalUniforms);
 
 		// Update object uniforms
 		m_objectUniforms = {
@@ -338,7 +334,7 @@ public:
 			    .viewProj = m_shadowMatrix,
 			};
 
-			m_viewParams[0]->SetUniformData(m_renderer.GetFrameNumber(), viewUniforms);
+			m_viewParams[0]->SetUniformData(m_renderer->GetFrameNumber(), viewUniforms);
 
 			RenderList renderList = {
 			    .clearValues = clearValues,
@@ -354,7 +350,7 @@ public:
 			    }},
 			};
 
-			m_renderer.RenderToTexture(m_shadowMap, std::move(renderList));
+			m_renderer->RenderToTexture(m_shadowMap, std::move(renderList));
 		}
 
 		//
@@ -369,7 +365,7 @@ public:
 			};
 
 			// Update view uniforms
-			const auto extent = m_surface.GetExtent();
+			const auto extent = m_surface->GetExtent();
 			const float aspectRatio = static_cast<float>(extent.width) / static_cast<float>(extent.height);
 
 			const Geo::Matrix4 rotation = Geo::Matrix4::RotationZ(m_cameraYaw) * Geo::Matrix4::RotationX(m_cameraPitch);
@@ -385,7 +381,7 @@ public:
 			const auto viewUniforms = ViewUniforms{
 			    .viewProj = viewProj,
 			};
-			m_viewParams[1]->SetUniformData(m_renderer.GetFrameNumber(), viewUniforms);
+			m_viewParams[1]->SetUniformData(m_renderer->GetFrameNumber(), viewUniforms);
 
 			RenderList renderList = {
 			    .clearValues = clearValues,
@@ -401,13 +397,13 @@ public:
 			    }},
 			};
 
-			m_renderer.RenderToSurface(image, std::move(renderList));
+			m_renderer->RenderToSurface(*m_surface, std::move(renderList));
 		}
 
-		m_renderer.EndFrame(image);
+		m_renderer->EndFrame();
 	}
 
-	void OnResize() { m_surface.OnResize(); }
+	void OnResize() { m_surface->OnResize(); }
 
 	bool OnEvent(const SDL_Event& event)
 	{
@@ -493,7 +489,7 @@ public:
 private:
 	void CreateVertexBuffer(BytesView data)
 	{
-		m_vertexBuffer = m_device.CreateBuffer(
+		m_vertexBuffer = m_device->CreateBuffer(
 		    {.usage = vk::BufferUsageFlagBits::eVertexBuffer,
 		     .memoryFlags = vk::MemoryPropertyFlagBits::eDeviceLocal,
 		     .data = data},
@@ -502,7 +498,7 @@ private:
 
 	void CreateIndexBuffer(std::span<const uint16_t> data)
 	{
-		m_indexBuffer = m_device.CreateBuffer(
+		m_indexBuffer = m_device->CreateBuffer(
 		    {.usage = vk::BufferUsageFlagBits::eIndexBuffer, .memoryFlags = vk::MemoryPropertyFlagBits::eDeviceLocal, .data = data},
 		    "IndexBuffer");
 		m_indexCount = size32(data);
@@ -602,7 +598,7 @@ private:
 		    .layout = m_shader->sceneDescriptorSetLayout.get(),
 		    .uniformBufferSize = sizeof(GlobalUniforms),
 		};
-		m_sceneParams = m_device.CreateDynamicParameterBlock(sceneData, "Scene");
+		m_sceneParams = m_device->CreateDynamicParameterBlock(sceneData, "Scene");
 
 		m_viewParams.clear();
 		for (uint32_t pass = 0; pass < m_passCount; pass++)
@@ -616,7 +612,7 @@ private:
 
 			const auto name = DebugFormat("Pass{}:View", pass);
 
-			m_viewParams.push_back(m_device.CreateDynamicParameterBlock(viewData, name.c_str()));
+			m_viewParams.push_back(m_device->CreateDynamicParameterBlock(viewData, name.c_str()));
 		}
 
 		const auto materialData = ParameterBlockData{
@@ -624,7 +620,7 @@ private:
 		    .uniformBufferSize = 0,
 		    .textures = {m_texture.get()},
 		};
-		m_materialParams = m_device.CreateParameterBlock(materialData, "Material");
+		m_materialParams = m_device->CreateParameterBlock(materialData, "Material");
 	}
 
 	void LoadTexture(const char* filename)
@@ -652,7 +648,7 @@ private:
 			    .pixels = CopyBytes(pixels),
 			};
 
-			m_texture = m_device.CreateTexture(data, "DefaultTexture");
+			m_texture = m_device->CreateTexture(data, "DefaultTexture");
 			return;
 		}
 
@@ -680,7 +676,7 @@ private:
 		    .pixels = CopyBytes(std::span(pixels.get(), imageSize)),
 		};
 
-		m_texture = m_device.CreateTexture(data, filename);
+		m_texture = m_device->CreateTexture(data, filename);
 	}
 
 	void CreateShadowMap()
@@ -698,14 +694,14 @@ private:
 		        .addressModeV = vk::SamplerAddressMode::eRepeat,
 		        .addressModeW = vk::SamplerAddressMode::eRepeat,
 		        .anisotropyEnable = true,
-		        .maxAnisotropy = m_device.GetProperties().limits.maxSamplerAnisotropy,
+		        .maxAnisotropy = 8.0f,
 		        .compareEnable = true,
 		        .compareOp = vk::CompareOp::eLess,
 		        .borderColor = vk::BorderColor::eFloatOpaqueWhite,
 		    },
 		};
 
-		m_shadowMap = m_device.CreateRenderableTexture(data, "ShadowMap");
+		m_shadowMap = m_device->CreateRenderableTexture(data, "ShadowMap");
 
 		// Depth bias (and slope) are used to avoid shadowing artifacts
 		// Constant depth bias factor (always applied)
@@ -714,7 +710,7 @@ private:
 		float depthBiasSlope = 2.75f;
 
 		// Create pipeline
-		m_shadowMapPipeline = m_device.CreatePipeline(
+		m_shadowMapPipeline = m_device->CreatePipeline(
 		    *m_shader, VertexLayoutDesc, MakeRenderStates(depthBiasConstant, depthBiasSlope), *m_shadowMap);
 	}
 
@@ -726,8 +722,8 @@ private:
 
 	std::chrono::high_resolution_clock::time_point m_startTime = std::chrono::high_resolution_clock::now();
 
-	GraphicsDevice m_device;
-	Surface m_surface;
+	GraphicsDevicePtr m_device;
+	SurfacePtr m_surface;
 
 	// Object setup
 	ShaderPtr m_shader;
@@ -759,7 +755,7 @@ private:
 	float m_cameraDistance = 3.0f;
 
 	// Rendering
-	Renderer m_renderer;
+	RendererPtr m_renderer;
 };
 
 struct SDLWindowDeleter

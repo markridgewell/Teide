@@ -1,9 +1,10 @@
 
-#include "Teide/Renderer.h"
+#include "VulkanRenderer.h"
 
-#include "Teide/GraphicsDevice.h"
 #include "Teide/Internal/Vulkan.h"
+#include "Teide/Renderer.h"
 #include "Teide/Texture.h"
+#include "VulkanGraphicsDevice.h"
 
 #include <spdlog/spdlog.h>
 #include <vulkan/vulkan.hpp>
@@ -17,7 +18,9 @@ static const vk::Optional<const vk::AllocationCallbacks> s_allocator = nullptr;
 
 } // namespace
 
-Renderer::Renderer(GraphicsDevice& device, uint32_t graphicsFamilyIndex, std::optional<uint32_t> presentFamilyIndex, uint32_t numThreads) :
+VulkanRenderer::VulkanRenderer(
+    VulkanGraphicsDevice& device, uint32_t graphicsFamilyIndex, std::optional<uint32_t> presentFamilyIndex,
+    uint32_t numThreads) :
     m_device{device},
     m_graphicsQueue{device.GetVulkanDevice().getQueue(graphicsFamilyIndex, 0)},
     m_scheduler(numThreads, m_device.GetVulkanDevice(), m_graphicsQueue, graphicsFamilyIndex)
@@ -33,7 +36,7 @@ Renderer::Renderer(GraphicsDevice& device, uint32_t graphicsFamilyIndex, std::op
 	std::ranges::generate(m_inFlightFences, [=] { return CreateFence(vkdevice, vk::FenceCreateFlagBits::eSignaled); });
 }
 
-Renderer::~Renderer()
+VulkanRenderer::~VulkanRenderer()
 {
 	auto fences = std::vector<vk::Fence>();
 	std::ranges::transform(m_inFlightFences, std::back_inserter(fences), [](const auto& f) { return f.get(); });
@@ -47,12 +50,12 @@ Renderer::~Renderer()
 	}
 }
 
-std::uint32_t Renderer::GetFrameNumber() const
+std::uint32_t VulkanRenderer::GetFrameNumber() const
 {
 	return m_frameNumber;
 }
 
-vk::Fence Renderer::BeginFrame()
+void VulkanRenderer::BeginFrame()
 {
 	constexpr uint64_t timeout = std::numeric_limits<uint64_t>::max();
 
@@ -63,12 +66,16 @@ vk::Fence Renderer::BeginFrame()
 	assert(waitResult == vk::Result::eSuccess); // TODO check if waitForFences can fail with no timeout
 
 	m_scheduler.NextFrame();
-
-	return m_inFlightFences[m_frameNumber].get();
 }
 
-void Renderer::EndFrame(std::span<const SurfaceImage> images)
+void VulkanRenderer::EndFrame()
 {
+	std::vector<SurfaceImage> images;
+	{
+		const auto lock = std::scoped_lock(m_surfaceCommandBuffersMutex);
+		std::swap(images, m_surfacesToPresent);
+	}
+
 	assert(m_presentQueue && "Can't present without a present queue");
 
 	const auto device = m_device.GetVulkanDevice();
@@ -126,12 +133,7 @@ void Renderer::EndFrame(std::span<const SurfaceImage> images)
 	}
 }
 
-void Renderer::EndFrame(const SurfaceImage& image)
-{
-	EndFrame(std::span(&image, 1));
-}
-
-void Renderer::RenderToTexture(RenderableTexturePtr texture, RenderList renderList)
+void VulkanRenderer::RenderToTexture(RenderableTexturePtr texture, RenderList renderList)
 {
 	m_scheduler.ScheduleGpu([this, renderList = std::move(renderList),
 	                         texture = std::move(texture)](CommandBuffer& commandBuffer) {
@@ -146,24 +148,30 @@ void Renderer::RenderToTexture(RenderableTexturePtr texture, RenderList renderLi
 	});
 }
 
-void Renderer::RenderToSurface(const SurfaceImage& surfaceImage, RenderList renderList)
+void VulkanRenderer::RenderToSurface(Surface& surface, RenderList renderList)
 {
-	const auto framebuffer = surfaceImage.framebuffer;
-	const auto extent = surfaceImage.extent;
+	auto& surfaceImpl = dynamic_cast<VulkanSurface&>(surface);
+	if (const auto surfaceImageOpt = AddSurfaceToPresent(surfaceImpl))
+	{
+		const auto& surfaceImage = *surfaceImageOpt;
 
-	m_scheduler.Schedule([=, this, renderList = std::move(renderList)](uint32_t taskIndex) {
-		CommandBuffer& commandBuffer = m_scheduler.GetCommandBuffer(taskIndex);
+		const auto framebuffer = surfaceImage.framebuffer;
+		const auto extent = surfaceImage.extent;
 
-		BuildCommandBuffer(commandBuffer, renderList, surfaceImage.renderPass, framebuffer, extent);
+		m_scheduler.Schedule([=, this, renderList = std::move(renderList)](uint32_t taskIndex) {
+			CommandBuffer& commandBuffer = m_scheduler.GetCommandBuffer(taskIndex);
 
-		commandBuffer.Get()->end();
+			BuildCommandBuffer(commandBuffer, renderList, surfaceImage.renderPass, framebuffer, extent);
 
-		const auto lock = std::scoped_lock(m_surfaceCommandBuffersMutex);
-		m_surfaceCommandBuffers.push_back(commandBuffer);
-	});
+			commandBuffer.Get()->end();
+
+			const auto lock = std::scoped_lock(m_surfaceCommandBuffersMutex);
+			m_surfaceCommandBuffers.push_back(commandBuffer);
+		});
+	}
 }
 
-Task<TextureData> Renderer::CopyTextureData(RenderableTexturePtr texture)
+Task<TextureData> VulkanRenderer::CopyTextureData(RenderableTexturePtr texture)
 {
 	const TextureData textureData = {
 	    .size = texture->size,
@@ -203,7 +211,7 @@ Task<TextureData> Renderer::CopyTextureData(RenderableTexturePtr texture)
 	});
 }
 
-void Renderer::BuildCommandBuffer(
+void VulkanRenderer::BuildCommandBuffer(
     CommandBuffer& commandBufferWrapper, const RenderList& renderList, vk::RenderPass renderPass,
     vk::Framebuffer framebuffer, vk::Extent2D framebufferSize)
 {
@@ -285,7 +293,25 @@ void Renderer::BuildCommandBuffer(
 	commandBuffer.endRenderPass();
 }
 
-vk::DescriptorSet Renderer::GetDescriptorSet(const ParameterBlock* parameterBlock) const
+std::optional<SurfaceImage> VulkanRenderer::AddSurfaceToPresent(VulkanSurface& surface)
+{
+	const auto lock = std::scoped_lock(m_surfacesToPresentMutex);
+
+	if (const auto it = std::ranges::find(m_surfacesToPresent, surface.GetVulkanSurface(), &SurfaceImage::surface);
+	    it != m_surfacesToPresent.end())
+	{
+		return *it;
+	}
+
+	if (const auto result = surface.AcquireNextImage(m_inFlightFences[m_frameNumber].get()))
+	{
+		return m_surfacesToPresent.emplace_back(*result);
+	}
+
+	return std::nullopt;
+}
+
+vk::DescriptorSet VulkanRenderer::GetDescriptorSet(const ParameterBlock* parameterBlock) const
 {
 	if (parameterBlock == nullptr)
 	{

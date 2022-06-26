@@ -1,6 +1,8 @@
 
 #pragma once
 
+#include "Teide/Task.h"
+
 #include <function2/function2.hpp>
 #include <taskflow/taskflow.hpp>
 
@@ -11,18 +13,6 @@
 
 namespace detail
 {
-template <class T>
-struct TaskHelper
-{
-	using type = std::shared_future<std::optional<T>>;
-};
-
-template <>
-struct TaskHelper<void>
-{
-	using type = std::shared_future<void>;
-};
-
 template <class T>
 struct PromiseHelper
 {
@@ -48,9 +38,6 @@ struct UnaryFunctionHelper<Ret, void>
 };
 
 } // namespace detail
-
-template <class T = void>
-using Task = detail::TaskHelper<T>::type;
 
 template <class T = void>
 using Promise = detail::PromiseHelper<T>::type;

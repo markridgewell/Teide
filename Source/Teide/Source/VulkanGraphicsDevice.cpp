@@ -1,9 +1,12 @@
 
-#include "Teide/GraphicsDevice.h"
+#include "VulkanGraphicsDevice.h"
 
 #include "Teide/Buffer.h"
+#include "Teide/Internal/CommandBuffer.h"
 #include "Teide/Shader.h"
 #include "Teide/Texture.h"
+#include "VulkanRenderer.h"
+#include "VulkanSurface.h"
 
 #include <SDL.h>
 #include <SDL_vulkan.h>
@@ -400,7 +403,12 @@ vk::SubpassDescription MakeSubpassDescription(const vk::AttachmentReference& att
 
 //---------------------------------------------------------------------------------------------------------------------
 
-GraphicsDevice::GraphicsDevice(SDL_Window* window)
+GraphicsDevicePtr CreateGraphicsDevice(SDL_Window* window)
+{
+	return std::make_unique<VulkanGraphicsDevice>(window);
+}
+
+VulkanGraphicsDevice::VulkanGraphicsDevice(SDL_Window* window)
 {
 	m_instance = CreateInstance(m_loader, window);
 
@@ -471,12 +479,12 @@ GraphicsDevice::GraphicsDevice(SDL_Window* window)
 	SetDebugName(m_descriptorPool, "DescriptorPool");
 }
 
-GraphicsDevice::~GraphicsDevice()
+VulkanGraphicsDevice::~VulkanGraphicsDevice()
 {
 	m_device->waitIdle();
 }
 
-Surface GraphicsDevice::CreateSurface(SDL_Window* window, bool multisampled)
+SurfacePtr VulkanGraphicsDevice::CreateSurface(SDL_Window* window, bool multisampled)
 {
 	vk::UniqueSurfaceKHR surface;
 	const auto it = m_pendingWindowSurfaces.find(window);
@@ -498,17 +506,18 @@ Surface GraphicsDevice::CreateSurface(SDL_Window* window, bool multisampled)
 		assert(m_presentQueueFamily && "GraphicsDevice cannot create a surface for this window");
 	}
 
-	return Surface(
-	    window, std::move(surface), m_device.get(), m_physicalDevice, {m_graphicsQueueFamily, *m_presentQueueFamily},
-	    m_setupCommandPool.get(), m_graphicsQueue, multisampled);
+	return std::make_unique<VulkanSurface>(
+	    window, std::move(surface), m_device.get(), m_physicalDevice,
+	    std::vector<uint32_t>{m_graphicsQueueFamily, *m_presentQueueFamily}, m_setupCommandPool.get(), m_graphicsQueue,
+	    multisampled);
 }
 
-Renderer GraphicsDevice::CreateRenderer()
+RendererPtr VulkanGraphicsDevice::CreateRenderer()
 {
-	return Renderer(*this, m_graphicsQueueFamily, m_presentQueueFamily);
+	return std::make_unique<VulkanRenderer>(*this, m_graphicsQueueFamily, m_presentQueueFamily);
 }
 
-BufferPtr GraphicsDevice::CreateBuffer(const BufferData& data, const char* name)
+BufferPtr VulkanGraphicsDevice::CreateBuffer(const BufferData& data, const char* name)
 {
 	auto ret = CreateBufferWithData(
 	    data.data, data.usage, data.memoryFlags, m_device.get(), *m_allocator, m_setupCommandPool.get(), m_graphicsQueue);
@@ -516,7 +525,7 @@ BufferPtr GraphicsDevice::CreateBuffer(const BufferData& data, const char* name)
 	return std::make_shared<const Buffer>(std::move(ret));
 }
 
-DynamicBufferPtr GraphicsDevice::CreateDynamicBuffer(vk::DeviceSize bufferSize, vk::BufferUsageFlags usage, const char* name)
+DynamicBufferPtr VulkanGraphicsDevice::CreateDynamicBuffer(vk::DeviceSize bufferSize, vk::BufferUsageFlags usage, const char* name)
 {
 	DynamicBuffer ret;
 	ret.size = bufferSize;
@@ -530,7 +539,7 @@ DynamicBufferPtr GraphicsDevice::CreateDynamicBuffer(vk::DeviceSize bufferSize, 
 	return std::make_shared<DynamicBuffer>(std::move(ret));
 }
 
-ShaderPtr GraphicsDevice::CreateShader(const ShaderData& data, const char* name)
+ShaderPtr VulkanGraphicsDevice::CreateShader(const ShaderData& data, const char* name)
 {
 	const auto vertexCreateInfo = vk::ShaderModuleCreateInfo{
 	    .codeSize = data.vertexShaderSpirv.size() * sizeof(uint32_t),
@@ -558,7 +567,7 @@ ShaderPtr GraphicsDevice::CreateShader(const ShaderData& data, const char* name)
 	return std::make_shared<const Shader>(std::move(shader));
 }
 
-TexturePtr GraphicsDevice::CreateTexture(const TextureData& data, const char* name)
+TexturePtr VulkanGraphicsDevice::CreateTexture(const TextureData& data, const char* name)
 {
 	auto cmdBuffer = OneShotCommands();
 
@@ -579,7 +588,7 @@ TexturePtr GraphicsDevice::CreateTexture(const TextureData& data, const char* na
 	return std::make_shared<const Texture>(std::move(texture));
 }
 
-RenderableTexturePtr GraphicsDevice::CreateRenderableTexture(const TextureData& data, const char* name)
+RenderableTexturePtr VulkanGraphicsDevice::CreateRenderableTexture(const TextureData& data, const char* name)
 {
 	const bool isColorTarget = !HasDepthOrStencilComponent(data.format);
 	const auto renderUsage
@@ -649,17 +658,18 @@ RenderableTexturePtr GraphicsDevice::CreateRenderableTexture(const TextureData& 
 	return std::make_shared<RenderableTexture>(std::move(texture));
 }
 
-PipelinePtr GraphicsDevice::CreatePipeline(
+PipelinePtr VulkanGraphicsDevice::CreatePipeline(
     const Shader& shader, const VertexLayout& vertexLayout, const RenderStates& renderStates, const Surface& surface)
 {
+	const auto& surfaceImpl = dynamic_cast<const VulkanSurface&>(surface);
 	return std::make_shared<const Pipeline>(
 	    CreateGraphicsPipeline(
-	        shader, vertexLayout, renderStates, surface.GetVulkanRenderPass(), surface.GetColorFormat(),
+	        shader, vertexLayout, renderStates, surfaceImpl.GetVulkanRenderPass(), surface.GetColorFormat(),
 	        surface.GetSampleCount(), m_device.get()),
 	    shader.pipelineLayout.get());
 }
 
-PipelinePtr GraphicsDevice::CreatePipeline(
+PipelinePtr VulkanGraphicsDevice::CreatePipeline(
     const Shader& shader, const VertexLayout& vertexLayout, const RenderStates& renderStates, const RenderableTexture& texture)
 {
 	return std::make_shared<const Pipeline>(
@@ -668,7 +678,7 @@ PipelinePtr GraphicsDevice::CreatePipeline(
 	    shader.pipelineLayout.get());
 }
 
-std::vector<vk::UniqueDescriptorSet> GraphicsDevice::CreateDescriptorSets(
+std::vector<vk::UniqueDescriptorSet> VulkanGraphicsDevice::CreateDescriptorSets(
     vk::DescriptorSetLayout layout, size_t numSets, const DynamicBuffer& uniformBuffer,
     std::span<const Texture* const> textures, const char* name)
 {
@@ -741,13 +751,13 @@ std::vector<vk::UniqueDescriptorSet> GraphicsDevice::CreateDescriptorSets(
 	return descriptorSets;
 }
 
-ParameterBlockPtr GraphicsDevice::CreateParameterBlock(const ParameterBlockData& data, const char* name)
+ParameterBlockPtr VulkanGraphicsDevice::CreateParameterBlock(const ParameterBlockData& data, const char* name)
 {
 	// TODO support creating parameter blocks with static uniform buffers
 	return CreateDynamicParameterBlock(data, name);
 }
 
-DynamicParameterBlockPtr GraphicsDevice::CreateDynamicParameterBlock(const ParameterBlockData& data, const char* name)
+DynamicParameterBlockPtr VulkanGraphicsDevice::CreateDynamicParameterBlock(const ParameterBlockData& data, const char* name)
 {
 	const auto descriptorSetName = DebugFormat("{}DescriptorSet", name);
 

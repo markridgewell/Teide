@@ -1,5 +1,5 @@
 
-#include "Teide/Surface.h"
+#include "VulkanSurface.h"
 
 #include "Teide/Internal/CommandBuffer.h"
 
@@ -256,7 +256,7 @@ std::vector<vk::UniqueFramebuffer> CreateFramebuffers(
 
 } // namespace
 
-Surface::Surface(
+VulkanSurface::VulkanSurface(
     SDL_Window* window, vk::UniqueSurfaceKHR surface, vk::Device device, vk::PhysicalDevice physicalDevice,
     std::vector<uint32_t> queueFamilyIndices, vk::CommandPool commandPool, vk::Queue queue, bool multisampled) :
     m_device{device},
@@ -281,12 +281,12 @@ Surface::Surface(
 	CreateSwapchainAndImages();
 }
 
-void Surface::OnResize()
+void VulkanSurface::OnResize()
 {
 	RecreateSwapchain();
 }
 
-std::optional<SurfaceImage> Surface::AcquireNextImage(vk::Fence fence)
+std::optional<SurfaceImage> VulkanSurface::AcquireNextImage(vk::Fence fence)
 {
 	constexpr uint64_t timeout = std::numeric_limits<uint64_t>::max();
 
@@ -321,6 +321,7 @@ std::optional<SurfaceImage> Surface::AcquireNextImage(vk::Fence fence)
 	m_imagesInFlight[imageIndex] = fence;
 
 	const auto ret = SurfaceImage{
+	    .surface = m_surface.get(),
 	    .swapchain = m_swapchain.get(),
 	    .imageIndex = imageIndex,
 	    .imageAvailable = semaphore,
@@ -332,14 +333,14 @@ std::optional<SurfaceImage> Surface::AcquireNextImage(vk::Fence fence)
 	return ret;
 }
 
-vk::Semaphore Surface::GetNextSemaphore()
+vk::Semaphore VulkanSurface::GetNextSemaphore()
 {
 	const auto index = m_nextSemaphoreIndex;
 	m_nextSemaphoreIndex = (m_nextSemaphoreIndex + 1) % MaxFramesInFlight;
 	return m_imageAvailable[index].get();
 }
 
-void Surface::CreateColorBuffer(vk::Format format, vk::CommandBuffer cmdBuffer)
+void VulkanSurface::CreateColorBuffer(vk::Format format, vk::CommandBuffer cmdBuffer)
 {
 	// Create image
 	const auto imageInfo = vk::ImageCreateInfo{
@@ -383,7 +384,7 @@ void Surface::CreateColorBuffer(vk::Format format, vk::CommandBuffer cmdBuffer)
 	SetDebugName(m_colorImageView, "ColorImageView");
 }
 
-void Surface::CreateDepthBuffer(vk::CommandBuffer cmdBuffer)
+void VulkanSurface::CreateDepthBuffer(vk::CommandBuffer cmdBuffer)
 {
 	const auto formatCandidates
 	    = std::array{vk::Format::eD32Sfloat, vk::Format::eD32SfloatS8Uint, vk::Format::eD24UnormS8Uint};
@@ -432,7 +433,7 @@ void Surface::CreateDepthBuffer(vk::CommandBuffer cmdBuffer)
 	SetDebugName(m_depthImageView, "DepthImageView");
 }
 
-void Surface::CreateSwapchainAndImages()
+void VulkanSurface::CreateSwapchainAndImages()
 {
 	auto cmdBuffer = OneShotCommandBuffer(m_device, m_commandPool, m_queue);
 
@@ -459,7 +460,7 @@ void Surface::CreateSwapchainAndImages()
 	    m_swapchainImageViews, m_colorImageView.get(), m_depthImageView.get(), m_renderPass.get(), m_surfaceExtent, m_device);
 }
 
-void Surface::RecreateSwapchain()
+void VulkanSurface::RecreateSwapchain()
 {
 	m_swapchainAllocator.DeallocateAll();
 
