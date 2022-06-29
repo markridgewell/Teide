@@ -19,8 +19,6 @@ struct TextureData
 	std::vector<std::byte> pixels;
 };
 
-std::vector<std::byte> CopyBytes(BytesView src);
-
 struct TextureState
 {
 	vk::ImageLayout layout = vk::ImageLayout::eUndefined;
@@ -38,14 +36,17 @@ struct Texture
 	uint32_t mipLevelCount = 1;
 	vk::SampleCountFlagBits samples = vk::SampleCountFlagBits::e1;
 
+	std::size_t CalculateMinSizeInBytes() const;
+
 	void GenerateMipmaps(TextureState& state, vk::CommandBuffer cmdBuffer);
 
-	void TransitionToShaderInput(TextureState& state, vk::CommandBuffer cmdBuffer);
+	void TransitionToShaderInput(TextureState& state, vk::CommandBuffer cmdBuffer) const;
+	void TransitionToTransferSrc(TextureState& state, vk::CommandBuffer cmdBuffer) const;
 
 protected:
 	void DoTransition(
 	    TextureState& state, vk::CommandBuffer cmdBuffer, vk::ImageLayout newLayout,
-	    vk::PipelineStageFlags newPipelineStageFlags);
+	    vk::PipelineStageFlags newPipelineStageFlags) const;
 };
 
 struct RenderableTexture : public Texture
@@ -53,8 +54,7 @@ struct RenderableTexture : public Texture
 	vk::UniqueRenderPass renderPass;
 	vk::UniqueFramebuffer framebuffer;
 
-	void TransitionToRenderTarget(TextureState& state, vk::CommandBuffer cmdBuffer);
-	void TransitionToColorTarget(TextureState& state, vk::CommandBuffer cmdBuffer);
-	void TransitionToDepthStencilTarget(TextureState& state, vk::CommandBuffer cmdBuffer);
-	void TransitionToTransferSrc(TextureState& state, vk::CommandBuffer cmdBuffer);
+	void TransitionToRenderTarget(TextureState& state, vk::CommandBuffer cmdBuffer) const;
+	void TransitionToColorTarget(TextureState& state, vk::CommandBuffer cmdBuffer) const;
+	void TransitionToDepthStencilTarget(TextureState& state, vk::CommandBuffer cmdBuffer) const;
 };

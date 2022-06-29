@@ -8,6 +8,18 @@
 
 namespace
 {
+#ifdef __GNUC__ // GCC 4.8+, Clang, Intel and other compilers compatible with GCC (-std=c++0x or above)
+[[noreturn]] inline __attribute__((always_inline)) void Unreachable()
+{
+	__builtin_unreachable();
+}
+#elif defined(_MSC_VER) // MSVC
+[[noreturn]] __forceinline void Unreachable()
+{
+	__assume(false);
+}
+#endif
+
 // Taken from glslang StandAlone/ResourceLimits.cpp
 constexpr TBuiltInResource DefaultTBuiltInResource
     = {.maxLights = 32,

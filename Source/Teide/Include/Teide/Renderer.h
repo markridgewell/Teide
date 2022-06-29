@@ -52,7 +52,7 @@ public:
 	virtual void RenderToTexture(RenderableTexturePtr texture, RenderList renderList) = 0;
 	virtual void RenderToSurface(Surface& surface, RenderList renderList) = 0;
 
-	virtual Task<TextureData> CopyTextureData(RenderableTexturePtr texture) = 0;
+	virtual Task<TextureData> CopyTextureData(TexturePtr texture) = 0;
 };
 
 using RendererPtr = std::unique_ptr<Renderer>;

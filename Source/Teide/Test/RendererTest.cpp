@@ -5,6 +5,7 @@
 #include "Teide/Buffer.h"
 #include "Teide/GraphicsDevice.h"
 #include "Teide/Texture.h"
+#include "TestUtils.h"
 
 #include <gmock/gmock.h>
 
@@ -12,9 +13,6 @@ using namespace testing;
 
 namespace
 {
-constexpr auto B00 = std::byte{0x00};
-constexpr auto Bff = std::byte{0xff};
-
 constexpr std::string_view SimpleVertexShader = R"--(
 layout(location = 0) in vec4 inPosition;
 
@@ -79,8 +77,7 @@ TEST_F(RendererTest, RenderNothing)
 	EXPECT_THAT(outputData.mipLevelCount, Eq(1));
 	EXPECT_THAT(outputData.samples, Eq(vk::SampleCountFlagBits::e1));
 
-	const auto expectedPixels
-	    = std::vector{Bff, B00, B00, Bff, Bff, B00, B00, Bff, Bff, B00, B00, Bff, Bff, B00, B00, Bff};
+	const auto expectedPixels = HexToBytes("ff 00 00 ff ff 00 00 ff ff 00 00 ff ff 00 00 ff");
 	EXPECT_THAT(outputData.pixels, ContainerEq(expectedPixels));
 }
 
@@ -122,8 +119,7 @@ TEST_F(RendererTest, RenderFullscreenTri)
 	EXPECT_THAT(outputData.mipLevelCount, Eq(1));
 	EXPECT_THAT(outputData.samples, Eq(vk::SampleCountFlagBits::e1));
 
-	const auto expectedPixels
-	    = std::vector{Bff, Bff, Bff, Bff, Bff, Bff, Bff, Bff, Bff, Bff, Bff, Bff, Bff, Bff, Bff, Bff};
+	const auto expectedPixels = HexToBytes("ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff");
 	EXPECT_THAT(outputData.pixels, ContainerEq(expectedPixels));
 }
 

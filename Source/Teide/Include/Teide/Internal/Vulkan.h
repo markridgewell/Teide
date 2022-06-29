@@ -103,7 +103,8 @@ vk::ImageAspectFlags GetImageAspect(vk::Format format);
 void CopyBufferToImage(
     vk::CommandBuffer cmdBuffer, vk::Buffer source, vk::Image destination, vk::Format imageFormat, vk::Extent3D imageExtent);
 void CopyImageToBuffer(
-    vk::CommandBuffer cmdBuffer, vk::Image source, vk::Buffer destination, vk::Format imageFormat, vk::Extent3D imageExtent);
+    vk::CommandBuffer cmdBuffer, vk::Image source, vk::Buffer destination, vk::Format imageFormat,
+    vk::Extent3D imageExtent, std::uint32_t numMipLevels);
 
 std::uint32_t GetFormatElementSize(vk::Format format);
 

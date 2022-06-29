@@ -4,6 +4,7 @@
 #include "ShaderCompiler/ShaderCompiler.h"
 #include "Teide/Buffer.h"
 #include "Teide/Texture.h"
+#include "TestUtils.h"
 
 #include <SDL.h>
 #include <gmock/gmock.h>
@@ -69,8 +70,6 @@ TEST(GraphicsDeviceTest, CreateShader)
 
 TEST(GraphicsDeviceTest, CreateTexture)
 {
-	constexpr auto B00 = std::byte{0x00};
-	constexpr auto Bff = std::byte{0xff};
 	auto device = CreateGraphicsDevice();
 	const auto textureData = TextureData{
 	    .size = {2, 2},
@@ -78,7 +77,7 @@ TEST(GraphicsDeviceTest, CreateTexture)
 	    .mipLevelCount = 1,
 	    .samples = vk::SampleCountFlagBits::e1,
 	    .samplerInfo = {},
-	    .pixels = {Bff, B00, B00, Bff, B00, Bff, B00, Bff, Bff, B00, Bff, Bff, B00, B00, Bff, Bff},
+	    .pixels = HexToBytes("ff 00 00 ff 00 ff 00 ff ff 00 ff ff 00 00 ff ff"),
 	};
 	const auto texture = device->CreateTexture(textureData, "Texture");
 	EXPECT_THAT(texture.get(), NotNull());

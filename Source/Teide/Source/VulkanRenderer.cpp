@@ -171,7 +171,7 @@ void VulkanRenderer::RenderToSurface(Surface& surface, RenderList renderList)
 	}
 }
 
-Task<TextureData> VulkanRenderer::CopyTextureData(RenderableTexturePtr texture)
+Task<TextureData> VulkanRenderer::CopyTextureData(TexturePtr texture)
 {
 	const TextureData textureData = {
 	    .size = texture->size,
@@ -180,9 +180,11 @@ Task<TextureData> VulkanRenderer::CopyTextureData(RenderableTexturePtr texture)
 	    .samples = texture->samples,
 	};
 
-	auto task = m_scheduler.ScheduleGpu([this, texture = std::move(texture)](CommandBuffer& commandBuffer) {
+	const auto bufferSize = texture->CalculateMinSizeInBytes();
+
+	auto task = m_scheduler.ScheduleGpu([this, texture = std::move(texture), bufferSize](CommandBuffer& commandBuffer) {
 		auto buffer = std::make_shared<Buffer>(CreateBufferUninitialized(
-		    texture->memory.size, vk::BufferUsageFlagBits::eTransferDst, vk::MemoryPropertyFlagBits::eHostVisible,
+		    bufferSize, vk::BufferUsageFlagBits::eTransferDst, vk::MemoryPropertyFlagBits::eHostVisible,
 		    m_device.GetVulkanDevice(), m_device.GetMemoryAllocator()));
 
 		commandBuffer.AddTexture(texture);
@@ -193,20 +195,19 @@ Task<TextureData> VulkanRenderer::CopyTextureData(RenderableTexturePtr texture)
 		};
 		texture->TransitionToTransferSrc(textureState, commandBuffer);
 		const auto extent = vk::Extent3D{texture->size.width, texture->size.height, 1};
-		CopyImageToBuffer(commandBuffer, texture->image.get(), buffer->buffer.get(), texture->format, extent);
+		CopyImageToBuffer(
+		    commandBuffer, texture->image.get(), buffer->buffer.get(), texture->format, extent, texture->mipLevelCount);
 		texture->TransitionToShaderInput(textureState, commandBuffer);
 
 		return buffer;
 	});
 
-	return m_scheduler.ScheduleAfter(task, [textureData](const BufferPtr& buffer) {
+	return m_scheduler.ScheduleAfter(task, [textureData, bufferSize](const BufferPtr& buffer) {
 		const auto data = static_cast<const std::byte*>(buffer->allocation.mappedData);
 
-		const auto size = textureData.size.width * textureData.size.height * GetFormatElementSize(textureData.format);
-
 		TextureData ret = textureData;
-		ret.pixels.resize(size);
-		std::copy(data, data + size, ret.pixels.data());
+		ret.pixels.resize(bufferSize);
+		std::copy(data, data + bufferSize, ret.pixels.data());
 		return ret;
 	});
 }

@@ -201,6 +201,11 @@ constexpr auto ShaderLang = ShaderLanguage::Glsl;
 
 static const vk::Optional<const vk::AllocationCallbacks> s_allocator = nullptr;
 
+std::vector<std::byte> CopyBytes(BytesView src)
+{
+	return std::vector<std::byte>(src.begin(), src.end());
+}
+
 RenderStates MakeRenderStates(float depthBiasConstant = 0.0f, float depthBiasSlope = 0.0f)
 {
 	return {

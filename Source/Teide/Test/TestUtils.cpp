@@ -1,6 +1,8 @@
 
 #include "TestUtils.h"
 
+#include <charconv>
+
 std::optional<std::uint32_t> GetTransferQueueIndex(vk::PhysicalDevice physicalDevice)
 {
 	std::uint32_t i = 0;
@@ -41,4 +43,26 @@ vk::PhysicalDevice FindPhysicalDevice(vk::Instance instance)
 	}
 
 	return *it;
+}
+
+std::vector<std::byte> HexToBytes(std::string_view hexString)
+{
+	std::vector<std::byte> ret;
+	ret.reserve(hexString.size() / 2 + 1);
+
+	while (hexString.size() >= 2)
+	{
+		while (isspace(hexString[0]))
+		{
+			hexString.remove_prefix(1);
+		}
+
+		unsigned int i = 0;
+		[[maybe_unused]] const auto result = std::from_chars(hexString.data(), hexString.data() + 2, i, 16);
+		assert(result.ec == std::errc{});
+		ret.push_back(static_cast<std::byte>(i));
+		hexString.remove_prefix(2);
+	}
+
+	return ret;
 }

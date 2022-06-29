@@ -188,6 +188,9 @@ TextureAndState CreateTextureImpl(
     const TextureData& data, vk::Device device, MemoryAllocator& allocator, vk::ImageUsageFlags usage,
     OneShotCommandBuffer& cmdBuffer, const char* debugName)
 {
+	// For now, all textures will be created with TransferSrc so they can be copied from
+	usage |= vk::ImageUsageFlagBits::eTransferSrc;
+
 	if (!data.pixels.empty())
 	{
 		// Need to transfer image data into image
@@ -571,8 +574,9 @@ TexturePtr VulkanGraphicsDevice::CreateTexture(const TextureData& data, const ch
 {
 	auto cmdBuffer = OneShotCommands();
 
-	auto [texture, state]
-	    = CreateTextureImpl(data, m_device.get(), m_allocator.value(), vk::ImageUsageFlagBits::eSampled, cmdBuffer, name);
+	const auto usage = vk::ImageUsageFlagBits::eSampled;
+
+	auto [texture, state] = CreateTextureImpl(data, m_device.get(), m_allocator.value(), usage, cmdBuffer, name);
 
 	if (data.mipLevelCount > 1)
 	{
@@ -594,10 +598,7 @@ RenderableTexturePtr VulkanGraphicsDevice::CreateRenderableTexture(const Texture
 	const auto renderUsage
 	    = isColorTarget ? vk::ImageUsageFlagBits::eColorAttachment : vk::ImageUsageFlagBits::eDepthStencilAttachment;
 
-	const auto usage = renderUsage
-	    | vk::ImageUsageFlagBits::eSampled
-	    // For now, all renderable textures will be created with TransferSrc so they can be copied from
-	    | vk::ImageUsageFlagBits::eTransferSrc;
+	const auto usage = renderUsage | vk::ImageUsageFlagBits::eSampled;
 
 	auto cmdBuffer = OneShotCommands();
 

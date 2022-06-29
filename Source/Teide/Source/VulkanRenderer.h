@@ -32,7 +32,7 @@ public:
 	void RenderToTexture(RenderableTexturePtr texture, RenderList renderList) override;
 	void RenderToSurface(Surface& surface, RenderList renderList) override;
 
-	Task<TextureData> CopyTextureData(RenderableTexturePtr texture) override;
+	Task<TextureData> CopyTextureData(TexturePtr texture) override;
 
 private:
 	void BuildCommandBuffer(

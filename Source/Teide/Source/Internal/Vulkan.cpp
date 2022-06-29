@@ -122,7 +122,7 @@ vk::DebugUtilsMessengerCreateInfoEXT GetDebugCreateInfo()
 	using MessageSeverity = vk::DebugUtilsMessageSeverityFlagBitsEXT;
 
 	return {
-	    .messageSeverity = MessageSeverity ::eError | MessageSeverity ::eWarning | MessageSeverity ::eInfo,
+	    .messageSeverity = MessageSeverity::eError | MessageSeverity::eWarning | MessageSeverity::eInfo,
 	    .messageType = MessageType::eGeneral | MessageType::eValidation | MessageType::ePerformance,
 	    .pfnUserCallback = DebugCallback,
 	};
@@ -365,23 +365,39 @@ void CopyBufferToImage(vk::CommandBuffer cmdBuffer, vk::Buffer source, vk::Image
 	cmdBuffer.copyBufferToImage(source, destination, vk::ImageLayout::eTransferDstOptimal, copyRegion);
 }
 
-void CopyImageToBuffer(vk::CommandBuffer cmdBuffer, vk::Image source, vk::Buffer destination, vk::Format imageFormat, vk::Extent3D imageExtent)
+void CopyImageToBuffer(
+    vk::CommandBuffer cmdBuffer, vk::Image source, vk::Buffer destination, vk::Format imageFormat,
+    vk::Extent3D imageExtent, std::uint32_t numMipLevels)
 {
-	const auto copyRegion = vk::BufferImageCopy
+	const auto aspectMask = GetImageAspect(imageFormat);
+	const auto pixelSize = GetFormatElementSize(imageFormat);
+
+	// Copy each mip level with no gaps in between
+	std::uint32_t offset = 0;
+	vk::Extent3D mipExtent = imageExtent;
+	for (auto i = 0u; i < numMipLevels; i++)
 	{
-		.bufferOffset = 0,
-		.bufferRowLength = 0,
-		.bufferImageHeight = 0,
-		.imageSubresource = {
-			.aspectMask = GetImageAspect(imageFormat),
-			.mipLevel = 0,
-			.baseArrayLayer = 0,
-			.layerCount = 1,
-		},
-		.imageOffset = {0,0,0},
-		.imageExtent = imageExtent,
-	};
-	cmdBuffer.copyImageToBuffer(source, vk::ImageLayout::eTransferSrcOptimal, destination, copyRegion);
+		const auto copyRegion = vk::BufferImageCopy
+		{
+			.bufferOffset = offset,
+			.bufferRowLength = 0,
+			.bufferImageHeight = 0,
+			.imageSubresource = {
+				.aspectMask = aspectMask,
+				.mipLevel = i,
+				.baseArrayLayer = 0,
+				.layerCount = 1,
+			},
+			.imageOffset = {0,0,0},
+			.imageExtent = mipExtent,
+		};
+		cmdBuffer.copyImageToBuffer(source, vk::ImageLayout::eTransferSrcOptimal, destination, copyRegion);
+
+		offset += mipExtent.width * mipExtent.height * mipExtent.depth * pixelSize;
+		mipExtent.width = std::max(1u, mipExtent.width / 2);
+		mipExtent.height = std::max(1u, mipExtent.height / 2);
+		mipExtent.depth = std::max(1u, mipExtent.depth / 2);
+	}
 }
 
 std::uint32_t GetFormatElementSize(vk::Format format)
