@@ -85,6 +85,12 @@ jobs:
         fail_ci_if_error: true
         functionalities: fix
 
+    - name: Save coverage report
+      uses: actions/upload-artifact@v3
+      with:
+        name: CoverageReportMSVC${{matrix.msvcver}}${{matrix.buildtype}}
+        path: ./coverage.xml
+
   linux:
     strategy:
       matrix:
