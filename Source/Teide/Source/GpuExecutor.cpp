@@ -1,7 +1,7 @@
 
-#include "Teide/Internal/GpuExecutor.h"
+#include "GpuExecutor.h"
 
-#include "Teide/Internal/Vulkan.h"
+#include "Vulkan.h"
 
 #include <spdlog/spdlog.h>
 

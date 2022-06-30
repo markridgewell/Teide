@@ -3,7 +3,8 @@
 
 #include "Teide/BytesView.h"
 #include "Teide/ForwardDeclare.h"
-#include "Teide/Internal/Vulkan.h"
+
+#include <vulkan/vulkan.hpp>
 
 #include <vector>
 

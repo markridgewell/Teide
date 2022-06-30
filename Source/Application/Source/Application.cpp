@@ -43,6 +43,17 @@ namespace
 {
 constexpr bool UseMSAA = true;
 
+class ApplicationError : public std::exception
+{
+public:
+	explicit ApplicationError(std::string message) : m_what{std::move(message)} {}
+
+	virtual const char* what() const noexcept { return m_what.c_str(); }
+
+private:
+	std::string m_what;
+};
+
 constexpr std::string_view VertexShader = R"--(
 layout(location = 0) in vec3 inPosition;
 layout(location = 1) in vec2 inTexCoord;
@@ -507,7 +518,7 @@ private:
 		m_indexBuffer = m_device->CreateBuffer(
 		    {.usage = vk::BufferUsageFlagBits::eIndexBuffer, .memoryFlags = vk::MemoryPropertyFlagBits::eDeviceLocal, .data = data},
 		    "IndexBuffer");
-		m_indexCount = size32(data);
+		m_indexCount = static_cast<std::uint32_t>(size(data));
 	}
 
 	void CreateMesh(const char* filename)
@@ -532,16 +543,16 @@ private:
 			const aiScene* scene = importer.ReadFile(filename, importFlags);
 			if (!scene)
 			{
-				throw VulkanError(importer.GetErrorString());
+				throw ApplicationError(importer.GetErrorString());
 			}
 
 			if (scene->mNumMeshes == 0)
 			{
-				throw VulkanError(fmt::format("Model file '{}' contains no meshes", filename));
+				throw ApplicationError(fmt::format("Model file '{}' contains no meshes", filename));
 			}
 			if (scene->mNumMeshes > 1)
 			{
-				throw VulkanError(fmt::format("Model file '{}' contains too many meshes", filename));
+				throw ApplicationError(fmt::format("Model file '{}' contains too many meshes", filename));
 			}
 
 			const aiMesh& mesh = **scene->mMeshes;
@@ -588,7 +599,7 @@ private:
 				{
 					if (face.mIndices[j] > std::numeric_limits<uint16_t>::max())
 					{
-						throw VulkanError("Too many vertices for 16-bit indices");
+						throw ApplicationError("Too many vertices for 16-bit indices");
 					}
 					indices.push_back(static_cast<uint16_t>(face.mIndices[j]));
 				}
@@ -616,7 +627,7 @@ private:
 			    .textures = {pass > 0 ? m_shadowMap.get() : nullptr},
 			};
 
-			const auto name = DebugFormat("Pass{}:View", pass);
+			const auto name = fmt::format("Pass{}:View", pass);
 
 			m_viewParams.push_back(m_device->CreateDynamicParameterBlock(viewData, name.c_str()));
 		}
@@ -669,7 +680,7 @@ private:
 		const auto pixels = StbiPtr(stbi_load(filename, &width, &height, &channels, STBI_rgb_alpha));
 		if (!pixels)
 		{
-			throw VulkanError(fmt::format("Error loading texture '{}'", filename));
+			throw ApplicationError(fmt::format("Error loading texture '{}'", filename));
 		}
 
 		const vk::DeviceSize imageSize = static_cast<vk::DeviceSize>(width) * height * 4;
@@ -796,6 +807,13 @@ int Run(int argc, char* argv[])
 	{
 		spdlog::critical("Vulkan error: {}", e.what());
 		std::string message = fmt::format("The following error occurred when initializing Vulkan:\n{}", e.what());
+		SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Error", message.c_str(), window.get());
+		return 1;
+	}
+	catch (const ApplicationError& e)
+	{
+		spdlog::critical("Application error: {}", e.what());
+		std::string message = fmt::format("The following error occurred when initializing the application:\n{}", e.what());
 		SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Error", message.c_str(), window.get());
 		return 1;
 	}

@@ -1,9 +1,10 @@
 
 #include "VulkanRenderer.h"
 
-#include "Teide/Internal/Vulkan.h"
 #include "Teide/Renderer.h"
 #include "Types/TextureData.h"
+#include "Vulkan.h"
+#include "VulkanBuffer.h"
 #include "VulkanGraphicsDevice.h"
 #include "VulkanTexture.h"
 
@@ -211,12 +212,12 @@ Task<TextureData> VulkanRenderer::CopyTextureData(TexturePtr texture)
 		return buffer;
 	});
 
-	return m_scheduler.ScheduleAfter(task, [textureData, bufferSize](const BufferPtr& buffer) {
-		const auto data = static_cast<const std::byte*>(buffer->allocation.mappedData);
+	return m_scheduler.ScheduleAfter(task, [textureData](const BufferPtr& buffer) {
+		const auto& data = buffer->mappedData;
 
 		TextureData ret = textureData;
-		ret.pixels.resize(bufferSize);
-		std::copy(data, data + bufferSize, ret.pixels.data());
+		ret.pixels.resize(data.size());
+		std::ranges::copy(data, ret.pixels.data());
 		return ret;
 	});
 }
@@ -252,19 +253,27 @@ void VulkanRenderer::BuildCommandBuffer(
 
 	if (!renderList.objects.empty())
 	{
-		const auto descriptorSets = std::array{
-		    GetDescriptorSet(renderList.sceneParameters.get()),
-		    GetDescriptorSet(renderList.viewParameters.get()),
-		};
-		const auto firstIt = std::ranges::find_if(descriptorSets, [](const auto& x) { return x; });
-		const auto lastIt = std::ranges::find_if(firstIt, descriptorSets.end(), [](const auto& x) { return !x; });
-		const auto span = std::span(firstIt, lastIt);
-		const auto first = static_cast<std::uint32_t>(std::distance(descriptorSets.begin(), firstIt));
+		std::vector<vk::DescriptorSet> descriptorSets;
+		std::uint32_t first = 0;
 
-		if (!span.empty())
+		if (const auto set = GetDescriptorSet(renderList.sceneParameters.get()))
+		{
+			descriptorSets.push_back(set);
+		}
+		else
+		{
+			first++;
+		}
+
+		if (const auto set = GetDescriptorSet(renderList.viewParameters.get()))
+		{
+			descriptorSets.push_back(set);
+		}
+
+		if (!descriptorSets.empty())
 		{
 			commandBuffer.bindDescriptorSets(
-			    vk::PipelineBindPoint::eGraphics, renderList.objects.front().pipeline->layout, first, span, {});
+			    vk::PipelineBindPoint::eGraphics, renderList.objects.front().pipeline->layout, first, descriptorSets, {});
 		}
 
 		for (const RenderObject& obj : renderList.objects)

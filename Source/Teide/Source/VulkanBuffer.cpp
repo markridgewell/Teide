@@ -1,5 +1,7 @@
 
-#include "Teide/Buffer.h"
+#include "VulkanBuffer.h"
+
+#include "MemoryAllocator.h"
 
 #include <cassert>
 
@@ -10,9 +12,9 @@ const vk::Optional<const vk::AllocationCallbacks> s_allocator = nullptr;
 
 void DynamicBuffer::SetData(int currentFrame, BytesView data)
 {
-	const auto& allocation = buffers[currentFrame % buffers.size()].allocation;
-	assert(allocation.mappedData);
-	memcpy(allocation.mappedData, data.data(), data.size());
+	const auto& mappedData = buffers[currentFrame % buffers.size()].mappedData;
+	assert(mappedData.size() >= data.size());
+	memcpy(mappedData.data(), data.data(), data.size());
 }
 
 Buffer CreateBufferUninitialized(
@@ -28,8 +30,9 @@ Buffer CreateBufferUninitialized(
 	};
 	ret.size = size;
 	ret.buffer = device.createBufferUnique(createInfo, s_allocator);
-	ret.allocation = allocator.Allocate(device.getBufferMemoryRequirements(ret.buffer.get()), memoryFlags);
-	device.bindBufferMemory(ret.buffer.get(), ret.allocation.memory, ret.allocation.offset);
+	const auto allocation = allocator.Allocate(device.getBufferMemoryRequirements(ret.buffer.get()), memoryFlags);
+	device.bindBufferMemory(ret.buffer.get(), allocation.memory, allocation.offset);
+	ret.mappedData = {static_cast<std::byte*>(allocation.mappedData), size};
 
 	return ret;
 }

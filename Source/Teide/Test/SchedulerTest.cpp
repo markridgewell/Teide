@@ -1,9 +1,10 @@
 
-#include "Teide/Internal/Scheduler.h"
+#include "Scheduler.h"
 
-#include "Teide/Buffer.h"
-#include "Teide/Internal/Vulkan.h"
+#include "MemoryAllocator.h"
 #include "TestUtils.h"
+#include "Vulkan.h"
+#include "VulkanBuffer.h"
 
 #include <gmock/gmock.h>
 
@@ -131,7 +132,7 @@ TEST_F(SchedulerTest, ScheduleGpu)
 	task.wait();
 	EXPECT_THAT(task.wait_for(0s), Eq(std::future_status::ready));
 
-	const auto resultSpan = std::span(static_cast<std::uint8_t*>(buffer->allocation.mappedData), buffer->size);
+	const auto resultSpan = std::span(reinterpret_cast<std::uint8_t*>(buffer->mappedData.data()), buffer->size);
 	const auto resultData = std::vector(resultSpan.begin(), resultSpan.end());
 	const auto expectedData = std::vector<std::uint8_t>{1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
 	EXPECT_THAT(resultData, Eq(expectedData));
@@ -149,7 +150,7 @@ TEST_F(SchedulerTest, ScheduleGpuWithReturn)
 	const auto& result = task.get();
 	ASSERT_THAT(result.has_value(), IsTrue());
 	const auto& buffer = *result.value();
-	const auto resultSpan = std::span(static_cast<std::uint8_t*>(buffer.allocation.mappedData), buffer.size);
+	const auto resultSpan = std::span(reinterpret_cast<std::uint8_t*>(buffer.mappedData.data()), buffer.size);
 	const auto resultData = std::vector(resultSpan.begin(), resultSpan.end());
 	const auto expectedData = std::vector<std::uint8_t>{1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
 	EXPECT_THAT(resultData, Eq(expectedData));
@@ -170,7 +171,7 @@ TEST_F(SchedulerTest, ScheduleGpuAcrossMultipleFrames)
 
 		task.wait();
 
-		const auto resultSpan = std::span(static_cast<std::uint8_t*>(buffer->allocation.mappedData), buffer->size);
+		const auto resultSpan = std::span(reinterpret_cast<std::uint8_t*>(buffer->mappedData.data()), buffer->size);
 		const auto resultData = std::vector(resultSpan.begin(), resultSpan.end());
 		const auto expectedData = std::vector<std::uint8_t>{i, i, i, i};
 		EXPECT_THAT(resultData, Eq(expectedData));

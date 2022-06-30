@@ -1,7 +1,7 @@
 
-#include "Teide/Internal/MemoryAllocator.h"
+#include "MemoryAllocator.h"
 
-#include "Teide/Internal/Vulkan.h"
+#include "Vulkan.h"
 
 #include <spdlog/spdlog.h>
 

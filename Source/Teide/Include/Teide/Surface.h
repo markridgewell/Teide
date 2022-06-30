@@ -1,10 +1,9 @@
 
 #pragma once
 
-#include "Teide/Internal/Vulkan.h"
+#include <vulkan/vulkan.hpp>
 
 #include <memory>
-#include <optional>
 
 class Surface
 {

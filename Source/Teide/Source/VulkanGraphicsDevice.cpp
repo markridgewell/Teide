@@ -1,10 +1,10 @@
 
 #include "VulkanGraphicsDevice.h"
 
-#include "Teide/Buffer.h"
-#include "Teide/Internal/CommandBuffer.h"
+#include "CommandBuffer.h"
 #include "Teide/Shader.h"
 #include "Types/TextureData.h"
+#include "VulkanBuffer.h"
 #include "VulkanRenderer.h"
 #include "VulkanSurface.h"
 #include "VulkanTexture.h"
@@ -137,8 +137,8 @@ vk::PhysicalDevice FindPhysicalDevice(vk::Instance instance, vk::SurfaceKHR surf
 
 void SetBufferData(Buffer& buffer, BytesView data)
 {
-	assert(buffer.allocation.mappedData);
-	memcpy(buffer.allocation.mappedData, data.data(), data.size());
+	assert(buffer.mappedData.size() >= data.size());
+	memcpy(buffer.mappedData.data(), data.data(), data.size());
 }
 
 void CopyBuffer(vk::CommandBuffer cmdBuffer, vk::Buffer source, vk::Buffer destination, vk::DeviceSize size)

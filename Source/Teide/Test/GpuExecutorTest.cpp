@@ -1,9 +1,10 @@
 
-#include "Teide/Internal/GpuExecutor.h"
+#include "GpuExecutor.h"
 
-#include "Teide/Buffer.h"
-#include "Teide/Internal/Vulkan.h"
+#include "MemoryAllocator.h"
 #include "TestUtils.h"
+#include "Vulkan.h"
+#include "VulkanBuffer.h"
 
 #include <gmock/gmock.h>
 
@@ -95,7 +96,7 @@ TEST_F(GpuExecutorTest, OneCommandBuffer)
 	future.wait();
 	EXPECT_THAT(future.wait_for(0s), Eq(std::future_status::ready));
 
-	const auto resultSpan = std::span(static_cast<std::uint8_t*>(buffer.allocation.mappedData), buffer.size);
+	const auto resultSpan = std::span(reinterpret_cast<std::uint8_t*>(buffer.mappedData.data()), buffer.size);
 	const auto result = std::vector(resultSpan.begin(), resultSpan.end());
 	const auto expected = std::vector<std::uint8_t>{1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
 	EXPECT_THAT(result, Eq(expected));
@@ -124,7 +125,7 @@ TEST_F(GpuExecutorTest, TwoCommandBuffers)
 	EXPECT_THAT(future2.wait_for(0s), Eq(std::future_status::ready));
 	future1.wait(); // just in case
 
-	const auto resultSpan = std::span(static_cast<std::uint8_t*>(buffer.allocation.mappedData), buffer.size);
+	const auto resultSpan = std::span(reinterpret_cast<std::uint8_t*>(buffer.mappedData.data()), buffer.size);
 	const auto result = std::vector(resultSpan.begin(), resultSpan.end());
 	const auto expected = std::vector<std::uint8_t>{1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2};
 	EXPECT_THAT(result, Eq(expected));
@@ -153,7 +154,7 @@ TEST_F(GpuExecutorTest, TwoCommandBuffersOutOfOrder)
 	EXPECT_THAT(future2.wait_for(0s), Eq(std::future_status::ready));
 	future1.wait(); // just in case
 
-	const auto resultSpan = std::span(static_cast<std::uint8_t*>(buffer.allocation.mappedData), buffer.size);
+	const auto resultSpan = std::span(reinterpret_cast<std::uint8_t*>(buffer.mappedData.data()), buffer.size);
 	const auto result = std::vector(resultSpan.begin(), resultSpan.end());
 	const auto expected = std::vector<std::uint8_t>{1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2};
 	EXPECT_THAT(result, Eq(expected));
@@ -192,7 +193,7 @@ TEST_F(GpuExecutorTest, SubmitMultipleCommandBuffers)
 		future.wait();
 		EXPECT_THAT(future.wait_for(0s), Eq(std::future_status::ready));
 
-		const auto resultSpan = std::span(static_cast<std::uint8_t*>(buffer.allocation.mappedData), buffer.size);
+		const auto resultSpan = std::span(reinterpret_cast<std::uint8_t*>(buffer.mappedData.data()), buffer.size);
 		const auto result = std::vector(resultSpan.begin(), resultSpan.end());
 		const auto expected = std::vector<std::uint8_t>{1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
 		EXPECT_THAT(result, Eq(expected));

@@ -2,8 +2,8 @@
 #pragma once
 
 #include "Teide/BytesView.h"
-#include "Teide/Internal/MemoryAllocator.h"
-#include "Teide/Internal/Vulkan.h"
+
+#include <vulkan/vulkan.hpp>
 
 struct BufferData
 {
@@ -16,7 +16,7 @@ struct Buffer
 {
 	vk::DeviceSize size = 0;
 	vk::UniqueBuffer buffer;
-	MemoryAllocation allocation;
+	std::span<std::byte> mappedData;
 };
 
 struct DynamicBuffer
@@ -26,7 +26,3 @@ struct DynamicBuffer
 
 	void SetData(int currentFrame, BytesView data);
 };
-
-Buffer CreateBufferUninitialized(
-    vk::DeviceSize size, vk::BufferUsageFlags usage, vk::MemoryPropertyFlags memoryFlags, vk::Device device,
-    MemoryAllocator& allocator);

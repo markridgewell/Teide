@@ -20,6 +20,9 @@ function(td_add_library target_name)
     source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${ARG_SOURCES})
     target_compile_features(${target_name} ${lib_type} ${cxx_standard})
 
+    if(EXISTS ${source_dir} AND IS_DIRECTORY "${source_dir}")
+        target_include_directories(${target_name} PRIVATE ${source_dir})
+    endif()
     if(EXISTS ${include_dir} AND IS_DIRECTORY "${include_dir}")
         target_include_directories(${target_name} ${lib_type} ${include_dir})
     endif()
@@ -33,9 +36,12 @@ function(td_add_application target_name)
         "SOURCES" # Multi-value arguments
         ${ARGN})
 
+    set(source_dir "${CMAKE_CURRENT_SOURCE_DIR}/Source")
+
     add_executable(${target_name} WIN32 ${ARG_SOURCES})
     source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${ARG_SOURCES})
     target_compile_features(${target_name} PRIVATE ${cxx_standard})
+    target_include_directories(${target_name} PRIVATE ${source_dir})
 endfunction()
 
 function(td_add_test target_name)
@@ -46,8 +52,13 @@ function(td_add_test target_name)
         "SOURCES" # Multi-value arguments
         ${ARGN})
 
+    set(source_dir "${CMAKE_CURRENT_SOURCE_DIR}/Source")
+    set(test_dir "${CMAKE_CURRENT_SOURCE_DIR}/Test")
+
     add_executable(${target_name} ${ARG_SOURCES})
     source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${ARG_SOURCES})
     target_compile_features(${target_name} PRIVATE ${cxx_standard})
+    target_include_directories(${target_name} PRIVATE ${source_dir})
+    target_include_directories(${target_name} PRIVATE ${test_dir})
     add_test(NAME ${target_name} COMMAND ${target_name})
 endfunction()

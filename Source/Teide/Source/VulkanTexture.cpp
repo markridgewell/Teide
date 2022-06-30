@@ -1,7 +1,7 @@
 
 #include "VulkanTexture.h"
 
-#include "Teide/Internal/Vulkan.h"
+#include "Vulkan.h"
 
 void VulkanTexture::GenerateMipmaps(TextureState& state, vk::CommandBuffer cmdBuffer)
 {

@@ -1,8 +1,8 @@
 
-#include "Teide/Internal/CpuExecutor.h"
+#include "CpuExecutor.h"
 
 #include "Teide/Buffer.h"
-#include "Teide/Internal/Vulkan.h"
+#include "Vulkan.h"
 
 #include <gmock/gmock.h>
 

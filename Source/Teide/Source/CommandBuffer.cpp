@@ -1,5 +1,5 @@
 
-#include "Teide/Internal/CommandBuffer.h"
+#include "CommandBuffer.h"
 
 CommandBuffer::CommandBuffer(vk::UniqueCommandBuffer commandBuffer) : m_cmdBuffer(std::move(commandBuffer))
 {}

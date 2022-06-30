@@ -2,8 +2,8 @@
 #pragma once
 
 #include "Teide/BytesView.h"
-#include "Teide/Internal/MemoryAllocator.h"
-#include "Teide/Internal/Vulkan.h"
+
+#include <vulkan/vulkan.hpp>
 
 #include <cstdint>
 #include <vector>

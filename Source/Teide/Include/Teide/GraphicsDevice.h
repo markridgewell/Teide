@@ -6,6 +6,8 @@
 #include "Teide/Renderer.h"
 #include "Teide/Surface.h"
 
+struct SDL_Window;
+
 class GraphicsDevice
 {
 public:

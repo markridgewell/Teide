@@ -1,7 +1,7 @@
 
-#include "Teide/Internal/Scheduler.h"
+#include "Scheduler.h"
 
-#include "Teide/Internal/Vulkan.h"
+#include "Vulkan.h"
 
 namespace
 {

@@ -1,8 +1,8 @@
 
 #include "Teide/Texture.h"
 
+#include "CommandBuffer.h"
 #include "Teide/GraphicsDevice.h"
-#include "Teide/Internal/CommandBuffer.h"
 #include "TestUtils.h"
 #include "Types/TextureData.h"
 

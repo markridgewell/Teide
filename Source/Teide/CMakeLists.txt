@@ -4,12 +4,6 @@ td_add_library(
             Include/Teide/BytesView.h
             Include/Teide/ForwardDeclare.h
             Include/Teide/GraphicsDevice.h
-            Include/Teide/Internal/CommandBuffer.h
-            Include/Teide/Internal/CpuExecutor.h
-            Include/Teide/Internal/GpuExecutor.h
-            Include/Teide/Internal/MemoryAllocator.h
-            Include/Teide/Internal/Scheduler.h
-            Include/Teide/Internal/Vulkan.h
             Include/Teide/ParameterBlock.h
             Include/Teide/Pipeline.h
             Include/Teide/Renderer.h
@@ -17,14 +11,21 @@ td_add_library(
             Include/Teide/Surface.h
             Include/Teide/Task.h
             Include/Teide/Texture.h
-            Source/Buffer.cpp
-            Source/Internal/CommandBuffer.cpp
-            Source/Internal/CpuExecutor.cpp
-            Source/Internal/GpuExecutor.cpp
-            Source/Internal/MemoryAllocator.cpp
-            Source/Internal/Scheduler.cpp
-            Source/Internal/Vulkan.cpp
+            Source/CommandBuffer.cpp
+            Source/CommandBuffer.h
+            Source/CpuExecutor.cpp
+            Source/CpuExecutor.h
+            Source/GpuExecutor.cpp
+            Source/GpuExecutor.h
+            Source/MemoryAllocator.cpp
+            Source/MemoryAllocator.h
             Source/ParameterBlock.cpp
+            Source/Scheduler.cpp
+            Source/Scheduler.h
+            Source/Vulkan.cpp
+            Source/Vulkan.h
+            Source/VulkanBuffer.cpp
+            Source/VulkanBuffer.h
             Source/VulkanGraphicsDevice.cpp
             Source/VulkanGraphicsDevice.h
             Source/VulkanRenderer.cpp

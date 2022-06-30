@@ -1,7 +1,7 @@
 
 #pragma once
 
-#include "Teide/Internal/MemoryAllocator.h"
+#include "MemoryAllocator.h"
 #include "Teide/Texture.h"
 
 struct TextureState

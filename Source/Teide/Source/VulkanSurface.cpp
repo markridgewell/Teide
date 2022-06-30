@@ -1,7 +1,7 @@
 
 #include "VulkanSurface.h"
 
-#include "Teide/Internal/CommandBuffer.h"
+#include "CommandBuffer.h"
 
 #include <SDL_vulkan.h>
 #include <spdlog/spdlog.h>

@@ -1,9 +1,9 @@
 
 #pragma once
 
-#include "Teide/Internal/MemoryAllocator.h"
-#include "Teide/Internal/Vulkan.h"
+#include "MemoryAllocator.h"
 #include "Teide/Surface.h"
+#include "Vulkan.h"
 
 #include <array>
 #include <optional>

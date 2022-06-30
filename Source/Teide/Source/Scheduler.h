@@ -1,9 +1,9 @@
 
 #pragma once
 
-#include "Teide/Internal/CommandBuffer.h"
-#include "Teide/Internal/CpuExecutor.h"
-#include "Teide/Internal/GpuExecutor.h"
+#include "CommandBuffer.h"
+#include "CpuExecutor.h"
+#include "GpuExecutor.h"
 
 #include <vector>
 

@@ -1,13 +1,13 @@
 
 #pragma once
 
+#include "CommandBuffer.h"
+#include "Scheduler.h"
 #include "Teide/BytesView.h"
 #include "Teide/ForwardDeclare.h"
-#include "Teide/Internal/CommandBuffer.h"
-#include "Teide/Internal/Scheduler.h"
-#include "Teide/Internal/Vulkan.h"
 #include "Teide/Pipeline.h"
 #include "Teide/Surface.h"
+#include "Vulkan.h"
 #include "VulkanGraphicsDevice.h"
 #include "VulkanSurface.h"
 

@@ -2,7 +2,7 @@
 #pragma once
 
 #include "Teide/ForwardDeclare.h"
-#include "Teide/Internal/Vulkan.h"
+#include "Vulkan.h"
 
 class CommandBuffer
 {

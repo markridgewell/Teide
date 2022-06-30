@@ -1,5 +1,5 @@
 
-#include "Teide/Internal/Vulkan.h"
+#include "Vulkan.h"
 
 #include "Types/TextureData.h"
 
