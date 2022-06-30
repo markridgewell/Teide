@@ -111,3 +111,6 @@ constexpr std::uint64_t Timeout(std::chrono::duration<Rep, Period> duration)
 {
 	return std::chrono::nanoseconds(duration).count();
 }
+
+template <class T>
+struct VulkanImpl;

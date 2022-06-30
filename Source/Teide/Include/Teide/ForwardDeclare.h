@@ -3,15 +3,16 @@
 
 #include <memory>
 
-struct Buffer;
-struct DynamicBuffer;
 struct BufferData;
-struct Shader;
 struct ShaderData;
-class Texture;
 struct TextureData;
 struct VertexLayout;
 struct RenderStates;
+
+class Buffer;
+class DynamicBuffer;
+struct Shader;
+class Texture;
 struct Pipeline;
 struct ParameterBlock;
 struct ParameterBlockData;

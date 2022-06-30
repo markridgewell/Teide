@@ -50,7 +50,7 @@ TEST(GraphicsDeviceTest, CreateBuffer)
 	};
 	const auto buffer = device->CreateBuffer(bufferData, "Buffer");
 	EXPECT_THAT(buffer.get(), NotNull());
-	EXPECT_THAT(buffer->size, Eq(contents.size() * sizeof(contents[0])));
+	EXPECT_THAT(buffer->GetSize(), Eq(contents.size() * sizeof(contents[0])));
 }
 
 TEST(GraphicsDeviceTest, CreateDynamicBuffer)
@@ -58,7 +58,7 @@ TEST(GraphicsDeviceTest, CreateDynamicBuffer)
 	auto device = CreateGraphicsDevice();
 	const auto buffer = device->CreateDynamicBuffer(64u, vk::BufferUsageFlagBits::eVertexBuffer, "Buffer");
 	EXPECT_THAT(buffer.get(), NotNull());
-	EXPECT_THAT(buffer->size, Eq(64u));
+	EXPECT_THAT(buffer->GetSize(), Eq(64u));
 }
 
 TEST(GraphicsDeviceTest, CreateShader)
@@ -147,7 +147,7 @@ TEST(GraphicsDeviceTest, CreateParameterBlock)
 	};
 	const auto pblock = device->CreateParameterBlock(pblockData, "ParameterBlock");
 	EXPECT_THAT(pblock.get(), NotNull());
-	EXPECT_THAT(pblock->uniformBuffer->size, Eq(64u));
+	EXPECT_THAT(pblock->uniformBuffer->GetSize(), Eq(64u));
 }
 
 TEST(GraphicsDeviceTest, CreateDynamicParameterBlock)
@@ -162,7 +162,7 @@ TEST(GraphicsDeviceTest, CreateDynamicParameterBlock)
 	};
 	const auto pblock = device->CreateDynamicParameterBlock(pblockData, "ParameterBlock");
 	EXPECT_THAT(pblock.get(), NotNull());
-	EXPECT_THAT(pblock->uniformBuffer->size, Eq(64u));
+	EXPECT_THAT(pblock->uniformBuffer->GetSize(), Eq(64u));
 }
 
 } // namespace

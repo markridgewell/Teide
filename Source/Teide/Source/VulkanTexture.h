@@ -3,6 +3,7 @@
 
 #include "MemoryAllocator.h"
 #include "Teide/Texture.h"
+#include "Vulkan.h"
 
 struct TextureState
 {
@@ -48,11 +49,8 @@ protected:
 	    vk::PipelineStageFlags newPipelineStageFlags) const;
 };
 
-inline const VulkanTexture& GetImpl(const Texture& texture)
+template <>
+struct VulkanImpl<Texture>
 {
-	return dynamic_cast<const VulkanTexture&>(texture);
-}
-inline VulkanTexture& GetImpl(Texture& texture)
-{
-	return dynamic_cast<VulkanTexture&>(texture);
-}
+	using type = VulkanTexture;
+};

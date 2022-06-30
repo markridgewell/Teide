@@ -11,6 +11,7 @@
 #include "Vulkan.h"
 
 #include <optional>
+#include <type_traits>
 #include <unordered_map>
 
 class VulkanGraphicsDevice : public GraphicsDevice
@@ -46,6 +47,12 @@ public:
 	// Internal
 	vk::Device GetVulkanDevice() { return m_device.get(); }
 	MemoryAllocator& GetMemoryAllocator() { return m_allocator.value(); }
+
+	template <class T>
+	auto& GetImpl(T& obj)
+	{
+		return dynamic_cast<const VulkanImpl<std::remove_const_t<T>>::type&>(obj);
+	}
 
 private:
 	auto OneShotCommands() { return OneShotCommandBuffer(m_device.get(), m_setupCommandPool.get(), m_graphicsQueue); }

@@ -141,7 +141,7 @@ void VulkanRenderer::RenderToTexture(DynamicTexturePtr texture, RenderList rende
 	                         texture = std::move(texture)](CommandBuffer& commandBuffer) {
 		commandBuffer.AddTexture(texture);
 
-		const auto& textureImpl = GetImpl(*texture);
+		const auto& textureImpl = m_device.GetImpl(*texture);
 
 		TextureState textureState;
 		textureImpl.TransitionToRenderTarget(textureState, commandBuffer);
@@ -178,7 +178,7 @@ void VulkanRenderer::RenderToSurface(Surface& surface, RenderList renderList)
 
 Task<TextureData> VulkanRenderer::CopyTextureData(TexturePtr texture)
 {
-	const auto& textureImpl = GetImpl(*texture);
+	const auto& textureImpl = m_device.GetImpl(*texture);
 
 	const TextureData textureData = {
 	    .size = textureImpl.size,
@@ -190,11 +190,11 @@ Task<TextureData> VulkanRenderer::CopyTextureData(TexturePtr texture)
 	const auto bufferSize = GetByteSize(textureData);
 
 	auto task = m_scheduler.ScheduleGpu([this, texture = std::move(texture), bufferSize](CommandBuffer& commandBuffer) {
-		const auto& textureImpl = GetImpl(*texture);
-
-		auto buffer = std::make_shared<Buffer>(CreateBufferUninitialized(
+		auto buffer = CreateBufferUninitialized(
 		    bufferSize, vk::BufferUsageFlagBits::eTransferDst, vk::MemoryPropertyFlagBits::eHostVisible,
-		    m_device.GetVulkanDevice(), m_device.GetMemoryAllocator()));
+		    m_device.GetVulkanDevice(), m_device.GetMemoryAllocator());
+
+		const auto& textureImpl = m_device.GetImpl(*texture);
 
 		commandBuffer.AddTexture(texture);
 
@@ -205,15 +205,15 @@ Task<TextureData> VulkanRenderer::CopyTextureData(TexturePtr texture)
 		textureImpl.TransitionToTransferSrc(textureState, commandBuffer);
 		const auto extent = vk::Extent3D{textureImpl.size.width, textureImpl.size.height, 1};
 		CopyImageToBuffer(
-		    commandBuffer, textureImpl.image.get(), buffer->buffer.get(), textureImpl.format, extent,
+		    commandBuffer, textureImpl.image.get(), buffer.buffer.get(), textureImpl.format, extent,
 		    textureImpl.mipLevelCount);
 		textureImpl.TransitionToShaderInput(textureState, commandBuffer);
 
-		return buffer;
+		return std::make_shared<VulkanBuffer>(std::move(buffer));
 	});
 
-	return m_scheduler.ScheduleAfter(task, [textureData](const BufferPtr& buffer) {
-		const auto& data = buffer->mappedData;
+	return m_scheduler.ScheduleAfter(task, [this, textureData](const BufferPtr& buffer) {
+		const auto& data = m_device.GetImpl(*buffer).mappedData;
 
 		TextureData ret = textureData;
 		ret.pixels.resize(data.size());
@@ -288,7 +288,9 @@ void VulkanRenderer::BuildCommandBuffer(
 			}
 
 			commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, obj.pipeline->pipeline.get());
-			commandBuffer.bindVertexBuffers(0, obj.vertexBuffer->buffer.get(), vk::DeviceSize{0});
+
+			const auto& vertexBufferImpl = m_device.GetImpl(*obj.vertexBuffer);
+			commandBuffer.bindVertexBuffers(0, vertexBufferImpl.buffer.get(), vk::DeviceSize{0});
 
 			if (!obj.pushConstants.empty())
 			{
@@ -299,7 +301,8 @@ void VulkanRenderer::BuildCommandBuffer(
 
 			if (obj.indexBuffer)
 			{
-				commandBuffer.bindIndexBuffer(obj.indexBuffer->buffer.get(), vk::DeviceSize{0}, vk::IndexType::eUint16);
+				const auto& indexBufferImpl = m_device.GetImpl(*obj.indexBuffer);
+				commandBuffer.bindIndexBuffer(indexBufferImpl.buffer.get(), vk::DeviceSize{0}, vk::IndexType::eUint16);
 				commandBuffer.drawIndexed(obj.indexCount, 1, 0, 0, 0);
 			}
 			else

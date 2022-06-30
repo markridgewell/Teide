@@ -135,10 +135,10 @@ vk::PhysicalDevice FindPhysicalDevice(vk::Instance instance, vk::SurfaceKHR surf
 	return physicalDevice;
 }
 
-void SetBufferData(Buffer& buffer, BytesView data)
+void SetBufferData(VulkanBuffer& buffer, BytesView data)
 {
 	assert(buffer.mappedData.size() >= data.size());
-	memcpy(buffer.mappedData.data(), data.data(), data.size());
+	std::memcpy(buffer.mappedData.data(), data.data(), data.size());
 }
 
 void CopyBuffer(vk::CommandBuffer cmdBuffer, vk::Buffer source, vk::Buffer destination, vk::DeviceSize size)
@@ -151,7 +151,7 @@ void CopyBuffer(vk::CommandBuffer cmdBuffer, vk::Buffer source, vk::Buffer desti
 	cmdBuffer.copyBuffer(source, destination, copyRegion);
 }
 
-Buffer CreateBufferWithData(
+VulkanBuffer CreateBufferWithData(
     BytesView data, vk::BufferUsageFlags usage, vk::MemoryPropertyFlags memoryFlags, vk::Device device,
     MemoryAllocator& allocator, vk::CommandPool commandPool, vk::Queue queue)
 {
@@ -164,7 +164,7 @@ Buffer CreateBufferWithData(
 		SetBufferData(stagingBuffer, data);
 
 		// Create device-local buffer
-		Buffer ret = CreateBufferUninitialized(
+		VulkanBuffer ret = CreateBufferUninitialized(
 		    data.size(), usage | vk::BufferUsageFlagBits::eTransferDst, memoryFlags, device, allocator);
 		auto cmdBuffer = OneShotCommandBuffer(device, commandPool, queue);
 		CopyBuffer(cmdBuffer, stagingBuffer.buffer.get(), ret.buffer.get(), data.size());
@@ -172,7 +172,7 @@ Buffer CreateBufferWithData(
 	}
 	else
 	{
-		Buffer ret
+		VulkanBuffer ret
 		    = CreateBufferUninitialized(data.size(), vk::BufferUsageFlagBits::eTransferSrc, memoryFlags, device, allocator);
 		SetBufferData(ret, data);
 		return ret;
@@ -526,12 +526,12 @@ BufferPtr VulkanGraphicsDevice::CreateBuffer(const BufferData& data, const char*
 	auto ret = CreateBufferWithData(
 	    data.data, data.usage, data.memoryFlags, m_device.get(), *m_allocator, m_setupCommandPool.get(), m_graphicsQueue);
 	SetDebugName(ret.buffer, name);
-	return std::make_shared<const Buffer>(std::move(ret));
+	return std::make_shared<const VulkanBuffer>(std::move(ret));
 }
 
 DynamicBufferPtr VulkanGraphicsDevice::CreateDynamicBuffer(vk::DeviceSize bufferSize, vk::BufferUsageFlags usage, const char* name)
 {
-	DynamicBuffer ret;
+	VulkanDynamicBuffer ret;
 	ret.size = bufferSize;
 	for (auto& buffer : ret.buffers)
 	{
@@ -540,7 +540,7 @@ DynamicBufferPtr VulkanGraphicsDevice::CreateDynamicBuffer(vk::DeviceSize buffer
 		    m_device.get(), *m_allocator);
 		SetDebugName(buffer.buffer, name);
 	}
-	return std::make_shared<DynamicBuffer>(std::move(ret));
+	return std::make_shared<VulkanDynamicBuffer>(std::move(ret));
 }
 
 ShaderPtr VulkanGraphicsDevice::CreateShader(const ShaderData& data, const char* name)
@@ -686,6 +686,8 @@ std::vector<vk::UniqueDescriptorSet> VulkanGraphicsDevice::CreateDescriptorSets(
     vk::DescriptorSetLayout layout, size_t numSets, const DynamicBuffer& uniformBuffer,
     std::span<const Texture* const> textures, const char* name)
 {
+	const auto& uniformBufferImpl = GetImpl(uniformBuffer);
+
 	// TODO support multiple textures in descriptor sets
 	assert(textures.size() <= 1 && "Multiple textures not yet supported!");
 
@@ -702,18 +704,18 @@ std::vector<vk::UniqueDescriptorSet> VulkanGraphicsDevice::CreateDescriptorSets(
 	{
 		SetDebugName(descriptorSets[i], name);
 
-		const auto numUniformBuffers = uniformBuffer.size > 0 ? 1 : 0;
+		const auto numUniformBuffers = uniformBufferImpl.size > 0 ? 1 : 0;
 
 		std::vector<vk::WriteDescriptorSet> descriptorWrites;
 		descriptorWrites.reserve(numUniformBuffers + textures.size());
 
 		const auto bufferInfo = vk::DescriptorBufferInfo{
-		    .buffer = uniformBuffer.buffers[i].buffer.get(),
+		    .buffer = uniformBufferImpl.buffers[i].buffer.get(),
 		    .offset = 0,
-		    .range = uniformBuffer.size,
+		    .range = uniformBufferImpl.size,
 		};
 
-		if (uniformBuffer.size > 0)
+		if (uniformBufferImpl.size > 0)
 		{
 			descriptorWrites.push_back({
 			    .dstSet = descriptorSets[i].get(),
@@ -770,7 +772,8 @@ DynamicParameterBlockPtr VulkanGraphicsDevice::CreateDynamicParameterBlock(const
 	ParameterBlock ret;
 	if (data.uniformBufferSize == 0)
 	{
-		ret.descriptorSet = CreateDescriptorSets(data.layout, 1, DynamicBuffer{}, data.textures, descriptorSetName.c_str());
+		ret.descriptorSet
+		    = CreateDescriptorSets(data.layout, 1, VulkanDynamicBuffer{}, data.textures, descriptorSetName.c_str());
 	}
 	else
 	{
@@ -779,7 +782,8 @@ DynamicParameterBlockPtr VulkanGraphicsDevice::CreateDynamicParameterBlock(const
 		ret.uniformBuffer = CreateDynamicBuffer(
 		    data.uniformBufferSize, vk::BufferUsageFlagBits::eUniformBuffer, uniformBufferName.c_str());
 		ret.descriptorSet = CreateDescriptorSets(
-		    data.layout, ret.uniformBuffer->buffers.size(), *ret.uniformBuffer, data.textures, descriptorSetName.c_str());
+		    data.layout, GetImpl(*ret.uniformBuffer).buffers.size(), *ret.uniformBuffer, data.textures,
+		    descriptorSetName.c_str());
 	}
 	return std::make_unique<ParameterBlock>(std::move(ret));
 }

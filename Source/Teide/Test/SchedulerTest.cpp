@@ -16,6 +16,11 @@ using namespace std::chrono_literals;
 
 namespace
 {
+auto AsUint8s(std::span<const std::byte> bytes) -> std::span<const std::uint8_t>
+{
+	return std::span(reinterpret_cast<const std::uint8_t*>(bytes.data()), bytes.size());
+}
+
 class SchedulerTest : public testing::Test
 {
 public:
@@ -48,12 +53,12 @@ protected:
 
 	Scheduler CreateScheduler() { return Scheduler(2, GetDevice(), GetQueue(), GetQueueFamilyIndex()); }
 
-	BufferPtr CreateHostVisibleBuffer(vk::DeviceSize size)
+	VulkanBuffer CreateHostVisibleBuffer(vk::DeviceSize size)
 	{
-		return std::make_shared<Buffer>(CreateBufferUninitialized(
+		return CreateBufferUninitialized(
 		    size, vk::BufferUsageFlagBits::eTransferDst,
 		    vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent, m_device.get(),
-		    *m_allocator));
+		    *m_allocator);
 	}
 
 private:
@@ -126,13 +131,13 @@ TEST_F(SchedulerTest, ScheduleGpu)
 
 	auto scheduler = CreateScheduler();
 	const auto task = scheduler.ScheduleGpu(
-	    [&buffer](CommandBuffer& cmdBuffer) { cmdBuffer->fillBuffer(buffer->buffer.get(), 0, 12, 0x01010101); });
+	    [&buffer](CommandBuffer& cmdBuffer) { cmdBuffer->fillBuffer(buffer.buffer.get(), 0, 12, 0x01010101); });
 
 	ASSERT_THAT(task.valid(), IsTrue());
 	task.wait();
 	EXPECT_THAT(task.wait_for(0s), Eq(std::future_status::ready));
 
-	const auto resultSpan = std::span(reinterpret_cast<std::uint8_t*>(buffer->mappedData.data()), buffer->size);
+	const auto resultSpan = std::span(reinterpret_cast<std::uint8_t*>(buffer.mappedData.data()), buffer.size);
 	const auto resultData = std::vector(resultSpan.begin(), resultSpan.end());
 	const auto expectedData = std::vector<std::uint8_t>{1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
 	EXPECT_THAT(resultData, Eq(expectedData));
@@ -143,14 +148,14 @@ TEST_F(SchedulerTest, ScheduleGpuWithReturn)
 	auto scheduler = CreateScheduler();
 	const auto task = scheduler.ScheduleGpu([this](CommandBuffer& cmdBuffer) {
 		auto buffer = CreateHostVisibleBuffer(12);
-		cmdBuffer->fillBuffer(buffer->buffer.get(), 0, 12, 0x01010101);
-		return buffer;
+		cmdBuffer->fillBuffer(buffer.buffer.get(), 0, 12, 0x01010101);
+		return std::make_shared<VulkanBuffer>(std::move(buffer));
 	});
 
 	const auto& result = task.get();
 	ASSERT_THAT(result.has_value(), IsTrue());
 	const auto& buffer = *result.value();
-	const auto resultSpan = std::span(reinterpret_cast<std::uint8_t*>(buffer.mappedData.data()), buffer.size);
+	const auto resultSpan = AsUint8s(buffer.GetData());
 	const auto resultData = std::vector(resultSpan.begin(), resultSpan.end());
 	const auto expectedData = std::vector<std::uint8_t>{1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
 	EXPECT_THAT(resultData, Eq(expectedData));
@@ -166,12 +171,12 @@ TEST_F(SchedulerTest, ScheduleGpuAcrossMultipleFrames)
 		auto buffer = CreateHostVisibleBuffer(4);
 
 		const auto task = scheduler.ScheduleGpu([&](CommandBuffer& cmdBuffer) {
-			cmdBuffer->fillBuffer(buffer->buffer.get(), 0, 4, i | (i << 8) | (i << 16) | (i << 24));
+			cmdBuffer->fillBuffer(buffer.buffer.get(), 0, 4, i | (i << 8) | (i << 16) | (i << 24));
 		});
 
 		task.wait();
 
-		const auto resultSpan = std::span(reinterpret_cast<std::uint8_t*>(buffer->mappedData.data()), buffer->size);
+		const auto resultSpan = AsUint8s(buffer.GetData());
 		const auto resultData = std::vector(resultSpan.begin(), resultSpan.end());
 		const auto expectedData = std::vector<std::uint8_t>{i, i, i, i};
 		EXPECT_THAT(resultData, Eq(expectedData));

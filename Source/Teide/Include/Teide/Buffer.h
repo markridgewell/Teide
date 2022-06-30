@@ -5,6 +5,9 @@
 
 #include <vulkan/vulkan.hpp>
 
+#include <cstddef>
+#include <span>
+
 struct BufferData
 {
 	vk::BufferUsageFlags usage;
@@ -12,17 +15,21 @@ struct BufferData
 	BytesView data;
 };
 
-struct Buffer
+class Buffer
 {
-	vk::DeviceSize size = 0;
-	vk::UniqueBuffer buffer;
-	std::span<std::byte> mappedData;
+public:
+	virtual ~Buffer() = default;
+
+	virtual std::size_t GetSize() const = 0;
+	virtual std::span<std::byte> GetData() const = 0;
 };
 
-struct DynamicBuffer
+class DynamicBuffer
 {
-	vk::DeviceSize size = 0;
-	std::array<Buffer, 2> buffers;
+public:
+	virtual ~DynamicBuffer() = default;
 
-	void SetData(int currentFrame, BytesView data);
+	virtual std::size_t GetSize() const = 0;
+	virtual std::span<std::byte> GetData(int frame) const = 0;
+	virtual void SetData(int frame, std::span<const std::byte>) = 0;
 };
