@@ -5,6 +5,7 @@
 #include "Teide/Buffer.h"
 #include "Teide/Texture.h"
 #include "TestUtils.h"
+#include "Types/TextureData.h"
 
 #include <SDL.h>
 #include <gmock/gmock.h>
@@ -81,11 +82,11 @@ TEST(GraphicsDeviceTest, CreateTexture)
 	};
 	const auto texture = device->CreateTexture(textureData, "Texture");
 	EXPECT_THAT(texture.get(), NotNull());
-	EXPECT_THAT(texture->size.width, Eq(2u));
-	EXPECT_THAT(texture->size.height, Eq(2u));
-	EXPECT_THAT(texture->format, Eq(vk::Format::eR8G8B8A8Srgb));
-	EXPECT_THAT(texture->mipLevelCount, Eq(1u));
-	EXPECT_THAT(texture->samples, Eq(vk::SampleCountFlagBits::e1));
+	EXPECT_THAT(texture->GetSize().width, Eq(2u));
+	EXPECT_THAT(texture->GetSize().height, Eq(2u));
+	EXPECT_THAT(texture->GetFormat(), Eq(vk::Format::eR8G8B8A8Srgb));
+	EXPECT_THAT(texture->GetMipLevelCount(), Eq(1u));
+	EXPECT_THAT(texture->GetSampleCount(), Eq(vk::SampleCountFlagBits::e1));
 }
 
 TEST(GraphicsDeviceTest, CreateRenderableTexture)
@@ -100,11 +101,11 @@ TEST(GraphicsDeviceTest, CreateRenderableTexture)
 	};
 	const auto texture = device->CreateRenderableTexture(textureData, "Texture");
 	EXPECT_THAT(texture.get(), NotNull());
-	EXPECT_THAT(texture->size.width, Eq(600u));
-	EXPECT_THAT(texture->size.height, Eq(400u));
-	EXPECT_THAT(texture->format, Eq(vk::Format::eR8G8B8A8Srgb));
-	EXPECT_THAT(texture->mipLevelCount, Eq(1u));
-	EXPECT_THAT(texture->samples, Eq(vk::SampleCountFlagBits::e1));
+	EXPECT_THAT(texture->GetSize().width, Eq(600u));
+	EXPECT_THAT(texture->GetSize().height, Eq(400u));
+	EXPECT_THAT(texture->GetFormat(), Eq(vk::Format::eR8G8B8A8Srgb));
+	EXPECT_THAT(texture->GetMipLevelCount(), Eq(1u));
+	EXPECT_THAT(texture->GetSampleCount(), Eq(vk::SampleCountFlagBits::e1));
 }
 
 TEST(GraphicsDeviceTest, CreatePipeline)

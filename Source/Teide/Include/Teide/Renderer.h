@@ -49,7 +49,7 @@ public:
 	virtual void BeginFrame() = 0;
 	virtual void EndFrame() = 0;
 
-	virtual void RenderToTexture(RenderableTexturePtr texture, RenderList renderList) = 0;
+	virtual void RenderToTexture(DynamicTexturePtr texture, RenderList renderList) = 0;
 	virtual void RenderToSurface(Surface& surface, RenderList renderList) = 0;
 
 	virtual Task<TextureData> CopyTextureData(TexturePtr texture) = 0;

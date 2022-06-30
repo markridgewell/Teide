@@ -1,24 +1,9 @@
 
-#include "Teide/Texture.h"
+#include "VulkanTexture.h"
 
-std::size_t Texture::CalculateMinSizeInBytes() const
-{
-	const auto pixelSize = GetFormatElementSize(format);
+#include "Teide/Internal/Vulkan.h"
 
-	std::size_t result = 0;
-	vk::Extent2D mipExtent = size;
-
-	for (auto i = 0u; i < mipLevelCount; i++)
-	{
-		result += mipExtent.width * mipExtent.height * pixelSize;
-		mipExtent.width = std::max(1u, mipExtent.width / 2);
-		mipExtent.height = std::max(1u, mipExtent.height / 2);
-	}
-
-	return result;
-}
-
-void Texture::GenerateMipmaps(TextureState& state, vk::CommandBuffer cmdBuffer)
+void VulkanTexture::GenerateMipmaps(TextureState& state, vk::CommandBuffer cmdBuffer)
 {
 	const auto makeBarrier = [&](vk::AccessFlags srcAccessMask, vk::AccessFlags dstAccessMask,
 	                             vk::ImageLayout oldLayout, vk::ImageLayout newLayout, uint32_t mipLevel) {
@@ -107,7 +92,7 @@ void Texture::GenerateMipmaps(TextureState& state, vk::CommandBuffer cmdBuffer)
 	state.layout = vk::ImageLayout::eShaderReadOnlyOptimal;
 }
 
-void Texture::TransitionToShaderInput(TextureState& state, vk::CommandBuffer cmdBuffer) const
+void VulkanTexture::TransitionToShaderInput(TextureState& state, vk::CommandBuffer cmdBuffer) const
 {
 	auto newLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
 	if (state.layout == vk::ImageLayout::eDepthStencilAttachmentOptimal)
@@ -117,12 +102,12 @@ void Texture::TransitionToShaderInput(TextureState& state, vk::CommandBuffer cmd
 	DoTransition(state, cmdBuffer, newLayout, vk::PipelineStageFlagBits::eFragmentShader);
 }
 
-void Texture::TransitionToTransferSrc(TextureState& state, vk::CommandBuffer cmdBuffer) const
+void VulkanTexture::TransitionToTransferSrc(TextureState& state, vk::CommandBuffer cmdBuffer) const
 {
 	DoTransition(state, cmdBuffer, vk::ImageLayout::eTransferSrcOptimal, vk::PipelineStageFlagBits::eTransfer);
 }
 
-void Texture::DoTransition(
+void VulkanTexture::DoTransition(
     TextureState& state, vk::CommandBuffer cmdBuffer, vk::ImageLayout newLayout,
     vk::PipelineStageFlags newPipelineStageFlags) const
 {
@@ -139,7 +124,7 @@ void Texture::DoTransition(
 	state.lastPipelineStageUsage = newPipelineStageFlags;
 }
 
-void RenderableTexture::TransitionToRenderTarget(TextureState& state, vk::CommandBuffer cmdBuffer) const
+void VulkanTexture::TransitionToRenderTarget(TextureState& state, vk::CommandBuffer cmdBuffer) const
 {
 	if (HasDepthOrStencilComponent(format))
 	{
@@ -151,14 +136,14 @@ void RenderableTexture::TransitionToRenderTarget(TextureState& state, vk::Comman
 	}
 }
 
-void RenderableTexture::TransitionToColorTarget(TextureState& state, vk::CommandBuffer cmdBuffer) const
+void VulkanTexture::TransitionToColorTarget(TextureState& state, vk::CommandBuffer cmdBuffer) const
 {
 	assert(!HasDepthOrStencilComponent(format));
 
 	DoTransition(state, cmdBuffer, vk::ImageLayout::eColorAttachmentOptimal, vk::PipelineStageFlagBits::eColorAttachmentOutput);
 }
 
-void RenderableTexture::TransitionToDepthStencilTarget(TextureState& state, vk::CommandBuffer cmdBuffer) const
+void VulkanTexture::TransitionToDepthStencilTarget(TextureState& state, vk::CommandBuffer cmdBuffer) const
 {
 	assert(HasDepthOrStencilComponent(format));
 

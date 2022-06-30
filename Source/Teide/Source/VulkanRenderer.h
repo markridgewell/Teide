@@ -29,7 +29,7 @@ public:
 	void BeginFrame() override;
 	void EndFrame() override;
 
-	void RenderToTexture(RenderableTexturePtr texture, RenderList renderList) override;
+	void RenderToTexture(DynamicTexturePtr texture, RenderList renderList) override;
 	void RenderToSurface(Surface& surface, RenderList renderList) override;
 
 	Task<TextureData> CopyTextureData(TexturePtr texture) override;

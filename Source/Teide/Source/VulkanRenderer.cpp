@@ -3,8 +3,9 @@
 
 #include "Teide/Internal/Vulkan.h"
 #include "Teide/Renderer.h"
-#include "Teide/Texture.h"
+#include "Types/TextureData.h"
 #include "VulkanGraphicsDevice.h"
+#include "VulkanTexture.h"
 
 #include <spdlog/spdlog.h>
 #include <vulkan/vulkan.hpp>
@@ -133,18 +134,21 @@ void VulkanRenderer::EndFrame()
 	}
 }
 
-void VulkanRenderer::RenderToTexture(RenderableTexturePtr texture, RenderList renderList)
+void VulkanRenderer::RenderToTexture(DynamicTexturePtr texture, RenderList renderList)
 {
 	m_scheduler.ScheduleGpu([this, renderList = std::move(renderList),
 	                         texture = std::move(texture)](CommandBuffer& commandBuffer) {
 		commandBuffer.AddTexture(texture);
 
+		const auto& textureImpl = GetImpl(*texture);
+
 		TextureState textureState;
-		texture->TransitionToRenderTarget(textureState, commandBuffer);
+		textureImpl.TransitionToRenderTarget(textureState, commandBuffer);
 
-		BuildCommandBuffer(commandBuffer, renderList, texture->renderPass.get(), texture->framebuffer.get(), texture->size);
+		BuildCommandBuffer(
+		    commandBuffer, renderList, textureImpl.renderPass.get(), textureImpl.framebuffer.get(), textureImpl.size);
 
-		texture->TransitionToShaderInput(textureState, commandBuffer);
+		textureImpl.TransitionToShaderInput(textureState, commandBuffer);
 	});
 }
 
@@ -173,16 +177,20 @@ void VulkanRenderer::RenderToSurface(Surface& surface, RenderList renderList)
 
 Task<TextureData> VulkanRenderer::CopyTextureData(TexturePtr texture)
 {
+	const auto& textureImpl = GetImpl(*texture);
+
 	const TextureData textureData = {
-	    .size = texture->size,
-	    .format = texture->format,
-	    .mipLevelCount = texture->mipLevelCount,
-	    .samples = texture->samples,
+	    .size = textureImpl.size,
+	    .format = textureImpl.format,
+	    .mipLevelCount = textureImpl.mipLevelCount,
+	    .samples = textureImpl.samples,
 	};
 
-	const auto bufferSize = texture->CalculateMinSizeInBytes();
+	const auto bufferSize = GetByteSize(textureData);
 
 	auto task = m_scheduler.ScheduleGpu([this, texture = std::move(texture), bufferSize](CommandBuffer& commandBuffer) {
+		const auto& textureImpl = GetImpl(*texture);
+
 		auto buffer = std::make_shared<Buffer>(CreateBufferUninitialized(
 		    bufferSize, vk::BufferUsageFlagBits::eTransferDst, vk::MemoryPropertyFlagBits::eHostVisible,
 		    m_device.GetVulkanDevice(), m_device.GetMemoryAllocator()));
@@ -193,11 +201,12 @@ Task<TextureData> VulkanRenderer::CopyTextureData(TexturePtr texture)
 		    .layout = vk::ImageLayout::eShaderReadOnlyOptimal,
 		    .lastPipelineStageUsage = vk::PipelineStageFlagBits::eFragmentShader,
 		};
-		texture->TransitionToTransferSrc(textureState, commandBuffer);
-		const auto extent = vk::Extent3D{texture->size.width, texture->size.height, 1};
+		textureImpl.TransitionToTransferSrc(textureState, commandBuffer);
+		const auto extent = vk::Extent3D{textureImpl.size.width, textureImpl.size.height, 1};
 		CopyImageToBuffer(
-		    commandBuffer, texture->image.get(), buffer->buffer.get(), texture->format, extent, texture->mipLevelCount);
-		texture->TransitionToShaderInput(textureState, commandBuffer);
+		    commandBuffer, textureImpl.image.get(), buffer->buffer.get(), textureImpl.format, extent,
+		    textureImpl.mipLevelCount);
+		textureImpl.TransitionToShaderInput(textureState, commandBuffer);
 
 		return buffer;
 	});

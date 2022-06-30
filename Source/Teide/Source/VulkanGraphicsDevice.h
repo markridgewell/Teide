@@ -29,14 +29,14 @@ public:
 	ShaderPtr CreateShader(const ShaderData& data, const char* name) override;
 
 	TexturePtr CreateTexture(const TextureData& data, const char* name) override;
-	RenderableTexturePtr CreateRenderableTexture(const TextureData& data, const char* name) override;
+	DynamicTexturePtr CreateRenderableTexture(const TextureData& data, const char* name) override;
 
 	PipelinePtr CreatePipeline(
 	    const Shader& shader, const VertexLayout& vertexLayout, const RenderStates& renderStates,
 	    const Surface& surface) override;
 	PipelinePtr CreatePipeline(
 	    const Shader& shader, const VertexLayout& vertexLayout, const RenderStates& renderStates,
-	    const RenderableTexture& texture) override;
+	    const Texture& texture) override;
 
 	ParameterBlockPtr CreateParameterBlock(const ParameterBlockData& data, const char* name) override;
 	DynamicParameterBlockPtr CreateDynamicParameterBlock(const ParameterBlockData& data, const char* name) override;

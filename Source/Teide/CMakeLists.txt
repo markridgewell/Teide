@@ -25,18 +25,20 @@ td_add_library(
             Source/Internal/Scheduler.cpp
             Source/Internal/Vulkan.cpp
             Source/ParameterBlock.cpp
-            Source/Texture.cpp
             Source/VulkanGraphicsDevice.cpp
             Source/VulkanGraphicsDevice.h
             Source/VulkanRenderer.cpp
             Source/VulkanRenderer.h
             Source/VulkanSurface.cpp
             Source/VulkanSurface.h
+            Source/VulkanTexture.cpp
+            Source/VulkanTexture.h
             Vulkan.natvis)
 
 target_link_libraries(
     Teide
-    PUBLIC Vulkan::Vulkan
+    PUBLIC Types
+           Vulkan::Vulkan
            SDL2::SDL2
            fmt::fmt
            spdlog::spdlog

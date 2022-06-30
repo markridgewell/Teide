@@ -106,8 +106,6 @@ void CopyImageToBuffer(
     vk::CommandBuffer cmdBuffer, vk::Image source, vk::Buffer destination, vk::Format imageFormat,
     vk::Extent3D imageExtent, std::uint32_t numMipLevels);
 
-std::uint32_t GetFormatElementSize(vk::Format format);
-
 template <class Rep, class Period>
 constexpr std::uint64_t Timeout(std::chrono::duration<Rep, Period> duration)
 {

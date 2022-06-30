@@ -9,6 +9,7 @@
 #include "Teide/Shader.h"
 #include "Teide/Surface.h"
 #include "Teide/Texture.h"
+#include "Types/TextureData.h"
 
 #include <SDL.h>
 #include <assimp/Importer.hpp>
@@ -749,7 +750,7 @@ private:
 	// Lights
 	Geo::Angle m_lightYaw = 45.0_deg;
 	Geo::Angle m_lightPitch = -45.0_deg;
-	RenderableTexturePtr m_shadowMap;
+	DynamicTexturePtr m_shadowMap;
 	PipelinePtr m_shadowMapPipeline;
 	Geo::Matrix4 m_shadowMatrix;
 

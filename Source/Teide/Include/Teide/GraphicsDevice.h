@@ -26,14 +26,13 @@ public:
 	virtual ShaderPtr CreateShader(const ShaderData& data, const char* name) = 0;
 
 	virtual TexturePtr CreateTexture(const TextureData& data, const char* name) = 0;
-	virtual RenderableTexturePtr CreateRenderableTexture(const TextureData& data, const char* name) = 0;
+	virtual DynamicTexturePtr CreateRenderableTexture(const TextureData& data, const char* name) = 0;
 
 	virtual PipelinePtr CreatePipeline(
 	    const Shader& shader, const VertexLayout& vertexLayout, const RenderStates& renderStates, const Surface& surface)
 	    = 0;
 	virtual PipelinePtr CreatePipeline(
-	    const Shader& shader, const VertexLayout& vertexLayout, const RenderStates& renderStates,
-	    const RenderableTexture& texture)
+	    const Shader& shader, const VertexLayout& vertexLayout, const RenderStates& renderStates, const Texture& texture)
 	    = 0;
 
 	virtual ParameterBlockPtr CreateParameterBlock(const ParameterBlockData& data, const char* name) = 0;

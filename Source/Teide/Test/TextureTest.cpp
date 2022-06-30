@@ -4,6 +4,7 @@
 #include "Teide/GraphicsDevice.h"
 #include "Teide/Internal/CommandBuffer.h"
 #include "TestUtils.h"
+#include "Types/TextureData.h"
 
 #include <gmock/gmock.h>
 
@@ -20,9 +21,9 @@ TEST(TextureTest, GenerateMipmaps)
 	    .samplerInfo = {},
 	    .pixels = HexToBytes("ff 00 00 ff 00 ff 00 ff ff 00 ff ff 00 00 ff ff"),
 	};
+
 	const auto texture = device->CreateTexture(textureData, "Texture");
 	ASSERT_THAT(texture.get(), NotNull());
-	EXPECT_THAT(texture->CalculateMinSizeInBytes(), Eq(20u));
 
 	auto renderer = device->CreateRenderer();
 	auto result = renderer->CopyTextureData(texture);

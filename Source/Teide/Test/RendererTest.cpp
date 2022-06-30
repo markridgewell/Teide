@@ -6,6 +6,7 @@
 #include "Teide/GraphicsDevice.h"
 #include "Teide/Texture.h"
 #include "TestUtils.h"
+#include "Types/TextureData.h"
 
 #include <gmock/gmock.h>
 
@@ -44,7 +45,7 @@ public:
 	RendererTest() : m_device{CreateGraphicsDevice()}, m_renderer{m_device->CreateRenderer()} {}
 
 protected:
-	RenderableTexturePtr CreateRenderableTexture(vk::Extent2D size)
+	DynamicTexturePtr CreateRenderableTexture(vk::Extent2D size)
 	{
 		const auto textureData = TextureData{
 		    .size = size,

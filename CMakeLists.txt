@@ -35,5 +35,6 @@ enable_testing()
 
 add_subdirectory(Source/GeoLib)
 add_subdirectory(Source/Teide)
+add_subdirectory(Source/Types)
 add_subdirectory(Source/ShaderCompiler)
 add_subdirectory(Source/Application)

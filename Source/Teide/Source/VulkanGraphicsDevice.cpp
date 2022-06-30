@@ -4,9 +4,10 @@
 #include "Teide/Buffer.h"
 #include "Teide/Internal/CommandBuffer.h"
 #include "Teide/Shader.h"
-#include "Teide/Texture.h"
+#include "Types/TextureData.h"
 #include "VulkanRenderer.h"
 #include "VulkanSurface.h"
+#include "VulkanTexture.h"
 
 #include <SDL.h>
 #include <SDL_vulkan.h>
@@ -180,7 +181,7 @@ Buffer CreateBufferWithData(
 
 struct TextureAndState
 {
-	Texture texture;
+	VulkanTexture texture;
 	TextureState state;
 };
 
@@ -266,7 +267,7 @@ TextureAndState CreateTextureImpl(
 	auto imageView = device.createImageViewUnique(viewInfo, s_allocator);
 	auto sampler = device.createSamplerUnique(data.samplerInfo, s_allocator);
 
-	auto ret = Texture{
+	auto ret = VulkanTextureData{
 	    .image = std::move(image),
 	    .memory = memory,
 	    .imageView = std::move(imageView),
@@ -589,10 +590,10 @@ TexturePtr VulkanGraphicsDevice::CreateTexture(const TextureData& data, const ch
 		texture.TransitionToShaderInput(state, cmdBuffer);
 	}
 
-	return std::make_shared<const Texture>(std::move(texture));
+	return std::make_shared<const VulkanTexture>(std::move(texture));
 }
 
-RenderableTexturePtr VulkanGraphicsDevice::CreateRenderableTexture(const TextureData& data, const char* name)
+DynamicTexturePtr VulkanGraphicsDevice::CreateRenderableTexture(const TextureData& data, const char* name)
 {
 	const bool isColorTarget = !HasDepthOrStencilComponent(data.format);
 	const auto renderUsage
@@ -602,8 +603,7 @@ RenderableTexturePtr VulkanGraphicsDevice::CreateRenderableTexture(const Texture
 
 	auto cmdBuffer = OneShotCommands();
 
-	auto [createdTexture, state] = CreateTextureImpl(data, m_device.get(), m_allocator.value(), usage, cmdBuffer, name);
-	auto texture = RenderableTexture{{std::move(createdTexture)}};
+	auto [texture, state] = CreateTextureImpl(data, m_device.get(), m_allocator.value(), usage, cmdBuffer, name);
 
 	if (isColorTarget)
 	{
@@ -656,7 +656,7 @@ RenderableTexturePtr VulkanGraphicsDevice::CreateRenderableTexture(const Texture
 	texture.framebuffer = m_device->createFramebufferUnique(framebufferCreateInfo, s_allocator);
 	SetDebugName(texture.framebuffer, "{}:Framebuffer", name);
 
-	return std::make_shared<RenderableTexture>(std::move(texture));
+	return std::make_shared<VulkanTexture>(std::move(texture));
 }
 
 PipelinePtr VulkanGraphicsDevice::CreatePipeline(
@@ -671,11 +671,14 @@ PipelinePtr VulkanGraphicsDevice::CreatePipeline(
 }
 
 PipelinePtr VulkanGraphicsDevice::CreatePipeline(
-    const Shader& shader, const VertexLayout& vertexLayout, const RenderStates& renderStates, const RenderableTexture& texture)
+    const Shader& shader, const VertexLayout& vertexLayout, const RenderStates& renderStates, const Texture& texture)
 {
+	const auto& textureImpl = GetImpl(texture);
+
 	return std::make_shared<const Pipeline>(
 	    CreateGraphicsPipeline(
-	        shader, vertexLayout, renderStates, texture.renderPass.get(), texture.format, texture.samples, m_device.get()),
+	        shader, vertexLayout, renderStates, textureImpl.renderPass.get(), textureImpl.format, textureImpl.samples,
+	        m_device.get()),
 	    shader.pipelineLayout.get());
 }
 
@@ -729,11 +732,13 @@ std::vector<vk::UniqueDescriptorSet> VulkanGraphicsDevice::CreateDescriptorSets(
 			if (!texture)
 				continue;
 
+			const auto& textureImpl = GetImpl(*texture);
+
 			imageInfos.push_back({
-			    .sampler = texture->sampler.get(),
-			    .imageView = texture->imageView.get(),
-			    .imageLayout = HasDepthOrStencilComponent(texture->format) ? vk::ImageLayout::eDepthStencilReadOnlyOptimal
-			                                                               : vk::ImageLayout::eShaderReadOnlyOptimal,
+			    .sampler = textureImpl.sampler.get(),
+			    .imageView = textureImpl.imageView.get(),
+			    .imageLayout = HasDepthOrStencilComponent(textureImpl.format) ? vk::ImageLayout::eDepthStencilReadOnlyOptimal
+			                                                                  : vk::ImageLayout::eShaderReadOnlyOptimal,
 			});
 
 			descriptorWrites.push_back({
