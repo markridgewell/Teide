@@ -1,4 +1,4 @@
-td_add_library(Types SOURCES Include/Types/TextureData.h Source/TextureData.cpp)
+td_add_library(Types SOURCES Include/Types/ShaderData.h Include/Types/TextureData.h Source/TextureData.cpp)
 
 target_link_libraries(Types PUBLIC Vulkan::Vulkan)
 

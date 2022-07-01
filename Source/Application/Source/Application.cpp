@@ -612,7 +612,7 @@ private:
 	void CreateParameterBlocks()
 	{
 		const auto sceneData = ParameterBlockData{
-		    .layout = m_shader->sceneDescriptorSetLayout.get(),
+		    .layout = m_shader->GetSceneDescriptorSetLayout(),
 		    .uniformBufferSize = sizeof(GlobalUniforms),
 		};
 		m_sceneParams = m_device->CreateDynamicParameterBlock(sceneData, "Scene");
@@ -621,7 +621,7 @@ private:
 		for (uint32_t pass = 0; pass < m_passCount; pass++)
 		{
 			const auto viewData = ParameterBlockData{
-			    .layout = m_shader->viewDescriptorSetLayout.get(),
+			    .layout = m_shader->GetViewDescriptorSetLayout(),
 			    .uniformBufferSize = sizeof(ViewUniforms),
 			    // Include shadow maps only after shadow pass
 			    .textures = {pass > 0 ? m_shadowMap.get() : nullptr},
@@ -633,7 +633,7 @@ private:
 		}
 
 		const auto materialData = ParameterBlockData{
-		    .layout = m_shader->materialDescriptorSetLayout.get(),
+		    .layout = m_shader->GetMaterialDescriptorSetLayout(),
 		    .uniformBufferSize = 0,
 		    .textures = {m_texture.get()},
 		};

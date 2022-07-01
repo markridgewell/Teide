@@ -1,29 +1,14 @@
 
 #pragma once
 
-#include "Teide/BytesView.h"
-
 #include <vulkan/vulkan.hpp>
 
-#include <cstdint>
-#include <vector>
-
-struct ShaderData
+class Shader
 {
-	std::vector<uint32_t> vertexShaderSpirv;
-	std::vector<uint32_t> pixelShaderSpirv;
-	std::vector<vk::DescriptorSetLayoutBinding> sceneBindings;
-	std::vector<vk::DescriptorSetLayoutBinding> viewBindings;
-	std::vector<vk::DescriptorSetLayoutBinding> materialBindings;
-	std::vector<vk::PushConstantRange> pushConstantRanges;
-};
+public:
+	virtual ~Shader() = default;
 
-struct Shader
-{
-	vk::UniqueShaderModule vertexShader;
-	vk::UniqueShaderModule pixelShader;
-	vk::UniqueDescriptorSetLayout sceneDescriptorSetLayout;
-	vk::UniqueDescriptorSetLayout viewDescriptorSetLayout;
-	vk::UniqueDescriptorSetLayout materialDescriptorSetLayout;
-	vk::UniquePipelineLayout pipelineLayout;
+	virtual vk::DescriptorSetLayout GetSceneDescriptorSetLayout() const = 0;
+	virtual vk::DescriptorSetLayout GetViewDescriptorSetLayout() const = 0;
+	virtual vk::DescriptorSetLayout GetMaterialDescriptorSetLayout() const = 0;
 };

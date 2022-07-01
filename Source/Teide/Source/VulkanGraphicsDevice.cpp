@@ -2,10 +2,11 @@
 #include "VulkanGraphicsDevice.h"
 
 #include "CommandBuffer.h"
-#include "Teide/Shader.h"
+#include "Types/ShaderData.h"
 #include "Types/TextureData.h"
 #include "VulkanBuffer.h"
 #include "VulkanRenderer.h"
+#include "VulkanShader.h"
 #include "VulkanSurface.h"
 #include "VulkanTexture.h"
 
@@ -296,8 +297,8 @@ CreateDescriptorSetLayout(vk::Device device, std::span<const vk::DescriptorSetLa
 	return device.createDescriptorSetLayoutUnique(createInfo, s_allocator);
 }
 
-vk::UniquePipelineLayout
-CreateGraphicsPipelineLayout(vk::Device device, Shader& shader, std::span<const vk::PushConstantRange> pushConstantRanges)
+vk::UniquePipelineLayout CreateGraphicsPipelineLayout(
+    vk::Device device, const VulkanShaderBase& shader, std::span<const vk::PushConstantRange> pushConstantRanges)
 {
 	const auto setLayouts = std::array{
 	    shader.sceneDescriptorSetLayout.get(), shader.viewDescriptorSetLayout.get(),
@@ -314,8 +315,8 @@ CreateGraphicsPipelineLayout(vk::Device device, Shader& shader, std::span<const 
 }
 
 vk::UniquePipeline CreateGraphicsPipeline(
-    const Shader& shader, const VertexLayout& vertexLayout, const RenderStates& renderStates, vk::RenderPass renderPass,
-    vk::Format format, vk::SampleCountFlagBits sampleCount, vk::Device device)
+    const VulkanShader& shader, const VertexLayout& vertexLayout, const RenderStates& renderStates,
+    vk::RenderPass renderPass, vk::Format format, vk::SampleCountFlagBits sampleCount, vk::Device device)
 {
 	const auto vertexShader = shader.vertexShader.get();
 	const auto pixelShader = shader.pixelShader.get();
@@ -554,7 +555,7 @@ ShaderPtr VulkanGraphicsDevice::CreateShader(const ShaderData& data, const char*
 	    .pCode = data.pixelShaderSpirv.data(),
 	};
 
-	auto shader = Shader{
+	auto shader = VulkanShaderBase{
 	    .vertexShader = m_device->createShaderModuleUnique(vertexCreateInfo, s_allocator),
 	    .pixelShader = m_device->createShaderModuleUnique(pixelCreateInfo, s_allocator),
 	    .sceneDescriptorSetLayout = CreateDescriptorSetLayout(m_device.get(), data.sceneBindings),
@@ -568,7 +569,7 @@ ShaderPtr VulkanGraphicsDevice::CreateShader(const ShaderData& data, const char*
 	SetDebugName(shader.pixelShader, "{}:Pixel", name);
 	SetDebugName(shader.pipelineLayout, "{}:PipelineLayout", name);
 
-	return std::make_shared<const Shader>(std::move(shader));
+	return std::make_shared<const VulkanShader>(std::move(shader));
 }
 
 TexturePtr VulkanGraphicsDevice::CreateTexture(const TextureData& data, const char* name)
@@ -662,24 +663,26 @@ DynamicTexturePtr VulkanGraphicsDevice::CreateRenderableTexture(const TextureDat
 PipelinePtr VulkanGraphicsDevice::CreatePipeline(
     const Shader& shader, const VertexLayout& vertexLayout, const RenderStates& renderStates, const Surface& surface)
 {
-	const auto& surfaceImpl = dynamic_cast<const VulkanSurface&>(surface);
+	const auto& shaderImpl = GetImpl(shader);
+	const auto& surfaceImpl = GetImpl(surface);
 	return std::make_shared<const Pipeline>(
 	    CreateGraphicsPipeline(
-	        shader, vertexLayout, renderStates, surfaceImpl.GetVulkanRenderPass(), surface.GetColorFormat(),
+	        shaderImpl, vertexLayout, renderStates, surfaceImpl.GetVulkanRenderPass(), surface.GetColorFormat(),
 	        surface.GetSampleCount(), m_device.get()),
-	    shader.pipelineLayout.get());
+	    shaderImpl.pipelineLayout.get());
 }
 
 PipelinePtr VulkanGraphicsDevice::CreatePipeline(
     const Shader& shader, const VertexLayout& vertexLayout, const RenderStates& renderStates, const Texture& texture)
 {
+	const auto& shaderImpl = GetImpl(shader);
 	const auto& textureImpl = GetImpl(texture);
 
 	return std::make_shared<const Pipeline>(
 	    CreateGraphicsPipeline(
-	        shader, vertexLayout, renderStates, textureImpl.renderPass.get(), textureImpl.format, textureImpl.samples,
-	        m_device.get()),
-	    shader.pipelineLayout.get());
+	        shaderImpl, vertexLayout, renderStates, textureImpl.renderPass.get(), textureImpl.format,
+	        textureImpl.samples, m_device.get()),
+	    shaderImpl.pipelineLayout.get());
 }
 
 std::vector<vk::UniqueDescriptorSet> VulkanGraphicsDevice::CreateDescriptorSets(

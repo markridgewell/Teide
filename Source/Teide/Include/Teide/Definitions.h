@@ -1,8 +1,6 @@
 
 #pragma once
 
-#include <exception>
-
 #if _DEBUG
 static constexpr bool IsDebugBuild = true;
 #else

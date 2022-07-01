@@ -80,3 +80,9 @@ private:
 	uint32_t m_nextSemaphoreIndex = 0;
 	std::vector<vk::Fence> m_imagesInFlight;
 };
+
+template <>
+struct VulkanImpl<Surface>
+{
+	using type = VulkanSurface;
+};

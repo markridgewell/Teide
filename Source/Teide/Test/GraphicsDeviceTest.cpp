@@ -3,6 +3,7 @@
 
 #include "ShaderCompiler/ShaderCompiler.h"
 #include "Teide/Buffer.h"
+#include "Teide/Shader.h"
 #include "Teide/Texture.h"
 #include "TestUtils.h"
 #include "Types/TextureData.h"
@@ -141,7 +142,7 @@ TEST(GraphicsDeviceTest, CreateParameterBlock)
 	const auto shaderData = CompileShader(VertexShaderWithParams, SimplePixelShader, ShaderLanguage::Glsl);
 	const auto shader = device->CreateShader(shaderData, "Shader");
 	const auto pblockData = ParameterBlockData{
-	    .layout = shader->sceneDescriptorSetLayout.get(),
+	    .layout = shader->GetSceneDescriptorSetLayout(),
 	    .uniformBufferSize = 64,
 	    .textures = {},
 	};
@@ -156,7 +157,7 @@ TEST(GraphicsDeviceTest, CreateDynamicParameterBlock)
 	const auto shaderData = CompileShader(VertexShaderWithParams, SimplePixelShader, ShaderLanguage::Glsl);
 	const auto shader = device->CreateShader(shaderData, "Shader");
 	const auto pblockData = ParameterBlockData{
-	    .layout = shader->sceneDescriptorSetLayout.get(),
+	    .layout = shader->GetSceneDescriptorSetLayout(),
 	    .uniformBufferSize = 64,
 	    .textures = {},
 	};

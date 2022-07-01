@@ -1,13 +1,17 @@
 
 #include "ShaderCompiler/ShaderCompiler.h"
 
-#include "Teide/Definitions.h"
-
 #include <glslang/Public/ShaderLang.h>
 #include <glslang/SPIRV/GlslangToSpv.h>
 
 namespace
 {
+#if _DEBUG
+static constexpr bool IsDebugBuild = true;
+#else
+static constexpr bool IsDebugBuild = false;
+#endif
+
 #ifdef __GNUC__ // GCC 4.8+, Clang, Intel and other compilers compatible with GCC (-std=c++0x or above)
 [[noreturn]] inline __attribute__((always_inline)) void Unreachable()
 {
