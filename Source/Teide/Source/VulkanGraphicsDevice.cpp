@@ -459,6 +459,9 @@ VulkanGraphicsDevice::VulkanGraphicsDevice(SDL_Window* window)
 	m_setupCommandPool = CreateCommandPool(m_graphicsQueueFamily, m_device.get());
 	SetDebugName(m_setupCommandPool, "SetupCommandPool");
 
+	m_surfaceCommandPool = CreateCommandPool(m_graphicsQueueFamily, m_device.get());
+	SetDebugName(m_surfaceCommandPool, "SurfaceCommandPool");
+
 	m_pendingWindowSurfaces[window] = std::move(surface);
 
 	// TODO: Don't hardcode descriptor pool sizes
@@ -513,8 +516,8 @@ SurfacePtr VulkanGraphicsDevice::CreateSurface(SDL_Window* window, bool multisam
 
 	return std::make_unique<VulkanSurface>(
 	    window, std::move(surface), m_device.get(), m_physicalDevice,
-	    std::vector<uint32_t>{m_graphicsQueueFamily, *m_presentQueueFamily}, m_setupCommandPool.get(), m_graphicsQueue,
-	    multisampled);
+	    std::vector<uint32_t>{m_graphicsQueueFamily, *m_presentQueueFamily}, m_surfaceCommandPool.get(),
+	    m_graphicsQueue, multisampled);
 }
 
 RendererPtr VulkanGraphicsDevice::CreateRenderer()

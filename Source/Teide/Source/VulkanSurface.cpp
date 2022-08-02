@@ -1,7 +1,6 @@
 
 #include "VulkanSurface.h"
 
-#include "CommandBuffer.h"
 #include "Teide/Pipeline.h"
 
 #include <SDL_vulkan.h>
@@ -245,9 +244,9 @@ std::optional<SurfaceImage> VulkanSurface::AcquireNextImage(vk::Fence fence)
 	    .imageIndex = imageIndex,
 	    .imageAvailable = semaphore,
 	    .image = m_swapchainImages[imageIndex],
-	    .renderPass = m_renderPass.get(),
 	    .framebuffer = m_swapchainFramebuffers[imageIndex].get(),
 	    .extent = m_surfaceExtent,
+	    .prePresentCommandBuffer = m_transitionToPresentSrc[imageIndex].get(),
 	};
 
 	return ret;
@@ -260,7 +259,7 @@ vk::Semaphore VulkanSurface::GetNextSemaphore()
 	return m_imageAvailable[index].get();
 }
 
-void VulkanSurface::CreateColorBuffer(vk::Format format, vk::CommandBuffer cmdBuffer)
+void VulkanSurface::CreateColorBuffer(vk::Format format)
 {
 	// Create image
 	const auto imageInfo = vk::ImageCreateInfo{
@@ -282,29 +281,24 @@ void VulkanSurface::CreateColorBuffer(vk::Format format, vk::CommandBuffer cmdBu
 	    m_device.getImageMemoryRequirements(m_colorImage.get()), vk::MemoryPropertyFlagBits::eDeviceLocal);
 	m_device.bindImageMemory(m_colorImage.get(), allocation.memory, allocation.offset);
 
-	TransitionImageLayout(
-	    cmdBuffer, m_colorImage.get(), imageInfo.format, 1, vk::ImageLayout::eUndefined,
-	    vk::ImageLayout::eColorAttachmentOptimal, vk::PipelineStageFlagBits::eTopOfPipe,
-	    vk::PipelineStageFlagBits::eColorAttachmentOutput);
-
 	// Create image view
 	const auto viewInfo = vk::ImageViewCreateInfo{
-			.image = m_colorImage.get(),
-			.viewType = vk::ImageViewType::e2D,
-			.format = imageInfo.format,
-			.subresourceRange = {
-				.aspectMask = vk::ImageAspectFlagBits::eColor,
-				.baseMipLevel = 0,
-				.levelCount = 1,
-				.baseArrayLayer = 0,
-				.layerCount = 1,
-			},
-		};
+		.image = m_colorImage.get(),
+		.viewType = vk::ImageViewType::e2D,
+		.format = imageInfo.format,
+		.subresourceRange = {
+			.aspectMask = vk::ImageAspectFlagBits::eColor,
+			.baseMipLevel = 0,
+			.levelCount = 1,
+			.baseArrayLayer = 0,
+			.layerCount = 1,
+		},
+	};
 	m_colorImageView = m_device.createImageViewUnique(viewInfo, s_allocator);
 	SetDebugName(m_colorImageView, "ColorImageView");
 }
 
-void VulkanSurface::CreateDepthBuffer(vk::CommandBuffer cmdBuffer)
+void VulkanSurface::CreateDepthBuffer()
 {
 	const auto formatCandidates
 	    = std::array{vk::Format::eD32Sfloat, vk::Format::eD32SfloatS8Uint, vk::Format::eD24UnormS8Uint};
@@ -331,32 +325,25 @@ void VulkanSurface::CreateDepthBuffer(vk::CommandBuffer cmdBuffer)
 	    m_device.getImageMemoryRequirements(m_depthImage.get()), vk::MemoryPropertyFlagBits::eDeviceLocal);
 	m_device.bindImageMemory(m_depthImage.get(), allocation.memory, allocation.offset);
 
-	TransitionImageLayout(
-	    cmdBuffer, m_depthImage.get(), imageInfo.format, 1, vk::ImageLayout::eUndefined,
-	    vk::ImageLayout::eDepthStencilAttachmentOptimal, vk::PipelineStageFlagBits::eTopOfPipe,
-	    vk::PipelineStageFlagBits::eEarlyFragmentTests);
-
 	// Create image view
 	const auto viewInfo = vk::ImageViewCreateInfo{
-			.image = m_depthImage.get(),
-			.viewType = vk::ImageViewType::e2D,
-			.format = imageInfo.format,
-			.subresourceRange = {
-				.aspectMask = vk::ImageAspectFlagBits::eDepth,
-				.baseMipLevel = 0,
-				.levelCount = 1,
-				.baseArrayLayer = 0,
-				.layerCount = 1,
-			},
-		};
+		.image = m_depthImage.get(),
+		.viewType = vk::ImageViewType::e2D,
+		.format = imageInfo.format,
+		.subresourceRange = {
+			.aspectMask = vk::ImageAspectFlagBits::eDepth,
+			.baseMipLevel = 0,
+			.levelCount = 1,
+			.baseArrayLayer = 0,
+			.layerCount = 1,
+		},
+	};
 	m_depthImageView = m_device.createImageViewUnique(viewInfo, s_allocator);
 	SetDebugName(m_depthImageView, "DepthImageView");
 }
 
 void VulkanSurface::CreateSwapchainAndImages()
 {
-	auto cmdBuffer = OneShotCommandBuffer(m_device, m_commandPool, m_queue);
-
 	const auto surfaceCapabilities = m_physicalDevice.getSurfaceCapabilitiesKHR(m_surface.get());
 	const auto surfaceFormat = ChooseSurfaceFormat(m_physicalDevice.getSurfaceFormatsKHR(m_surface.get()));
 	m_colorFormat = surfaceFormat.format;
@@ -370,9 +357,9 @@ void VulkanSurface::CreateSwapchainAndImages()
 
 	if (m_msaaSampleCount != vk::SampleCountFlagBits::e1)
 	{
-		CreateColorBuffer(surfaceFormat.format, cmdBuffer);
+		CreateColorBuffer(surfaceFormat.format);
 	}
-	CreateDepthBuffer(cmdBuffer);
+	CreateDepthBuffer();
 
 	const auto framebufferLayout = FramebufferLayout{
 	    .colorFormat = surfaceFormat.format,
@@ -383,6 +370,24 @@ void VulkanSurface::CreateSwapchainAndImages()
 	SetDebugName(m_renderPass, "SwapchainRenderPass");
 	m_swapchainFramebuffers = CreateFramebuffers(
 	    m_swapchainImageViews, m_colorImageView.get(), m_depthImageView.get(), m_renderPass.get(), m_surfaceExtent, m_device);
+
+	// Create command buffers for transitioning images to present source
+	const auto cmdBufferAllocInfo = vk::CommandBufferAllocateInfo{
+	    .commandPool = m_commandPool,
+	    .commandBufferCount = size32(m_swapchainImages),
+	};
+	m_transitionToPresentSrc.clear();
+	m_transitionToPresentSrc = m_device.allocateCommandBuffersUnique(cmdBufferAllocInfo);
+	for (std::uint32_t i = 0; i < size32(m_swapchainImages); i++)
+	{
+		const auto cmdBuffer = *m_transitionToPresentSrc[i];
+		cmdBuffer.begin(vk::CommandBufferBeginInfo{});
+		TransitionImageLayout(
+		    cmdBuffer, m_swapchainImages[i], vk::Format::eUndefined, 1, vk::ImageLayout::eColorAttachmentOptimal,
+		    vk::ImageLayout::ePresentSrcKHR, vk::PipelineStageFlagBits::eColorAttachmentOutput,
+		    vk::PipelineStageFlagBits::eTopOfPipe);
+		cmdBuffer.end();
+	}
 }
 
 void VulkanSurface::RecreateSwapchain()

@@ -20,9 +20,9 @@ struct SurfaceImage
 	uint32_t imageIndex = 0;
 	vk::Semaphore imageAvailable;
 	vk::Image image;
-	vk::RenderPass renderPass;
 	vk::Framebuffer framebuffer;
 	vk::Extent2D extent;
+	vk::CommandBuffer prePresentCommandBuffer;
 };
 
 class VulkanSurface : public Surface
@@ -47,8 +47,8 @@ public:
 
 private:
 	vk::Semaphore GetNextSemaphore();
-	void CreateColorBuffer(vk::Format format, vk::CommandBuffer cmdBuffer);
-	void CreateDepthBuffer(vk::CommandBuffer cmdBuffer);
+	void CreateColorBuffer(vk::Format format);
+	void CreateDepthBuffer();
 	void CreateSwapchainAndImages();
 	void RecreateSwapchain();
 
@@ -65,6 +65,7 @@ private:
 	vk::UniqueSwapchainKHR m_swapchain;
 	std::vector<vk::Image> m_swapchainImages;
 	std::vector<vk::UniqueImageView> m_swapchainImageViews;
+	std::vector<vk::UniqueCommandBuffer> m_transitionToPresentSrc;
 	vk::SampleCountFlagBits m_msaaSampleCount = vk::SampleCountFlagBits::e1;
 	vk::Format m_colorFormat;
 	vk::UniqueImage m_colorImage;

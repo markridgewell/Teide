@@ -25,9 +25,13 @@ VKAPI_ATTR VkBool32 VKAPI_CALL DebugCallback(
 	using MessageSeverity = vk::DebugUtilsMessageSeverityFlagBitsEXT;
 
 	// Filter unwanted messages
-	if (pCallbackData->messageIdNumber == 767975156)
+	constexpr std::int32_t UnwantedMessages[] = {
+	    0,           // Loader Message
+	    767975156,   // UNASSIGNED-BestPractices-vkCreateInstance-specialuse-extension
+	    -2111305990, // UNASSIGNED-BestPractices-vkCreateInstance-specialuse-extension-debugging
+	};
+	if (std::ranges::find(UnwantedMessages, pCallbackData->messageIdNumber) != std::end(UnwantedMessages))
 	{
-		// UNASSIGNED-BestPractices-vkCreateInstance-specialuse-extension
 		return VK_FALSE;
 	}
 
@@ -417,7 +421,7 @@ vk::UniqueRenderPass CreateRenderPass(vk::Device device, const FramebufferLayout
 		    .format = layout.colorFormat,
 		    .samples = layout.sampleCount,
 		    .loadOp = renderPassInfo.colorLoadOp,
-		    .storeOp = multisampling ? renderPassInfo.colorStoreOp : vk::AttachmentStoreOp::eStore,
+		    .storeOp = multisampling ? vk::AttachmentStoreOp::eDontCare : renderPassInfo.colorStoreOp,
 		    .initialLayout = loadColor ? vk::ImageLayout::eColorAttachmentOptimal : vk::ImageLayout::eUndefined,
 		    .finalLayout = vk::ImageLayout::eColorAttachmentOptimal,
 		});

@@ -96,6 +96,7 @@ private:
 	vk::Queue m_graphicsQueue;
 	vk::UniqueDescriptorPool m_descriptorPool;
 	vk::UniqueCommandPool m_setupCommandPool;
+	vk::UniqueCommandPool m_surfaceCommandPool;
 
 	std::optional<MemoryAllocator> m_allocator;
 

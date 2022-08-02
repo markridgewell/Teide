@@ -104,29 +104,27 @@ void VulkanRenderer::EndFrame()
 
 	// Submit the surface command buffer(s)
 	{
-		const auto lock = std::scoped_lock(m_surfaceCommandBuffersMutex);
+		std::vector<vk::CommandBuffer> commandBuffers;
+		{
+			const auto lock = std::scoped_lock(m_surfaceCommandBuffersMutex);
+			std::swap(m_surfaceCommandBuffers, commandBuffers);
+		}
 
-		auto commandBuffer = m_device.OneShotCommands();
 		for (const auto& surfaceImage : images)
 		{
-			TransitionImageLayout(
-			    commandBuffer, surfaceImage.image, vk::Format::eUndefined, 1, vk::ImageLayout::eColorAttachmentOptimal,
-			    vk::ImageLayout::ePresentSrcKHR, vk::PipelineStageFlagBits::eColorAttachmentOutput,
-			    vk::PipelineStageFlagBits::eTopOfPipe);
+			commandBuffers.push_back(surfaceImage.prePresentCommandBuffer);
 		}
 
 		const auto submitInfo = vk::SubmitInfo{
 		    .waitSemaphoreCount = size32(waitSemaphores),
 		    .pWaitSemaphores = data(waitSemaphores),
 		    .pWaitDstStageMask = data(waitStages),
-		    .commandBufferCount = size32(m_surfaceCommandBuffers),
-		    .pCommandBuffers = data(m_surfaceCommandBuffers),
+		    .commandBufferCount = size32(commandBuffers),
+		    .pCommandBuffers = data(commandBuffers),
 		    .signalSemaphoreCount = size32(signalSemaphores),
 		    .pSignalSemaphores = data(signalSemaphores),
 		};
 		m_graphicsQueue.submit(submitInfo, fenceToSignal);
-
-		m_surfaceCommandBuffers.clear();
 	}
 
 	// Present
