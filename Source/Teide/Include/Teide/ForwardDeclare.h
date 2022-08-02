@@ -14,7 +14,7 @@ class Buffer;
 class DynamicBuffer;
 class Shader;
 class Texture;
-struct Pipeline;
+class Pipeline;
 struct ParameterBlock;
 
 using BufferPtr = std::shared_ptr<const Buffer>;

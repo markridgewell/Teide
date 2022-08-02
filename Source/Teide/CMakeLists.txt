@@ -28,6 +28,7 @@ td_add_library(
             Source/VulkanBuffer.h
             Source/VulkanGraphicsDevice.cpp
             Source/VulkanGraphicsDevice.h
+            Source/VulkanPipeline.h
             Source/VulkanRenderer.cpp
             Source/VulkanRenderer.h
             Source/VulkanShader.h

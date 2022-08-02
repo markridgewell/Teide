@@ -277,7 +277,17 @@ public:
 		const auto shaderData = CompileShader(VertexShader, PixelShader, ShaderLang);
 		m_shader = m_device->CreateShader(shaderData, "ModelShader");
 
-		m_pipeline = m_device->CreatePipeline(*m_shader, VertexLayoutDesc, MakeRenderStates(), *m_surface);
+		const auto pipelineData = PipelineData{
+		    .shader = m_shader,
+		    .vertexLayout = VertexLayoutDesc,
+		    .renderStates = MakeRenderStates(),
+		    .framebufferLayout = {
+		        .colorFormat = m_surface->GetColorFormat(),
+		        .depthStencilFormat = m_surface->GetDepthFormat(),
+		        .sampleCount = m_surface->GetSampleCount(),
+		    },
+		};
+		m_pipeline = m_device->CreatePipeline(pipelineData);
 
 		CreateMesh(modelFilename);
 		LoadTexture(imageFilename);
@@ -341,11 +351,6 @@ public:
 		// Pass 0. Draw shadows
 		//
 		{
-			const auto clearDepthStencil = vk::ClearDepthStencilValue{1.0f, 0};
-			const auto clearValues = std::vector{
-			    vk::ClearValue{clearDepthStencil},
-			};
-
 			// Update view uniforms
 			const auto viewUniforms = ViewUniforms{
 			    .viewProj = m_shadowMatrix,
@@ -354,7 +359,7 @@ public:
 			m_viewParams[0]->SetUniformData(m_renderer->GetFrameNumber(), viewUniforms);
 
 			RenderList renderList = {
-			    .clearValues = clearValues,
+			    .clearDepthValue = 1.0f,
 			    .sceneParameters = m_sceneParams,
 			    .viewParameters = m_viewParams[0],
 			    .objects = {{
@@ -374,13 +379,6 @@ public:
 		// Pass 1. Draw scene
 		//
 		{
-			const auto clearColor = std::array{0.0f, 0.0f, 0.0f, 1.0f};
-			const auto clearDepthStencil = vk::ClearDepthStencilValue{1.0f, 0};
-			const auto clearValues = std::vector{
-			    vk::ClearValue{clearColor},
-			    vk::ClearValue{clearDepthStencil},
-			};
-
 			// Update view uniforms
 			const auto extent = m_surface->GetExtent();
 			const float aspectRatio = static_cast<float>(extent.width) / static_cast<float>(extent.height);
@@ -401,7 +399,8 @@ public:
 			m_viewParams[1]->SetUniformData(m_renderer->GetFrameNumber(), viewUniforms);
 
 			RenderList renderList = {
-			    .clearValues = clearValues,
+			    .clearColorValue = Color{0.0f, 0.0f, 0.0f, 1.0f},
+			    .clearDepthValue = 1.0f,
 			    .sceneParameters = m_sceneParams,
 			    .viewParameters = m_viewParams[1],
 			    .objects = {{
@@ -727,8 +726,17 @@ private:
 		float depthBiasSlope = 2.75f;
 
 		// Create pipeline
-		m_shadowMapPipeline = m_device->CreatePipeline(
-		    *m_shader, VertexLayoutDesc, MakeRenderStates(depthBiasConstant, depthBiasSlope), *m_shadowMap);
+		const auto pipelineData = PipelineData{
+		    .shader = m_shader,
+		    .vertexLayout = VertexLayoutDesc,
+		    .renderStates = MakeRenderStates(depthBiasConstant, depthBiasSlope),
+		    .framebufferLayout = {
+		        .colorFormat = vk::Format::eUndefined,
+		        .depthStencilFormat = m_shadowMap->GetFormat(),
+		        .sampleCount = m_shadowMap->GetSampleCount(),
+		    },
+		};
+		m_shadowMapPipeline = m_device->CreatePipeline(pipelineData);
 	}
 
 	//

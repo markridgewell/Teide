@@ -6,6 +6,7 @@
 #include "Vulkan.h"
 #include "VulkanBuffer.h"
 #include "VulkanGraphicsDevice.h"
+#include "VulkanPipeline.h"
 #include "VulkanTexture.h"
 
 #include <spdlog/spdlog.h>
@@ -17,7 +18,6 @@
 namespace
 {
 static const vk::Optional<const vk::AllocationCallbacks> s_allocator = nullptr;
-
 } // namespace
 
 VulkanRenderer::VulkanRenderer(
@@ -105,6 +105,16 @@ void VulkanRenderer::EndFrame()
 	// Submit the surface command buffer(s)
 	{
 		const auto lock = std::scoped_lock(m_surfaceCommandBuffersMutex);
+
+		auto commandBuffer = m_device.OneShotCommands();
+		for (const auto& surfaceImage : images)
+		{
+			TransitionImageLayout(
+			    commandBuffer, surfaceImage.image, vk::Format::eUndefined, 1, vk::ImageLayout::eColorAttachmentOptimal,
+			    vk::ImageLayout::ePresentSrcKHR, vk::PipelineStageFlagBits::eColorAttachmentOutput,
+			    vk::PipelineStageFlagBits::eTopOfPipe);
+		}
+
 		const auto submitInfo = vk::SubmitInfo{
 		    .waitSemaphoreCount = size32(waitSemaphores),
 		    .pWaitSemaphores = data(waitSemaphores),
@@ -137,8 +147,15 @@ void VulkanRenderer::EndFrame()
 
 void VulkanRenderer::RenderToTexture(DynamicTexturePtr texture, RenderList renderList)
 {
-	m_scheduler.ScheduleGpu([this, renderList = std::move(renderList),
-	                         texture = std::move(texture)](CommandBuffer& commandBuffer) {
+	const bool isColorTarget = !HasDepthOrStencilComponent(texture->GetFormat());
+	const auto framebufferLayout = FramebufferLayout{
+	    .colorFormat = isColorTarget ? texture->GetFormat() : vk::Format::eUndefined,
+	    .depthStencilFormat = isColorTarget ? vk::Format::eUndefined : texture->GetFormat(),
+	    .sampleCount = texture->GetSampleCount(),
+	};
+
+	m_scheduler.ScheduleGpu([this, renderList = std::move(renderList), texture = std::move(texture),
+	                         framebufferLayout](CommandBuffer& commandBuffer) {
 		commandBuffer.AddTexture(texture);
 
 		const auto& textureImpl = m_device.GetImpl(*texture);
@@ -146,8 +163,7 @@ void VulkanRenderer::RenderToTexture(DynamicTexturePtr texture, RenderList rende
 		TextureState textureState;
 		textureImpl.TransitionToRenderTarget(textureState, commandBuffer);
 
-		BuildCommandBuffer(
-		    commandBuffer, renderList, textureImpl.renderPass.get(), textureImpl.framebuffer.get(), textureImpl.size);
+		BuildCommandBuffer(commandBuffer, renderList, framebufferLayout, {}, textureImpl.size, {textureImpl.imageView.get()});
 
 		textureImpl.TransitionToShaderInput(textureState, commandBuffer);
 	});
@@ -163,10 +179,16 @@ void VulkanRenderer::RenderToSurface(Surface& surface, RenderList renderList)
 		const auto framebuffer = surfaceImage.framebuffer;
 		const auto extent = surfaceImage.extent;
 
+		const auto framebufferLayout = FramebufferLayout{
+		    .colorFormat = surface.GetColorFormat(),
+		    .depthStencilFormat = surface.GetDepthFormat(),
+		    .sampleCount = surface.GetSampleCount(),
+		};
+
 		m_scheduler.Schedule([=, this, renderList = std::move(renderList)](uint32_t taskIndex) {
 			CommandBuffer& commandBuffer = m_scheduler.GetCommandBuffer(taskIndex);
 
-			BuildCommandBuffer(commandBuffer, renderList, surfaceImage.renderPass, framebuffer, extent);
+			BuildCommandBuffer(commandBuffer, renderList, framebufferLayout, framebuffer, extent, {});
 
 			commandBuffer.Get()->end();
 
@@ -184,7 +206,7 @@ Task<TextureData> VulkanRenderer::CopyTextureData(TexturePtr texture)
 	    .size = textureImpl.size,
 	    .format = textureImpl.format,
 	    .mipLevelCount = textureImpl.mipLevelCount,
-	    .samples = textureImpl.samples,
+	    .sampleCount = textureImpl.sampleCount,
 	};
 
 	const auto bufferSize = GetByteSize(textureData);
@@ -223,19 +245,53 @@ Task<TextureData> VulkanRenderer::CopyTextureData(TexturePtr texture)
 }
 
 void VulkanRenderer::BuildCommandBuffer(
-    CommandBuffer& commandBufferWrapper, const RenderList& renderList, vk::RenderPass renderPass,
-    vk::Framebuffer framebuffer, vk::Extent2D framebufferSize)
+    CommandBuffer& commandBufferWrapper, const RenderList& renderList, const FramebufferLayout& framebufferLayout,
+    vk::Framebuffer framebuffer, vk::Extent2D framebufferSize, std::vector<vk::ImageView> framebufferAttachments)
 {
 	using std::data;
 
 	vk::CommandBuffer commandBuffer = commandBufferWrapper;
 
+	const auto renderPassInfo = RenderPassInfo{
+	    .colorLoadOp = renderList.clearColorValue ? vk::AttachmentLoadOp::eClear : vk::AttachmentLoadOp::eDontCare,
+	    .colorStoreOp = vk::AttachmentStoreOp::eStore,
+	    .depthLoadOp = renderList.clearDepthValue ? vk::AttachmentLoadOp::eClear : vk::AttachmentLoadOp::eDontCare,
+	    .depthStoreOp = vk::AttachmentStoreOp::eStore,
+	    .stencilLoadOp = renderList.clearStencilValue ? vk::AttachmentLoadOp::eClear : vk::AttachmentLoadOp::eDontCare,
+	    .stencilStoreOp = vk::AttachmentStoreOp::eStore,
+	};
+
+	const auto renderPass = m_device.CreateRenderPass(framebufferLayout, renderPassInfo);
+
+	if (!framebuffer)
+	{
+		framebuffer = m_device.CreateFramebuffer(renderPass, framebufferSize, framebufferAttachments);
+	}
+
+	auto clearValues = std::vector<vk::ClearValue>();
+	if (framebufferLayout.colorFormat != vk::Format::eUndefined)
+	{
+		if (renderList.clearColorValue)
+		{
+			clearValues.push_back(vk::ClearColorValue{*renderList.clearColorValue});
+		}
+		else
+		{
+			clearValues.emplace_back();
+		}
+	}
+	if (framebufferLayout.depthStencilFormat != vk::Format::eUndefined)
+	{
+		clearValues.push_back(vk::ClearDepthStencilValue{
+		    renderList.clearDepthValue.value_or(1.0f), renderList.clearStencilValue.value_or(0)});
+	};
+
 	const auto renderPassBegin = vk::RenderPassBeginInfo{
 	    .renderPass = renderPass,
 	    .framebuffer = framebuffer,
 	    .renderArea = {.offset = {0, 0}, .extent = framebufferSize},
-	    .clearValueCount = size32(renderList.clearValues),
-	    .pClearValues = data(renderList.clearValues),
+	    .clearValueCount = size32(clearValues),
+	    .pClearValues = data(clearValues),
 	};
 
 	commandBuffer.beginRenderPass(renderPassBegin, vk::SubpassContents::eInline);
@@ -272,22 +328,25 @@ void VulkanRenderer::BuildCommandBuffer(
 
 		if (!descriptorSets.empty())
 		{
+			const auto& firstPipeline = m_device.GetImpl(*renderList.objects.front().pipeline);
 			commandBuffer.bindDescriptorSets(
-			    vk::PipelineBindPoint::eGraphics, renderList.objects.front().pipeline->layout, first, descriptorSets, {});
+			    vk::PipelineBindPoint::eGraphics, firstPipeline.layout, first, descriptorSets, {});
 		}
 
 		for (const RenderObject& obj : renderList.objects)
 		{
+			const auto& pipeline = m_device.GetImpl(*obj.pipeline);
+
 			commandBufferWrapper.AddParameterBlock(obj.materialParameters);
 
 			if (obj.materialParameters)
 			{
 				commandBuffer.bindDescriptorSets(
-				    vk::PipelineBindPoint::eGraphics, obj.pipeline->layout, 2,
+				    vk::PipelineBindPoint::eGraphics, pipeline.layout, 2,
 				    GetDescriptorSet(obj.materialParameters.get()), {});
 			}
 
-			commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, obj.pipeline->pipeline.get());
+			commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, pipeline.pipeline.get());
 
 			const auto& vertexBufferImpl = m_device.GetImpl(*obj.vertexBuffer);
 			commandBuffer.bindVertexBuffers(0, vertexBufferImpl.buffer.get(), vk::DeviceSize{0});
@@ -295,8 +354,7 @@ void VulkanRenderer::BuildCommandBuffer(
 			if (!obj.pushConstants.empty())
 			{
 				commandBuffer.pushConstants(
-				    obj.pipeline->layout, vk::ShaderStageFlagBits::eVertex, 0, size32(obj.pushConstants),
-				    data(obj.pushConstants));
+				    pipeline.layout, vk::ShaderStageFlagBits::eVertex, 0, size32(obj.pushConstants), data(obj.pushConstants));
 			}
 
 			if (obj.indexBuffer)

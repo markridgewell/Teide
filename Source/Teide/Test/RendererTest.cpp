@@ -51,7 +51,7 @@ protected:
 		    .size = size,
 		    .format = vk::Format::eR8G8B8A8Srgb,
 		    .mipLevelCount = 1,
-		    .samples = vk::SampleCountFlagBits::e1,
+		    .sampleCount = vk::SampleCountFlagBits::e1,
 		};
 		return m_device->CreateRenderableTexture(textureData, "Texture");
 	}
@@ -64,9 +64,8 @@ TEST_F(RendererTest, RenderNothing)
 {
 	const auto texture = CreateRenderableTexture({2, 2});
 
-	const auto clearColor = std::array{1.0f, 0.0f, 0.0f, 1.0f};
 	const auto renderList = RenderList{
-	    .clearValues = {{clearColor}},
+	    .clearColorValue = Color{1.0f, 0.0f, 0.0f, 1.0f},
 	};
 
 	m_renderer->RenderToTexture(texture, renderList);
@@ -76,7 +75,7 @@ TEST_F(RendererTest, RenderNothing)
 	EXPECT_THAT(outputData.size, Eq(vk::Extent2D{2, 2}));
 	EXPECT_THAT(outputData.format, Eq(vk::Format::eR8G8B8A8Srgb));
 	EXPECT_THAT(outputData.mipLevelCount, Eq(1));
-	EXPECT_THAT(outputData.samples, Eq(vk::SampleCountFlagBits::e1));
+	EXPECT_THAT(outputData.sampleCount, Eq(vk::SampleCountFlagBits::e1));
 
 	const auto expectedPixels = HexToBytes("ff 00 00 ff ff 00 00 ff ff 00 00 ff ff 00 00 ff");
 	EXPECT_THAT(outputData.pixels, ContainerEq(expectedPixels));
@@ -98,17 +97,19 @@ TEST_F(RendererTest, RenderFullscreenTri)
 	const auto shaderData = CompileShader(SimpleVertexShader, SimplePixelShader, ShaderLanguage::Glsl);
 	const auto shader = m_device->CreateShader(shaderData, "SimpleShader");
 
-	const auto pipeline = m_device->CreatePipeline(
-	    *shader, vertexLayout,
-	    RenderStates{
+	const auto pipeline = m_device->CreatePipeline({
+	    .shader = shader,
+	    .vertexLayout = vertexLayout,
+	    .renderStates = {
 	        .viewport = {0, 0, 2, 2},
 	        .scissor = {{0, 0}, {2, 2}},
 	    },
-	    *texture);
+	    .framebufferLayout = {
+	        .colorFormat = texture->GetFormat(),
+	    }});
 
-	const auto clearColor = std::array{1.0f, 0.0f, 0.0f, 1.0f};
 	const auto renderList = RenderList{
-	    .clearValues = {{clearColor}},
+	    .clearColorValue = Color{1.0f, 0.0f, 0.0f, 1.0f},
 	    .objects = {RenderObject{.vertexBuffer = vbuffer, .indexCount = 3, .pipeline = pipeline}}};
 
 	m_renderer->RenderToTexture(texture, renderList);
@@ -118,7 +119,7 @@ TEST_F(RendererTest, RenderFullscreenTri)
 	EXPECT_THAT(outputData.size, Eq(vk::Extent2D{2, 2}));
 	EXPECT_THAT(outputData.format, Eq(vk::Format::eR8G8B8A8Srgb));
 	EXPECT_THAT(outputData.mipLevelCount, Eq(1));
-	EXPECT_THAT(outputData.samples, Eq(vk::SampleCountFlagBits::e1));
+	EXPECT_THAT(outputData.sampleCount, Eq(vk::SampleCountFlagBits::e1));
 
 	const auto expectedPixels = HexToBytes("ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff");
 	EXPECT_THAT(outputData.pixels, ContainerEq(expectedPixels));

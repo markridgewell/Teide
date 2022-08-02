@@ -20,10 +20,7 @@ struct VulkanTextureData
 	vk::Extent2D size;
 	vk::Format format;
 	uint32_t mipLevelCount = 1;
-	vk::SampleCountFlagBits samples = vk::SampleCountFlagBits::e1;
-
-	vk::UniqueRenderPass renderPass;
-	vk::UniqueFramebuffer framebuffer;
+	vk::SampleCountFlagBits sampleCount = vk::SampleCountFlagBits::e1;
 };
 
 struct VulkanTexture : public Texture, VulkanTextureData
@@ -33,7 +30,7 @@ struct VulkanTexture : public Texture, VulkanTextureData
 	vk::Extent2D GetSize() const override { return size; }
 	vk::Format GetFormat() const override { return format; }
 	std::uint32_t GetMipLevelCount() const override { return mipLevelCount; }
-	vk::SampleCountFlagBits GetSampleCount() const override { return samples; }
+	vk::SampleCountFlagBits GetSampleCount() const override { return sampleCount; }
 
 	void GenerateMipmaps(TextureState& state, vk::CommandBuffer cmdBuffer);
 
@@ -42,6 +39,7 @@ struct VulkanTexture : public Texture, VulkanTextureData
 	void TransitionToRenderTarget(TextureState& state, vk::CommandBuffer cmdBuffer) const;
 	void TransitionToColorTarget(TextureState& state, vk::CommandBuffer cmdBuffer) const;
 	void TransitionToDepthStencilTarget(TextureState& state, vk::CommandBuffer cmdBuffer) const;
+	void TransitionToPresentSrc(TextureState& state, vk::CommandBuffer cmdBuffer) const;
 
 protected:
 	void DoTransition(

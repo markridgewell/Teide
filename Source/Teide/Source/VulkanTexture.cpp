@@ -1,6 +1,7 @@
 
 #include "VulkanTexture.h"
 
+#include "Types/TextureData.h"
 #include "Vulkan.h"
 
 void VulkanTexture::GenerateMipmaps(TextureState& state, vk::CommandBuffer cmdBuffer)
@@ -150,4 +151,9 @@ void VulkanTexture::TransitionToDepthStencilTarget(TextureState& state, vk::Comm
 	DoTransition(
 	    state, cmdBuffer, vk::ImageLayout::eDepthStencilAttachmentOptimal,
 	    vk::PipelineStageFlagBits::eEarlyFragmentTests | vk::PipelineStageFlagBits::eLateFragmentTests);
+}
+
+void VulkanTexture::TransitionToPresentSrc(TextureState& state, vk::CommandBuffer cmdBuffer) const
+{
+	DoTransition(state, cmdBuffer, vk::ImageLayout::ePresentSrcKHR, vk::PipelineStageFlagBits::eColorAttachmentOutput);
 }

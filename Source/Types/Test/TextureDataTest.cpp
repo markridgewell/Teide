@@ -11,7 +11,7 @@ TEST(TextureTest, GetByteSize)
 	    .size = {2, 2},
 	    .format = vk::Format::eR8G8B8A8Unorm,
 	    .mipLevelCount = 1,
-	    .samples = vk::SampleCountFlagBits::e1,
+	    .sampleCount = vk::SampleCountFlagBits::e1,
 	    .samplerInfo = {}};
 	EXPECT_THAT(GetByteSize(textureData), Eq(16));
 }
@@ -22,7 +22,7 @@ TEST(TextureTest, GetByteSizeWithMipmaps)
 	    .size = {2, 2},
 	    .format = vk::Format::eR8G8B8A8Unorm,
 	    .mipLevelCount = 2,
-	    .samples = vk::SampleCountFlagBits::e1,
+	    .sampleCount = vk::SampleCountFlagBits::e1,
 	    .samplerInfo = {}};
 	EXPECT_THAT(GetByteSize(textureData), Eq(20));
 }

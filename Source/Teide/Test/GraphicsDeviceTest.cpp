@@ -77,7 +77,7 @@ TEST(GraphicsDeviceTest, CreateTexture)
 	    .size = {2, 2},
 	    .format = vk::Format::eR8G8B8A8Srgb,
 	    .mipLevelCount = 1,
-	    .samples = vk::SampleCountFlagBits::e1,
+	    .sampleCount = vk::SampleCountFlagBits::e1,
 	    .samplerInfo = {},
 	    .pixels = HexToBytes("ff 00 00 ff 00 ff 00 ff ff 00 ff ff 00 00 ff ff"),
 	};
@@ -97,7 +97,7 @@ TEST(GraphicsDeviceTest, CreateRenderableTexture)
 	    .size = {600, 400},
 	    .format = vk::Format::eR8G8B8A8Srgb,
 	    .mipLevelCount = 1,
-	    .samples = vk::SampleCountFlagBits::e1,
+	    .sampleCount = vk::SampleCountFlagBits::e1,
 	    .samplerInfo = {},
 	};
 	const auto texture = device->CreateRenderableTexture(textureData, "Texture");
@@ -113,27 +113,27 @@ TEST(GraphicsDeviceTest, CreatePipeline)
 {
 	auto device = CreateGraphicsDevice();
 	const auto shaderData = CompileShader(SimpleVertexShader, SimplePixelShader, ShaderLanguage::Glsl);
-	const auto shader = device->CreateShader(shaderData, "Shader");
-	const auto vertexLayout = VertexLayout{
-	    .inputAssembly = {.topology = vk::PrimitiveTopology::eTriangleList},
-	    .vertexInputBindings = {{.binding = 0, .stride = 0}},
-	    .vertexInputAttributes = {{.location = 0, .binding = 0, .format = vk::Format::eR32G32B32Sfloat, .offset = 0}},
+
+	const auto pipelineData = PipelineData{
+	    .shader = device->CreateShader(shaderData, "Shader"),
+	    .vertexLayout = {
+	        .inputAssembly = {.topology = vk::PrimitiveTopology::eTriangleList},
+	        .vertexInputBindings = {{.binding = 0, .stride = 0}},
+	        .vertexInputAttributes = {{.location = 0, .binding = 0, .format = vk::Format::eR32G32B32Sfloat, .offset = 0}},
+	    },
+	    .renderStates = {
+	        .viewport = {0, 0, 600, 400},
+	        .rasterizationState = {.lineWidth = 1.0f},
+	    },
+	    .framebufferLayout = {
+			.colorFormat = vk::Format::eR8G8B8A8Srgb,
+			.depthStencilFormat = vk::Format::eD16Unorm,
+			.sampleCount = vk::SampleCountFlagBits::e2,
+	    },
 	};
-	const auto renderStates = RenderStates{
-	    .viewport = {0, 0, 600, 400},
-	    .rasterizationState = {.lineWidth = 1.0f},
-	};
-	const auto textureData = TextureData{
-	    .size = {600, 400},
-	    .format = vk::Format::eR8G8B8A8Srgb,
-	    .mipLevelCount = 1,
-	    .samples = vk::SampleCountFlagBits::e1,
-	};
-	const auto texture = device->CreateRenderableTexture(textureData, "Texture");
-	const auto pipeline = device->CreatePipeline(*shader, vertexLayout, renderStates, *texture);
+
+	const auto pipeline = device->CreatePipeline(pipelineData);
 	EXPECT_THAT(pipeline.get(), NotNull());
-	EXPECT_THAT(pipeline->layout, IsTrue());
-	EXPECT_THAT(pipeline->pipeline.get(), IsTrue());
 }
 
 TEST(GraphicsDeviceTest, CreateParameterBlock)

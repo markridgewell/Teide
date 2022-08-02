@@ -1,6 +1,8 @@
 
 #include "Vulkan.h"
 
+#include "Teide/Pipeline.h"
+#include "Teide/Renderer.h"
 #include "Types/TextureData.h"
 
 #include <SDL_vulkan.h>
@@ -105,6 +107,9 @@ vk::AccessFlags GetTransitionAccessMask(vk::ImageLayout layout)
 
 		case eDepthStencilReadOnlyOptimal:
 			return Access::eShaderRead;
+
+		case ePresentSrcKHR:
+			return Access::eNoneKHR;
 
 		default:
 			assert(false && "Unsupported image transition");
@@ -268,24 +273,6 @@ CreateDevice(vk::PhysicalDevice physicalDevice, std::span<const uint32_t> queueF
 	return physicalDevice.createDeviceUnique(deviceCreateInfo, s_allocator);
 }
 
-bool HasDepthComponent(vk::Format format)
-{
-	return format == vk::Format::eD16Unorm || format == vk::Format::eD32Sfloat || format == vk::Format::eD16UnormS8Uint
-	    || format == vk::Format::eD24UnormS8Uint || format == vk::Format::eD32SfloatS8Uint;
-}
-
-bool HasStencilComponent(vk::Format format)
-{
-	return format == vk::Format::eS8Uint || format == vk::Format::eD16UnormS8Uint
-	    || format == vk::Format::eD24UnormS8Uint || format == vk::Format::eD32SfloatS8Uint;
-}
-
-bool HasDepthOrStencilComponent(vk::Format format)
-{
-	return format == vk::Format::eD16Unorm || format == vk::Format::eD32Sfloat || format == vk::Format::eD16UnormS8Uint
-	    || format == vk::Format::eD24UnormS8Uint || format == vk::Format::eD32SfloatS8Uint || format == vk::Format::eS8Uint;
-}
-
 void TransitionImageLayout(
     vk::CommandBuffer cmdBuffer, vk::Image image, vk::Format format, uint32_t mipLevelCount, vk::ImageLayout oldLayout,
     vk::ImageLayout newLayout, vk::PipelineStageFlags srcStageMask, vk::PipelineStageFlags dstStageMask)
@@ -400,4 +387,118 @@ void CopyImageToBuffer(
 		mipExtent.height = std::max(1u, mipExtent.height / 2);
 		mipExtent.depth = std::max(1u, mipExtent.depth / 2);
 	}
+}
+
+vk::UniqueRenderPass CreateRenderPass(vk::Device device, const FramebufferLayout& layout)
+{
+	return CreateRenderPass(device, layout, {});
+}
+
+vk::UniqueRenderPass CreateRenderPass(vk::Device device, const FramebufferLayout& layout, const RenderPassInfo& renderPassInfo)
+{
+	assert(layout.colorFormat != vk::Format::eUndefined || layout.depthStencilFormat != vk::Format::eUndefined);
+
+	const bool multisampling = layout.sampleCount != vk::SampleCountFlagBits::e1;
+	const bool loadColor = renderPassInfo.colorLoadOp == vk::AttachmentLoadOp::eLoad;
+
+	std::vector<vk::AttachmentDescription> attachments;
+	std::vector<vk::AttachmentReference> colorAttachmentRefs;
+	std::vector<vk::AttachmentReference> resolveAttachmentRefs;
+	std::optional<vk::AttachmentReference> depthStencilAttachmentRef;
+
+	if (layout.colorFormat != vk::Format::eUndefined)
+	{
+		colorAttachmentRefs.push_back({
+		    .attachment = size32(attachments),
+		    .layout = vk::ImageLayout::eColorAttachmentOptimal,
+		});
+
+		attachments.push_back({
+		    .format = layout.colorFormat,
+		    .samples = layout.sampleCount,
+		    .loadOp = renderPassInfo.colorLoadOp,
+		    .storeOp = multisampling ? renderPassInfo.colorStoreOp : vk::AttachmentStoreOp::eStore,
+		    .initialLayout = loadColor ? vk::ImageLayout::eColorAttachmentOptimal : vk::ImageLayout::eUndefined,
+		    .finalLayout = vk::ImageLayout::eColorAttachmentOptimal,
+		});
+	}
+
+	if (layout.depthStencilFormat != vk::Format::eUndefined)
+	{
+		depthStencilAttachmentRef = vk::AttachmentReference{
+		    .attachment = size32(attachments),
+		    .layout = vk::ImageLayout::eDepthStencilAttachmentOptimal,
+		};
+
+		attachments.push_back({
+		    .format = layout.depthStencilFormat,
+		    .samples = layout.sampleCount,
+		    .loadOp = vk::AttachmentLoadOp::eClear,
+		    .storeOp = vk::AttachmentStoreOp::eDontCare,
+		    .stencilLoadOp = vk::AttachmentLoadOp::eDontCare,
+		    .stencilStoreOp = vk::AttachmentStoreOp::eDontCare,
+		    .initialLayout = vk::ImageLayout::eUndefined,
+		    .finalLayout = vk::ImageLayout::eDepthStencilAttachmentOptimal,
+		});
+	}
+
+	if (multisampling)
+	{
+		resolveAttachmentRefs.push_back({
+		    .attachment = size32(attachments),
+		    .layout = vk::ImageLayout::eColorAttachmentOptimal,
+		});
+
+		attachments.push_back({
+		    .format = layout.colorFormat,
+		    .samples = vk::SampleCountFlagBits::e1,
+		    .loadOp = vk::AttachmentLoadOp::eDontCare,
+		    .storeOp = renderPassInfo.colorStoreOp,
+		    .initialLayout = vk::ImageLayout::eUndefined,
+		    .finalLayout = vk::ImageLayout::eColorAttachmentOptimal,
+		});
+	}
+
+	const auto subpass = vk::SubpassDescription{
+	    .pipelineBindPoint = vk::PipelineBindPoint::eGraphics,
+	    .colorAttachmentCount = size32(colorAttachmentRefs),
+	    .pColorAttachments = data(colorAttachmentRefs),
+	    .pResolveAttachments = data(resolveAttachmentRefs),
+	    .pDepthStencilAttachment = depthStencilAttachmentRef ? &depthStencilAttachmentRef.value() : nullptr,
+	};
+
+	const auto dependency = vk::SubpassDependency{
+	    .srcSubpass = VK_SUBPASS_EXTERNAL,
+	    .dstSubpass = 0,
+	    .srcStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput | vk::PipelineStageFlagBits::eEarlyFragmentTests,
+	    .dstStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput | vk::PipelineStageFlagBits::eEarlyFragmentTests,
+	    .srcAccessMask = vk::AccessFlags{},
+	    .dstAccessMask = vk ::AccessFlagBits::eColorAttachmentWrite | vk::AccessFlagBits::eDepthStencilAttachmentWrite,
+	};
+
+	const auto createInfo = vk::RenderPassCreateInfo{
+	    .attachmentCount = size32(attachments),
+	    .pAttachments = data(attachments),
+	    .subpassCount = 1,
+	    .pSubpasses = &subpass,
+	    .dependencyCount = 1,
+	    .pDependencies = &dependency,
+	};
+
+	return device.createRenderPassUnique(createInfo, s_allocator);
+}
+
+vk::UniqueFramebuffer
+CreateFramebuffer(vk::Device device, vk::RenderPass renderPass, vk::Extent2D size, std::span<const vk::ImageView> imageViews)
+{
+	const auto framebufferCreateInfo = vk::FramebufferCreateInfo{
+	    .renderPass = renderPass,
+	    .attachmentCount = size32(imageViews),
+	    .pAttachments = data(imageViews),
+	    .width = size.width,
+	    .height = size.height,
+	    .layers = 1,
+	};
+
+	return device.createFramebufferUnique(framebufferCreateInfo, s_allocator);
 }

@@ -5,6 +5,7 @@
 #include "Types/ShaderData.h"
 #include "Types/TextureData.h"
 #include "VulkanBuffer.h"
+#include "VulkanPipeline.h"
 #include "VulkanRenderer.h"
 #include "VulkanShader.h"
 #include "VulkanSurface.h"
@@ -218,7 +219,7 @@ TextureAndState CreateTextureImpl(
 	    .extent = imageExtent,
 	    .mipLevels = data.mipLevelCount,
 	    .arrayLayers = 1,
-	    .samples = data.samples,
+	    .samples = data.sampleCount,
 	    .tiling = vk::ImageTiling::eOptimal,
 	    .usage = usage,
 	    .sharingMode = vk::SharingMode::eExclusive,
@@ -276,7 +277,7 @@ TextureAndState CreateTextureImpl(
 	    .size = {imageExtent.width, imageExtent.height},
 	    .format = data.format,
 	    .mipLevelCount = data.mipLevelCount,
-	    .samples = data.samples,
+	    .sampleCount = data.sampleCount,
 	};
 
 	SetDebugName(ret.image, debugName);
@@ -314,36 +315,35 @@ vk::UniquePipelineLayout CreateGraphicsPipelineLayout(
 	return device.createPipelineLayoutUnique(createInfo, s_allocator);
 }
 
-vk::UniquePipeline CreateGraphicsPipeline(
-    const VulkanShader& shader, const VertexLayout& vertexLayout, const RenderStates& renderStates,
-    vk::RenderPass renderPass, vk::Format format, vk::SampleCountFlagBits sampleCount, vk::Device device)
+vk::UniquePipeline
+CreateGraphicsPipeline(const VulkanShader& shader, const PipelineData& piplineData, vk::RenderPass renderPass, vk::Device device)
 {
 	const auto vertexShader = shader.vertexShader.get();
 	const auto pixelShader = shader.pixelShader.get();
 
 	std::vector<vk::PipelineShaderStageCreateInfo> shaderStages;
 	shaderStages.push_back({.stage = vk::ShaderStageFlagBits::eVertex, .module = vertexShader, .pName = "main"});
-	if (!HasDepthOrStencilComponent(format))
+	if (piplineData.framebufferLayout.colorFormat != vk::Format::eUndefined)
 	{
 		shaderStages.push_back({.stage = vk::ShaderStageFlagBits::eFragment, .module = pixelShader, .pName = "main"});
 	}
 
 	const auto vertexInput = vk::PipelineVertexInputStateCreateInfo{
-	    .vertexBindingDescriptionCount = size32(vertexLayout.vertexInputBindings),
-	    .pVertexBindingDescriptions = data(vertexLayout.vertexInputBindings),
-	    .vertexAttributeDescriptionCount = size32(vertexLayout.vertexInputAttributes),
-	    .pVertexAttributeDescriptions = data(vertexLayout.vertexInputAttributes),
+	    .vertexBindingDescriptionCount = size32(piplineData.vertexLayout.vertexInputBindings),
+	    .pVertexBindingDescriptions = data(piplineData.vertexLayout.vertexInputBindings),
+	    .vertexAttributeDescriptionCount = size32(piplineData.vertexLayout.vertexInputAttributes),
+	    .pVertexAttributeDescriptions = data(piplineData.vertexLayout.vertexInputAttributes),
 	};
 
 	const auto viewportState = vk::PipelineViewportStateCreateInfo{
 	    .viewportCount = 1,
-	    .pViewports = &renderStates.viewport,
+	    .pViewports = &piplineData.renderStates.viewport,
 	    .scissorCount = 1,
-	    .pScissors = &renderStates.scissor,
+	    .pScissors = &piplineData.renderStates.scissor,
 	};
 
 	const auto multisampleState = vk::PipelineMultisampleStateCreateInfo{
-	    .rasterizationSamples = sampleCount,
+	    .rasterizationSamples = piplineData.framebufferLayout.sampleCount,
 	    .sampleShadingEnable = false,
 	    .minSampleShading = 1.0f,
 	    .pSampleMask = nullptr,
@@ -354,22 +354,22 @@ vk::UniquePipeline CreateGraphicsPipeline(
 	const auto colorBlendState = vk::PipelineColorBlendStateCreateInfo{
 	    .logicOpEnable = false,
 	    .attachmentCount = 1,
-	    .pAttachments = &renderStates.colorBlendAttachment,
+	    .pAttachments = &piplineData.renderStates.colorBlendAttachment,
 	};
 
 	const auto dynamicState = vk::PipelineDynamicStateCreateInfo{
-	    .dynamicStateCount = size32(renderStates.dynamicStates),
-	    .pDynamicStates = data(renderStates.dynamicStates),
+	    .dynamicStateCount = size32(piplineData.renderStates.dynamicStates),
+	    .pDynamicStates = data(piplineData.renderStates.dynamicStates),
 	};
 	const auto createInfo = vk::GraphicsPipelineCreateInfo{
 	    .stageCount = size32(shaderStages),
 	    .pStages = data(shaderStages),
 	    .pVertexInputState = &vertexInput,
-	    .pInputAssemblyState = &vertexLayout.inputAssembly,
+	    .pInputAssemblyState = &piplineData.vertexLayout.inputAssembly,
 	    .pViewportState = &viewportState,
-	    .pRasterizationState = &renderStates.rasterizationState,
+	    .pRasterizationState = &piplineData.renderStates.rasterizationState,
 	    .pMultisampleState = &multisampleState,
-	    .pDepthStencilState = &renderStates.depthStencilState,
+	    .pDepthStencilState = &piplineData.renderStates.depthStencilState,
 	    .pColorBlendState = pixelShader ? &colorBlendState : nullptr,
 	    .pDynamicState = &dynamicState,
 	    .layout = shader.pipelineLayout.get(),
@@ -615,73 +615,15 @@ DynamicTexturePtr VulkanGraphicsDevice::CreateRenderableTexture(const TextureDat
 		texture.TransitionToDepthStencilTarget(state, cmdBuffer);
 	}
 
-	// Create render pass
-	const auto attachment = vk::AttachmentDescription{
-	    .format = texture.format,
-	    .samples = vk::SampleCountFlagBits::e1,
-	    .loadOp = vk::AttachmentLoadOp::eClear,
-	    .storeOp = vk::AttachmentStoreOp::eStore,
-	    .stencilLoadOp = vk::AttachmentLoadOp::eDontCare,
-	    .stencilStoreOp = vk::AttachmentStoreOp::eDontCare,
-	    .initialLayout = vk::ImageLayout::eUndefined,
-	    .finalLayout = state.layout,
-	};
-
-	const auto attachmentRef = vk::AttachmentReference{
-	    .attachment = 0,
-	    .layout = state.layout,
-	};
-
-	const auto subpass = MakeSubpassDescription(attachmentRef, isColorTarget);
-
-	const auto createInfo = vk::RenderPassCreateInfo{
-	    .attachmentCount = 1,
-	    .pAttachments = &attachment,
-	    .subpassCount = 1,
-	    .pSubpasses = &subpass,
-	};
-
-	texture.renderPass = m_device->createRenderPassUnique(createInfo);
-	SetDebugName(texture.renderPass, "{}:RenderPass", name);
-
-	// Create framebuffer
-	const auto framebufferCreateInfo = vk::FramebufferCreateInfo{
-	    .renderPass = texture.renderPass.get(),
-	    .attachmentCount = 1,
-	    .pAttachments = &texture.imageView.get(),
-	    .width = texture.size.width,
-	    .height = texture.size.height,
-	    .layers = 1,
-	};
-
-	texture.framebuffer = m_device->createFramebufferUnique(framebufferCreateInfo, s_allocator);
-	SetDebugName(texture.framebuffer, "{}:Framebuffer", name);
-
 	return std::make_shared<VulkanTexture>(std::move(texture));
 }
 
-PipelinePtr VulkanGraphicsDevice::CreatePipeline(
-    const Shader& shader, const VertexLayout& vertexLayout, const RenderStates& renderStates, const Surface& surface)
+PipelinePtr VulkanGraphicsDevice::CreatePipeline(const PipelineData& data)
 {
-	const auto& shaderImpl = GetImpl(shader);
-	const auto& surfaceImpl = GetImpl(surface);
-	return std::make_shared<const Pipeline>(
-	    CreateGraphicsPipeline(
-	        shaderImpl, vertexLayout, renderStates, surfaceImpl.GetVulkanRenderPass(), surface.GetColorFormat(),
-	        surface.GetSampleCount(), m_device.get()),
-	    shaderImpl.pipelineLayout.get());
-}
+	const auto& shaderImpl = GetImpl(*data.shader);
 
-PipelinePtr VulkanGraphicsDevice::CreatePipeline(
-    const Shader& shader, const VertexLayout& vertexLayout, const RenderStates& renderStates, const Texture& texture)
-{
-	const auto& shaderImpl = GetImpl(shader);
-	const auto& textureImpl = GetImpl(texture);
-
-	return std::make_shared<const Pipeline>(
-	    CreateGraphicsPipeline(
-	        shaderImpl, vertexLayout, renderStates, textureImpl.renderPass.get(), textureImpl.format,
-	        textureImpl.samples, m_device.get()),
+	return std::make_shared<const VulkanPipeline>(
+	    CreateGraphicsPipeline(shaderImpl, data, CreateRenderPass(data.framebufferLayout), m_device.get()),
 	    shaderImpl.pipelineLayout.get());
 }
 
@@ -760,6 +702,33 @@ std::vector<vk::UniqueDescriptorSet> VulkanGraphicsDevice::CreateDescriptorSets(
 	}
 
 	return descriptorSets;
+}
+
+vk::RenderPass VulkanGraphicsDevice::CreateRenderPass(const FramebufferLayout& framebufferLayout, const RenderPassInfo& renderPassInfo)
+{
+	const auto lock = std::scoped_lock(m_renderPassCacheMutex);
+
+	const auto desc = RenderPassDesc{framebufferLayout, renderPassInfo};
+	const auto [it, inserted] = m_renderPassCache.emplace(desc, nullptr);
+	if (inserted)
+	{
+		it->second = ::CreateRenderPass(m_device.get(), framebufferLayout, renderPassInfo);
+	}
+	return it->second.get();
+}
+
+vk::Framebuffer
+VulkanGraphicsDevice::CreateFramebuffer(vk::RenderPass renderPass, vk::Extent2D size, std::vector<vk::ImageView> attachments)
+{
+	const auto lock = std::scoped_lock(m_framebufferCacheMutex);
+
+	const auto desc = FramebufferDesc{renderPass, size, std::move(attachments)};
+	const auto [it, inserted] = m_framebufferCache.emplace(desc, nullptr);
+	if (inserted)
+	{
+		it->second = ::CreateFramebuffer(m_device.get(), desc.renderPass, desc.size, desc.attachments);
+	}
+	return it->second.get();
 }
 
 ParameterBlockPtr VulkanGraphicsDevice::CreateParameterBlock(const ParameterBlockData& data, const char* name)

@@ -8,9 +8,11 @@
 #include "Teide/Task.h"
 
 #include <array>
+#include <compare>
 #include <cstdint>
 #include <deque>
 #include <mutex>
+#include <optional>
 
 class GraphicsDevice;
 
@@ -24,9 +26,13 @@ struct RenderObject
 	BytesView pushConstants;
 };
 
+using Color = std::array<float, 4>;
+
 struct RenderList
 {
-	std::vector<vk::ClearValue> clearValues;
+	std::optional<Color> clearColorValue;
+	std::optional<float> clearDepthValue;
+	std::optional<std::uint32_t> clearStencilValue;
 
 	ParameterBlockPtr sceneParameters;
 	ParameterBlockPtr viewParameters;

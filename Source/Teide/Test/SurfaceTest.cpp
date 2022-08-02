@@ -58,6 +58,7 @@ TEST(SurfaceTest, CreatePipelineForSurface)
 	ASSERT_THAT(window, NotNull()) << SDL_GetError();
 
 	auto device = CreateGraphicsDevice(window.get());
+	auto surface = device->CreateSurface(window.get(), true);
 	const auto shaderData = CompileShader(SimpleVertexShader, SimplePixelShader, ShaderLanguage::Glsl);
 	const auto shader = device->CreateShader(shaderData, "Shader");
 	const auto vertexLayout = VertexLayout{
@@ -69,11 +70,13 @@ TEST(SurfaceTest, CreatePipelineForSurface)
 	    .viewport = {0, 0, 600, 400},
 	    .rasterizationState = {.lineWidth = 1.0f},
 	};
-	auto surface = device->CreateSurface(window.get(), true);
-	const auto pipeline = device->CreatePipeline(*shader, vertexLayout, renderStates, *surface);
+	const auto framebufferLayout = FramebufferLayout{
+	    .colorFormat = surface->GetColorFormat(),
+	    .depthStencilFormat = surface->GetDepthFormat(),
+	    .sampleCount = surface->GetSampleCount(),
+	};
+	const auto pipeline = device->CreatePipeline({shader, vertexLayout, renderStates, framebufferLayout});
 	EXPECT_THAT(pipeline.get(), NotNull());
-	EXPECT_THAT(pipeline->layout, IsTrue());
-	EXPECT_THAT(pipeline->pipeline, IsTrue());
 }
 
 TEST(SurfaceTest, RenderToSurface)
@@ -86,16 +89,44 @@ TEST(SurfaceTest, RenderToSurface)
 	auto renderer = device->CreateRenderer();
 
 	renderer->BeginFrame();
-	const auto clearColor = std::array{255, 0, 0, 255};
-	const auto clearDepthStencil = vk::ClearDepthStencilValue{1.0f, 0};
-	const auto clearValues = std::vector{
-	    vk::ClearValue{clearColor},
-	    vk::ClearValue{clearDepthStencil},
-	};
 	const auto renderList = RenderList{
-	    .clearValues = clearValues,
+	    .clearColorValue = Color{1.0f, 0.0f, 0.0f, 1.0f},
 	};
 	renderer->RenderToSurface(*surface, renderList);
+	renderer->EndFrame();
+}
+
+TEST(SurfaceTest, RenderToSurfaceWithoutClear)
+{
+	auto window = UniqueSDLWindow(SDL_CreateWindow("Test", 0, 0, 800, 600, SDL_WINDOW_VULKAN | SDL_WINDOW_HIDDEN));
+	ASSERT_THAT(window, NotNull()) << SDL_GetError();
+
+	auto device = CreateGraphicsDevice(window.get());
+	auto surface = device->CreateSurface(window.get(), true);
+	auto renderer = device->CreateRenderer();
+
+	renderer->BeginFrame();
+	const auto renderList = RenderList{};
+	renderer->RenderToSurface(*surface, renderList);
+	renderer->EndFrame();
+}
+
+TEST(SurfaceTest, RenderToSurfaceTwice)
+{
+	auto window = UniqueSDLWindow(SDL_CreateWindow("Test", 0, 0, 800, 600, SDL_WINDOW_VULKAN | SDL_WINDOW_HIDDEN));
+	ASSERT_THAT(window, NotNull()) << SDL_GetError();
+
+	auto device = CreateGraphicsDevice(window.get());
+	auto surface = device->CreateSurface(window.get(), true);
+	auto renderer = device->CreateRenderer();
+
+	renderer->BeginFrame();
+	const auto renderListWithClear = RenderList{
+	    .clearColorValue = Color{1.0f, 0.0f, 0.0f, 1.0f},
+	};
+	const auto renderListWithoutClear = RenderList{};
+	renderer->RenderToSurface(*surface, renderListWithClear);
+	renderer->RenderToSurface(*surface, renderListWithoutClear);
 	renderer->EndFrame();
 }
 

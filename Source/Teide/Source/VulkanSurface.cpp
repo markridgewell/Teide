@@ -2,6 +2,7 @@
 #include "VulkanSurface.h"
 
 #include "CommandBuffer.h"
+#include "Teide/Pipeline.h"
 
 #include <SDL_vulkan.h>
 #include <spdlog/spdlog.h>
@@ -142,88 +143,6 @@ vk::Format FindSupportedFormat(
 	throw VulkanError("Failed to find a suitable format");
 }
 
-vk::UniqueRenderPass
-CreateRenderPass(vk::Device device, vk::Format surfaceFormat, vk::Format depthFormat, vk::SampleCountFlagBits sampleCount)
-{
-	const bool msaa = sampleCount != vk::SampleCountFlagBits::e1;
-
-	const auto attachments = std::array{
-	    vk::AttachmentDescription{
-	        // color
-	        .format = surfaceFormat,
-	        .samples = sampleCount,
-	        .loadOp = vk::AttachmentLoadOp::eClear,
-	        .storeOp = msaa ? vk::AttachmentStoreOp::eDontCare : vk::AttachmentStoreOp::eStore,
-	        .initialLayout = vk::ImageLayout::eUndefined,
-	        .finalLayout = msaa ? vk::ImageLayout::eColorAttachmentOptimal : vk::ImageLayout::ePresentSrcKHR,
-	    },
-	    vk::AttachmentDescription{
-	        // depth
-	        .format = depthFormat,
-	        .samples = sampleCount,
-	        .loadOp = vk::AttachmentLoadOp::eClear,
-	        .storeOp = vk::AttachmentStoreOp::eDontCare,
-	        .stencilLoadOp = vk::AttachmentLoadOp::eDontCare,
-	        .stencilStoreOp = vk::AttachmentStoreOp::eDontCare,
-	        .initialLayout = vk::ImageLayout::eUndefined,
-	        .finalLayout = vk::ImageLayout::eDepthStencilAttachmentOptimal,
-	    },
-	    vk::AttachmentDescription{
-	        // color resolved
-	        .format = surfaceFormat,
-	        .samples = vk::SampleCountFlagBits::e1,
-	        .loadOp = vk::AttachmentLoadOp::eDontCare,
-	        .storeOp = vk::AttachmentStoreOp::eStore,
-	        .initialLayout = vk::ImageLayout::eUndefined,
-	        .finalLayout = vk::ImageLayout::ePresentSrcKHR,
-	    },
-	};
-	const uint32_t numAttachments = msaa ? 3 : 2;
-
-	const auto colorAttachmentRef = vk::AttachmentReference{
-	    .attachment = 0,
-	    .layout = vk::ImageLayout::eColorAttachmentOptimal,
-	};
-
-	const auto depthAttachmentRef = vk::AttachmentReference{
-	    .attachment = 1,
-	    .layout = vk::ImageLayout::eDepthStencilAttachmentOptimal,
-	};
-
-	const auto colorResolveAttachmentRef = vk::AttachmentReference{
-	    .attachment = 2,
-	    .layout = vk::ImageLayout::eColorAttachmentOptimal,
-	};
-
-	const auto subpass = vk::SubpassDescription{
-	    .pipelineBindPoint = vk::PipelineBindPoint::eGraphics,
-	    .colorAttachmentCount = 1,
-	    .pColorAttachments = &colorAttachmentRef,
-	    .pResolveAttachments = msaa ? &colorResolveAttachmentRef : nullptr,
-	    .pDepthStencilAttachment = &depthAttachmentRef,
-	};
-
-	const auto dependency = vk::SubpassDependency{
-	    .srcSubpass = VK_SUBPASS_EXTERNAL,
-	    .dstSubpass = 0,
-	    .srcStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput | vk::PipelineStageFlagBits::eEarlyFragmentTests,
-	    .dstStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput | vk::PipelineStageFlagBits::eEarlyFragmentTests,
-	    .srcAccessMask = vk::AccessFlags{},
-	    .dstAccessMask = vk ::AccessFlagBits::eColorAttachmentWrite | vk::AccessFlagBits::eDepthStencilAttachmentWrite,
-	};
-
-	const auto createInfo = vk::RenderPassCreateInfo{
-	    .attachmentCount = numAttachments,
-	    .pAttachments = data(attachments),
-	    .subpassCount = 1,
-	    .pSubpasses = &subpass,
-	    .dependencyCount = 1,
-	    .pDependencies = &dependency,
-	};
-
-	return device.createRenderPassUnique(createInfo, s_allocator);
-}
-
 std::vector<vk::UniqueFramebuffer> CreateFramebuffers(
     std::span<const vk::UniqueImageView> imageViews, vk::ImageView colorImageView, vk::ImageView depthImageView,
     vk::RenderPass renderPass, vk::Extent2D surfaceExtent, vk::Device device)
@@ -325,6 +244,7 @@ std::optional<SurfaceImage> VulkanSurface::AcquireNextImage(vk::Fence fence)
 	    .swapchain = m_swapchain.get(),
 	    .imageIndex = imageIndex,
 	    .imageAvailable = semaphore,
+	    .image = m_swapchainImages[imageIndex],
 	    .renderPass = m_renderPass.get(),
 	    .framebuffer = m_swapchainFramebuffers[imageIndex].get(),
 	    .extent = m_surfaceExtent,
@@ -454,7 +374,12 @@ void VulkanSurface::CreateSwapchainAndImages()
 	}
 	CreateDepthBuffer(cmdBuffer);
 
-	m_renderPass = CreateRenderPass(m_device, surfaceFormat.format, m_depthFormat, m_msaaSampleCount);
+	const auto framebufferLayout = FramebufferLayout{
+	    .colorFormat = surfaceFormat.format,
+	    .depthStencilFormat = m_depthFormat,
+	    .sampleCount = m_msaaSampleCount,
+	};
+	m_renderPass = CreateRenderPass(m_device, framebufferLayout);
 	SetDebugName(m_renderPass, "SwapchainRenderPass");
 	m_swapchainFramebuffers = CreateFramebuffers(
 	    m_swapchainImageViews, m_colorImageView.get(), m_depthImageView.get(), m_renderPass.get(), m_surfaceExtent, m_device);

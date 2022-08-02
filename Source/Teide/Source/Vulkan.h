@@ -11,6 +11,19 @@
 #include <unordered_set>
 
 struct SDL_Window;
+struct FramebufferLayout;
+
+struct RenderPassInfo
+{
+	vk::AttachmentLoadOp colorLoadOp = vk::AttachmentLoadOp::eDontCare;
+	vk::AttachmentStoreOp colorStoreOp = vk::AttachmentStoreOp::eStore;
+	vk::AttachmentLoadOp depthLoadOp = vk::AttachmentLoadOp::eDontCare;
+	vk::AttachmentStoreOp depthStoreOp = vk::AttachmentStoreOp::eDontCare;
+	vk::AttachmentLoadOp stencilLoadOp = vk::AttachmentLoadOp::eDontCare;
+	vk::AttachmentStoreOp stencilStoreOp = vk::AttachmentStoreOp::eDontCare;
+
+	auto operator<=>(const RenderPassInfo&) const = default;
+};
 
 void EnableOptionalVulkanLayer(
     std::vector<const char*>& enabledLayers, const std::vector<vk::LayerProperties>& availableLayers, const char* layerName);
@@ -31,10 +44,6 @@ inline uint32_t size32(const T& cont)
 	using std::size;
 	return static_cast<uint32_t>(size(cont));
 }
-
-bool HasDepthComponent(vk::Format format);
-bool HasStencilComponent(vk::Format format);
-bool HasDepthOrStencilComponent(vk::Format format);
 
 void TransitionImageLayout(
     vk::CommandBuffer cmdBuffer, vk::Image image, vk::Format format, uint32_t mipLevelCount, vk::ImageLayout oldLayout,
@@ -105,6 +114,11 @@ void CopyBufferToImage(
 void CopyImageToBuffer(
     vk::CommandBuffer cmdBuffer, vk::Image source, vk::Buffer destination, vk::Format imageFormat,
     vk::Extent3D imageExtent, std::uint32_t numMipLevels);
+
+vk::UniqueRenderPass CreateRenderPass(vk::Device device, const FramebufferLayout& layout);
+vk::UniqueRenderPass CreateRenderPass(vk::Device device, const FramebufferLayout& layout, const RenderPassInfo& renderPassInfo);
+vk::UniqueFramebuffer
+CreateFramebuffer(vk::Device device, vk::RenderPass renderPass, vk::Extent2D size, std::span<const vk::ImageView> imageViews);
 
 template <class Rep, class Period>
 constexpr std::uint64_t Timeout(std::chrono::duration<Rep, Period> duration)

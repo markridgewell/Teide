@@ -1,8 +1,11 @@
 
 #pragma once
 
+#include "Teide/ForwardDeclare.h"
+
 #include <vulkan/vulkan.hpp>
 
+#include <compare>
 #include <vector>
 
 struct VertexLayout
@@ -25,8 +28,25 @@ struct RenderStates
 	std::vector<vk::DynamicState> dynamicStates;
 };
 
-struct Pipeline
+struct FramebufferLayout
 {
-	vk::UniquePipeline pipeline;
-	vk::PipelineLayout layout;
+	vk::Format colorFormat = vk::Format::eUndefined;
+	vk::Format depthStencilFormat = vk::Format::eUndefined;
+	vk::SampleCountFlagBits sampleCount = vk::SampleCountFlagBits::e1;
+
+	auto operator<=>(const FramebufferLayout&) const = default;
+};
+
+struct PipelineData
+{
+	ShaderPtr shader;
+	VertexLayout vertexLayout;
+	RenderStates renderStates;
+	FramebufferLayout framebufferLayout;
+};
+
+class Pipeline
+{
+public:
+	virtual ~Pipeline() = default;
 };

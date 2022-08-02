@@ -19,6 +19,7 @@ struct SurfaceImage
 	vk::SwapchainKHR swapchain;
 	uint32_t imageIndex = 0;
 	vk::Semaphore imageAvailable;
+	vk::Image image;
 	vk::RenderPass renderPass;
 	vk::Framebuffer framebuffer;
 	vk::Extent2D extent;

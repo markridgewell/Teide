@@ -36,8 +36,8 @@ public:
 
 private:
 	void BuildCommandBuffer(
-	    CommandBuffer& commandBuffer, const RenderList& renderList, vk::RenderPass renderPass,
-	    vk::Framebuffer framebuffer, vk::Extent2D framebufferSize);
+	    CommandBuffer& commandBuffer, const RenderList& renderList, const FramebufferLayout& framebufferLayout,
+	    vk::Framebuffer framebuffer, vk::Extent2D framebufferSize, std::vector<vk::ImageView> framebufferAttachments);
 
 	std::optional<SurfaceImage> AddSurfaceToPresent(VulkanSurface& surface);
 

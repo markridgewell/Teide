@@ -10,7 +10,10 @@
 #include "Teide/Surface.h"
 #include "Vulkan.h"
 
+#include <compare>
+#include <map>
 #include <optional>
+#include <thread>
 #include <type_traits>
 #include <unordered_map>
 
@@ -32,12 +35,7 @@ public:
 	TexturePtr CreateTexture(const TextureData& data, const char* name) override;
 	DynamicTexturePtr CreateRenderableTexture(const TextureData& data, const char* name) override;
 
-	PipelinePtr CreatePipeline(
-	    const Shader& shader, const VertexLayout& vertexLayout, const RenderStates& renderStates,
-	    const Surface& surface) override;
-	PipelinePtr CreatePipeline(
-	    const Shader& shader, const VertexLayout& vertexLayout, const RenderStates& renderStates,
-	    const Texture& texture) override;
+	PipelinePtr CreatePipeline(const PipelineData& data) override;
 
 	ParameterBlockPtr CreateParameterBlock(const ParameterBlockData& data, const char* name) override;
 	DynamicParameterBlockPtr CreateDynamicParameterBlock(const ParameterBlockData& data, const char* name) override;
@@ -54,8 +52,28 @@ public:
 		return dynamic_cast<const VulkanImpl<std::remove_const_t<T>>::type&>(obj);
 	}
 
-private:
 	auto OneShotCommands() { return OneShotCommandBuffer(m_device.get(), m_setupCommandPool.get(), m_graphicsQueue); }
+
+	vk::RenderPass CreateRenderPass(const FramebufferLayout& framebufferLayout, const RenderPassInfo& renderPassInfo = {});
+	vk::Framebuffer CreateFramebuffer(vk::RenderPass renderPass, vk::Extent2D size, std::vector<vk::ImageView> attachments);
+
+private:
+	struct RenderPassDesc
+	{
+		FramebufferLayout framebufferLayout;
+		RenderPassInfo renderPassInfo;
+
+		auto operator<=>(const RenderPassDesc&) const = default;
+	};
+
+	struct FramebufferDesc
+	{
+		vk::RenderPass renderPass;
+		vk::Extent2D size;
+		std::vector<vk::ImageView> attachments;
+
+		auto operator<=>(const FramebufferDesc&) const = default;
+	};
 
 	std::vector<vk::UniqueDescriptorSet> CreateDescriptorSets(
 	    vk::DescriptorSetLayout layout, size_t numSets, const DynamicBuffer& uniformBuffer,
@@ -66,6 +84,12 @@ private:
 	vk::UniqueDebugUtilsMessengerEXT m_debugMessenger;
 	vk::PhysicalDevice m_physicalDevice;
 	vk::UniqueDevice m_device;
+
+	std::mutex m_renderPassCacheMutex;
+	std::map<RenderPassDesc, vk::UniqueRenderPass> m_renderPassCache;
+
+	std::mutex m_framebufferCacheMutex;
+	std::map<FramebufferDesc, vk::UniqueFramebuffer> m_framebufferCache;
 
 	uint32_t m_graphicsQueueFamily;
 	std::optional<uint32_t> m_presentQueueFamily;
