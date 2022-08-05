@@ -19,7 +19,6 @@ td_add_library(
             Source/GpuExecutor.h
             Source/MemoryAllocator.cpp
             Source/MemoryAllocator.h
-            Source/ParameterBlock.cpp
             Source/Scheduler.cpp
             Source/Scheduler.h
             Source/Vulkan.cpp
@@ -28,6 +27,8 @@ td_add_library(
             Source/VulkanBuffer.h
             Source/VulkanGraphicsDevice.cpp
             Source/VulkanGraphicsDevice.h
+            Source/VulkanParameterBlock.cpp
+            Source/VulkanParameterBlock.h
             Source/VulkanPipeline.h
             Source/VulkanRenderer.cpp
             Source/VulkanRenderer.h

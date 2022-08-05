@@ -15,10 +15,11 @@ struct ParameterBlockData
 	std::vector<const Texture*> textures;
 };
 
-struct ParameterBlock
+class ParameterBlock
 {
-	DynamicBufferPtr uniformBuffer;
-	std::vector<vk::UniqueDescriptorSet> descriptorSet;
+public:
+	virtual ~ParameterBlock() = default;
 
-	void SetUniformData(int currentFrame, BytesView data);
+	virtual std::size_t GetUniformBufferSize() const = 0;
+	virtual void SetUniformData(int currentFrame, BytesView data) = 0;
 };

@@ -6,6 +6,7 @@
 #include "Vulkan.h"
 #include "VulkanBuffer.h"
 #include "VulkanGraphicsDevice.h"
+#include "VulkanParameterBlock.h"
 #include "VulkanPipeline.h"
 #include "VulkanTexture.h"
 
@@ -395,5 +396,6 @@ vk::DescriptorSet VulkanRenderer::GetDescriptorSet(const ParameterBlock* paramet
 	{
 		return {};
 	}
-	return parameterBlock->descriptorSet[m_frameNumber % parameterBlock->descriptorSet.size()].get();
+	const auto& parameterBlockImpl = m_device.GetImpl(*parameterBlock);
+	return parameterBlockImpl.descriptorSet[m_frameNumber % parameterBlockImpl.descriptorSet.size()].get();
 }

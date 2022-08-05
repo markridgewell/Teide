@@ -15,7 +15,7 @@ class DynamicBuffer;
 class Shader;
 class Texture;
 class Pipeline;
-struct ParameterBlock;
+class ParameterBlock;
 
 using BufferPtr = std::shared_ptr<const Buffer>;
 using DynamicBufferPtr = std::shared_ptr<DynamicBuffer>;

@@ -5,6 +5,7 @@
 #include "Types/ShaderData.h"
 #include "Types/TextureData.h"
 #include "VulkanBuffer.h"
+#include "VulkanParameterBlock.h"
 #include "VulkanPipeline.h"
 #include "VulkanRenderer.h"
 #include "VulkanShader.h"
@@ -744,7 +745,7 @@ DynamicParameterBlockPtr VulkanGraphicsDevice::CreateDynamicParameterBlock(const
 {
 	const auto descriptorSetName = DebugFormat("{}DescriptorSet", name);
 
-	ParameterBlock ret;
+	VulkanParameterBlock ret;
 	if (data.uniformBufferSize == 0)
 	{
 		ret.descriptorSet
@@ -760,5 +761,5 @@ DynamicParameterBlockPtr VulkanGraphicsDevice::CreateDynamicParameterBlock(const
 		    data.layout, GetImpl(*ret.uniformBuffer).buffers.size(), *ret.uniformBuffer, data.textures,
 		    descriptorSetName.c_str());
 	}
-	return std::make_unique<ParameterBlock>(std::move(ret));
+	return std::make_unique<VulkanParameterBlock>(std::move(ret));
 }

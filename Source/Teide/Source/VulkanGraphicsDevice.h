@@ -3,9 +3,7 @@
 
 #include "CommandBuffer.h"
 #include "MemoryAllocator.h"
-#include "Teide/Buffer.h"
 #include "Teide/GraphicsDevice.h"
-#include "Teide/ParameterBlock.h"
 #include "Teide/Renderer.h"
 #include "Teide/Surface.h"
 #include "Vulkan.h"

@@ -148,7 +148,7 @@ TEST(GraphicsDeviceTest, CreateParameterBlock)
 	};
 	const auto pblock = device->CreateParameterBlock(pblockData, "ParameterBlock");
 	EXPECT_THAT(pblock.get(), NotNull());
-	EXPECT_THAT(pblock->uniformBuffer->GetSize(), Eq(64u));
+	EXPECT_THAT(pblock->GetUniformBufferSize(), Eq(64u));
 }
 
 TEST(GraphicsDeviceTest, CreateDynamicParameterBlock)
@@ -163,7 +163,7 @@ TEST(GraphicsDeviceTest, CreateDynamicParameterBlock)
 	};
 	const auto pblock = device->CreateDynamicParameterBlock(pblockData, "ParameterBlock");
 	EXPECT_THAT(pblock.get(), NotNull());
-	EXPECT_THAT(pblock->uniformBuffer->GetSize(), Eq(64u));
+	EXPECT_THAT(pblock->GetUniformBufferSize(), Eq(64u));
 }
 
 } // namespace
