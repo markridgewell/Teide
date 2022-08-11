@@ -386,25 +386,6 @@ CreateGraphicsPipeline(const VulkanShader& shader, const PipelineData& piplineDa
 	return std::move(pipeline);
 }
 
-vk::SubpassDescription MakeSubpassDescription(const vk::AttachmentReference& attachmentRef, bool isColorTarget)
-{
-	if (isColorTarget)
-	{
-		return vk::SubpassDescription{
-		    .pipelineBindPoint = vk::PipelineBindPoint::eGraphics,
-		    .colorAttachmentCount = 1,
-		    .pColorAttachments = &attachmentRef,
-		};
-	}
-	else
-	{
-		return vk::SubpassDescription{
-		    .pipelineBindPoint = vk::PipelineBindPoint::eGraphics,
-		    .pDepthStencilAttachment = &attachmentRef,
-		};
-	}
-};
-
 } // namespace
 
 //---------------------------------------------------------------------------------------------------------------------
