@@ -156,21 +156,21 @@ void CopyBuffer(vk::CommandBuffer cmdBuffer, vk::Buffer source, vk::Buffer desti
 
 VulkanBuffer CreateBufferWithData(
     BytesView data, vk::BufferUsageFlags usage, vk::MemoryPropertyFlags memoryFlags, vk::Device device,
-    MemoryAllocator& allocator, vk::CommandPool commandPool, vk::Queue queue)
+    MemoryAllocator& allocator, CommandBuffer& cmdBuffer)
 {
 	if ((memoryFlags & vk::MemoryPropertyFlagBits::eHostCoherent) == vk::MemoryPropertyFlags{})
 	{
 		// Create staging buffer
-		auto stagingBuffer = CreateBufferUninitialized(
+		auto stagingBuffer = std::make_shared<VulkanBuffer>(CreateBufferUninitialized(
 		    data.size(), vk::BufferUsageFlagBits::eTransferSrc,
-		    vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent, device, allocator);
-		SetBufferData(stagingBuffer, data);
+		    vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent, device, allocator));
+		cmdBuffer.AddBuffer(stagingBuffer);
+		SetBufferData(*stagingBuffer, data);
 
 		// Create device-local buffer
 		VulkanBuffer ret = CreateBufferUninitialized(
 		    data.size(), usage | vk::BufferUsageFlagBits::eTransferDst, memoryFlags, device, allocator);
-		auto cmdBuffer = OneShotCommandBuffer(device, commandPool, queue);
-		CopyBuffer(cmdBuffer, stagingBuffer.buffer.get(), ret.buffer.get(), data.size());
+		CopyBuffer(cmdBuffer, stagingBuffer->buffer.get(), ret.buffer.get(), data.size());
 		return ret;
 	}
 	else
@@ -190,7 +190,7 @@ struct TextureAndState
 
 TextureAndState CreateTextureImpl(
     const TextureData& data, vk::Device device, MemoryAllocator& allocator, vk::ImageUsageFlags usage,
-    OneShotCommandBuffer& cmdBuffer, const char* debugName)
+    CommandBuffer& cmdBuffer, const char* debugName)
 {
 	// For now, all textures will be created with TransferSrc so they can be copied from
 	usage |= vk::ImageUsageFlagBits::eTransferSrc;
@@ -530,8 +530,8 @@ RendererPtr VulkanGraphicsDevice::CreateRenderer()
 
 BufferPtr VulkanGraphicsDevice::CreateBuffer(const BufferData& data, const char* name)
 {
-	auto ret = CreateBufferWithData(
-	    data.data, data.usage, data.memoryFlags, m_device.get(), *m_allocator, m_setupCommandPool.get(), m_graphicsQueue);
+	auto cmdBuffer = OneShotCommands();
+	auto ret = CreateBufferWithData(data.data, data.usage, data.memoryFlags, m_device.get(), *m_allocator, cmdBuffer);
 	SetDebugName(ret.buffer, name);
 	return std::make_shared<const VulkanBuffer>(std::move(ret));
 }

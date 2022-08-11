@@ -9,6 +9,11 @@ void CommandBuffer::AddTexture(TexturePtr texture)
 	m_referencedTextures.insert(texture);
 }
 
+void CommandBuffer::AddBuffer(BufferPtr buffer)
+{
+	m_referencedBuffers.insert(buffer);
+}
+
 void CommandBuffer::AddParameterBlock(ParameterBlockPtr parameterBlock)
 {
 	m_referencedParameterBlocks.insert(parameterBlock);
