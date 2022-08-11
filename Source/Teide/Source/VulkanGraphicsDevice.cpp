@@ -465,6 +465,8 @@ VulkanGraphicsDevice::VulkanGraphicsDevice(SDL_Window* window)
 
 	m_pendingWindowSurfaces[window] = std::move(surface);
 
+	m_scheduler.emplace(std::thread::hardware_concurrency(), m_device.get(), m_graphicsQueue, m_graphicsQueueFamily);
+
 	// TODO: Don't hardcode descriptor pool sizes
 	const auto poolSizes = std::array{
 	    vk::DescriptorPoolSize{

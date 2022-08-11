@@ -3,6 +3,7 @@
 
 #include "CommandBuffer.h"
 #include "MemoryAllocator.h"
+#include "Scheduler.h"
 #include "Teide/GraphicsDevice.h"
 #include "Teide/Renderer.h"
 #include "Teide/Surface.h"
@@ -43,6 +44,7 @@ public:
 	// Internal
 	vk::Device GetVulkanDevice() { return m_device.get(); }
 	MemoryAllocator& GetMemoryAllocator() { return m_allocator.value(); }
+	Scheduler& GetScheduler() { return m_scheduler.value(); }
 
 	template <class T>
 	auto& GetImpl(T& obj)
@@ -97,6 +99,8 @@ private:
 	vk::UniqueCommandPool m_surfaceCommandPool;
 
 	std::optional<MemoryAllocator> m_allocator;
+
+	std::optional<Scheduler> m_scheduler;
 
 	std::unordered_map<SDL_Window*, vk::UniqueSurfaceKHR> m_pendingWindowSurfaces;
 };

@@ -21,12 +21,8 @@ namespace
 static const vk::Optional<const vk::AllocationCallbacks> s_allocator = nullptr;
 } // namespace
 
-VulkanRenderer::VulkanRenderer(
-    VulkanGraphicsDevice& device, uint32_t graphicsFamilyIndex, std::optional<uint32_t> presentFamilyIndex,
-    uint32_t numThreads) :
-    m_device{device},
-    m_graphicsQueue{device.GetVulkanDevice().getQueue(graphicsFamilyIndex, 0)},
-    m_scheduler(numThreads, m_device.GetVulkanDevice(), m_graphicsQueue, graphicsFamilyIndex)
+VulkanRenderer::VulkanRenderer(VulkanGraphicsDevice& device, uint32_t graphicsFamilyIndex, std::optional<uint32_t> presentFamilyIndex) :
+    m_device{device}, m_graphicsQueue{device.GetVulkanDevice().getQueue(graphicsFamilyIndex, 0)}
 {
 	const auto vkdevice = device.GetVulkanDevice();
 
@@ -68,7 +64,7 @@ void VulkanRenderer::BeginFrame()
 	    = m_device.GetVulkanDevice().waitForFences(m_inFlightFences[m_frameNumber].get(), true, timeout);
 	assert(waitResult == vk::Result::eSuccess); // TODO check if waitForFences can fail with no timeout
 
-	m_scheduler.NextFrame();
+	m_device.GetScheduler().NextFrame();
 }
 
 void VulkanRenderer::EndFrame()
@@ -99,7 +95,7 @@ void VulkanRenderer::EndFrame()
 	auto signalSemaphores = std::span(&m_renderFinished[m_frameNumber].get(), 1);
 	auto fenceToSignal = m_inFlightFences[m_frameNumber].get();
 
-	m_scheduler.WaitForTasks();
+	m_device.GetScheduler().WaitForTasks();
 
 	device.resetFences(fenceToSignal);
 
@@ -153,8 +149,8 @@ void VulkanRenderer::RenderToTexture(DynamicTexturePtr texture, RenderList rende
 	    .sampleCount = texture->GetSampleCount(),
 	};
 
-	m_scheduler.ScheduleGpu([this, renderList = std::move(renderList), texture = std::move(texture),
-	                         framebufferLayout](CommandBuffer& commandBuffer) {
+	ScheduleGpu([this, renderList = std::move(renderList), texture = std::move(texture),
+	             framebufferLayout](CommandBuffer& commandBuffer) {
 		commandBuffer.AddTexture(texture);
 
 		const auto& textureImpl = m_device.GetImpl(*texture);
@@ -184,8 +180,8 @@ void VulkanRenderer::RenderToSurface(Surface& surface, RenderList renderList)
 		    .sampleCount = surface.GetSampleCount(),
 		};
 
-		m_scheduler.Schedule([=, this, renderList = std::move(renderList)](uint32_t taskIndex) {
-			CommandBuffer& commandBuffer = m_scheduler.GetCommandBuffer(taskIndex);
+		m_device.GetScheduler().Schedule([=, this, renderList = std::move(renderList)](uint32_t taskIndex) {
+			CommandBuffer& commandBuffer = m_device.GetScheduler().GetCommandBuffer(taskIndex);
 
 			BuildCommandBuffer(commandBuffer, renderList, framebufferLayout, framebuffer, extent, {});
 
@@ -210,7 +206,7 @@ Task<TextureData> VulkanRenderer::CopyTextureData(TexturePtr texture)
 
 	const auto bufferSize = GetByteSize(textureData);
 
-	auto task = m_scheduler.ScheduleGpu([this, texture = std::move(texture), bufferSize](CommandBuffer& commandBuffer) {
+	auto task = ScheduleGpu([this, texture = std::move(texture), bufferSize](CommandBuffer& commandBuffer) {
 		auto buffer = CreateBufferUninitialized(
 		    bufferSize, vk::BufferUsageFlagBits::eTransferDst, vk::MemoryPropertyFlagBits::eHostVisible,
 		    m_device.GetVulkanDevice(), m_device.GetMemoryAllocator());
@@ -233,7 +229,7 @@ Task<TextureData> VulkanRenderer::CopyTextureData(TexturePtr texture)
 		return std::make_shared<VulkanBuffer>(std::move(buffer));
 	});
 
-	return m_scheduler.ScheduleAfter(task, [this, textureData](const BufferPtr& buffer) {
+	return m_device.GetScheduler().ScheduleAfter(task, [this, textureData](const BufferPtr& buffer) {
 		const auto& data = m_device.GetImpl(*buffer).mappedData;
 
 		TextureData ret = textureData;

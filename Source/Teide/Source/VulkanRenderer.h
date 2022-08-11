@@ -2,7 +2,6 @@
 #pragma once
 
 #include "CommandBuffer.h"
-#include "Scheduler.h"
 #include "Teide/BytesView.h"
 #include "Teide/ForwardDeclare.h"
 #include "Teide/Pipeline.h"
@@ -19,9 +18,7 @@
 class VulkanRenderer : public Renderer
 {
 public:
-	explicit VulkanRenderer(
-	    VulkanGraphicsDevice& device, uint32_t graphicsFamilyIndex, std::optional<uint32_t> presentFamilyIndex,
-	    uint32_t numThreads = std::thread::hardware_concurrency());
+	explicit VulkanRenderer(VulkanGraphicsDevice& device, uint32_t graphicsFamilyIndex, std::optional<uint32_t> presentFamilyIndex);
 
 	~VulkanRenderer();
 
@@ -35,6 +32,12 @@ public:
 	Task<TextureData> CopyTextureData(TexturePtr texture) override;
 
 private:
+	template <std::invocable<CommandBuffer&> F>
+	auto ScheduleGpu(F&& f) -> TaskForCallable<F, CommandBuffer&>
+	{
+		return m_device.GetScheduler().ScheduleGpu(std::forward<F>(f));
+	}
+
 	void BuildCommandBuffer(
 	    CommandBuffer& commandBuffer, const RenderList& renderList, const FramebufferLayout& framebufferLayout,
 	    vk::Framebuffer framebuffer, vk::Extent2D framebufferSize, std::vector<vk::ImageView> framebufferAttachments);
@@ -49,8 +52,6 @@ private:
 	std::array<vk::UniqueSemaphore, MaxFramesInFlight> m_renderFinished;
 	std::array<vk::UniqueFence, MaxFramesInFlight> m_inFlightFences;
 	uint32_t m_frameNumber = 0;
-
-	Scheduler m_scheduler;
 
 	std::mutex m_surfaceCommandBuffersMutex;
 	std::vector<vk::CommandBuffer> m_surfaceCommandBuffers;
