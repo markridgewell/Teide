@@ -23,7 +23,6 @@ public:
 	virtual RendererPtr CreateRenderer() = 0;
 
 	virtual BufferPtr CreateBuffer(const BufferData& data, const char* name) = 0;
-	virtual DynamicBufferPtr CreateDynamicBuffer(std::size_t bufferSize, vk::BufferUsageFlags usage, const char* name) = 0;
 
 	virtual ShaderPtr CreateShader(const ShaderData& data, const char* name) = 0;
 
@@ -33,7 +32,6 @@ public:
 	virtual PipelinePtr CreatePipeline(const PipelineData& data) = 0;
 
 	virtual ParameterBlockPtr CreateParameterBlock(const ParameterBlockData& data, const char* name) = 0;
-	virtual DynamicParameterBlockPtr CreateDynamicParameterBlock(const ParameterBlockData& data, const char* name) = 0;
 };
 
 using GraphicsDevicePtr = std::unique_ptr<GraphicsDevice>;

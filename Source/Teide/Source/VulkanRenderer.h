@@ -23,7 +23,7 @@ public:
 	~VulkanRenderer();
 
 	std::uint32_t GetFrameNumber() const override;
-	void BeginFrame() override;
+	void BeginFrame(const ParameterBlockData& sceneParameters) override;
 	void EndFrame() override;
 
 	void RenderToTexture(DynamicTexturePtr texture, RenderList renderList) override;
@@ -38,6 +38,12 @@ private:
 		return m_device.GetScheduler().ScheduleGpu(std::forward<F>(f));
 	}
 
+	const ParameterBlockPtr& GetSceneParameterBlock() const { return m_frameResources[m_frameNumber].sceneParameters; }
+	const ParameterBlockPtr& AddViewParameterBlock(std::uint32_t threadIndex, ParameterBlockPtr p)
+	{
+		return m_frameResources[m_frameNumber].threadResources[threadIndex].viewParameters.emplace_back(std::move(p));
+	}
+
 	void BuildCommandBuffer(
 	    CommandBuffer& commandBuffer, const RenderList& renderList, const FramebufferLayout& framebufferLayout,
 	    vk::Framebuffer framebuffer, vk::Extent2D framebufferSize, std::vector<vk::ImageView> framebufferAttachments);
@@ -45,6 +51,17 @@ private:
 	std::optional<SurfaceImage> AddSurfaceToPresent(VulkanSurface& surface);
 
 	vk::DescriptorSet GetDescriptorSet(const ParameterBlock* parameterBlock) const;
+
+	struct ThreadResources
+	{
+		std::vector<ParameterBlockPtr> viewParameters;
+	};
+
+	struct FrameResources
+	{
+		ParameterBlockPtr sceneParameters;
+		std::vector<ThreadResources> threadResources;
+	};
 
 	VulkanGraphicsDevice& m_device;
 	vk::Queue m_graphicsQueue;
@@ -58,4 +75,6 @@ private:
 
 	std::mutex m_surfacesToPresentMutex;
 	std::vector<SurfaceImage> m_surfacesToPresent;
+
+	std::array<FrameResources, MaxFramesInFlight> m_frameResources;
 };

@@ -19,7 +19,7 @@
 class VulkanGraphicsDevice : public GraphicsDevice
 {
 public:
-	explicit VulkanGraphicsDevice(SDL_Window* window = nullptr);
+	explicit VulkanGraphicsDevice(SDL_Window* window = nullptr, std::uint32_t numThreads = std::thread::hardware_concurrency());
 
 	~VulkanGraphicsDevice();
 
@@ -27,7 +27,6 @@ public:
 	RendererPtr CreateRenderer() override;
 
 	BufferPtr CreateBuffer(const BufferData& data, const char* name) override;
-	DynamicBufferPtr CreateDynamicBuffer(vk::DeviceSize bufferSize, vk::BufferUsageFlags usage, const char* name) override;
 
 	ShaderPtr CreateShader(const ShaderData& data, const char* name) override;
 
@@ -37,7 +36,6 @@ public:
 	PipelinePtr CreatePipeline(const PipelineData& data) override;
 
 	ParameterBlockPtr CreateParameterBlock(const ParameterBlockData& data, const char* name) override;
-	DynamicParameterBlockPtr CreateDynamicParameterBlock(const ParameterBlockData& data, const char* name) override;
 
 	const vk::PhysicalDeviceProperties GetProperties() const { return m_physicalDevice.getProperties(); }
 
@@ -53,6 +51,14 @@ public:
 	}
 
 	auto OneShotCommands() { return OneShotCommandBuffer(m_device.get(), m_setupCommandPool.get(), m_graphicsQueue); }
+
+	BufferPtr CreateBuffer(const BufferData& data, const char* name, CommandBuffer& cmdBuffer);
+	TexturePtr CreateTexture(const TextureData& data, const char* name, CommandBuffer& cmdBuffer);
+	DynamicTexturePtr CreateRenderableTexture(const TextureData& data, const char* name, CommandBuffer& cmdBuffer);
+	ParameterBlockPtr CreateParameterBlock(
+	    const ParameterBlockData& data, const char* name, CommandBuffer& cmdBuffer, std::uint32_t threadIndex);
+	ParameterBlockPtr CreateParameterBlock(
+	    const ParameterBlockData& data, const char* name, CommandBuffer& cmdBuffer, vk::DescriptorPool descriptorPool);
 
 	vk::RenderPass CreateRenderPass(const FramebufferLayout& framebufferLayout, const RenderPassInfo& renderPassInfo = {});
 	vk::Framebuffer CreateFramebuffer(vk::RenderPass renderPass, vk::Extent2D size, std::vector<vk::ImageView> attachments);
@@ -75,8 +81,12 @@ private:
 		auto operator<=>(const FramebufferDesc&) const = default;
 	};
 
+	vk::UniqueDescriptorSet CreateDescriptorSet(
+	    vk::DescriptorPool pool, vk::DescriptorSetLayout layout, const Buffer* uniformBuffer,
+	    std::span<const Texture* const> textures, const char* name);
+
 	std::vector<vk::UniqueDescriptorSet> CreateDescriptorSets(
-	    vk::DescriptorSetLayout layout, size_t numSets, const DynamicBuffer& uniformBuffer,
+	    vk::DescriptorPool pool, vk::DescriptorSetLayout layout, size_t numSets, const Buffer* uniformBuffer,
 	    std::span<const Texture* const> textures, const char* name);
 
 	vk::DynamicLoader m_loader;
@@ -94,7 +104,8 @@ private:
 	uint32_t m_graphicsQueueFamily;
 	std::optional<uint32_t> m_presentQueueFamily;
 	vk::Queue m_graphicsQueue;
-	vk::UniqueDescriptorPool m_descriptorPool;
+	vk::UniqueDescriptorPool m_mainDescriptorPool;
+	std::vector<vk::UniqueDescriptorPool> m_workerDescriptorPools;
 	vk::UniqueCommandPool m_setupCommandPool;
 	vk::UniqueCommandPool m_surfaceCommandPool;
 

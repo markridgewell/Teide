@@ -3,6 +3,7 @@
 
 #include "Teide/BytesView.h"
 #include "Teide/ForwardDeclare.h"
+#include "Teide/ParameterBlock.h"
 #include "Teide/Pipeline.h"
 #include "Teide/Surface.h"
 #include "Teide/Task.h"
@@ -22,7 +23,7 @@ struct RenderObject
 	BufferPtr indexBuffer = nullptr;
 	uint32_t indexCount = 0;
 	PipelinePtr pipeline = nullptr;
-	ParameterBlockPtr materialParameters;
+	ParameterBlockPtr materialParameters = nullptr;
 	BytesView pushConstants;
 };
 
@@ -30,12 +31,13 @@ using Color = std::array<float, 4>;
 
 struct RenderList
 {
+	std::string name;
+
 	std::optional<Color> clearColorValue;
 	std::optional<float> clearDepthValue;
 	std::optional<std::uint32_t> clearStencilValue;
 
-	ParameterBlockPtr sceneParameters;
-	ParameterBlockPtr viewParameters;
+	ParameterBlockData viewParameters;
 
 	std::vector<RenderObject> objects;
 };
@@ -52,7 +54,7 @@ public:
 	Renderer& operator=(Renderer&&) = delete;
 
 	virtual std::uint32_t GetFrameNumber() const = 0;
-	virtual void BeginFrame() = 0;
+	virtual void BeginFrame(const ParameterBlockData& sceneParameters) = 0;
 	virtual void EndFrame() = 0;
 
 	virtual void RenderToTexture(DynamicTexturePtr texture, RenderList renderList) = 0;

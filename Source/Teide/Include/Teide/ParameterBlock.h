@@ -11,7 +11,7 @@
 struct ParameterBlockData
 {
 	vk::DescriptorSetLayout layout;
-	vk::DeviceSize uniformBufferSize = 0;
+	std::vector<std::byte> uniformBufferData;
 	std::vector<const Texture*> textures;
 };
 
@@ -21,5 +21,4 @@ public:
 	virtual ~ParameterBlock() = default;
 
 	virtual std::size_t GetUniformBufferSize() const = 0;
-	virtual void SetUniformData(int currentFrame, BytesView data) = 0;
 };

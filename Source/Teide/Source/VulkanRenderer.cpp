@@ -33,6 +33,10 @@ VulkanRenderer::VulkanRenderer(VulkanGraphicsDevice& device, uint32_t graphicsFa
 
 	std::ranges::generate(m_renderFinished, [=] { return CreateSemaphore(vkdevice); });
 	std::ranges::generate(m_inFlightFences, [=] { return CreateFence(vkdevice, vk::FenceCreateFlagBits::eSignaled); });
+
+	const auto numThreads = device.GetScheduler().GetThreadCount();
+	std::ranges::generate(
+	    m_frameResources, [=] { return FrameResources{.threadResources = std::vector<ThreadResources>(numThreads)}; });
 }
 
 VulkanRenderer::~VulkanRenderer()
@@ -54,7 +58,7 @@ std::uint32_t VulkanRenderer::GetFrameNumber() const
 	return m_frameNumber;
 }
 
-void VulkanRenderer::BeginFrame()
+void VulkanRenderer::BeginFrame(const ParameterBlockData& sceneParameters)
 {
 	constexpr uint64_t timeout = std::numeric_limits<uint64_t>::max();
 
@@ -65,6 +69,13 @@ void VulkanRenderer::BeginFrame()
 	assert(waitResult == vk::Result::eSuccess); // TODO check if waitForFences can fail with no timeout
 
 	m_device.GetScheduler().NextFrame();
+
+	auto& frameResources = m_frameResources[m_frameNumber];
+	frameResources.sceneParameters = m_device.CreateParameterBlock(sceneParameters, "Scene");
+	for (auto& threadResources : frameResources.threadResources)
+	{
+		threadResources.viewParameters.clear();
+	}
 }
 
 void VulkanRenderer::EndFrame()
@@ -289,8 +300,6 @@ void VulkanRenderer::BuildCommandBuffer(
 	    .pClearValues = data(clearValues),
 	};
 
-	commandBuffer.beginRenderPass(renderPassBegin, vk::SubpassContents::eInline);
-
 	const auto viewport = vk::Viewport{
 	    .x = 0.0f,
 	    .y = 0.0f,
@@ -302,12 +311,20 @@ void VulkanRenderer::BuildCommandBuffer(
 	commandBuffer.setViewport(0, viewport);
 	commandBuffer.setScissor(0, vk::Rect2D{.extent = framebufferSize});
 
+	const auto threadIndex = m_device.GetScheduler().GetThreadIndex();
+	const auto viewParamsName = fmt::format("{}:View", renderList.name);
+	const auto viewParameters = AddViewParameterBlock(
+	    threadIndex,
+	    m_device.CreateParameterBlock(renderList.viewParameters, viewParamsName.c_str(), commandBufferWrapper, threadIndex));
+
+	commandBuffer.beginRenderPass(renderPassBegin, vk::SubpassContents::eInline);
+
 	if (!renderList.objects.empty())
 	{
 		std::vector<vk::DescriptorSet> descriptorSets;
 		std::uint32_t first = 0;
 
-		if (const auto set = GetDescriptorSet(renderList.sceneParameters.get()))
+		if (const auto set = GetDescriptorSet(GetSceneParameterBlock().get()))
 		{
 			descriptorSets.push_back(set);
 		}
@@ -316,7 +333,7 @@ void VulkanRenderer::BuildCommandBuffer(
 			first++;
 		}
 
-		if (const auto set = GetDescriptorSet(renderList.viewParameters.get()))
+		if (const auto set = GetDescriptorSet(viewParameters.get()))
 		{
 			descriptorSets.push_back(set);
 		}
@@ -393,5 +410,5 @@ vk::DescriptorSet VulkanRenderer::GetDescriptorSet(const ParameterBlock* paramet
 		return {};
 	}
 	const auto& parameterBlockImpl = m_device.GetImpl(*parameterBlock);
-	return parameterBlockImpl.descriptorSet[m_frameNumber % parameterBlockImpl.descriptorSet.size()].get();
+	return parameterBlockImpl.descriptorSet.get();
 }

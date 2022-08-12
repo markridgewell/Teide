@@ -10,13 +10,6 @@ namespace
 const vk::Optional<const vk::AllocationCallbacks> s_allocator = nullptr;
 }
 
-void VulkanDynamicBuffer::SetData(int frame, std::span<const std::byte> data)
-{
-	const auto& mappedData = buffers[frame % buffers.size()].mappedData;
-	assert(mappedData.size() >= data.size());
-	std::memcpy(mappedData.data(), data.data(), data.size());
-}
-
 VulkanBuffer CreateBufferUninitialized(
     vk::DeviceSize size, vk::BufferUsageFlags usage, vk::MemoryPropertyFlags memoryFlags, vk::Device device,
     MemoryAllocator& allocator)

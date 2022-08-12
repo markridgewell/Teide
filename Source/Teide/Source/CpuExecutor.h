@@ -95,6 +95,8 @@ public:
 		return future;
 	}
 
+	std::uint32_t GetThreadIndex() const { return m_executor.this_worker_id(); }
+
 	void WaitForTasks();
 
 private:

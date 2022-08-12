@@ -3,6 +3,7 @@
 
 #include <span>
 #include <type_traits>
+#include <vector>
 
 template <class T>
 concept Span = requires(T t)
@@ -61,3 +62,8 @@ public:
 private:
 	span_type m_span;
 };
+
+inline auto ToBytes(BytesView view)
+{
+	return std::vector<std::byte>(view.begin(), view.end());
+}

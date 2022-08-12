@@ -88,7 +88,7 @@ TEST(SurfaceTest, RenderToSurface)
 	auto surface = device->CreateSurface(window.get(), true);
 	auto renderer = device->CreateRenderer();
 
-	renderer->BeginFrame();
+	renderer->BeginFrame({});
 	const auto renderList = RenderList{
 	    .clearColorValue = Color{1.0f, 0.0f, 0.0f, 1.0f},
 	};
@@ -105,7 +105,7 @@ TEST(SurfaceTest, RenderToSurfaceWithoutClear)
 	auto surface = device->CreateSurface(window.get(), true);
 	auto renderer = device->CreateRenderer();
 
-	renderer->BeginFrame();
+	renderer->BeginFrame({});
 	const auto renderList = RenderList{};
 	renderer->RenderToSurface(*surface, renderList);
 	renderer->EndFrame();
@@ -120,7 +120,7 @@ TEST(SurfaceTest, RenderToSurfaceTwice)
 	auto surface = device->CreateSurface(window.get(), true);
 	auto renderer = device->CreateRenderer();
 
-	renderer->BeginFrame();
+	renderer->BeginFrame({});
 	const auto renderListWithClear = RenderList{
 	    .clearColorValue = Color{1.0f, 0.0f, 0.0f, 1.0f},
 	};

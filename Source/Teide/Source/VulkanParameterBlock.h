@@ -6,11 +6,10 @@
 
 struct VulkanParameterBlock : public ParameterBlock
 {
-	DynamicBufferPtr uniformBuffer;
-	std::vector<vk::UniqueDescriptorSet> descriptorSet;
+	BufferPtr uniformBuffer;
+	vk::UniqueDescriptorSet descriptorSet;
 
 	std::size_t GetUniformBufferSize() const override;
-	void SetUniformData(int currentFrame, BytesView data) override;
 };
 
 template <>

@@ -171,6 +171,20 @@ VulkanBuffer CreateBufferWithData(
 		VulkanBuffer ret = CreateBufferUninitialized(
 		    data.size(), usage | vk::BufferUsageFlagBits::eTransferDst, memoryFlags, device, allocator);
 		CopyBuffer(cmdBuffer, stagingBuffer->buffer.get(), ret.buffer.get(), data.size());
+
+		// Add pipeline barrier to make the buffer usable in shader
+		cmdBuffer->pipelineBarrier(
+		    vk::PipelineStageFlagBits::eTransfer, vk::PipelineStageFlagBits::eVertexShader, {}, {},
+		    vk::BufferMemoryBarrier{
+		        .srcAccessMask = vk::AccessFlagBits::eTransferWrite,
+		        .dstAccessMask = vk::AccessFlagBits::eShaderRead,
+		        .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+		        .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+		        .buffer = ret.buffer.get(),
+		        .offset = 0,
+		        .size = VK_WHOLE_SIZE,
+		    },
+		    {});
 		return ret;
 	}
 	else
@@ -395,7 +409,8 @@ GraphicsDevicePtr CreateGraphicsDevice(SDL_Window* window)
 	return std::make_unique<VulkanGraphicsDevice>(window);
 }
 
-VulkanGraphicsDevice::VulkanGraphicsDevice(SDL_Window* window)
+VulkanGraphicsDevice::VulkanGraphicsDevice(SDL_Window* window, std::uint32_t numThreads) :
+    m_workerDescriptorPools(numThreads)
 {
 	m_instance = CreateInstance(m_loader, window);
 
@@ -446,7 +461,7 @@ VulkanGraphicsDevice::VulkanGraphicsDevice(SDL_Window* window)
 
 	m_pendingWindowSurfaces[window] = std::move(surface);
 
-	m_scheduler.emplace(std::thread::hardware_concurrency(), m_device.get(), m_graphicsQueue, m_graphicsQueueFamily);
+	m_scheduler.emplace(numThreads, m_device.get(), m_graphicsQueue, m_graphicsQueueFamily);
 
 	// TODO: Don't hardcode descriptor pool sizes
 	const auto poolSizes = std::array{
@@ -467,8 +482,16 @@ VulkanGraphicsDevice::VulkanGraphicsDevice(SDL_Window* window)
 	    .pPoolSizes = data(poolSizes),
 	};
 
-	m_descriptorPool = m_device->createDescriptorPoolUnique(poolCreateInfo, s_allocator);
-	SetDebugName(m_descriptorPool, "DescriptorPool");
+	m_mainDescriptorPool = m_device->createDescriptorPoolUnique(poolCreateInfo, s_allocator);
+	SetDebugName(m_mainDescriptorPool, "DescriptorPool");
+
+	int i = 0;
+	for (auto& pool : m_workerDescriptorPools)
+	{
+		pool = m_device->createDescriptorPoolUnique(poolCreateInfo, s_allocator);
+		SetDebugName(pool, "WorkerDescriptorPool{}", i);
+		i++;
+	}
 }
 
 VulkanGraphicsDevice::~VulkanGraphicsDevice()
@@ -512,23 +535,14 @@ RendererPtr VulkanGraphicsDevice::CreateRenderer()
 BufferPtr VulkanGraphicsDevice::CreateBuffer(const BufferData& data, const char* name)
 {
 	auto cmdBuffer = OneShotCommands();
+	return CreateBuffer(data, name, cmdBuffer);
+}
+
+BufferPtr VulkanGraphicsDevice::CreateBuffer(const BufferData& data, const char* name, CommandBuffer& cmdBuffer)
+{
 	auto ret = CreateBufferWithData(data.data, data.usage, data.memoryFlags, m_device.get(), *m_allocator, cmdBuffer);
 	SetDebugName(ret.buffer, name);
 	return std::make_shared<const VulkanBuffer>(std::move(ret));
-}
-
-DynamicBufferPtr VulkanGraphicsDevice::CreateDynamicBuffer(vk::DeviceSize bufferSize, vk::BufferUsageFlags usage, const char* name)
-{
-	VulkanDynamicBuffer ret;
-	ret.size = bufferSize;
-	for (auto& buffer : ret.buffers)
-	{
-		buffer = CreateBufferUninitialized(
-		    bufferSize, usage, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent,
-		    m_device.get(), *m_allocator);
-		SetDebugName(buffer.buffer, name);
-	}
-	return std::make_shared<VulkanDynamicBuffer>(std::move(ret));
 }
 
 ShaderPtr VulkanGraphicsDevice::CreateShader(const ShaderData& data, const char* name)
@@ -562,7 +576,11 @@ ShaderPtr VulkanGraphicsDevice::CreateShader(const ShaderData& data, const char*
 TexturePtr VulkanGraphicsDevice::CreateTexture(const TextureData& data, const char* name)
 {
 	auto cmdBuffer = OneShotCommands();
+	return CreateTexture(data, name, cmdBuffer);
+}
 
+TexturePtr VulkanGraphicsDevice::CreateTexture(const TextureData& data, const char* name, CommandBuffer& cmdBuffer)
+{
 	const auto usage = vk::ImageUsageFlagBits::eSampled;
 
 	auto [texture, state] = CreateTextureImpl(data, m_device.get(), m_allocator.value(), usage, cmdBuffer, name);
@@ -583,13 +601,17 @@ TexturePtr VulkanGraphicsDevice::CreateTexture(const TextureData& data, const ch
 
 DynamicTexturePtr VulkanGraphicsDevice::CreateRenderableTexture(const TextureData& data, const char* name)
 {
+	auto cmdBuffer = OneShotCommands();
+	return CreateRenderableTexture(data, name, cmdBuffer);
+}
+
+DynamicTexturePtr VulkanGraphicsDevice::CreateRenderableTexture(const TextureData& data, const char* name, CommandBuffer& cmdBuffer)
+{
 	const bool isColorTarget = !HasDepthOrStencilComponent(data.format);
 	const auto renderUsage
 	    = isColorTarget ? vk::ImageUsageFlagBits::eColorAttachment : vk::ImageUsageFlagBits::eDepthStencilAttachment;
 
 	const auto usage = renderUsage | vk::ImageUsageFlagBits::eSampled;
-
-	auto cmdBuffer = OneShotCommands();
 
 	auto [texture, state] = CreateTextureImpl(data, m_device.get(), m_allocator.value(), usage, cmdBuffer, name);
 
@@ -614,18 +636,23 @@ PipelinePtr VulkanGraphicsDevice::CreatePipeline(const PipelineData& data)
 	    shaderImpl.pipelineLayout.get());
 }
 
-std::vector<vk::UniqueDescriptorSet> VulkanGraphicsDevice::CreateDescriptorSets(
-    vk::DescriptorSetLayout layout, size_t numSets, const DynamicBuffer& uniformBuffer,
+vk::UniqueDescriptorSet VulkanGraphicsDevice::CreateDescriptorSet(
+    vk::DescriptorPool pool, vk::DescriptorSetLayout layout, const Buffer* uniformBuffer,
     std::span<const Texture* const> textures, const char* name)
 {
-	const auto& uniformBufferImpl = GetImpl(uniformBuffer);
+	return std::move(CreateDescriptorSets(pool, layout, 1, uniformBuffer, textures, name).front());
+}
 
+std::vector<vk::UniqueDescriptorSet> VulkanGraphicsDevice::CreateDescriptorSets(
+    vk::DescriptorPool pool, vk::DescriptorSetLayout layout, size_t numSets, const Buffer* uniformBuffer,
+    std::span<const Texture* const> textures, const char* name)
+{
 	// TODO support multiple textures in descriptor sets
 	assert(textures.size() <= 1 && "Multiple textures not yet supported!");
 
 	const auto layouts = std::vector<vk::DescriptorSetLayout>(numSets, layout);
 	const auto allocInfo = vk::DescriptorSetAllocateInfo{
-	    .descriptorPool = m_descriptorPool.get(),
+	    .descriptorPool = pool,
 	    .descriptorSetCount = size32(layouts),
 	    .pSetLayouts = data(layouts),
 	};
@@ -636,27 +663,31 @@ std::vector<vk::UniqueDescriptorSet> VulkanGraphicsDevice::CreateDescriptorSets(
 	{
 		SetDebugName(descriptorSets[i], name);
 
-		const auto numUniformBuffers = uniformBufferImpl.size > 0 ? 1 : 0;
+		const auto numUniformBuffers = uniformBuffer ? 1 : 0;
 
 		std::vector<vk::WriteDescriptorSet> descriptorWrites;
 		descriptorWrites.reserve(numUniformBuffers + textures.size());
 
-		const auto bufferInfo = vk::DescriptorBufferInfo{
-		    .buffer = uniformBufferImpl.buffers[i].buffer.get(),
-		    .offset = 0,
-		    .range = uniformBufferImpl.size,
-		};
-
-		if (uniformBufferImpl.size > 0)
+		if (uniformBuffer)
 		{
-			descriptorWrites.push_back({
-			    .dstSet = descriptorSets[i].get(),
-			    .dstBinding = 0,
-			    .dstArrayElement = 0,
-			    .descriptorCount = 1,
-			    .descriptorType = vk::DescriptorType::eUniformBuffer,
-			    .pBufferInfo = &bufferInfo,
-			});
+			const auto& uniformBufferImpl = GetImpl(*uniformBuffer);
+			const auto bufferInfo = vk::DescriptorBufferInfo{
+			    .buffer = uniformBufferImpl.buffer.get(),
+			    .offset = 0,
+			    .range = uniformBufferImpl.size,
+			};
+
+			if (uniformBufferImpl.size > 0)
+			{
+				descriptorWrites.push_back({
+				    .dstSet = descriptorSets[i].get(),
+				    .dstBinding = 0,
+				    .dstArrayElement = 0,
+				    .descriptorCount = 1,
+				    .descriptorType = vk::DescriptorType::eUniformBuffer,
+				    .pBufferInfo = &bufferInfo,
+				});
+			}
 		}
 
 		std::vector<vk::DescriptorImageInfo> imageInfos;
@@ -720,29 +751,40 @@ VulkanGraphicsDevice::CreateFramebuffer(vk::RenderPass renderPass, vk::Extent2D 
 
 ParameterBlockPtr VulkanGraphicsDevice::CreateParameterBlock(const ParameterBlockData& data, const char* name)
 {
-	// TODO support creating parameter blocks with static uniform buffers
-	return CreateDynamicParameterBlock(data, name);
+	auto cmdBuffer = OneShotCommands();
+	return CreateParameterBlock(data, name, cmdBuffer, m_mainDescriptorPool.get());
 }
 
-DynamicParameterBlockPtr VulkanGraphicsDevice::CreateDynamicParameterBlock(const ParameterBlockData& data, const char* name)
+ParameterBlockPtr VulkanGraphicsDevice::CreateParameterBlock(
+    const ParameterBlockData& data, const char* name, CommandBuffer& cmdBuffer, std::uint32_t threadIndex)
 {
+	return CreateParameterBlock(data, name, cmdBuffer, m_workerDescriptorPools[threadIndex].get());
+}
+
+ParameterBlockPtr VulkanGraphicsDevice::CreateParameterBlock(
+    const ParameterBlockData& data, const char* name, CommandBuffer& cmdBuffer, vk::DescriptorPool descriptorPool)
+{
+	if (!data.layout)
+	{
+		return nullptr;
+	}
+
 	const auto descriptorSetName = DebugFormat("{}DescriptorSet", name);
 
 	VulkanParameterBlock ret;
-	if (data.uniformBufferSize == 0)
-	{
-		ret.descriptorSet
-		    = CreateDescriptorSets(data.layout, 1, VulkanDynamicBuffer{}, data.textures, descriptorSetName.c_str());
-	}
-	else
+	if (!data.uniformBufferData.empty())
 	{
 		const auto uniformBufferName = DebugFormat("{}UniformBuffer", name);
-
-		ret.uniformBuffer = CreateDynamicBuffer(
-		    data.uniformBufferSize, vk::BufferUsageFlagBits::eUniformBuffer, uniformBufferName.c_str());
-		ret.descriptorSet = CreateDescriptorSets(
-		    data.layout, GetImpl(*ret.uniformBuffer).buffers.size(), *ret.uniformBuffer, data.textures,
-		    descriptorSetName.c_str());
+		ret.uniformBuffer = CreateBuffer(
+		    BufferData{
+		        .usage = vk::BufferUsageFlagBits::eUniformBuffer,
+		        .memoryFlags = vk::MemoryPropertyFlagBits::eDeviceLocal,
+		        .data = data.uniformBufferData,
+		    },
+		    uniformBufferName.c_str(), cmdBuffer);
 	}
+	ret.descriptorSet = CreateDescriptorSet(
+	    descriptorPool, data.layout, ret.uniformBuffer.get(), data.textures, descriptorSetName.c_str());
+
 	return std::make_unique<VulkanParameterBlock>(std::move(ret));
 }

@@ -73,6 +73,9 @@ public:
 
 	void WaitForTasks() { m_cpuExecutor.WaitForTasks(); }
 
+	std::uint32_t GetThreadCount() const { return static_cast<std::uint32_t>(m_frameResources.front().size()); }
+	std::uint32_t GetThreadIndex() const { return m_cpuExecutor.GetThreadIndex(); }
+
 	CommandBuffer& GetCommandBuffer(uint32_t threadIndex);
 
 private:

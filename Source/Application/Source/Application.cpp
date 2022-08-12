@@ -299,8 +299,6 @@ public:
 
 	void OnRender()
 	{
-		m_renderer->BeginFrame();
-
 		const Geo::Matrix4 lightRotation = Geo::Matrix4::RotationZ(m_lightYaw) * Geo::Matrix4::RotationX(m_lightPitch);
 		const Geo::Vector3 lightDirection = Geo::Normalise(lightRotation * Geo::Vector3{0.0f, 1.0f, 0.0f});
 		const Geo::Vector3 lightUp = Geo::Normalise(lightRotation * Geo::Vector3{0.0f, 0.0f, 1.0f});
@@ -340,7 +338,12 @@ public:
 		    .ambientColorBottom = {0.003f, 0.003f, 0.002f},
 		    .shadowMatrix = m_shadowMatrix,
 		};
-		m_sceneParams->SetUniformData(m_renderer->GetFrameNumber(), globalUniforms);
+		const auto sceneParams = ParameterBlockData{
+		    .layout = m_shader->GetSceneDescriptorSetLayout(),
+		    .uniformBufferData = ToBytes(globalUniforms),
+		};
+
+		m_renderer->BeginFrame(sceneParams);
 
 		// Update object uniforms
 		m_objectUniforms = {
@@ -355,13 +358,16 @@ public:
 			const auto viewUniforms = ViewUniforms{
 			    .viewProj = m_shadowMatrix,
 			};
-
-			m_viewParams[0]->SetUniformData(m_renderer->GetFrameNumber(), viewUniforms);
+			const auto viewParams = ParameterBlockData{
+			    .layout = m_shader->GetViewDescriptorSetLayout(),
+			    .uniformBufferData = ToBytes(viewUniforms),
+			    .textures = {},
+			};
 
 			RenderList renderList = {
+			    .name = "Shadow",
 			    .clearDepthValue = 1.0f,
-			    .sceneParameters = m_sceneParams,
-			    .viewParameters = m_viewParams[0],
+			    .viewParameters = viewParams,
 			    .objects = {{
 			        .vertexBuffer = m_vertexBuffer,
 			        .indexBuffer = m_indexBuffer,
@@ -396,13 +402,17 @@ public:
 			const auto viewUniforms = ViewUniforms{
 			    .viewProj = viewProj,
 			};
-			m_viewParams[1]->SetUniformData(m_renderer->GetFrameNumber(), viewUniforms);
+			const auto viewParams = ParameterBlockData{
+			    .layout = m_shader->GetViewDescriptorSetLayout(),
+			    .uniformBufferData = ToBytes(viewUniforms),
+			    .textures = {m_shadowMap.get()},
+			};
 
 			RenderList renderList = {
+			    .name = "Scene",
 			    .clearColorValue = Color{0.0f, 0.0f, 0.0f, 1.0f},
 			    .clearDepthValue = 1.0f,
-			    .sceneParameters = m_sceneParams,
-			    .viewParameters = m_viewParams[1],
+			    .viewParameters = viewParams,
 			    .objects = {{
 			        .vertexBuffer = m_vertexBuffer,
 			        .indexBuffer = m_indexBuffer,
@@ -610,30 +620,8 @@ private:
 
 	void CreateParameterBlocks()
 	{
-		const auto sceneData = ParameterBlockData{
-		    .layout = m_shader->GetSceneDescriptorSetLayout(),
-		    .uniformBufferSize = sizeof(GlobalUniforms),
-		};
-		m_sceneParams = m_device->CreateDynamicParameterBlock(sceneData, "Scene");
-
-		m_viewParams.clear();
-		for (uint32_t pass = 0; pass < m_passCount; pass++)
-		{
-			const auto viewData = ParameterBlockData{
-			    .layout = m_shader->GetViewDescriptorSetLayout(),
-			    .uniformBufferSize = sizeof(ViewUniforms),
-			    // Include shadow maps only after shadow pass
-			    .textures = {pass > 0 ? m_shadowMap.get() : nullptr},
-			};
-
-			const auto name = fmt::format("Pass{}:View", pass);
-
-			m_viewParams.push_back(m_device->CreateDynamicParameterBlock(viewData, name.c_str()));
-		}
-
 		const auto materialData = ParameterBlockData{
 		    .layout = m_shader->GetMaterialDescriptorSetLayout(),
-		    .uniformBufferSize = 0,
 		    .textures = {m_texture.get()},
 		};
 		m_materialParams = m_device->CreateParameterBlock(materialData, "Material");
@@ -762,8 +750,6 @@ private:
 
 	const uint32_t m_passCount = 2;
 	ObjectUniforms m_objectUniforms;
-	DynamicParameterBlockPtr m_sceneParams;
-	std::vector<DynamicParameterBlockPtr> m_viewParams;
 	ParameterBlockPtr m_materialParams;
 
 	// Lights

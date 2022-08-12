@@ -54,14 +54,6 @@ TEST(GraphicsDeviceTest, CreateBuffer)
 	EXPECT_THAT(buffer->GetSize(), Eq(contents.size() * sizeof(contents[0])));
 }
 
-TEST(GraphicsDeviceTest, CreateDynamicBuffer)
-{
-	auto device = CreateGraphicsDevice();
-	const auto buffer = device->CreateDynamicBuffer(64u, vk::BufferUsageFlagBits::eVertexBuffer, "Buffer");
-	EXPECT_THAT(buffer.get(), NotNull());
-	EXPECT_THAT(buffer->GetSize(), Eq(64u));
-}
-
 TEST(GraphicsDeviceTest, CreateShader)
 {
 	auto device = CreateGraphicsDevice();
@@ -143,25 +135,10 @@ TEST(GraphicsDeviceTest, CreateParameterBlock)
 	const auto shader = device->CreateShader(shaderData, "Shader");
 	const auto pblockData = ParameterBlockData{
 	    .layout = shader->GetSceneDescriptorSetLayout(),
-	    .uniformBufferSize = 64,
+	    .uniformBufferData = std::vector<std::byte>(64u, std::byte{}),
 	    .textures = {},
 	};
 	const auto pblock = device->CreateParameterBlock(pblockData, "ParameterBlock");
-	EXPECT_THAT(pblock.get(), NotNull());
-	EXPECT_THAT(pblock->GetUniformBufferSize(), Eq(64u));
-}
-
-TEST(GraphicsDeviceTest, CreateDynamicParameterBlock)
-{
-	auto device = CreateGraphicsDevice();
-	const auto shaderData = CompileShader(VertexShaderWithParams, SimplePixelShader, ShaderLanguage::Glsl);
-	const auto shader = device->CreateShader(shaderData, "Shader");
-	const auto pblockData = ParameterBlockData{
-	    .layout = shader->GetSceneDescriptorSetLayout(),
-	    .uniformBufferSize = 64,
-	    .textures = {},
-	};
-	const auto pblock = device->CreateDynamicParameterBlock(pblockData, "ParameterBlock");
 	EXPECT_THAT(pblock.get(), NotNull());
 	EXPECT_THAT(pblock->GetUniformBufferSize(), Eq(64u));
 }
