@@ -21,5 +21,5 @@ public:
 	virtual ~Buffer() = default;
 
 	virtual std::size_t GetSize() const = 0;
-	virtual std::span<std::byte> GetData() const = 0;
+	virtual BytesView GetData() const = 0;
 };

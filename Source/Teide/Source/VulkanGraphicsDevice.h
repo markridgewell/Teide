@@ -50,8 +50,6 @@ public:
 		return dynamic_cast<const VulkanImpl<std::remove_const_t<T>>::type&>(obj);
 	}
 
-	auto OneShotCommands() { return OneShotCommandBuffer(m_device.get(), m_setupCommandPool.get(), m_graphicsQueue); }
-
 	BufferPtr CreateBuffer(const BufferData& data, const char* name, CommandBuffer& cmdBuffer);
 	TexturePtr CreateTexture(const TextureData& data, const char* name, CommandBuffer& cmdBuffer);
 	DynamicTexturePtr CreateRenderableTexture(const TextureData& data, const char* name, CommandBuffer& cmdBuffer);

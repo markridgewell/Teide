@@ -13,7 +13,7 @@ struct VulkanBuffer : public Buffer
 	std::span<std::byte> mappedData;
 
 	std::size_t GetSize() const override { return size; }
-	std::span<std::byte> GetData() const override { return mappedData; }
+	BytesView GetData() const override { return mappedData; }
 };
 
 template <>

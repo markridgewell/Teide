@@ -32,18 +32,3 @@ protected:
 	std::unordered_set<ParameterBlockPtr> m_referencedParameterBlocks;
 	std::vector<vk::UniqueBuffer> m_ownedBuffers;
 };
-
-class OneShotCommandBuffer : public CommandBuffer
-{
-public:
-	explicit OneShotCommandBuffer(vk::Device device, vk::CommandPool commandPool, vk::Queue queue);
-	~OneShotCommandBuffer();
-
-	OneShotCommandBuffer(const OneShotCommandBuffer&) = delete;
-	OneShotCommandBuffer(OneShotCommandBuffer&&) = delete;
-	OneShotCommandBuffer& operator=(const OneShotCommandBuffer&) = delete;
-	OneShotCommandBuffer& operator=(OneShotCommandBuffer&&) = delete;
-
-private:
-	vk::Queue m_queue;
-};

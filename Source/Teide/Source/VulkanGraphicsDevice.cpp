@@ -534,8 +534,10 @@ RendererPtr VulkanGraphicsDevice::CreateRenderer()
 
 BufferPtr VulkanGraphicsDevice::CreateBuffer(const BufferData& data, const char* name)
 {
-	auto cmdBuffer = OneShotCommands();
-	return CreateBuffer(data, name, cmdBuffer);
+	auto task = m_scheduler->ScheduleGpu([=, this](CommandBuffer& cmdBuffer) { //
+		return CreateBuffer(data, name, cmdBuffer);
+	});
+	return task.get().value();
 }
 
 BufferPtr VulkanGraphicsDevice::CreateBuffer(const BufferData& data, const char* name, CommandBuffer& cmdBuffer)
@@ -575,8 +577,10 @@ ShaderPtr VulkanGraphicsDevice::CreateShader(const ShaderData& data, const char*
 
 TexturePtr VulkanGraphicsDevice::CreateTexture(const TextureData& data, const char* name)
 {
-	auto cmdBuffer = OneShotCommands();
-	return CreateTexture(data, name, cmdBuffer);
+	auto task = m_scheduler->ScheduleGpu([=, this](CommandBuffer& cmdBuffer) { //
+		return CreateTexture(data, name, cmdBuffer);
+	});
+	return task.get().value();
 }
 
 TexturePtr VulkanGraphicsDevice::CreateTexture(const TextureData& data, const char* name, CommandBuffer& cmdBuffer)
@@ -601,8 +605,10 @@ TexturePtr VulkanGraphicsDevice::CreateTexture(const TextureData& data, const ch
 
 DynamicTexturePtr VulkanGraphicsDevice::CreateRenderableTexture(const TextureData& data, const char* name)
 {
-	auto cmdBuffer = OneShotCommands();
-	return CreateRenderableTexture(data, name, cmdBuffer);
+	auto task = m_scheduler->ScheduleGpu([=, this](CommandBuffer& cmdBuffer) { //
+		return CreateRenderableTexture(data, name, cmdBuffer);
+	});
+	return task.get().value();
 }
 
 DynamicTexturePtr VulkanGraphicsDevice::CreateRenderableTexture(const TextureData& data, const char* name, CommandBuffer& cmdBuffer)
@@ -751,8 +757,10 @@ VulkanGraphicsDevice::CreateFramebuffer(vk::RenderPass renderPass, vk::Extent2D 
 
 ParameterBlockPtr VulkanGraphicsDevice::CreateParameterBlock(const ParameterBlockData& data, const char* name)
 {
-	auto cmdBuffer = OneShotCommands();
-	return CreateParameterBlock(data, name, cmdBuffer, m_mainDescriptorPool.get());
+	auto task = m_scheduler->ScheduleGpu([=, this](CommandBuffer& cmdBuffer) {
+		return CreateParameterBlock(data, name, cmdBuffer, m_mainDescriptorPool.get());
+	});
+	return task.get().value();
 }
 
 ParameterBlockPtr VulkanGraphicsDevice::CreateParameterBlock(
