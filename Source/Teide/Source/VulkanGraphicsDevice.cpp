@@ -527,9 +527,9 @@ SurfacePtr VulkanGraphicsDevice::CreateSurface(SDL_Window* window, bool multisam
 	    m_graphicsQueue, multisampled);
 }
 
-RendererPtr VulkanGraphicsDevice::CreateRenderer()
+RendererPtr VulkanGraphicsDevice::CreateRenderer(ShaderPtr shaderEnvironment)
 {
-	return std::make_unique<VulkanRenderer>(*this, m_graphicsQueueFamily, m_presentQueueFamily);
+	return std::make_unique<VulkanRenderer>(*this, m_graphicsQueueFamily, m_presentQueueFamily, std::move(shaderEnvironment));
 }
 
 BufferPtr VulkanGraphicsDevice::CreateBuffer(const BufferData& data, const char* name)
@@ -772,7 +772,13 @@ ParameterBlockPtr VulkanGraphicsDevice::CreateParameterBlock(
 ParameterBlockPtr VulkanGraphicsDevice::CreateParameterBlock(
     const ParameterBlockData& data, const char* name, CommandBuffer& cmdBuffer, vk::DescriptorPool descriptorPool)
 {
-	if (!data.layout)
+	if (!data.shader)
+	{
+		return nullptr;
+	}
+
+	const auto layout = GetImpl(*data.shader).GetDescriptorSetLayout(data.blockType);
+	if (!layout)
 	{
 		return nullptr;
 	}
@@ -780,19 +786,19 @@ ParameterBlockPtr VulkanGraphicsDevice::CreateParameterBlock(
 	const auto descriptorSetName = DebugFormat("{}DescriptorSet", name);
 
 	VulkanParameterBlock ret;
-	if (!data.uniformBufferData.empty())
+	if (!data.parameters.uniformBufferData.empty())
 	{
 		const auto uniformBufferName = DebugFormat("{}UniformBuffer", name);
 		ret.uniformBuffer = CreateBuffer(
 		    BufferData{
 		        .usage = vk::BufferUsageFlagBits::eUniformBuffer,
 		        .memoryFlags = vk::MemoryPropertyFlagBits::eDeviceLocal,
-		        .data = data.uniformBufferData,
+		        .data = data.parameters.uniformBufferData,
 		    },
 		    uniformBufferName.c_str(), cmdBuffer);
 	}
 	ret.descriptorSet = CreateDescriptorSet(
-	    descriptorPool, data.layout, ret.uniformBuffer.get(), data.textures, descriptorSetName.c_str());
+	    descriptorPool, layout, ret.uniformBuffer.get(), data.parameters.textures, descriptorSetName.c_str());
 
 	return std::make_unique<VulkanParameterBlock>(std::move(ret));
 }

@@ -272,11 +272,9 @@ public:
 	    m_window{window},
 	    m_device{CreateGraphicsDevice(window)},
 	    m_surface{m_device->CreateSurface(window, UseMSAA)},
-	    m_renderer{m_device->CreateRenderer()}
+	    m_shader{m_device->CreateShader(CompileShader(VertexShader, PixelShader, ShaderLang), "ModelShader")},
+	    m_renderer{m_device->CreateRenderer(m_shader)}
 	{
-		const auto shaderData = CompileShader(VertexShader, PixelShader, ShaderLang);
-		m_shader = m_device->CreateShader(shaderData, "ModelShader");
-
 		const auto pipelineData = PipelineData{
 		    .shader = m_shader,
 		    .vertexLayout = VertexLayoutDesc,
@@ -338,8 +336,7 @@ public:
 		    .ambientColorBottom = {0.003f, 0.003f, 0.002f},
 		    .shadowMatrix = m_shadowMatrix,
 		};
-		const auto sceneParams = ParameterBlockData{
-		    .layout = m_shader->GetSceneDescriptorSetLayout(),
+		const auto sceneParams = ShaderParameters{
 		    .uniformBufferData = ToBytes(globalUniforms),
 		};
 
@@ -358,14 +355,13 @@ public:
 			const auto viewUniforms = ViewUniforms{
 			    .viewProj = m_shadowMatrix,
 			};
-			const auto viewParams = ParameterBlockData{
-			    .layout = m_shader->GetViewDescriptorSetLayout(),
+			const auto viewParams = ShaderParameters{
 			    .uniformBufferData = ToBytes(viewUniforms),
 			    .textures = {},
 			};
 
 			RenderList renderList = {
-			    .name = "Shadow",
+			    .name = "ShadowPass",
 			    .clearDepthValue = 1.0f,
 			    .viewParameters = viewParams,
 			    .objects = {{
@@ -402,14 +398,13 @@ public:
 			const auto viewUniforms = ViewUniforms{
 			    .viewProj = viewProj,
 			};
-			const auto viewParams = ParameterBlockData{
-			    .layout = m_shader->GetViewDescriptorSetLayout(),
+			const auto viewParams = ShaderParameters{
 			    .uniformBufferData = ToBytes(viewUniforms),
 			    .textures = {m_shadowMap.get()},
 			};
 
 			RenderList renderList = {
-			    .name = "Scene",
+			    .name = "MainPass",
 			    .clearColorValue = Color{0.0f, 0.0f, 0.0f, 1.0f},
 			    .clearDepthValue = 1.0f,
 			    .viewParameters = viewParams,
@@ -621,8 +616,11 @@ private:
 	void CreateParameterBlocks()
 	{
 		const auto materialData = ParameterBlockData{
-		    .layout = m_shader->GetMaterialDescriptorSetLayout(),
-		    .textures = {m_texture.get()},
+		    .shader = m_shader,
+		    .blockType = ParameterBlockType::Material,
+		    .parameters = {
+		        .textures = {m_texture.get()},
+		    },
 		};
 		m_materialParams = m_device->CreateParameterBlock(materialData, "Material");
 	}

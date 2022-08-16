@@ -37,7 +37,7 @@ struct RenderList
 	std::optional<float> clearDepthValue;
 	std::optional<std::uint32_t> clearStencilValue;
 
-	ParameterBlockData viewParameters;
+	ShaderParameters viewParameters;
 
 	std::vector<RenderObject> objects;
 };
@@ -54,7 +54,7 @@ public:
 	Renderer& operator=(Renderer&&) = delete;
 
 	virtual std::uint32_t GetFrameNumber() const = 0;
-	virtual void BeginFrame(const ParameterBlockData& sceneParameters) = 0;
+	virtual void BeginFrame(const ShaderParameters& sceneParameters) = 0;
 	virtual void EndFrame() = 0;
 
 	virtual void RenderToTexture(DynamicTexturePtr texture, RenderList renderList) = 0;

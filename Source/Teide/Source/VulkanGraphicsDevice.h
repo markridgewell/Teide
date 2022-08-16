@@ -24,7 +24,7 @@ public:
 	~VulkanGraphicsDevice();
 
 	SurfacePtr CreateSurface(SDL_Window* window, bool multisampled) override;
-	RendererPtr CreateRenderer() override;
+	RendererPtr CreateRenderer(ShaderPtr shaderEnvironment) override;
 
 	BufferPtr CreateBuffer(const BufferData& data, const char* name) override;
 

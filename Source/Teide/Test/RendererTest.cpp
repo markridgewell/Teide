@@ -42,7 +42,7 @@ void main() {
 class RendererTest : public testing::Test
 {
 public:
-	RendererTest() : m_device{CreateGraphicsDevice()}, m_renderer{m_device->CreateRenderer()} {}
+	RendererTest() : m_device{CreateGraphicsDevice()}, m_renderer{m_device->CreateRenderer(nullptr)} {}
 
 protected:
 	DynamicTexturePtr CreateRenderableTexture(vk::Extent2D size)

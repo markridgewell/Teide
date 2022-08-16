@@ -86,7 +86,7 @@ TEST(SurfaceTest, RenderToSurface)
 
 	auto device = CreateGraphicsDevice(window.get());
 	auto surface = device->CreateSurface(window.get(), true);
-	auto renderer = device->CreateRenderer();
+	auto renderer = device->CreateRenderer(nullptr);
 
 	renderer->BeginFrame({});
 	const auto renderList = RenderList{
@@ -103,7 +103,7 @@ TEST(SurfaceTest, RenderToSurfaceWithoutClear)
 
 	auto device = CreateGraphicsDevice(window.get());
 	auto surface = device->CreateSurface(window.get(), true);
-	auto renderer = device->CreateRenderer();
+	auto renderer = device->CreateRenderer(nullptr);
 
 	renderer->BeginFrame({});
 	const auto renderList = RenderList{};
@@ -118,7 +118,7 @@ TEST(SurfaceTest, RenderToSurfaceTwice)
 
 	auto device = CreateGraphicsDevice(window.get());
 	auto surface = device->CreateSurface(window.get(), true);
-	auto renderer = device->CreateRenderer();
+	auto renderer = device->CreateRenderer(nullptr);
 
 	renderer->BeginFrame({});
 	const auto renderListWithClear = RenderList{

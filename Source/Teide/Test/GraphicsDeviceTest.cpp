@@ -134,9 +134,12 @@ TEST(GraphicsDeviceTest, CreateParameterBlock)
 	const auto shaderData = CompileShader(VertexShaderWithParams, SimplePixelShader, ShaderLanguage::Glsl);
 	const auto shader = device->CreateShader(shaderData, "Shader");
 	const auto pblockData = ParameterBlockData{
-	    .layout = shader->GetSceneDescriptorSetLayout(),
-	    .uniformBufferData = std::vector<std::byte>(64u, std::byte{}),
-	    .textures = {},
+	    .shader = shader,
+	    .blockType = ParameterBlockType::Scene,
+	    .parameters = {
+	        .uniformBufferData = std::vector<std::byte>(64u, std::byte{}),
+	        .textures = {},
+	    },
 	};
 	const auto pblock = device->CreateParameterBlock(pblockData, "ParameterBlock");
 	EXPECT_THAT(pblock.get(), NotNull());

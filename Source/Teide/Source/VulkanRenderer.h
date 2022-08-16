@@ -18,12 +18,14 @@
 class VulkanRenderer : public Renderer
 {
 public:
-	explicit VulkanRenderer(VulkanGraphicsDevice& device, uint32_t graphicsFamilyIndex, std::optional<uint32_t> presentFamilyIndex);
+	explicit VulkanRenderer(
+	    VulkanGraphicsDevice& device, uint32_t graphicsFamilyIndex, std::optional<uint32_t> presentFamilyIndex,
+	    ShaderPtr shaderEnvironment);
 
 	~VulkanRenderer();
 
 	std::uint32_t GetFrameNumber() const override;
-	void BeginFrame(const ParameterBlockData& sceneParameters) override;
+	void BeginFrame(const ShaderParameters& sceneParameters) override;
 	void EndFrame() override;
 
 	void RenderToTexture(DynamicTexturePtr texture, RenderList renderList) override;
@@ -69,6 +71,8 @@ private:
 	std::array<vk::UniqueSemaphore, MaxFramesInFlight> m_renderFinished;
 	std::array<vk::UniqueFence, MaxFramesInFlight> m_inFlightFences;
 	uint32_t m_frameNumber = 0;
+
+	ShaderPtr m_shaderEnvironment;
 
 	std::mutex m_surfaceCommandBuffersMutex;
 	std::vector<vk::CommandBuffer> m_surfaceCommandBuffers;

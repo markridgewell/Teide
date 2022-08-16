@@ -3,12 +3,16 @@
 
 #include <vulkan/vulkan.hpp>
 
+enum class ParameterBlockType
+{
+	Scene,
+	View,
+	Material,
+	Object,
+};
+
 class Shader
 {
 public:
 	virtual ~Shader() = default;
-
-	virtual vk::DescriptorSetLayout GetSceneDescriptorSetLayout() const = 0;
-	virtual vk::DescriptorSetLayout GetViewDescriptorSetLayout() const = 0;
-	virtual vk::DescriptorSetLayout GetMaterialDescriptorSetLayout() const = 0;
 };

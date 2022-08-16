@@ -21,8 +21,12 @@ namespace
 static const vk::Optional<const vk::AllocationCallbacks> s_allocator = nullptr;
 } // namespace
 
-VulkanRenderer::VulkanRenderer(VulkanGraphicsDevice& device, uint32_t graphicsFamilyIndex, std::optional<uint32_t> presentFamilyIndex) :
-    m_device{device}, m_graphicsQueue{device.GetVulkanDevice().getQueue(graphicsFamilyIndex, 0)}
+VulkanRenderer::VulkanRenderer(
+    VulkanGraphicsDevice& device, uint32_t graphicsFamilyIndex, std::optional<uint32_t> presentFamilyIndex,
+    ShaderPtr shaderEnvironment) :
+    m_device{device},
+    m_graphicsQueue{device.GetVulkanDevice().getQueue(graphicsFamilyIndex, 0)},
+    m_shaderEnvironment{std::move(shaderEnvironment)}
 {
 	const auto vkdevice = device.GetVulkanDevice();
 
@@ -58,7 +62,7 @@ std::uint32_t VulkanRenderer::GetFrameNumber() const
 	return m_frameNumber;
 }
 
-void VulkanRenderer::BeginFrame(const ParameterBlockData& sceneParameters)
+void VulkanRenderer::BeginFrame(const ShaderParameters& sceneParameters)
 {
 	constexpr uint64_t timeout = std::numeric_limits<uint64_t>::max();
 
@@ -71,7 +75,12 @@ void VulkanRenderer::BeginFrame(const ParameterBlockData& sceneParameters)
 	m_device.GetScheduler().NextFrame();
 
 	auto& frameResources = m_frameResources[m_frameNumber];
-	frameResources.sceneParameters = m_device.CreateParameterBlock(sceneParameters, "Scene");
+	const auto pblockData = ParameterBlockData{
+	    .shader = m_shaderEnvironment,
+	    .blockType = ParameterBlockType::Scene,
+	    .parameters = sceneParameters, // COPY!
+	};
+	frameResources.sceneParameters = m_device.CreateParameterBlock(pblockData, "Scene");
 	for (auto& threadResources : frameResources.threadResources)
 	{
 		threadResources.viewParameters.clear();
@@ -312,10 +321,15 @@ void VulkanRenderer::BuildCommandBuffer(
 	commandBuffer.setScissor(0, vk::Rect2D{.extent = framebufferSize});
 
 	const auto threadIndex = m_device.GetScheduler().GetThreadIndex();
+	const auto viewParamsData = ParameterBlockData{
+	    .shader = m_shaderEnvironment,
+	    .blockType = ParameterBlockType::View,
+	    .parameters = renderList.viewParameters, // COPY!
+	};
 	const auto viewParamsName = fmt::format("{}:View", renderList.name);
 	const auto viewParameters = AddViewParameterBlock(
 	    threadIndex,
-	    m_device.CreateParameterBlock(renderList.viewParameters, viewParamsName.c_str(), commandBufferWrapper, threadIndex));
+	    m_device.CreateParameterBlock(viewParamsData, viewParamsName.c_str(), commandBufferWrapper, threadIndex));
 
 	commandBuffer.beginRenderPass(renderPassBegin, vk::SubpassContents::eInline);
 

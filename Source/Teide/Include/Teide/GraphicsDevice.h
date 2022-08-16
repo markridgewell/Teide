@@ -20,7 +20,7 @@ public:
 	GraphicsDevice& operator=(GraphicsDevice&&) = delete;
 
 	virtual SurfacePtr CreateSurface(SDL_Window* window, bool multisampled) = 0;
-	virtual RendererPtr CreateRenderer() = 0;
+	virtual RendererPtr CreateRenderer(ShaderPtr shaderEnvironment) = 0;
 
 	virtual BufferPtr CreateBuffer(const BufferData& data, const char* name) = 0;
 

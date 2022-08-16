@@ -3,16 +3,21 @@
 
 #include "Teide/BytesView.h"
 #include "Teide/ForwardDeclare.h"
-
-#include <vulkan/vulkan.hpp>
+#include "Teide/Shader.h"
 
 #include <vector>
 
-struct ParameterBlockData
+struct ShaderParameters
 {
-	vk::DescriptorSetLayout layout;
 	std::vector<std::byte> uniformBufferData;
 	std::vector<const Texture*> textures;
+};
+
+struct ParameterBlockData
+{
+	ShaderPtr shader;
+	ParameterBlockType blockType;
+	ShaderParameters parameters;
 };
 
 class ParameterBlock
