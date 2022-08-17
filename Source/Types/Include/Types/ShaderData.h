@@ -12,7 +12,7 @@ enum class ShaderStageFlags
 
 constexpr ShaderStageFlags operator|(ShaderStageFlags a, ShaderStageFlags b)
 {
-	return ShaderStageFlags{std::to_underlying(a) | std::to_underlying(b)};
+	return ShaderStageFlags{static_cast<int>(a) | static_cast<int>(b)};
 }
 constexpr ShaderStageFlags& operator|=(ShaderStageFlags& a, ShaderStageFlags b)
 {
@@ -20,7 +20,7 @@ constexpr ShaderStageFlags& operator|=(ShaderStageFlags& a, ShaderStageFlags b)
 }
 constexpr ShaderStageFlags operator&(ShaderStageFlags a, ShaderStageFlags b)
 {
-	return ShaderStageFlags{std::to_underlying(a) & std::to_underlying(b)};
+	return ShaderStageFlags{static_cast<int>(a) & static_cast<int>(b)};
 }
 
 struct ParameterBlockLayout
