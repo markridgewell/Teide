@@ -317,8 +317,11 @@ vk::UniquePipelineLayout CreateGraphicsPipelineLayout(
     vk::Device device, const VulkanShaderBase& shader, std::span<const vk::PushConstantRange> pushConstantRanges)
 {
 	const auto setLayouts = std::array{
-	    shader.sceneDescriptorSetLayout.get(), shader.viewDescriptorSetLayout.get(),
-	    shader.materialDescriptorSetLayout.get()};
+	    shader.sceneDescriptorSet.layout.get(),
+	    shader.viewDescriptorSet.layout.get(),
+	    shader.materialDescriptorSet.layout.get(),
+	    shader.objectDescriptorSet.layout.get(),
+	};
 
 	const auto createInfo = vk::PipelineLayoutCreateInfo{
 	    .setLayoutCount = size32(setLayouts),
@@ -398,6 +401,20 @@ CreateGraphicsPipeline(const VulkanShader& shader, const PipelineData& piplineDa
 		throw VulkanError("Couldn't create graphics pipeline");
 	}
 	return std::move(pipeline);
+}
+
+vk::ShaderStageFlags GetShaderStageFlags(ShaderStageFlags flags)
+{
+	vk::ShaderStageFlags ret{};
+	if ((flags & ShaderStageFlags::Vertex) != ShaderStageFlags{})
+	{
+		ret |= vk::ShaderStageFlagBits::eVertex;
+	}
+	if ((flags & ShaderStageFlags::Pixel) != ShaderStageFlags{})
+	{
+		ret |= vk::ShaderStageFlagBits::eFragment;
+	}
+	return ret;
 }
 
 } // namespace
@@ -558,15 +575,55 @@ ShaderPtr VulkanGraphicsDevice::CreateShader(const ShaderData& data, const char*
 	    .pCode = data.pixelShaderSpirv.data(),
 	};
 
+	std::vector<vk::PushConstantRange> pushConstantRanges;
+
+	const auto createSetLayout = [this, &pushConstantRanges](const ParameterBlockLayout& layout) {
+		DescriptorSetInfo ret;
+		std::vector<vk::DescriptorSetLayoutBinding> bindings;
+
+		if (layout.isPushConstant)
+		{
+			pushConstantRanges.push_back(vk::PushConstantRange{
+			    .stageFlags = GetShaderStageFlags(layout.uniformsStages),
+			    .offset = 0,
+			    .size = static_cast<uint32_t>(layout.uniformsSize),
+			});
+		}
+		else
+		{
+			bindings.push_back({
+			    .binding = 0,
+			    .descriptorType = vk::DescriptorType::eUniformBuffer,
+			    .descriptorCount = 1,
+			    .stageFlags = GetShaderStageFlags(layout.uniformsStages),
+			});
+		}
+
+		for (std::uint32_t i = 0; i < layout.textureCount; i++)
+		{
+			bindings.push_back({
+			    .binding = i + 1,
+			    .descriptorType = vk::DescriptorType::eCombinedImageSampler,
+			    .descriptorCount = 1,
+			    .stageFlags = vk::ShaderStageFlagBits::eAllGraphics,
+			});
+		}
+
+		ret.layout = CreateDescriptorSetLayout(m_device.get(), bindings);
+		ret.uniformsStages = GetShaderStageFlags(layout.uniformsStages);
+		return ret;
+	};
+
 	auto shader = VulkanShaderBase{
 	    .vertexShader = m_device->createShaderModuleUnique(vertexCreateInfo, s_allocator),
 	    .pixelShader = m_device->createShaderModuleUnique(pixelCreateInfo, s_allocator),
-	    .sceneDescriptorSetLayout = CreateDescriptorSetLayout(m_device.get(), data.sceneBindings),
-	    .viewDescriptorSetLayout = CreateDescriptorSetLayout(m_device.get(), data.viewBindings),
-	    .materialDescriptorSetLayout = CreateDescriptorSetLayout(m_device.get(), data.materialBindings),
+	    .sceneDescriptorSet = createSetLayout(data.sceneBindings),
+	    .viewDescriptorSet = createSetLayout(data.viewBindings),
+	    .materialDescriptorSet = createSetLayout(data.materialBindings),
+	    .objectDescriptorSet = createSetLayout(data.objectBindings),
 	};
 
-	shader.pipelineLayout = CreateGraphicsPipelineLayout(m_device.get(), shader, data.pushConstantRanges);
+	shader.pipelineLayout = CreateGraphicsPipelineLayout(m_device.get(), shader, pushConstantRanges);
 
 	SetDebugName(shader.vertexShader, "{}:Vertex", name);
 	SetDebugName(shader.pixelShader, "{}:Pixel", name);
@@ -637,9 +694,11 @@ PipelinePtr VulkanGraphicsDevice::CreatePipeline(const PipelineData& data)
 {
 	const auto& shaderImpl = GetImpl(*data.shader);
 
+	const auto pushConstantsShaderStages = shaderImpl.objectDescriptorSet.uniformsStages;
+
 	return std::make_shared<const VulkanPipeline>(
 	    CreateGraphicsPipeline(shaderImpl, data, CreateRenderPass(data.framebufferLayout), m_device.get()),
-	    shaderImpl.pipelineLayout.get());
+	    shaderImpl.pipelineLayout.get(), pushConstantsShaderStages);
 }
 
 vk::UniqueDescriptorSet VulkanGraphicsDevice::CreateDescriptorSet(

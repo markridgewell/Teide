@@ -4,14 +4,20 @@
 #include "Teide/Shader.h"
 #include "Vulkan.h"
 
+struct DescriptorSetInfo
+{
+	vk::UniqueDescriptorSetLayout layout;
+	vk::ShaderStageFlags uniformsStages;
+};
+
 struct VulkanShaderBase
 {
 	vk::UniqueShaderModule vertexShader;
 	vk::UniqueShaderModule pixelShader;
-	vk::UniqueDescriptorSetLayout sceneDescriptorSetLayout;
-	vk::UniqueDescriptorSetLayout viewDescriptorSetLayout;
-	vk::UniqueDescriptorSetLayout materialDescriptorSetLayout;
-	vk::UniqueDescriptorSetLayout objectDescriptorSetLayout;
+	DescriptorSetInfo sceneDescriptorSet;
+	DescriptorSetInfo viewDescriptorSet;
+	DescriptorSetInfo materialDescriptorSet;
+	DescriptorSetInfo objectDescriptorSet;
 	vk::UniquePipelineLayout pipelineLayout;
 };
 
@@ -25,13 +31,13 @@ struct VulkanShader : VulkanShaderBase, public Shader
 		{
 			using enum ParameterBlockType;
 			case Scene:
-				return sceneDescriptorSetLayout.get();
+				return sceneDescriptorSet.layout.get();
 			case View:
-				return viewDescriptorSetLayout.get();
+				return viewDescriptorSet.layout.get();
 			case Material:
-				return materialDescriptorSetLayout.get();
+				return materialDescriptorSet.layout.get();
 			case Object:
-				return objectDescriptorSetLayout.get();
+				return objectDescriptorSet.layout.get();
 		}
 		return {};
 	}

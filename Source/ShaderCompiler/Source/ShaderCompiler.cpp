@@ -4,6 +4,8 @@
 #include <glslang/Public/ShaderLang.h>
 #include <glslang/SPIRV/GlslangToSpv.h>
 
+#include <memory>
+
 namespace
 {
 #if _DEBUG
@@ -167,7 +169,7 @@ std::unique_ptr<glslang::TShader> CompileStage(std::string_view shaderSource, ES
 	return shader;
 };
 
-std::vector<vk::DescriptorSetLayoutBinding>& GetSetBindings(ShaderData& data, int set)
+ParameterBlockLayout& GetPblockLayout(ShaderData& data, int set)
 {
 	switch (set)
 	{
@@ -177,60 +179,62 @@ std::vector<vk::DescriptorSetLayoutBinding>& GetSetBindings(ShaderData& data, in
 			return data.viewBindings;
 		case 2:
 			return data.materialBindings;
+		case 3:
+			return data.objectBindings;
 	}
 	Unreachable();
 }
 
-vk::ShaderStageFlags GetShaderStageFlags(EShLanguageMask lang)
+ShaderStageFlags GetShaderStageFlags(EShLanguageMask lang)
 {
-	vk::ShaderStageFlags ret{};
+	ShaderStageFlags ret{};
 	if (lang & EShLangVertexMask)
 	{
-		ret |= vk::ShaderStageFlagBits::eVertex;
+		ret |= ShaderStageFlags::Vertex;
 	}
 	if (lang & EShLangTessControlMask)
 	{
-		ret |= vk::ShaderStageFlagBits::eTessellationControl;
+		// ret |= vk::ShaderStageFlagBits::eTessellationControl;
 	}
 	if (lang & EShLangTessEvaluationMask)
 	{
-		ret |= vk::ShaderStageFlagBits::eTessellationEvaluation;
+		// ret |= vk::ShaderStageFlagBits::eTessellationEvaluation;
 	}
 	if (lang & EShLangGeometryMask)
 	{
-		ret |= vk::ShaderStageFlagBits::eGeometry;
+		// ret |= vk::ShaderStageFlagBits::eGeometry;
 	}
 	if (lang & EShLangFragmentMask)
 	{
-		ret |= vk::ShaderStageFlagBits::eFragment;
+		ret |= ShaderStageFlags::Pixel;
 	}
 	if (lang & EShLangComputeMask)
 	{
-		ret |= vk::ShaderStageFlagBits::eCompute;
+		// ret |= vk::ShaderStageFlagBits::eCompute;
 	}
 	if (lang & EShLangRayGenMask)
 	{
-		ret |= vk::ShaderStageFlagBits::eRaygenKHR;
+		// ret |= vk::ShaderStageFlagBits::eRaygenKHR;
 	}
 	if (lang & EShLangIntersectMask)
 	{
-		ret |= vk::ShaderStageFlagBits::eIntersectionKHR;
+		// ret |= vk::ShaderStageFlagBits::eIntersectionKHR;
 	}
 	if (lang & EShLangAnyHitMask)
 	{
-		ret |= vk::ShaderStageFlagBits::eAnyHitKHR;
+		// ret |= vk::ShaderStageFlagBits::eAnyHitKHR;
 	}
 	if (lang & EShLangClosestHitMask)
 	{
-		ret |= vk::ShaderStageFlagBits::eClosestHitKHR;
+		// ret |= vk::ShaderStageFlagBits::eClosestHitKHR;
 	}
 	if (lang & EShLangMissMask)
 	{
-		ret |= vk::ShaderStageFlagBits::eMissKHR;
+		// ret |= vk::ShaderStageFlagBits::eMissKHR;
 	}
 	if (lang & EShLangCallableMask)
 	{
-		ret |= vk::ShaderStageFlagBits::eCallableKHR;
+		// ret |= vk::ShaderStageFlagBits::eCallableKHR;
 	}
 	return ret;
 }
@@ -267,25 +271,17 @@ ShaderData Compile(std::string_view vertexSource, std::string_view pixelSource, 
 	for (int i = 0; i < program.getNumUniformBlocks(); i++)
 	{
 		const auto& uniformBlock = program.getUniformBlock(i);
-		const auto set = uniformBlock.getType()->getQualifier().layoutSet;
 		if (uniformBlock.getType()->getQualifier().isPushConstant())
 		{
-			ret.pushConstantRanges.push_back(vk::PushConstantRange{
-			    .stageFlags = GetShaderStageFlags(uniformBlock.stages),
-			    .offset = 0,
-			    .size = static_cast<uint32_t>(uniformBlock.size),
-			});
+			GetPblockLayout(ret, 3).isPushConstant = true;
+			GetPblockLayout(ret, 3).uniformsSize = static_cast<std::uint32_t>(uniformBlock.size);
+			GetPblockLayout(ret, 3).uniformsStages = GetShaderStageFlags(uniformBlock.stages);
 		}
 		else
 		{
-			const auto binding = static_cast<uint32_t>(uniformBlock.getBinding());
-
-			GetSetBindings(ret, set).push_back({
-			    .binding = binding,
-			    .descriptorType = vk::DescriptorType::eUniformBuffer,
-			    .descriptorCount = 1,
-			    .stageFlags = GetShaderStageFlags(uniformBlock.stages),
-			});
+			const auto set = uniformBlock.getType()->getQualifier().layoutSet;
+			GetPblockLayout(ret, set).uniformsSize = static_cast<std::uint32_t>(uniformBlock.size);
+			GetPblockLayout(ret, set).uniformsStages = GetShaderStageFlags(uniformBlock.stages);
 		}
 	}
 
@@ -295,15 +291,8 @@ ShaderData Compile(std::string_view vertexSource, std::string_view pixelSource, 
 		if (!uniform.getType()->isTexture())
 			continue;
 
-		const auto binding = static_cast<uint32_t>(uniform.getBinding());
 		const auto set = uniform.getType()->getQualifier().layoutSet;
-
-		GetSetBindings(ret, set).push_back({
-		    .binding = binding,
-		    .descriptorType = vk::DescriptorType::eCombinedImageSampler,
-		    .descriptorCount = 1,
-		    .stageFlags = GetShaderStageFlags(uniform.stages),
-		});
+		GetPblockLayout(ret, set).textureCount++;
 	}
 
 	return ret;

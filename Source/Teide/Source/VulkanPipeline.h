@@ -6,12 +6,13 @@
 
 struct VulkanPipeline : public Pipeline
 {
-	VulkanPipeline(vk::UniquePipeline pipeline, vk::PipelineLayout layout) :
-	    pipeline{std::move(pipeline)}, layout{layout}
+	VulkanPipeline(vk::UniquePipeline pipeline, vk::PipelineLayout layout, vk::ShaderStageFlags pushConstantsShaderStages) :
+	    pipeline{std::move(pipeline)}, layout{layout}, pushConstantsShaderStages{pushConstantsShaderStages}
 	{}
 
 	vk::UniquePipeline pipeline;
 	vk::PipelineLayout layout;
+	vk::ShaderStageFlags pushConstantsShaderStages;
 };
 
 template <>

@@ -380,7 +380,8 @@ void VulkanRenderer::BuildCommandBuffer(
 			if (!obj.pushConstants.empty())
 			{
 				commandBuffer.pushConstants(
-				    pipeline.layout, vk::ShaderStageFlagBits::eVertex, 0, size32(obj.pushConstants), data(obj.pushConstants));
+				    pipeline.layout, pipeline.pushConstantsShaderStages, 0, size32(obj.pushConstants),
+				    data(obj.pushConstants));
 			}
 
 			if (obj.indexBuffer)
