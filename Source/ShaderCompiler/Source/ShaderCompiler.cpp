@@ -1,13 +1,20 @@
 
 #include "ShaderCompiler/ShaderCompiler.h"
 
+#include <fmt/format.h>
 #include <glslang/Public/ShaderLang.h>
 #include <glslang/SPIRV/GlslangToSpv.h>
 
+#include <array>
 #include <memory>
+#include <numeric>
+#include <span>
 
 namespace
 {
+constexpr auto PblockNames = std::array{"Scene", "View", "Material", "Object"};
+constexpr auto PblockNamesLower = std::array{"scene", "view", "material", "object"};
+
 #if _DEBUG
 static constexpr bool IsDebugBuild = true;
 #else
@@ -310,9 +317,132 @@ glslang::EShSource GetEShSource(ShaderLanguage language)
 	Unreachable();
 }
 
+std::size_t GetUniformSize(UniformType type)
+{
+	return 4 * type.rowCount * type.columnCount;
+}
+
+std::string ToString(UniformType type)
+{
+	assert(type.baseType == UniformBaseType::Float && "Only float variables supported for now!");
+
+	if (type.columnCount > 1u)
+	{
+		assert(type.rowCount == type.columnCount);
+		return fmt::format("mat{}", type.rowCount);
+	}
+	if (type.rowCount > 1u)
+	{
+		return fmt::format("vec{}", type.rowCount);
+	}
+	return "float";
+}
+
+void BuildUniformBuffer(std::string& source, std::span<const UniformDefinition> uniforms, int set)
+{
+	if (uniforms.empty())
+	{
+		return;
+	}
+
+	const std::size_t uniformSize
+	    = std::accumulate(uniforms.begin(), uniforms.end(), std::size_t{0}, [](std::size_t i, const auto& uniform) {
+		      return i + GetUniformSize(uniform.type);
+	      });
+
+	auto out = std::back_inserter(source);
+
+	if (set == 3 && uniformSize <= 128u)
+	{
+		// Build push constants
+		fmt::format_to(out, "layout(push_constant) uniform {}Uniforms {{\n", PblockNames[set]);
+	}
+	else
+	{
+		// Build uniform block
+		fmt::format_to(out, "layout(set = {}, binding = 0) uniform {}Uniforms {{\n", set, PblockNames[set]);
+	}
+
+	for (const auto& uniform : uniforms)
+	{
+		std::string typeStr = ToString(uniform.type);
+		fmt::format_to(out, "    {} {};\n", typeStr, uniform.name);
+	}
+	fmt::format_to(out, "}} {};\n\n", PblockNamesLower[set]);
+}
+
+void BuildTextureBindings(std::string& source, std::span<const TextureBindingDefinition> textures, int set)
+{
+	if (textures.empty())
+	{
+		return;
+	}
+
+	auto out = std::back_inserter(source);
+
+	for (std::size_t i = 0; i < textures.size(); i++)
+	{
+		fmt::format_to(out, "layout(set = {}, binding = {}) uniform sampler2D {};\n", set, i, textures[i].name);
+	}
+
+	source += '\n';
+}
+
+void BuildBindings(std::string& source, const ParameterBlockDefinition& pblock, int set)
+{
+	BuildUniformBuffer(source, pblock.uniforms, set);
+	BuildTextureBindings(source, pblock.textures, set);
+}
+
+void BuildVaryings(std::string& source, const ShaderStageDefinition& stage)
+{
+	auto out = std::back_inserter(source);
+
+	for (std::size_t i = 0; i < stage.inputs.size(); i++)
+	{
+		const auto& input = stage.inputs[i];
+
+		if (input.name.starts_with("gl_"))
+			continue;
+
+		fmt::format_to(out, "layout(location = {}) in {} {};\n", i, ToString(input.type), input.name);
+	}
+
+	for (std::size_t i = 0; i < stage.outputs.size(); i++)
+	{
+		const auto& output = stage.outputs[i];
+
+		if (output.name.starts_with("gl_"))
+			continue;
+
+		fmt::format_to(out, "layout(location = {}) out {} {};\n", i, ToString(output.type), output.name);
+	}
+
+	source += '\n';
+}
+
 } // namespace
 
 ShaderData CompileShader(std::string_view vertexSource, std::string_view pixelSource, ShaderLanguage language)
 {
 	return Compile(vertexSource, pixelSource, GetEShSource(language));
+}
+
+ShaderData CompileShader(const ShaderSourceData& sourceData)
+{
+	std::string parameters = "";
+	BuildBindings(parameters, sourceData.scenePblock, 0);
+	BuildBindings(parameters, sourceData.viewPblock, 1);
+	BuildBindings(parameters, sourceData.materialPblock, 2);
+	BuildBindings(parameters, sourceData.objectPblock, 3);
+
+	std::string vertexShader = parameters;
+	BuildVaryings(vertexShader, sourceData.vertexShader);
+	vertexShader += sourceData.vertexShader.source;
+
+	std::string pixelShader = parameters;
+	BuildVaryings(pixelShader, sourceData.pixelShader);
+	pixelShader += sourceData.pixelShader.source;
+
+	return Compile(vertexShader, pixelShader, GetEShSource(sourceData.language));
 }

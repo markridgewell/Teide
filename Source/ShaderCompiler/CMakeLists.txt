@@ -6,4 +6,10 @@ target_link_libraries(
            HLSL
            SPIRV
            glslang
-           OGLCompiler)
+           OGLCompiler
+           fmt::fmt)
+
+# Test
+td_add_test(ShaderCompilerTest SOURCES Test/ShaderCompilerTest.cpp Test/Main.cpp)
+
+target_link_libraries(ShaderCompilerTest PRIVATE ShaderCompiler GTest::gtest GTest::gmock)
