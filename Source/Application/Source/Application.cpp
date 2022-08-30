@@ -54,57 +54,78 @@ private:
 	std::string m_what;
 };
 
-constexpr std::string_view VertexShader = R"--(
-layout(location = 0) in vec3 inPosition;
-layout(location = 1) in vec2 inTexCoord;
-layout(location = 2) in vec3 inNormal;
-layout(location = 3) in vec3 inColor;
+using Type = ShaderVariableType::BaseType;
 
-layout(location = 0) out vec2 outTexCoord;
-layout(location = 1) out vec3 outPosition;
-layout(location = 2) out vec3 outNormal;
-layout(location = 3) out vec3 outColor;
-
-layout(set = 1, binding = 0) uniform ViewUniforms {
-    mat4 viewProj;
-} view;
-
-layout(push_constant) uniform ObjectUniforms {
-    mat4 model;
-} object;
-
+const ShaderSourceData ModelShader = {
+    .language = ShaderLanguage::Glsl,
+    .scenePblock = {
+        .uniforms = {
+            {"lightDir", {Type::Float, 3}},
+            {"lightColor", {Type::Float, 3}},
+            {"ambientColorTop", {Type::Float, 3}},
+            {"ambientColorBottom", {Type::Float, 3}},
+            {"shadowMatrix", {Type::Float, 4, 4}}
+        },
+    },
+    .viewPblock = {
+        .uniforms = {
+            {"viewProj", {Type::Float, 4, 4}},
+        },
+        .resources = {
+            {"shadowMapSampler", ResourceType::Texture2DShadow},
+        },
+    },
+    .materialPblock = {
+        .resources = {
+            {"texSampler", ResourceType::Texture2D},
+        },
+    },
+    .objectPblock = {
+        .uniforms = {
+            {"model", {Type::Float, 4, 4}}
+        },
+    },
+    .vertexShader = {
+        .inputs = {{
+            {"inPosition", {Type::Float, 3}},
+            {"inTexCoord", {Type::Float, 2}},
+            {"inNormal", {Type::Float, 3}},
+            {"inColor", {Type::Float, 3}},
+        }},
+        .outputs = {{
+            {"outTexCoord", {Type::Float, 2}},
+            {"outPosition", {Type::Float, 3}},
+            {"outNormal", {Type::Float, 3}},
+            {"outColor", {Type::Float, 3}},
+            {"gl_Position", {Type::Float, 3}},
+        }},
+        .source = R"--(
 void main() {
     outPosition = mul(object.model, vec4(inPosition, 1.0)).xyz;
     gl_Position = mul(view.viewProj, vec4(outPosition, 1.0));
     outTexCoord = inTexCoord;
     outNormal = mul(object.model, vec4(inNormal, 0.0)).xyz;
     outColor = inColor;
-})--";
-
-constexpr std::string_view PixelShader = R"--(
-layout(location = 0) in vec2 inTexCoord;
-layout(location = 1) in vec3 inPosition;
-layout(location = 2) in vec3 inNormal;
-layout(location = 3) in vec3 inColor;
-layout(location = 0) out vec4 outColor;
-
-layout(set = 1, binding = 1) uniform sampler2DShadow shadowMapSampler;
-layout(set = 2, binding = 1) uniform sampler2D texSampler;
-
-layout(set = 0, binding = 0) uniform GlobalUniforms {
-    vec3 lightDir;
-    vec3 lightColor;
-    vec3 ambientColorTop;
-    vec3 ambientColorBottom;
-    mat4 shadowMatrix;
-} ubo;
-
+}
+)--",
+    },
+    .pixelShader = {
+        .inputs = {{
+            {"inTexCoord", {Type::Float, 2}},
+            {"inPosition", {Type::Float, 3}},
+            {"inNormal", {Type::Float, 3}},
+            {"inColor", {Type::Float, 3}},
+        }},
+        .outputs = {{
+            {"outColor", {Type::Float, 4}},
+        }},
+        .source = R"--(
 float textureProj(sampler2DShadow shadowMap, vec4 shadowCoord, vec2 off) {
     return texture(shadowMap, shadowCoord.xyz + vec3(off, 0.0)).r;
 }
 
 void main() {
-    vec4 shadowCoord = mul(ubo.shadowMatrix, vec4(inPosition, 1.0));
+    vec4 shadowCoord = mul(scene.shadowMatrix, vec4(inPosition, 1.0));
     shadowCoord /= shadowCoord.w;
     shadowCoord.xy = shadowCoord.xy * 0.5 + 0.5;
 
@@ -124,13 +145,15 @@ void main() {
     }
     const float lit = shadowFactor / count;
 
-    const vec3 dirLight = clamp(dot(inNormal, -ubo.lightDir), 0.0, 1.0) * ubo.lightColor;
-    const vec3 ambLight = mix(ubo.ambientColorBottom, ubo.ambientColorTop, inNormal.z * 0.5 + 0.5);
+    const vec3 dirLight = clamp(dot(inNormal, -scene.lightDir), 0.0, 1.0) * scene.lightColor;
+    const vec3 ambLight = mix(scene.ambientColorBottom, scene.ambientColorTop, inNormal.z * 0.5 + 0.5);
     const vec3 lighting = lit * dirLight + ambLight;
 
     const vec3 color = lighting * texture(texSampler, inTexCoord).rgb;
     outColor = vec4(color, 1.0);
-})--";
+})--",
+    },
+};
 
 struct Vertex
 {
@@ -272,7 +295,7 @@ public:
 	    m_window{window},
 	    m_device{CreateGraphicsDevice(window)},
 	    m_surface{m_device->CreateSurface(window, UseMSAA)},
-	    m_shader{m_device->CreateShader(CompileShader(VertexShader, PixelShader, ShaderLang), "ModelShader")},
+	    m_shader{m_device->CreateShader(CompileShader(ModelShader), "ModelShader")},
 	    m_renderer{m_device->CreateRenderer(m_shader)}
 	{
 		const auto pipelineData = PipelineData{

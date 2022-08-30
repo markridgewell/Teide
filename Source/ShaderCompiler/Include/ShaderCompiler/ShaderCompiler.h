@@ -14,42 +14,34 @@ enum class ShaderLanguage
 	Hlsl,
 };
 
-enum class UniformBaseType
-{
-	Float,
-	Int,
-	Uint,
-};
-
-struct UniformType
-{
-	UniformBaseType baseType;
-	std::uint8_t rowCount = 1;
-	std::uint8_t columnCount = 1;
-};
-
 struct UniformDefinition
 {
 	std::string name;
-	UniformType type;
-	std::size_t arraySize = 0;
+	ShaderVariableType type;
 };
 
 struct VaryingDefinition
 {
 	std::string name;
-	UniformType type;
+	ShaderVariableType type;
 };
 
-struct TextureBindingDefinition
+enum class ResourceType
+{
+	Texture2D,
+	Texture2DShadow,
+};
+
+struct ResourceBindingDefinition
 {
 	std::string name;
+	ResourceType type;
 };
 
 struct ParameterBlockDefinition
 {
 	std::vector<UniformDefinition> uniforms;
-	std::vector<TextureBindingDefinition> textures;
+	std::vector<ResourceBindingDefinition> resources;
 };
 
 struct ShaderStageDefinition
@@ -81,5 +73,4 @@ private:
 	std::string m_message;
 };
 
-ShaderData CompileShader(std::string_view vertexSource, std::string_view pixelSource, ShaderLanguage language);
 ShaderData CompileShader(const ShaderSourceData& sourceData);

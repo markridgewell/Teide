@@ -434,13 +434,17 @@ vk::UniqueRenderPass CreateRenderPass(vk::Device device, const FramebufferLayout
 		    .layout = vk::ImageLayout::eDepthStencilAttachmentOptimal,
 		};
 
+		const auto storeOp = (layout.colorFormat == vk::Format::eUndefined && !multisampling)
+		    ? vk::AttachmentStoreOp::eStore
+		    : vk::AttachmentStoreOp::eDontCare;
+
 		attachments.push_back({
 		    .format = layout.depthStencilFormat,
 		    .samples = layout.sampleCount,
 		    .loadOp = vk::AttachmentLoadOp::eClear,
-		    .storeOp = vk::AttachmentStoreOp::eDontCare,
+		    .storeOp = storeOp,
 		    .stencilLoadOp = vk::AttachmentLoadOp::eDontCare,
-		    .stencilStoreOp = vk::AttachmentStoreOp::eDontCare,
+		    .stencilStoreOp = storeOp,
 		    .initialLayout = vk::ImageLayout::eUndefined,
 		    .finalLayout = vk::ImageLayout::eDepthStencilAttachmentOptimal,
 		});

@@ -33,6 +33,11 @@ static constexpr bool IsDebugBuild = false;
 }
 #endif
 
+constexpr auto RoundUp(std::integral auto a, std::integral auto b)
+{
+	return ((a - 1) / b + 1) * b;
+}
+
 // Taken from glslang StandAlone/ResourceLimits.cpp
 constexpr TBuiltInResource DefaultTBuiltInResource
     = {.maxLights = 32,
@@ -143,6 +148,10 @@ constexpr TBuiltInResource DefaultTBuiltInResource
 
 constexpr std::string_view ShaderCommon = R"--(
 #version 450
+#extension GL_EXT_scalar_block_layout : enable
+
+layout(std430) uniform;
+layout(std430) buffer;
 
 vec4 mul(mat4 m, vec4 v) {
     return v * m;
@@ -246,7 +255,22 @@ ShaderStageFlags GetShaderStageFlags(EShLanguageMask lang)
 	return ret;
 }
 
-ShaderData Compile(std::string_view vertexSource, std::string_view pixelSource, glslang::EShSource source)
+void ReflectUniforms(ParameterBlockLayout& pblock, const glslang::TObjectReflection& uniformBlock)
+{
+	pblock.uniformsSize = static_cast<std::uint32_t>(uniformBlock.size);
+	pblock.uniformsStages = GetShaderStageFlags(uniformBlock.stages);
+
+	assert(uniformBlock.getType());
+	assert(uniformBlock.getType()->isStruct());
+
+	for (const auto& u : *uniformBlock.getType()->getStruct())
+	{
+		const auto it = std::ranges::find(pblock.uniformDescs, std::string_view{u.type->getFieldName()}, &UniformDesc::name);
+		assert(it != pblock.uniformDescs.end());
+	}
+};
+
+void Compile(ShaderData& data, std::string_view vertexSource, std::string_view pixelSource, glslang::EShSource source)
 {
 	auto vertexShader = CompileStage(vertexSource, EShLangVertex, source);
 	auto pixelShader = CompileStage(pixelSource, EShLangFragment, source);
@@ -269,26 +293,23 @@ ShaderData Compile(std::string_view vertexSource, std::string_view pixelSource, 
 	spvOptions.disassemble = false;
 	spvOptions.validate = true;
 
-	ShaderData ret;
-	glslang::GlslangToSpv(*program.getIntermediate(EShLangVertex), ret.vertexShaderSpirv, &logger, &spvOptions);
-	glslang::GlslangToSpv(*program.getIntermediate(EShLangFragment), ret.pixelShaderSpirv, &logger, &spvOptions);
+	glslang::GlslangToSpv(*program.getIntermediate(EShLangVertex), data.vertexShaderSpirv, &logger, &spvOptions);
+	glslang::GlslangToSpv(*program.getIntermediate(EShLangFragment), data.pixelShaderSpirv, &logger, &spvOptions);
 
-	program.buildReflection();
+	program.buildReflection(EShReflectionAllBlockVariables | EShReflectionSeparateBuffers | EShReflectionAllIOVariables);
 
 	for (int i = 0; i < program.getNumUniformBlocks(); i++)
 	{
 		const auto& uniformBlock = program.getUniformBlock(i);
 		if (uniformBlock.getType()->getQualifier().isPushConstant())
 		{
-			GetPblockLayout(ret, 3).isPushConstant = true;
-			GetPblockLayout(ret, 3).uniformsSize = static_cast<std::uint32_t>(uniformBlock.size);
-			GetPblockLayout(ret, 3).uniformsStages = GetShaderStageFlags(uniformBlock.stages);
+			GetPblockLayout(data, 3).isPushConstant = true;
+			ReflectUniforms(GetPblockLayout(data, 3), uniformBlock);
 		}
 		else
 		{
 			const auto set = uniformBlock.getType()->getQualifier().layoutSet;
-			GetPblockLayout(ret, set).uniformsSize = static_cast<std::uint32_t>(uniformBlock.size);
-			GetPblockLayout(ret, set).uniformsStages = GetShaderStageFlags(uniformBlock.stages);
+			ReflectUniforms(GetPblockLayout(data, set), uniformBlock);
 		}
 	}
 
@@ -299,10 +320,8 @@ ShaderData Compile(std::string_view vertexSource, std::string_view pixelSource, 
 			continue;
 
 		const auto set = uniform.getType()->getQualifier().layoutSet;
-		GetPblockLayout(ret, set).textureCount++;
+		GetPblockLayout(data, set).textureCount++;
 	}
-
-	return ret;
 }
 
 glslang::EShSource GetEShSource(ShaderLanguage language)
@@ -317,14 +336,34 @@ glslang::EShSource GetEShSource(ShaderLanguage language)
 	Unreachable();
 }
 
-std::size_t GetUniformSize(UniformType type)
+struct SizeAndAlignment
 {
-	return 4 * type.rowCount * type.columnCount;
+	std::uint32_t size = 0;
+	std::uint32_t alignment = 0;
+};
+
+std::uint32_t GetSize(ShaderVariableType::BaseType)
+{
+	return 4;
 }
 
-std::string ToString(UniformType type)
+SizeAndAlignment GetSizeAndAlignment(ShaderVariableType type)
 {
-	assert(type.baseType == UniformBaseType::Float && "Only float variables supported for now!");
+	const std::uint32_t vectorSize = (type.rowCount == 3 ? 4 : type.rowCount) * GetSize(type.baseType);
+	if (type.arraySize == 0)
+	{
+		return {.size = vectorSize * type.columnCount, .alignment = vectorSize};
+	}
+	else
+	{
+		const std::uint32_t elementSize = type.rowCount * GetSize(type.baseType);
+		return {.size = elementSize * type.columnCount * type.arraySize, .alignment = elementSize};
+	}
+}
+
+std::string ToString(ShaderVariableType type)
+{
+	assert(type.baseType == ShaderVariableType::BaseType::Float && "Only float variables supported for now!");
 
 	if (type.columnCount > 1u)
 	{
@@ -338,21 +377,37 @@ std::string ToString(UniformType type)
 	return "float";
 }
 
-void BuildUniformBuffer(std::string& source, std::span<const UniformDefinition> uniforms, int set)
+std::string ToString(ResourceType type)
+{
+	switch (type)
+	{
+		using enum ResourceType;
+		case Texture2D:
+			return "sampler2D";
+		case Texture2DShadow:
+			return "sampler2DShadow";
+	}
+	Unreachable();
+}
+
+void BuildUniformBuffer(std::string& source, ParameterBlockLayout& bindings, std::span<const UniformDefinition> uniforms, int set)
 {
 	if (uniforms.empty())
 	{
 		return;
 	}
 
-	const std::size_t uniformSize
-	    = std::accumulate(uniforms.begin(), uniforms.end(), std::size_t{0}, [](std::size_t i, const auto& uniform) {
-		      return i + GetUniformSize(uniform.type);
-	      });
+	for (const auto& uniform : uniforms)
+	{
+		const auto [size, alignment] = GetSizeAndAlignment(uniform.type);
+		const auto offset = RoundUp(bindings.uniformsSize, alignment);
+		bindings.uniformDescs.push_back(UniformDesc{.name = uniform.name, .type = uniform.type, .offset = offset});
+		bindings.uniformsSize = offset + size;
+	}
 
 	auto out = std::back_inserter(source);
 
-	if (set == 3 && uniformSize <= 128u)
+	if (set == 3 && bindings.uniformsSize <= 128u)
 	{
 		// Build push constants
 		fmt::format_to(out, "layout(push_constant) uniform {}Uniforms {{\n", PblockNames[set]);
@@ -371,27 +426,29 @@ void BuildUniformBuffer(std::string& source, std::span<const UniformDefinition> 
 	fmt::format_to(out, "}} {};\n\n", PblockNamesLower[set]);
 }
 
-void BuildTextureBindings(std::string& source, std::span<const TextureBindingDefinition> textures, int set)
+void BuildResourceBindings(std::string& source, std::span<const ResourceBindingDefinition> resources, int set)
 {
-	if (textures.empty())
+	if (resources.empty())
 	{
 		return;
 	}
 
 	auto out = std::back_inserter(source);
 
-	for (std::size_t i = 0; i < textures.size(); i++)
+	for (std::size_t i = 0; i < resources.size(); i++)
 	{
-		fmt::format_to(out, "layout(set = {}, binding = {}) uniform sampler2D {};\n", set, i, textures[i].name);
+		const auto& resource = resources[i];
+		fmt::format_to(
+		    out, "layout(set = {}, binding = {}) uniform {} {};\n", set, i + 1, ToString(resource.type), resource.name);
 	}
 
 	source += '\n';
 }
 
-void BuildBindings(std::string& source, const ParameterBlockDefinition& pblock, int set)
+void BuildBindings(std::string& source, ParameterBlockLayout& bindings, const ParameterBlockDefinition& pblock, int set)
 {
-	BuildUniformBuffer(source, pblock.uniforms, set);
-	BuildTextureBindings(source, pblock.textures, set);
+	BuildUniformBuffer(source, bindings, pblock.uniforms, set);
+	BuildResourceBindings(source, pblock.resources, set);
 }
 
 void BuildVaryings(std::string& source, const ShaderStageDefinition& stage)
@@ -423,18 +480,15 @@ void BuildVaryings(std::string& source, const ShaderStageDefinition& stage)
 
 } // namespace
 
-ShaderData CompileShader(std::string_view vertexSource, std::string_view pixelSource, ShaderLanguage language)
-{
-	return Compile(vertexSource, pixelSource, GetEShSource(language));
-}
-
 ShaderData CompileShader(const ShaderSourceData& sourceData)
 {
+	ShaderData data;
+
 	std::string parameters = "";
-	BuildBindings(parameters, sourceData.scenePblock, 0);
-	BuildBindings(parameters, sourceData.viewPblock, 1);
-	BuildBindings(parameters, sourceData.materialPblock, 2);
-	BuildBindings(parameters, sourceData.objectPblock, 3);
+	BuildBindings(parameters, data.sceneBindings, sourceData.scenePblock, 0);
+	BuildBindings(parameters, data.viewBindings, sourceData.viewPblock, 1);
+	BuildBindings(parameters, data.materialBindings, sourceData.materialPblock, 2);
+	BuildBindings(parameters, data.objectBindings, sourceData.objectPblock, 3);
 
 	std::string vertexShader = parameters;
 	BuildVaryings(vertexShader, sourceData.vertexShader);
@@ -444,5 +498,6 @@ ShaderData CompileShader(const ShaderSourceData& sourceData)
 	BuildVaryings(pixelShader, sourceData.pixelShader);
 	pixelShader += sourceData.pixelShader.source;
 
-	return Compile(vertexShader, pixelShader, GetEShSource(sourceData.language));
+	Compile(data, vertexShader, pixelShader, GetEShSource(sourceData.language));
+	return data;
 }
