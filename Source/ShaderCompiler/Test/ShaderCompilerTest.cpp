@@ -9,39 +9,39 @@ using Type = ShaderVariableType::BaseType;
 const ShaderSourceData TestShader = {
     .language = ShaderLanguage::Glsl,
     .scenePblock = {
-        .uniforms = {
-            {"lightDir", {Type::Float, 3}},
-            {"lightColor", {Type::Float, 3}},
-            {"ambientColorTop", {Type::Float, 3}},
-            {"ambientColorBottom", {Type::Float, 3}},
-            {"shadowMatrix", {Type::Float, 4, 4}}
+        .parameters = {
+            {"lightDir", Type::Vector3},
+            {"lightColor", Type::Vector3},
+            {"ambientColorTop", Type::Vector3},
+            {"ambientColorBottom", Type::Vector3},
+            {"shadowMatrix", Type::Matrix4}
         },
     },
     .viewPblock = {
-        .uniforms = {
-            {"viewProj", {Type::Float, 4, 4}},
+        .parameters = {
+            {"viewProj", Type::Matrix4},
         }
     },
     .materialPblock = {
-        .resources = {
-            {.name = "texSampler"},
+        .parameters = {
+            {"texSampler", Type::Texture2D},
         },
     },
     .objectPblock = {
-        .uniforms = {
-            {"model", {Type::Float, 4, 4}}
+        .parameters = {
+            {"model", Type::Matrix4}
         },
     },
     .vertexShader = {
         .inputs = {{
-            {"inPosition", {Type::Float, 3}},
-            {"inNormal", {Type::Float, 3}},
-            {"inTexCoord", {Type::Float, 2}},
+            {"inPosition", Type::Vector3},
+            {"inNormal", Type::Vector3},
+            {"inTexCoord", Type::Vector2},
         }},
         .outputs = {{
-            {"outNormal", {Type::Float, 3}},
-            {"outTexCoord", {Type::Float, 2}},
-            {"gl_Position", {Type::Float, 3}},
+            {"outNormal", Type::Vector3},
+            {"outTexCoord", Type::Vector2},
+            {"gl_Position", Type::Vector3},
         }},
         .source = R"--(
             void main() {
@@ -106,16 +106,16 @@ TEST(ShaderCompilerTest, UniformOffsetFloat)
 	const ShaderSourceData Shader = {
         .language = ShaderLanguage::Glsl,
         .scenePblock = {
-            .uniforms = {
-                {"pad0", {Type::Float}},
-                {"test", {Type::Float}},
-                {"pad1", {Type::Float}},
+            .parameters = {
+                {"pad0", Type::Float},
+                {"test", Type::Float},
+                {"pad1", Type::Float},
             },
         },
         .vertexShader = {.source = EmptyVertexShader},
         .pixelShader = {
             .outputs = {{
-                {"outColor", {Type::Float, 4}},
+                {"outColor", Type::Vector4},
             }},
             .source = R"--(
                 void main() {
@@ -140,16 +140,16 @@ TEST(ShaderCompilerTest, UniformOffsetFloat2)
 	const ShaderSourceData Shader = {
         .language = ShaderLanguage::Glsl,
         .scenePblock = {
-            .uniforms = {
-                {"pad0", {Type::Float}},
-                {"test", {Type::Float, 2}},
-                {"pad1", {Type::Float}},
+            .parameters = {
+                {"pad0", Type::Float},
+                {"test", Type::Vector2},
+                {"pad1", Type::Float},
             },
         },
         .vertexShader = {.source = EmptyVertexShader},
         .pixelShader = {
             .outputs = {{
-                {"outColor", {Type::Float, 4}},
+                {"outColor", Type::Vector4},
             }},
             .source = R"--(
                 void main() {

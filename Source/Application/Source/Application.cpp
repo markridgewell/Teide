@@ -59,45 +59,43 @@ using Type = ShaderVariableType::BaseType;
 const ShaderSourceData ModelShader = {
     .language = ShaderLanguage::Glsl,
     .scenePblock = {
-        .uniforms = {
-            {"lightDir", {Type::Float, 3}},
-            {"lightColor", {Type::Float, 3}},
-            {"ambientColorTop", {Type::Float, 3}},
-            {"ambientColorBottom", {Type::Float, 3}},
-            {"shadowMatrix", {Type::Float, 4, 4}}
+        .parameters = {
+            {"lightDir", Type::Vector3},
+            {"lightColor", Type::Vector3},
+            {"ambientColorTop", Type::Vector3},
+            {"ambientColorBottom", Type::Vector3},
+            {"shadowMatrix", Type::Matrix4}
         },
     },
     .viewPblock = {
-        .uniforms = {
-            {"viewProj", {Type::Float, 4, 4}},
-        },
-        .resources = {
-            {"shadowMapSampler", ResourceType::Texture2DShadow},
+        .parameters = {
+            {"viewProj", Type::Matrix4},
+            {"shadowMapSampler", Type::Texture2DShadow},
         },
     },
     .materialPblock = {
-        .resources = {
-            {"texSampler", ResourceType::Texture2D},
+        .parameters = {
+            {"texSampler", Type::Texture2D},
         },
     },
     .objectPblock = {
-        .uniforms = {
-            {"model", {Type::Float, 4, 4}}
+        .parameters = {
+            {"model", Type::Matrix4}
         },
     },
     .vertexShader = {
         .inputs = {{
-            {"inPosition", {Type::Float, 3}},
-            {"inTexCoord", {Type::Float, 2}},
-            {"inNormal", {Type::Float, 3}},
-            {"inColor", {Type::Float, 3}},
+            {"inPosition", Type::Vector3},
+            {"inTexCoord", Type::Vector2},
+            {"inNormal", Type::Vector3},
+            {"inColor", Type::Vector3},
         }},
         .outputs = {{
-            {"outTexCoord", {Type::Float, 2}},
-            {"outPosition", {Type::Float, 3}},
-            {"outNormal", {Type::Float, 3}},
-            {"outColor", {Type::Float, 3}},
-            {"gl_Position", {Type::Float, 3}},
+            {"outTexCoord", Type::Vector2},
+            {"outPosition", Type::Vector3},
+            {"outNormal", Type::Vector3},
+            {"outColor", Type::Vector3},
+            {"gl_Position", Type::Vector3},
         }},
         .source = R"--(
 void main() {
@@ -111,13 +109,13 @@ void main() {
     },
     .pixelShader = {
         .inputs = {{
-            {"inTexCoord", {Type::Float, 2}},
-            {"inPosition", {Type::Float, 3}},
-            {"inNormal", {Type::Float, 3}},
-            {"inColor", {Type::Float, 3}},
+            {"inTexCoord", Type::Vector2},
+            {"inPosition", Type::Vector3},
+            {"inNormal", Type::Vector3},
+            {"inColor", Type::Vector3},
         }},
         .outputs = {{
-            {"outColor", {Type::Float, 4}},
+            {"outColor", Type::Vector4},
         }},
         .source = R"--(
 float textureProj(sampler2DShadow shadowMap, vec4 shadowCoord, vec2 off) {

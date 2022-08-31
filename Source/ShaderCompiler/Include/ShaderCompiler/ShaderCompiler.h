@@ -14,7 +14,7 @@ enum class ShaderLanguage
 	Hlsl,
 };
 
-struct UniformDefinition
+struct ShaderVariable
 {
 	std::string name;
 	ShaderVariableType type;
@@ -26,22 +26,9 @@ struct VaryingDefinition
 	ShaderVariableType type;
 };
 
-enum class ResourceType
+struct ParameterBlockDesc
 {
-	Texture2D,
-	Texture2DShadow,
-};
-
-struct ResourceBindingDefinition
-{
-	std::string name;
-	ResourceType type;
-};
-
-struct ParameterBlockDefinition
-{
-	std::vector<UniformDefinition> uniforms;
-	std::vector<ResourceBindingDefinition> resources;
+	std::vector<ShaderVariable> parameters;
 };
 
 struct ShaderStageDefinition
@@ -54,10 +41,10 @@ struct ShaderStageDefinition
 struct ShaderSourceData
 {
 	ShaderLanguage language;
-	ParameterBlockDefinition scenePblock;
-	ParameterBlockDefinition viewPblock;
-	ParameterBlockDefinition materialPblock;
-	ParameterBlockDefinition objectPblock;
+	ParameterBlockDesc scenePblock;
+	ParameterBlockDesc viewPblock;
+	ParameterBlockDesc materialPblock;
+	ParameterBlockDesc objectPblock;
 	ShaderStageDefinition vertexShader;
 	ShaderStageDefinition pixelShader;
 };

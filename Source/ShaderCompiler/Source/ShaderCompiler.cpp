@@ -342,46 +342,75 @@ struct SizeAndAlignment
 	std::uint32_t alignment = 0;
 };
 
-std::uint32_t GetSize(ShaderVariableType::BaseType)
+bool IsResourceType(ShaderVariableType::BaseType type)
 {
-	return 4;
+	switch (type)
+	{
+		using enum ShaderVariableType::BaseType;
+		case Float:
+		case Vector2:
+		case Vector3:
+		case Vector4:
+		case Matrix4:
+			return false;
+		case Texture2D:
+		case Texture2DShadow:
+			return true;
+	}
+	Unreachable();
+}
+
+
+SizeAndAlignment GetSizeAndAlignment(ShaderVariableType::BaseType type)
+{
+	switch (type)
+	{
+		using enum ShaderVariableType::BaseType;
+		case Float:
+			return {.size = sizeof(float), .alignment = sizeof(float)};
+
+		case Vector2:
+			return {.size = sizeof(float) * 2, .alignment = sizeof(float) * 2};
+		case Vector3:
+			return {.size = sizeof(float) * 4, .alignment = sizeof(float) * 4};
+		case Vector4:
+			return {.size = sizeof(float) * 4, .alignment = sizeof(float) * 4};
+		case Matrix4:
+			return {.size = sizeof(float) * 4 * 4, .alignment = sizeof(float) * 4};
+
+		case Texture2D:
+		case Texture2DShadow:
+			return {};
+	}
+	Unreachable();
 }
 
 SizeAndAlignment GetSizeAndAlignment(ShaderVariableType type)
 {
-	const std::uint32_t vectorSize = (type.rowCount == 3 ? 4 : type.rowCount) * GetSize(type.baseType);
-	if (type.arraySize == 0)
+	if (type.arraySize != 0 && type.baseType == ShaderVariableType::BaseType::Vector3)
 	{
-		return {.size = vectorSize * type.columnCount, .alignment = vectorSize};
+		const std::uint32_t arraySize = sizeof(float) * 3 * type.arraySize;
+		return {.size = arraySize, .alignment = arraySize};
 	}
-	else
-	{
-		const std::uint32_t elementSize = type.rowCount * GetSize(type.baseType);
-		return {.size = elementSize * type.columnCount * type.arraySize, .alignment = elementSize};
-	}
+	const auto [size, alignment] = GetSizeAndAlignment(type.baseType);
+	return {size * std::max(1u, type.arraySize), alignment};
 }
 
-std::string ToString(ShaderVariableType type)
-{
-	assert(type.baseType == ShaderVariableType::BaseType::Float && "Only float variables supported for now!");
-
-	if (type.columnCount > 1u)
-	{
-		assert(type.rowCount == type.columnCount);
-		return fmt::format("mat{}", type.rowCount);
-	}
-	if (type.rowCount > 1u)
-	{
-		return fmt::format("vec{}", type.rowCount);
-	}
-	return "float";
-}
-
-std::string ToString(ResourceType type)
+std::string ToString(ShaderVariableType::BaseType type)
 {
 	switch (type)
 	{
-		using enum ResourceType;
+		using enum ShaderVariableType::BaseType;
+		case Float:
+			return "float";
+		case Vector2:
+			return "vec2";
+		case Vector3:
+			return "vec3";
+		case Vector4:
+			return "vec4";
+		case Matrix4:
+			return "mat4";
 		case Texture2D:
 			return "sampler2D";
 		case Texture2DShadow:
@@ -390,19 +419,37 @@ std::string ToString(ResourceType type)
 	Unreachable();
 }
 
-void BuildUniformBuffer(std::string& source, ParameterBlockLayout& bindings, std::span<const UniformDefinition> uniforms, int set)
+std::string ToString(ShaderVariableType type)
 {
-	if (uniforms.empty())
+	std::string ret = ToString(type.baseType);
+	if (type.arraySize != 0)
+	{
+		fmt::format_to(std::back_inserter(ret), "[{}]", type.arraySize);
+	}
+	return ret;
+}
+
+void BuildUniformBuffer(std::string& source, ParameterBlockLayout& bindings, std::span<const ShaderVariable> variables, int set)
+{
+	if (variables.empty())
 	{
 		return;
 	}
 
-	for (const auto& uniform : uniforms)
+	for (const auto& variable : variables)
 	{
-		const auto [size, alignment] = GetSizeAndAlignment(uniform.type);
+		const auto [size, alignment] = GetSizeAndAlignment(variable.type);
+		if (size == 0)
+			continue;
+
 		const auto offset = RoundUp(bindings.uniformsSize, alignment);
-		bindings.uniformDescs.push_back(UniformDesc{.name = uniform.name, .type = uniform.type, .offset = offset});
+		bindings.uniformDescs.push_back(UniformDesc{.name = variable.name, .type = variable.type, .offset = offset});
 		bindings.uniformsSize = offset + size;
+	}
+
+	if (bindings.uniformDescs.empty())
+	{
+		return;
 	}
 
 	auto out = std::back_inserter(source);
@@ -418,7 +465,7 @@ void BuildUniformBuffer(std::string& source, ParameterBlockLayout& bindings, std
 		fmt::format_to(out, "layout(set = {}, binding = 0) uniform {}Uniforms {{\n", set, PblockNames[set]);
 	}
 
-	for (const auto& uniform : uniforms)
+	for (const auto& uniform : bindings.uniformDescs)
 	{
 		std::string typeStr = ToString(uniform.type);
 		fmt::format_to(out, "    {} {};\n", typeStr, uniform.name);
@@ -426,29 +473,32 @@ void BuildUniformBuffer(std::string& source, ParameterBlockLayout& bindings, std
 	fmt::format_to(out, "}} {};\n\n", PblockNamesLower[set]);
 }
 
-void BuildResourceBindings(std::string& source, std::span<const ResourceBindingDefinition> resources, int set)
+void BuildResourceBindings(std::string& source, std::span<const ShaderVariable> variables, int set)
 {
-	if (resources.empty())
+	if (variables.empty())
 	{
 		return;
 	}
 
 	auto out = std::back_inserter(source);
 
-	for (std::size_t i = 0; i < resources.size(); i++)
+	for (std::size_t i = 0; i < variables.size(); i++)
 	{
-		const auto& resource = resources[i];
-		fmt::format_to(
-		    out, "layout(set = {}, binding = {}) uniform {} {};\n", set, i + 1, ToString(resource.type), resource.name);
+		const auto& variable = variables[i];
+		if (IsResourceType(variable.type.baseType))
+		{
+			fmt::format_to(
+			    out, "layout(set = {}, binding = {}) uniform {} {};\n", set, i + 1, ToString(variable.type), variable.name);
+		}
 	}
 
 	source += '\n';
 }
 
-void BuildBindings(std::string& source, ParameterBlockLayout& bindings, const ParameterBlockDefinition& pblock, int set)
+void BuildBindings(std::string& source, ParameterBlockLayout& bindings, const ParameterBlockDesc& pblock, int set)
 {
-	BuildUniformBuffer(source, bindings, pblock.uniforms, set);
-	BuildResourceBindings(source, pblock.resources, set);
+	BuildUniformBuffer(source, bindings, pblock.parameters, set);
+	BuildResourceBindings(source, pblock.parameters, set);
 }
 
 void BuildVaryings(std::string& source, const ShaderStageDefinition& stage)

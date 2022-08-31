@@ -61,6 +61,7 @@ td_add_test(
             Test/RendererTest.cpp
             Test/SchedulerTest.cpp
             Test/SurfaceTest.cpp
+            Test/TestData.h
             Test/TestUtils.cpp
             Test/TestUtils.h
             Test/TextureTest.cpp)

@@ -28,14 +28,21 @@ struct ShaderVariableType
 {
 	enum class BaseType
 	{
+		// Uniform types
 		Float,
-		Int,
-		Uint,
+		Vector2,
+		Vector3,
+		Vector4,
+		Matrix4,
+
+		// Resource types
+		Texture2D,
+		Texture2DShadow,
 	};
 
+	ShaderVariableType(BaseType baseType, std::uint32_t arraySize = 0) : baseType{baseType}, arraySize{arraySize} {}
+
 	BaseType baseType;
-	std::uint8_t rowCount = 1;
-	std::uint8_t columnCount = 1;
 	std::uint32_t arraySize = 0;
 };
 

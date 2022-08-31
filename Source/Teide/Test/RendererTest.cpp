@@ -5,6 +5,7 @@
 #include "Teide/Buffer.h"
 #include "Teide/GraphicsDevice.h"
 #include "Teide/Texture.h"
+#include "TestData.h"
 #include "TestUtils.h"
 #include "Types/TextureData.h"
 
@@ -14,31 +15,6 @@ using namespace testing;
 
 namespace
 {
-constexpr std::string_view SimpleVertexShader = R"--(
-layout(location = 0) in vec4 inPosition;
-
-void main() {
-    gl_Position = inPosition;
-})--";
-
-constexpr std::string_view SimplePixelShader = R"--(
-layout(location = 0) out vec4 outColor;
-
-void main() {
-    outColor = vec4(1.0, 1.0, 1.0, 1.0);
-})--";
-
-constexpr std::string_view VertexShaderWithParams = R"--(
-layout(location = 0) in vec4 inPosition;
-
-layout(set = 0, binding = 0) uniform Uniforms {
-    mat4 mvp;
-};
-
-void main() {
-    gl_Position = mvp * inPosition;
-})--";
-
 class RendererTest : public testing::Test
 {
 public:
@@ -94,7 +70,7 @@ TEST_F(RendererTest, RenderFullscreenTri)
 	    .vertexInputBindings = {{.binding = 0, .stride = sizeof(float) * 2}},
 	    .vertexInputAttributes = {{.location = 0, .binding = 0, .format = vk::Format::eR32G32Sfloat, .offset = 0}}};
 
-	const auto shaderData = CompileShader(SimpleVertexShader, SimplePixelShader, ShaderLanguage::Glsl);
+	const auto shaderData = CompileShader(SimpleShader);
 	const auto shader = m_device->CreateShader(shaderData, "SimpleShader");
 
 	const auto pipeline = m_device->CreatePipeline({

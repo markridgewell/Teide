@@ -1,6 +1,7 @@
 
 #include "ShaderCompiler/ShaderCompiler.h"
 #include "Teide/GraphicsDevice.h"
+#include "TestData.h"
 
 #include <SDL.h>
 #include <gmock/gmock.h>
@@ -15,20 +16,6 @@ struct SDLWindowDeleter
 };
 
 using UniqueSDLWindow = std::unique_ptr<SDL_Window, SDLWindowDeleter>;
-
-constexpr std::string_view SimpleVertexShader = R"--(
-layout(location = 0) in vec4 inPosition;
-
-void main() {
-    gl_Position = inPosition;
-})--";
-
-constexpr std::string_view SimplePixelShader = R"--(
-layout(location = 0) out vec4 outColor;
-
-void main() {
-    outColor = vec4(1.0, 1.0, 1.0, 1.0);
-})--";
 
 TEST(SurfaceTest, CreateSurface)
 {
@@ -59,7 +46,7 @@ TEST(SurfaceTest, CreatePipelineForSurface)
 
 	auto device = CreateGraphicsDevice(window.get());
 	auto surface = device->CreateSurface(window.get(), true);
-	const auto shaderData = CompileShader(SimpleVertexShader, SimplePixelShader, ShaderLanguage::Glsl);
+	const auto shaderData = CompileShader(SimpleShader);
 	const auto shader = device->CreateShader(shaderData, "Shader");
 	const auto vertexLayout = VertexLayout{
 	    .inputAssembly = {.topology = vk::PrimitiveTopology::eTriangleList},
