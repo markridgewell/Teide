@@ -54,11 +54,11 @@ const ShaderSourceData TestShader = {
     },
     .pixelShader = {
         .inputs = {{
-            {"inNormal", {Type::Float, 3}},
-            {"inTexCoord", {Type::Float, 2}},
+            {"inNormal", Type::Vector3},
+            {"inTexCoord", Type::Vector2},
         }},
         .outputs = {{
-            {"outColor", {Type::Float, 4}},
+            {"outColor", Type::Vector4},
         }},
         .source = R"--(
             void main() {
