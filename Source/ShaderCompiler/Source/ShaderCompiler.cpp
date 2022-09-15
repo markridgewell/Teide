@@ -260,13 +260,17 @@ void ReflectUniforms(ParameterBlockLayout& pblock, const glslang::TObjectReflect
 	pblock.uniformsSize = static_cast<std::uint32_t>(uniformBlock.size);
 	pblock.uniformsStages = GetShaderStageFlags(uniformBlock.stages);
 
-	assert(uniformBlock.getType());
-	assert(uniformBlock.getType()->isStruct());
-
-	for (const auto& u : *uniformBlock.getType()->getStruct())
+	if constexpr (IsDebugBuild)
 	{
-		const auto it = std::ranges::find(pblock.uniformDescs, std::string_view{u.type->getFieldName()}, &UniformDesc::name);
-		assert(it != pblock.uniformDescs.end());
+		assert(uniformBlock.getType());
+		assert(uniformBlock.getType()->isStruct());
+
+		for ([[maybe_unused]] const auto& u : *uniformBlock.getType()->getStruct())
+		{
+			assert(
+			    std::ranges::find(pblock.uniformDescs, std::string_view{u.type->getFieldName()}, &UniformDesc::name)
+			    != pblock.uniformDescs.end());
+		}
 	}
 };
 
