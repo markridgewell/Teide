@@ -577,26 +577,31 @@ ShaderPtr VulkanGraphicsDevice::CreateShader(const ShaderData& data, const char*
 
 	std::vector<vk::PushConstantRange> pushConstantRanges;
 
-	const auto createSetLayout = [this, &pushConstantRanges](const ParameterBlockLayout& layout) {
+	const auto createSetLayout = [this, &pushConstantRanges](const ParameterBlockDesc& desc, int set) {
 		DescriptorSetInfo ret;
 		std::vector<vk::DescriptorSetLayoutBinding> bindings;
 
-		if (layout.isPushConstant)
+		const ParameterBlockLayout layout = BuildParameterBlockLayout(desc, set);
+
+		if (layout.uniformsSize > 0u)
 		{
-			pushConstantRanges.push_back(vk::PushConstantRange{
-			    .stageFlags = GetShaderStageFlags(layout.uniformsStages),
-			    .offset = 0,
-			    .size = static_cast<uint32_t>(layout.uniformsSize),
-			});
-		}
-		else
-		{
-			bindings.push_back({
-			    .binding = 0,
-			    .descriptorType = vk::DescriptorType::eUniformBuffer,
-			    .descriptorCount = 1,
-			    .stageFlags = GetShaderStageFlags(layout.uniformsStages),
-			});
+			if (layout.isPushConstant)
+			{
+				pushConstantRanges.push_back(vk::PushConstantRange{
+				    .stageFlags = GetShaderStageFlags(layout.uniformsStages),
+				    .offset = 0,
+				    .size = static_cast<uint32_t>(layout.uniformsSize),
+				});
+			}
+			else
+			{
+				bindings.push_back({
+				    .binding = 0,
+				    .descriptorType = vk::DescriptorType::eUniformBuffer,
+				    .descriptorCount = 1,
+				    .stageFlags = GetShaderStageFlags(layout.uniformsStages),
+				});
+			}
 		}
 
 		for (std::uint32_t i = 0; i < layout.textureCount; i++)
@@ -617,10 +622,10 @@ ShaderPtr VulkanGraphicsDevice::CreateShader(const ShaderData& data, const char*
 	auto shader = VulkanShaderBase{
 	    .vertexShader = m_device->createShaderModuleUnique(vertexCreateInfo, s_allocator),
 	    .pixelShader = m_device->createShaderModuleUnique(pixelCreateInfo, s_allocator),
-	    .sceneDescriptorSet = createSetLayout(data.sceneBindings),
-	    .viewDescriptorSet = createSetLayout(data.viewBindings),
-	    .materialDescriptorSet = createSetLayout(data.materialBindings),
-	    .objectDescriptorSet = createSetLayout(data.objectBindings),
+	    .sceneDescriptorSet = createSetLayout(data.scenePblock, 0),
+	    .viewDescriptorSet = createSetLayout(data.viewPblock, 1),
+	    .materialDescriptorSet = createSetLayout(data.materialPblock, 2),
+	    .objectDescriptorSet = createSetLayout(data.objectPblock, 3),
 	};
 
 	shader.pipelineLayout = CreateGraphicsPipelineLayout(m_device.get(), shader, pushConstantRanges);

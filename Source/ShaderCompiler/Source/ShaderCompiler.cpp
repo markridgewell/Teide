@@ -33,11 +33,6 @@ static constexpr bool IsDebugBuild = false;
 }
 #endif
 
-constexpr auto RoundUp(std::integral auto a, std::integral auto b)
-{
-	return ((a - 1) / b + 1) * b;
-}
-
 // Taken from glslang StandAlone/ResourceLimits.cpp
 constexpr TBuiltInResource DefaultTBuiltInResource
     = {.maxLights = 32,
@@ -185,18 +180,18 @@ std::unique_ptr<glslang::TShader> CompileStage(std::string_view shaderSource, ES
 	return shader;
 };
 
-ParameterBlockLayout& GetPblockLayout(ShaderData& data, int set)
+ParameterBlockDesc& GetPblockLayout(ShaderData& data, int set)
 {
 	switch (set)
 	{
 		case 0:
-			return data.sceneBindings;
+			return data.scenePblock;
 		case 1:
-			return data.viewBindings;
+			return data.viewPblock;
 		case 2:
-			return data.materialBindings;
+			return data.materialPblock;
 		case 3:
-			return data.objectBindings;
+			return data.objectPblock;
 	}
 	Unreachable();
 }
@@ -255,9 +250,8 @@ ShaderStageFlags GetShaderStageFlags(EShLanguageMask lang)
 	return ret;
 }
 
-void ReflectUniforms(ParameterBlockLayout& pblock, const glslang::TObjectReflection& uniformBlock)
+void ReflectUniforms(ParameterBlockDesc& pblock, const glslang::TObjectReflection& uniformBlock)
 {
-	pblock.uniformsSize = static_cast<std::uint32_t>(uniformBlock.size);
 	pblock.uniformsStages = GetShaderStageFlags(uniformBlock.stages);
 
 	if constexpr (IsDebugBuild)
@@ -268,8 +262,8 @@ void ReflectUniforms(ParameterBlockLayout& pblock, const glslang::TObjectReflect
 		for ([[maybe_unused]] const auto& u : *uniformBlock.getType()->getStruct())
 		{
 			assert(
-			    std::ranges::find(pblock.uniformDescs, std::string_view{u.type->getFieldName()}, &UniformDesc::name)
-			    != pblock.uniformDescs.end());
+			    std::ranges::find(pblock.parameters, std::string_view{u.type->getFieldName()}, &ShaderVariable::name)
+			    != pblock.parameters.end());
 		}
 	}
 };
@@ -307,7 +301,6 @@ void Compile(ShaderData& data, std::string_view vertexSource, std::string_view p
 		const auto& uniformBlock = program.getUniformBlock(i);
 		if (uniformBlock.getType()->getQualifier().isPushConstant())
 		{
-			GetPblockLayout(data, 3).isPushConstant = true;
 			ReflectUniforms(GetPblockLayout(data, 3), uniformBlock);
 		}
 		else
@@ -315,16 +308,6 @@ void Compile(ShaderData& data, std::string_view vertexSource, std::string_view p
 			const auto set = uniformBlock.getType()->getQualifier().layoutSet;
 			ReflectUniforms(GetPblockLayout(data, set), uniformBlock);
 		}
-	}
-
-	for (int i = 0; i < program.getNumUniformVariables(); i++)
-	{
-		const auto& uniform = program.getUniform(i);
-		if (!uniform.getType()->isTexture())
-			continue;
-
-		const auto set = uniform.getType()->getQualifier().layoutSet;
-		GetPblockLayout(data, set).textureCount++;
 	}
 }
 
@@ -340,125 +323,17 @@ glslang::EShSource GetEShSource(ShaderLanguage language)
 	Unreachable();
 }
 
-struct SizeAndAlignment
+void BuildUniformBuffer(std::string& source, const ParameterBlockDesc& pblock, int set)
 {
-	std::uint32_t size = 0;
-	std::uint32_t alignment = 0;
-};
-
-bool IsResourceType(ShaderVariableType::BaseType type)
-{
-	switch (type)
+	if (std::ranges::count_if(pblock.parameters, [](const auto& v) { return !IsResourceType(v.type.baseType); }) == 0)
 	{
-		using enum ShaderVariableType::BaseType;
-		case Float:
-		case Vector2:
-		case Vector3:
-		case Vector4:
-		case Matrix4:
-			return false;
-		case Texture2D:
-		case Texture2DShadow:
-			return true;
-	}
-	Unreachable();
-}
-
-
-SizeAndAlignment GetSizeAndAlignment(ShaderVariableType::BaseType type)
-{
-	switch (type)
-	{
-		using enum ShaderVariableType::BaseType;
-		case Float:
-			return {.size = sizeof(float), .alignment = sizeof(float)};
-
-		case Vector2:
-			return {.size = sizeof(float) * 2, .alignment = sizeof(float) * 2};
-		case Vector3:
-			return {.size = sizeof(float) * 4, .alignment = sizeof(float) * 4};
-		case Vector4:
-			return {.size = sizeof(float) * 4, .alignment = sizeof(float) * 4};
-		case Matrix4:
-			return {.size = sizeof(float) * 4 * 4, .alignment = sizeof(float) * 4};
-
-		case Texture2D:
-		case Texture2DShadow:
-			return {};
-	}
-	Unreachable();
-}
-
-SizeAndAlignment GetSizeAndAlignment(ShaderVariableType type)
-{
-	if (type.arraySize != 0 && type.baseType == ShaderVariableType::BaseType::Vector3)
-	{
-		const std::uint32_t arraySize = sizeof(float) * 3 * type.arraySize;
-		return {.size = arraySize, .alignment = arraySize};
-	}
-	const auto [size, alignment] = GetSizeAndAlignment(type.baseType);
-	return {size * std::max(1u, type.arraySize), alignment};
-}
-
-std::string ToString(ShaderVariableType::BaseType type)
-{
-	switch (type)
-	{
-		using enum ShaderVariableType::BaseType;
-		case Float:
-			return "float";
-		case Vector2:
-			return "vec2";
-		case Vector3:
-			return "vec3";
-		case Vector4:
-			return "vec4";
-		case Matrix4:
-			return "mat4";
-		case Texture2D:
-			return "sampler2D";
-		case Texture2DShadow:
-			return "sampler2DShadow";
-	}
-	Unreachable();
-}
-
-std::string ToString(ShaderVariableType type)
-{
-	std::string ret = ToString(type.baseType);
-	if (type.arraySize != 0)
-	{
-		fmt::format_to(std::back_inserter(ret), "[{}]", type.arraySize);
-	}
-	return ret;
-}
-
-void BuildUniformBuffer(std::string& source, ParameterBlockLayout& bindings, std::span<const ShaderVariable> variables, int set)
-{
-	if (variables.empty())
-	{
-		return;
-	}
-
-	for (const auto& variable : variables)
-	{
-		const auto [size, alignment] = GetSizeAndAlignment(variable.type);
-		if (size == 0)
-			continue;
-
-		const auto offset = RoundUp(bindings.uniformsSize, alignment);
-		bindings.uniformDescs.push_back(UniformDesc{.name = variable.name, .type = variable.type, .offset = offset});
-		bindings.uniformsSize = offset + size;
-	}
-
-	if (bindings.uniformDescs.empty())
-	{
+		// No uniforms in pblock
 		return;
 	}
 
 	auto out = std::back_inserter(source);
 
-	if (set == 3 && bindings.uniformsSize <= 128u)
+	if (BuildParameterBlockLayout(pblock, set).isPushConstant)
 	{
 		// Build push constants
 		fmt::format_to(out, "layout(push_constant) uniform {}Uniforms {{\n", PblockNames[set]);
@@ -469,40 +344,47 @@ void BuildUniformBuffer(std::string& source, ParameterBlockLayout& bindings, std
 		fmt::format_to(out, "layout(set = {}, binding = 0) uniform {}Uniforms {{\n", set, PblockNames[set]);
 	}
 
-	for (const auto& uniform : bindings.uniformDescs)
+	for (const auto& variable : pblock.parameters)
 	{
-		std::string typeStr = ToString(uniform.type);
-		fmt::format_to(out, "    {} {};\n", typeStr, uniform.name);
+		if (IsResourceType(variable.type.baseType))
+		{
+			continue;
+		}
+
+		std::string typeStr = ToString(variable.type);
+		fmt::format_to(out, "    {} {};\n", typeStr, variable.name);
 	}
 	fmt::format_to(out, "}} {};\n\n", PblockNamesLower[set]);
 }
 
-void BuildResourceBindings(std::string& source, std::span<const ShaderVariable> variables, int set)
+void BuildResourceBindings(std::string& source, const ParameterBlockDesc& pblock, int set)
 {
-	if (variables.empty())
+	if (std::ranges::count_if(pblock.parameters, [](const auto& v) { return IsResourceType(v.type.baseType); }) == 0)
 	{
+		// No resources in pblock
 		return;
 	}
 
 	auto out = std::back_inserter(source);
 
-	for (std::size_t i = 0; i < variables.size(); i++)
+	std::size_t slot = 1;
+	for (const auto& parameter : pblock.parameters)
 	{
-		const auto& variable = variables[i];
-		if (IsResourceType(variable.type.baseType))
+		if (IsResourceType(parameter.type.baseType))
 		{
 			fmt::format_to(
-			    out, "layout(set = {}, binding = {}) uniform {} {};\n", set, i + 1, ToString(variable.type), variable.name);
+			    out, "layout(set = {}, binding = {}) uniform {} {};\n", set, slot, ToString(parameter.type), parameter.name);
+			slot++;
 		}
 	}
 
 	source += '\n';
 }
 
-void BuildBindings(std::string& source, ParameterBlockLayout& bindings, const ParameterBlockDesc& pblock, int set)
+void BuildBindings(std::string& source, const ParameterBlockDesc& pblock, int set)
 {
-	BuildUniformBuffer(source, bindings, pblock.parameters, set);
-	BuildResourceBindings(source, pblock.parameters, set);
+	BuildUniformBuffer(source, pblock, set);
+	BuildResourceBindings(source, pblock, set);
 }
 
 void BuildVaryings(std::string& source, const ShaderStageDefinition& stage)
@@ -537,12 +419,16 @@ void BuildVaryings(std::string& source, const ShaderStageDefinition& stage)
 ShaderData CompileShader(const ShaderSourceData& sourceData)
 {
 	ShaderData data;
+	data.scenePblock = sourceData.scenePblock;
+	data.viewPblock = sourceData.viewPblock;
+	data.materialPblock = sourceData.materialPblock;
+	data.objectPblock = sourceData.objectPblock;
 
 	std::string parameters = "";
-	BuildBindings(parameters, data.sceneBindings, sourceData.scenePblock, 0);
-	BuildBindings(parameters, data.viewBindings, sourceData.viewPblock, 1);
-	BuildBindings(parameters, data.materialBindings, sourceData.materialPblock, 2);
-	BuildBindings(parameters, data.objectBindings, sourceData.objectPblock, 3);
+	BuildBindings(parameters, sourceData.scenePblock, 0);
+	BuildBindings(parameters, sourceData.viewPblock, 1);
+	BuildBindings(parameters, sourceData.materialPblock, 2);
+	BuildBindings(parameters, sourceData.objectPblock, 3);
 
 	std::string vertexShader = parameters;
 	BuildVaryings(vertexShader, sourceData.vertexShader);

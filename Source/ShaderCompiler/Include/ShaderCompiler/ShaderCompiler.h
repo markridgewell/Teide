@@ -14,27 +14,10 @@ enum class ShaderLanguage
 	Hlsl,
 };
 
-struct ShaderVariable
-{
-	std::string name;
-	ShaderVariableType type;
-};
-
-struct VaryingDefinition
-{
-	std::string name;
-	ShaderVariableType type;
-};
-
-struct ParameterBlockDesc
-{
-	std::vector<ShaderVariable> parameters;
-};
-
 struct ShaderStageDefinition
 {
-	std::vector<VaryingDefinition> inputs;
-	std::vector<VaryingDefinition> outputs;
+	std::vector<ShaderVariable> inputs;
+	std::vector<ShaderVariable> outputs;
 	std::string source;
 };
 
