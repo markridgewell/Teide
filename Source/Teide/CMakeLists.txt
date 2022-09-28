@@ -8,6 +8,7 @@ td_add_library(
             Include/Teide/Pipeline.h
             Include/Teide/Renderer.h
             Include/Teide/Shader.h
+            Include/Teide/ShaderEnvironment.h
             Include/Teide/Surface.h
             Include/Teide/Task.h
             Include/Teide/Texture.h
@@ -33,6 +34,7 @@ td_add_library(
             Source/VulkanRenderer.cpp
             Source/VulkanRenderer.h
             Source/VulkanShader.h
+            Source/VulkanShaderEnvironment.h
             Source/VulkanSurface.cpp
             Source/VulkanSurface.h
             Source/VulkanTexture.cpp

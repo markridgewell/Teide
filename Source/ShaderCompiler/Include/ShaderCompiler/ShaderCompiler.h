@@ -24,8 +24,7 @@ struct ShaderStageDefinition
 struct ShaderSourceData
 {
 	ShaderLanguage language;
-	ParameterBlockDesc scenePblock;
-	ParameterBlockDesc viewPblock;
+	ShaderEnvironmentData environment;
 	ParameterBlockDesc materialPblock;
 	ParameterBlockDesc objectPblock;
 	ShaderStageDefinition vertexShader;

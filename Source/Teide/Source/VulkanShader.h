@@ -3,21 +3,16 @@
 
 #include "Teide/Shader.h"
 #include "Vulkan.h"
-
-struct DescriptorSetInfo
-{
-	vk::UniqueDescriptorSetLayout layout;
-	vk::ShaderStageFlags uniformsStages;
-};
+#include "VulkanParameterBlock.h"
 
 struct VulkanShaderBase
 {
 	vk::UniqueShaderModule vertexShader;
 	vk::UniqueShaderModule pixelShader;
-	DescriptorSetInfo sceneDescriptorSet;
-	DescriptorSetInfo viewDescriptorSet;
-	DescriptorSetInfo materialDescriptorSet;
-	DescriptorSetInfo objectDescriptorSet;
+	VulkanParameterBlockLayoutPtr scenePblockLayout;
+	VulkanParameterBlockLayoutPtr viewPblockLayout;
+	VulkanParameterBlockLayoutPtr materialPblockLayout;
+	VulkanParameterBlockLayoutPtr objectPblockLayout;
 	vk::UniquePipelineLayout pipelineLayout;
 };
 
@@ -25,21 +20,14 @@ struct VulkanShader : VulkanShaderBase, public Shader
 {
 	explicit VulkanShader(VulkanShaderBase base) : VulkanShaderBase{std::move(base)} {}
 
-	vk::DescriptorSetLayout GetDescriptorSetLayout(ParameterBlockType type) const
+	ParameterBlockLayoutPtr GetMaterialPblockLayout() const override
 	{
-		switch (type)
-		{
-			using enum ParameterBlockType;
-			case Scene:
-				return sceneDescriptorSet.layout.get();
-			case View:
-				return viewDescriptorSet.layout.get();
-			case Material:
-				return materialDescriptorSet.layout.get();
-			case Object:
-				return objectDescriptorSet.layout.get();
-		}
-		return {};
+		return static_pointer_cast<const ParameterBlockLayout>(materialPblockLayout);
+	}
+
+	ParameterBlockLayoutPtr GetObjectPblockLayout() const override
+	{
+		return static_pointer_cast<const ParameterBlockLayout>(objectPblockLayout);
 	}
 };
 

@@ -1,8 +1,6 @@
 
 #pragma once
 
-#include <vulkan/vulkan.hpp>
-
 enum class ParameterBlockType
 {
 	Scene,
@@ -15,4 +13,7 @@ class Shader
 {
 public:
 	virtual ~Shader() = default;
+
+	virtual ParameterBlockLayoutPtr GetMaterialPblockLayout() const = 0;
+	virtual ParameterBlockLayoutPtr GetObjectPblockLayout() const = 0;
 };

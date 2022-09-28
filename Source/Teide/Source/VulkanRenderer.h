@@ -20,7 +20,7 @@ class VulkanRenderer : public Renderer
 public:
 	explicit VulkanRenderer(
 	    VulkanGraphicsDevice& device, uint32_t graphicsFamilyIndex, std::optional<uint32_t> presentFamilyIndex,
-	    ShaderPtr shaderEnvironment);
+	    ShaderEnvironmentPtr shaderEnvironment);
 
 	~VulkanRenderer();
 
@@ -72,7 +72,7 @@ private:
 	std::array<vk::UniqueFence, MaxFramesInFlight> m_inFlightFences;
 	uint32_t m_frameNumber = 0;
 
-	ShaderPtr m_shaderEnvironment;
+	ShaderEnvironmentPtr m_shaderEnvironment;
 
 	std::mutex m_surfaceCommandBuffersMutex;
 	std::vector<vk::CommandBuffer> m_surfaceCommandBuffers;

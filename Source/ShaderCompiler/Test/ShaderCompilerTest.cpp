@@ -8,19 +8,21 @@ using Type = ShaderVariableType::BaseType;
 
 const ShaderSourceData TestShader = {
     .language = ShaderLanguage::Glsl,
-    .scenePblock = {
-        .parameters = {
-            {"lightDir", Type::Vector3},
-            {"lightColor", Type::Vector3},
-            {"ambientColorTop", Type::Vector3},
-            {"ambientColorBottom", Type::Vector3},
-            {"shadowMatrix", Type::Matrix4}
+    .environment = {
+        .scenePblock = {
+            .parameters = {
+                {"lightDir", Type::Vector3},
+                {"lightColor", Type::Vector3},
+                {"ambientColorTop", Type::Vector3},
+                {"ambientColorBottom", Type::Vector3},
+                {"shadowMatrix", Type::Matrix4}
+            },
         },
-    },
-    .viewPblock = {
-        .parameters = {
-            {"viewProj", Type::Matrix4},
-        }
+        .viewPblock = {
+            .parameters = {
+                {"viewProj", Type::Matrix4},
+            }
+        },
     },
     .materialPblock = {
         .parameters = {
@@ -83,10 +85,10 @@ TEST(ShaderCompilerTest, CompileSimple)
 	const auto result = CompileShader(TestShader);
 	EXPECT_THAT(result.vertexShaderSpirv, Not(IsEmpty()));
 	EXPECT_THAT(result.pixelShaderSpirv, Not(IsEmpty()));
-	EXPECT_THAT(result.scenePblock.parameters, Eq(TestShader.scenePblock.parameters));
-	EXPECT_THAT(result.scenePblock.uniformsStages, Eq(ShaderStageFlags::Pixel));
-	EXPECT_THAT(result.viewPblock.parameters, Eq(TestShader.viewPblock.parameters));
-	EXPECT_THAT(result.viewPblock.uniformsStages, Eq(ShaderStageFlags::Vertex));
+	EXPECT_THAT(result.environment.scenePblock.parameters, Eq(TestShader.environment.scenePblock.parameters));
+	EXPECT_THAT(result.environment.scenePblock.uniformsStages, Eq(ShaderStageFlags::Pixel));
+	EXPECT_THAT(result.environment.viewPblock.parameters, Eq(TestShader.environment.viewPblock.parameters));
+	EXPECT_THAT(result.environment.viewPblock.uniformsStages, Eq(ShaderStageFlags::Vertex));
 	EXPECT_THAT(result.materialPblock.parameters, Eq(TestShader.materialPblock.parameters));
 	EXPECT_THAT(result.materialPblock.uniformsStages, Eq(ShaderStageFlags::None));
 	EXPECT_THAT(result.objectPblock.parameters, Eq(TestShader.objectPblock.parameters));

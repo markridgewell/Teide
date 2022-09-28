@@ -24,7 +24,7 @@ struct RenderObject
 	uint32_t indexCount = 0;
 	PipelinePtr pipeline = nullptr;
 	ParameterBlockPtr materialParameters = nullptr;
-	BytesView pushConstants;
+	ShaderParameters objectParameters;
 };
 
 using Color = std::array<float, 4>;

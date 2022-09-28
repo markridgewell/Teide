@@ -104,22 +104,40 @@ TEST(GraphicsDeviceTest, CreatePipeline)
 	EXPECT_THAT(pipeline.get(), NotNull());
 }
 
-TEST(GraphicsDeviceTest, CreateParameterBlock)
+TEST(GraphicsDeviceTest, CreateParameterBlockWithUniforms)
 {
 	auto device = CreateGraphicsDevice();
-	const auto shaderData = CompileShader(ShaderWithParams);
+	const auto shaderData = CompileShader(ShaderWithMaterialParams);
 	const auto shader = device->CreateShader(shaderData, "Shader");
 	const auto pblockData = ParameterBlockData{
-	    .shader = shader,
-	    .blockType = ParameterBlockType::Scene,
+	    .layout = shader->GetMaterialPblockLayout(),
 	    .parameters = {
-	        .uniformBufferData = std::vector<std::byte>(64u, std::byte{}),
+	        .uniformData = std::vector<std::byte>(16u, std::byte{}),
 	        .textures = {},
 	    },
 	};
 	const auto pblock = device->CreateParameterBlock(pblockData, "ParameterBlock");
-	EXPECT_THAT(pblock.get(), NotNull());
-	EXPECT_THAT(pblock->GetUniformBufferSize(), Eq(64u));
+	ASSERT_THAT(pblock.get(), NotNull());
+	EXPECT_THAT(pblock->GetUniformBufferSize(), Eq(16u));
+	EXPECT_THAT(pblock->GetPushConstantSize(), Eq(0u));
+}
+
+TEST(GraphicsDeviceTest, CreateParameterBlockWithPushConstants)
+{
+	auto device = CreateGraphicsDevice();
+	const auto shaderData = CompileShader(ShaderWithObjectParams);
+	const auto shader = device->CreateShader(shaderData, "Shader");
+	const auto pblockData = ParameterBlockData{
+	    .layout = shader->GetObjectPblockLayout(),
+	    .parameters = {
+	        .uniformData = std::vector<std::byte>(64u, std::byte{}),
+	        .textures = {},
+	    },
+	};
+	const auto pblock = device->CreateParameterBlock(pblockData, "ParameterBlock");
+	ASSERT_THAT(pblock.get(), NotNull());
+	EXPECT_THAT(pblock->GetUniformBufferSize(), Eq(0u));
+	EXPECT_THAT(pblock->GetPushConstantSize(), Eq(64u));
 }
 
 } // namespace

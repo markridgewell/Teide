@@ -9,6 +9,7 @@
 #include "VulkanPipeline.h"
 #include "VulkanRenderer.h"
 #include "VulkanShader.h"
+#include "VulkanShaderEnvironment.h"
 #include "VulkanSurface.h"
 #include "VulkanTexture.h"
 
@@ -305,6 +306,11 @@ TextureAndState CreateTextureImpl(
 vk::UniqueDescriptorSetLayout
 CreateDescriptorSetLayout(vk::Device device, std::span<const vk::DescriptorSetLayoutBinding> layoutBindings)
 {
+	if (layoutBindings.empty())
+	{
+		return {};
+	}
+
 	const auto createInfo = vk::DescriptorSetLayoutCreateInfo{
 	    .bindingCount = size32(layoutBindings),
 	    .pBindings = data(layoutBindings),
@@ -313,21 +319,23 @@ CreateDescriptorSetLayout(vk::Device device, std::span<const vk::DescriptorSetLa
 	return device.createDescriptorSetLayoutUnique(createInfo, s_allocator);
 }
 
-vk::UniquePipelineLayout CreateGraphicsPipelineLayout(
-    vk::Device device, const VulkanShaderBase& shader, std::span<const vk::PushConstantRange> pushConstantRanges)
+vk::UniquePipelineLayout CreateGraphicsPipelineLayout(vk::Device device, const VulkanShaderBase& shader)
 {
-	const auto setLayouts = std::array{
-	    shader.sceneDescriptorSet.layout.get(),
-	    shader.viewDescriptorSet.layout.get(),
-	    shader.materialDescriptorSet.layout.get(),
-	    shader.objectDescriptorSet.layout.get(),
+	std::vector<vk::DescriptorSetLayout> setLayouts = {
+	    shader.scenePblockLayout->setLayout.get(),
+	    shader.viewPblockLayout->setLayout.get(),
+	    shader.materialPblockLayout->setLayout.get(),
+	    shader.objectPblockLayout->setLayout.get(),
 	};
+	std::erase(setLayouts, vk::DescriptorSetLayout{});
+
+	const bool hasPushConstants = shader.objectPblockLayout->pushConstantRange.has_value();
 
 	const auto createInfo = vk::PipelineLayoutCreateInfo{
 	    .setLayoutCount = size32(setLayouts),
 	    .pSetLayouts = data(setLayouts),
-	    .pushConstantRangeCount = size32(pushConstantRanges),
-	    .pPushConstantRanges = data(pushConstantRanges),
+	    .pushConstantRangeCount = hasPushConstants ? 1u : 0u,
+	    .pPushConstantRanges = hasPushConstants ? &shader.objectPblockLayout->pushConstantRange.value() : nullptr,
 	};
 
 	return device.createPipelineLayoutUnique(createInfo, s_allocator);
@@ -544,7 +552,7 @@ SurfacePtr VulkanGraphicsDevice::CreateSurface(SDL_Window* window, bool multisam
 	    m_graphicsQueue, multisampled);
 }
 
-RendererPtr VulkanGraphicsDevice::CreateRenderer(ShaderPtr shaderEnvironment)
+RendererPtr VulkanGraphicsDevice::CreateRenderer(ShaderEnvironmentPtr shaderEnvironment)
 {
 	return std::make_unique<VulkanRenderer>(*this, m_graphicsQueueFamily, m_presentQueueFamily, std::move(shaderEnvironment));
 }
@@ -564,6 +572,17 @@ BufferPtr VulkanGraphicsDevice::CreateBuffer(const BufferData& data, const char*
 	return std::make_shared<const VulkanBuffer>(std::move(ret));
 }
 
+ShaderEnvironmentPtr
+VulkanGraphicsDevice::CreateShaderEnvironment(const ShaderEnvironmentData& data, const char* name [[maybe_unused]])
+{
+	auto shader = VulkanShaderEnvironmentBase{
+	    .scenePblockLayout = CreateParameterBlockLayout(data.scenePblock, 0),
+	    .viewPblockLayout = CreateParameterBlockLayout(data.viewPblock, 1),
+	};
+
+	return std::make_shared<const VulkanShaderEnvironment>(std::move(shader));
+}
+
 ShaderPtr VulkanGraphicsDevice::CreateShader(const ShaderData& data, const char* name)
 {
 	const auto vertexCreateInfo = vk::ShaderModuleCreateInfo{
@@ -575,60 +594,16 @@ ShaderPtr VulkanGraphicsDevice::CreateShader(const ShaderData& data, const char*
 	    .pCode = data.pixelShaderSpirv.data(),
 	};
 
-	std::vector<vk::PushConstantRange> pushConstantRanges;
-
-	const auto createSetLayout = [this, &pushConstantRanges](const ParameterBlockDesc& desc, int set) {
-		DescriptorSetInfo ret;
-		std::vector<vk::DescriptorSetLayoutBinding> bindings;
-
-		const ParameterBlockLayout layout = BuildParameterBlockLayout(desc, set);
-
-		if (layout.uniformsSize > 0u)
-		{
-			if (layout.isPushConstant)
-			{
-				pushConstantRanges.push_back(vk::PushConstantRange{
-				    .stageFlags = GetShaderStageFlags(layout.uniformsStages),
-				    .offset = 0,
-				    .size = static_cast<uint32_t>(layout.uniformsSize),
-				});
-			}
-			else
-			{
-				bindings.push_back({
-				    .binding = 0,
-				    .descriptorType = vk::DescriptorType::eUniformBuffer,
-				    .descriptorCount = 1,
-				    .stageFlags = GetShaderStageFlags(layout.uniformsStages),
-				});
-			}
-		}
-
-		for (std::uint32_t i = 0; i < layout.textureCount; i++)
-		{
-			bindings.push_back({
-			    .binding = i + 1,
-			    .descriptorType = vk::DescriptorType::eCombinedImageSampler,
-			    .descriptorCount = 1,
-			    .stageFlags = vk::ShaderStageFlagBits::eAllGraphics,
-			});
-		}
-
-		ret.layout = CreateDescriptorSetLayout(m_device.get(), bindings);
-		ret.uniformsStages = GetShaderStageFlags(layout.uniformsStages);
-		return ret;
-	};
-
 	auto shader = VulkanShaderBase{
 	    .vertexShader = m_device->createShaderModuleUnique(vertexCreateInfo, s_allocator),
 	    .pixelShader = m_device->createShaderModuleUnique(pixelCreateInfo, s_allocator),
-	    .sceneDescriptorSet = createSetLayout(data.scenePblock, 0),
-	    .viewDescriptorSet = createSetLayout(data.viewPblock, 1),
-	    .materialDescriptorSet = createSetLayout(data.materialPblock, 2),
-	    .objectDescriptorSet = createSetLayout(data.objectPblock, 3),
+	    .scenePblockLayout = CreateParameterBlockLayout(data.environment.scenePblock, 0),
+	    .viewPblockLayout = CreateParameterBlockLayout(data.environment.viewPblock, 1),
+	    .materialPblockLayout = CreateParameterBlockLayout(data.materialPblock, 2),
+	    .objectPblockLayout = CreateParameterBlockLayout(data.objectPblock, 3),
 	};
 
-	shader.pipelineLayout = CreateGraphicsPipelineLayout(m_device.get(), shader, pushConstantRanges);
+	shader.pipelineLayout = CreateGraphicsPipelineLayout(m_device.get(), shader);
 
 	SetDebugName(shader.vertexShader, "{}:Vertex", name);
 	SetDebugName(shader.pixelShader, "{}:Pixel", name);
@@ -699,11 +674,8 @@ PipelinePtr VulkanGraphicsDevice::CreatePipeline(const PipelineData& data)
 {
 	const auto& shaderImpl = GetImpl(*data.shader);
 
-	const auto pushConstantsShaderStages = shaderImpl.objectDescriptorSet.uniformsStages;
-
 	return std::make_shared<const VulkanPipeline>(
-	    CreateGraphicsPipeline(shaderImpl, data, CreateRenderPass(data.framebufferLayout), m_device.get()),
-	    shaderImpl.pipelineLayout.get(), pushConstantsShaderStages);
+	    shaderImpl, CreateGraphicsPipeline(shaderImpl, data, CreateRenderPass(data.framebufferLayout), m_device.get()));
 }
 
 vk::UniqueDescriptorSet VulkanGraphicsDevice::CreateDescriptorSet(
@@ -792,6 +764,49 @@ std::vector<vk::UniqueDescriptorSet> VulkanGraphicsDevice::CreateDescriptorSets(
 	return descriptorSets;
 }
 
+VulkanParameterBlockLayoutPtr VulkanGraphicsDevice::CreateParameterBlockLayout(const ParameterBlockDesc& desc, int set)
+{
+	VulkanParameterBlockLayout ret;
+	std::vector<vk::DescriptorSetLayoutBinding> bindings;
+
+	const ParameterBlockLayoutData layout = BuildParameterBlockLayout(desc, set);
+
+	if (layout.uniformsSize > 0u)
+	{
+		if (layout.isPushConstant)
+		{
+			ret.pushConstantRange = {
+			    .stageFlags = GetShaderStageFlags(layout.uniformsStages),
+			    .offset = 0,
+			    .size = static_cast<uint32_t>(layout.uniformsSize),
+			};
+		}
+		else
+		{
+			bindings.push_back({
+			    .binding = 0,
+			    .descriptorType = vk::DescriptorType::eUniformBuffer,
+			    .descriptorCount = 1,
+			    .stageFlags = GetShaderStageFlags(layout.uniformsStages),
+			});
+		}
+	}
+
+	for (std::uint32_t i = 0; i < layout.textureCount; i++)
+	{
+		bindings.push_back({
+		    .binding = i + 1,
+		    .descriptorType = vk::DescriptorType::eCombinedImageSampler,
+		    .descriptorCount = 1,
+		    .stageFlags = vk::ShaderStageFlagBits::eAllGraphics,
+		});
+	}
+
+	ret.setLayout = CreateDescriptorSetLayout(m_device.get(), bindings);
+	ret.uniformsStages = GetShaderStageFlags(layout.uniformsStages);
+	return std::make_shared<const VulkanParameterBlockLayout>(std::move(ret));
+}
+
 vk::RenderPass VulkanGraphicsDevice::CreateRenderPass(const FramebufferLayout& framebufferLayout, const RenderPassInfo& renderPassInfo)
 {
 	const auto lock = std::scoped_lock(m_renderPassCacheMutex);
@@ -836,33 +851,44 @@ ParameterBlockPtr VulkanGraphicsDevice::CreateParameterBlock(
 ParameterBlockPtr VulkanGraphicsDevice::CreateParameterBlock(
     const ParameterBlockData& data, const char* name, CommandBuffer& cmdBuffer, vk::DescriptorPool descriptorPool)
 {
-	if (!data.shader)
+	if (!data.layout)
 	{
 		return nullptr;
 	}
 
-	const auto layout = GetImpl(*data.shader).GetDescriptorSetLayout(data.blockType);
-	if (!layout)
+	const auto& layout = GetImpl(*data.layout);
+	const bool isPushConstant = layout.pushConstantRange.has_value();
+
+	const auto setLayout = layout.setLayout.get();
+	if (!setLayout && !isPushConstant)
 	{
 		return nullptr;
 	}
 
 	const auto descriptorSetName = DebugFormat("{}DescriptorSet", name);
 
-	VulkanParameterBlock ret;
-	if (!data.parameters.uniformBufferData.empty())
+	VulkanParameterBlock ret{layout};
+	if (setLayout)
 	{
-		const auto uniformBufferName = DebugFormat("{}UniformBuffer", name);
-		ret.uniformBuffer = CreateBuffer(
-		    BufferData{
-		        .usage = vk::BufferUsageFlagBits::eUniformBuffer,
-		        .memoryFlags = vk::MemoryPropertyFlagBits::eDeviceLocal,
-		        .data = data.parameters.uniformBufferData,
-		    },
-		    uniformBufferName.c_str(), cmdBuffer);
+		if (!isPushConstant && !data.parameters.uniformData.empty())
+		{
+			const auto uniformBufferName = DebugFormat("{}UniformBuffer", name);
+			ret.uniformBuffer = CreateBuffer(
+			    BufferData{
+			        .usage = vk::BufferUsageFlagBits::eUniformBuffer,
+			        .memoryFlags = vk::MemoryPropertyFlagBits::eDeviceLocal,
+			        .data = data.parameters.uniformData,
+			    },
+			    uniformBufferName.c_str(), cmdBuffer);
+		}
+		ret.descriptorSet = CreateDescriptorSet(
+		    descriptorPool, setLayout, ret.uniformBuffer.get(), data.parameters.textures, descriptorSetName.c_str());
 	}
-	ret.descriptorSet = CreateDescriptorSet(
-	    descriptorPool, layout, ret.uniformBuffer.get(), data.parameters.textures, descriptorSetName.c_str());
+
+	if (isPushConstant)
+	{
+		ret.pushConstantData = data.parameters.uniformData;
+	}
 
 	return std::make_unique<VulkanParameterBlock>(std::move(ret));
 }

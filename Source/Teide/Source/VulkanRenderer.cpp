@@ -8,6 +8,8 @@
 #include "VulkanGraphicsDevice.h"
 #include "VulkanParameterBlock.h"
 #include "VulkanPipeline.h"
+#include "VulkanShader.h"
+#include "VulkanShaderEnvironment.h"
 #include "VulkanTexture.h"
 
 #include <spdlog/spdlog.h>
@@ -23,7 +25,7 @@ static const vk::Optional<const vk::AllocationCallbacks> s_allocator = nullptr;
 
 VulkanRenderer::VulkanRenderer(
     VulkanGraphicsDevice& device, uint32_t graphicsFamilyIndex, std::optional<uint32_t> presentFamilyIndex,
-    ShaderPtr shaderEnvironment) :
+    ShaderEnvironmentPtr shaderEnvironment) :
     m_device{device},
     m_graphicsQueue{device.GetVulkanDevice().getQueue(graphicsFamilyIndex, 0)},
     m_shaderEnvironment{std::move(shaderEnvironment)}
@@ -76,8 +78,7 @@ void VulkanRenderer::BeginFrame(const ShaderParameters& sceneParameters)
 
 	auto& frameResources = m_frameResources[m_frameNumber];
 	const auto pblockData = ParameterBlockData{
-	    .shader = m_shaderEnvironment,
-	    .blockType = ParameterBlockType::Scene,
+	    .layout = m_shaderEnvironment ? m_shaderEnvironment->GetScenePblockLayout() : nullptr,
 	    .parameters = sceneParameters, // COPY!
 	};
 	frameResources.sceneParameters = m_device.CreateParameterBlock(pblockData, "Scene");
@@ -322,8 +323,7 @@ void VulkanRenderer::BuildCommandBuffer(
 
 	const auto threadIndex = m_device.GetScheduler().GetThreadIndex();
 	const auto viewParamsData = ParameterBlockData{
-	    .shader = m_shaderEnvironment,
-	    .blockType = ParameterBlockType::View,
+	    .layout = m_shaderEnvironment ? m_shaderEnvironment->GetViewPblockLayout() : nullptr,
 	    .parameters = renderList.viewParameters, // COPY!
 	};
 	const auto viewParamsName = fmt::format("{}:View", renderList.name);
@@ -377,11 +377,11 @@ void VulkanRenderer::BuildCommandBuffer(
 			const auto& vertexBufferImpl = m_device.GetImpl(*obj.vertexBuffer);
 			commandBuffer.bindVertexBuffers(0, vertexBufferImpl.buffer.get(), vk::DeviceSize{0});
 
-			if (!obj.pushConstants.empty())
+			if (pipeline.objectPblockLayout && pipeline.objectPblockLayout->pushConstantRange.has_value())
 			{
 				commandBuffer.pushConstants(
-				    pipeline.layout, pipeline.pushConstantsShaderStages, 0, size32(obj.pushConstants),
-				    data(obj.pushConstants));
+				    pipeline.layout, pipeline.objectPblockLayout->uniformsStages, 0,
+				    size32(obj.objectParameters.uniformData), data(obj.objectParameters.uniformData));
 			}
 
 			if (obj.indexBuffer)

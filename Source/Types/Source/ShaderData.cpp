@@ -109,9 +109,9 @@ std::string ToString(ShaderVariableType type)
 	return ret;
 }
 
-ParameterBlockLayout BuildParameterBlockLayout(const ParameterBlockDesc& pblock, int set)
+ParameterBlockLayoutData BuildParameterBlockLayout(const ParameterBlockDesc& pblock, int set)
 {
-	ParameterBlockLayout bindings;
+	ParameterBlockLayoutData bindings;
 	bindings.uniformsStages = pblock.uniformsStages;
 
 	for (const auto& parameter : pblock.parameters)

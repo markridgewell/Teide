@@ -56,9 +56,8 @@ private:
 
 using Type = ShaderVariableType::BaseType;
 
-const ShaderSourceData ModelShader = {
-    .language = ShaderLanguage::Glsl,
-    .scenePblock = {
+const ShaderEnvironmentData ShaderEnv = {
+	.scenePblock = {
         .parameters = {
             {"lightDir", Type::Vector3},
             {"lightColor", Type::Vector3},
@@ -66,13 +65,20 @@ const ShaderSourceData ModelShader = {
             {"ambientColorBottom", Type::Vector3},
             {"shadowMatrix", Type::Matrix4}
         },
+        .uniformsStages = ShaderStageFlags::Pixel,
     },
     .viewPblock = {
         .parameters = {
             {"viewProj", Type::Matrix4},
             {"shadowMapSampler", Type::Texture2DShadow},
         },
+        .uniformsStages = ShaderStageFlags::Vertex,
     },
+};
+
+const ShaderSourceData ModelShader = {
+    .language = ShaderLanguage::Glsl,
+    .environment = ShaderEnv,
     .materialPblock = {
         .parameters = {
             {"texSampler", Type::Texture2D},
@@ -207,7 +213,7 @@ const auto VertexLayoutDesc = VertexLayout
     }},
 };
 
-struct GlobalUniforms
+struct SceneUniforms
 {
 	Geo::Vector3 lightDir;
 	float pad0 [[maybe_unused]];
@@ -293,8 +299,9 @@ public:
 	    m_window{window},
 	    m_device{CreateGraphicsDevice(window)},
 	    m_surface{m_device->CreateSurface(window, UseMSAA)},
+	    m_shaderEnvironment{m_device->CreateShaderEnvironment(ShaderEnv, "ShaderEnv")},
 	    m_shader{m_device->CreateShader(CompileShader(ModelShader), "ModelShader")},
-	    m_renderer{m_device->CreateRenderer(m_shader)}
+	    m_renderer{m_device->CreateRenderer(m_shaderEnvironment)}
 	{
 		const auto pipelineData = PipelineData{
 		    .shader = m_shader,
@@ -349,8 +356,8 @@ public:
 
 		m_shadowMatrix = shadowCamProjFitted * shadowCamView;
 
-		// Update global uniforms
-		const auto globalUniforms = GlobalUniforms{
+		// Update scene uniforms
+		const auto sceneUniforms = SceneUniforms{
 		    .lightDir = Geo::Normalise(lightDirection),
 		    .lightColor = {1.0f, 1.0f, 1.0f},
 		    .ambientColorTop = {0.08f, 0.1f, 0.1f},
@@ -358,13 +365,13 @@ public:
 		    .shadowMatrix = m_shadowMatrix,
 		};
 		const auto sceneParams = ShaderParameters{
-		    .uniformBufferData = ToBytes(globalUniforms),
+		    .uniformData = ToBytes(sceneUniforms),
 		};
 
 		m_renderer->BeginFrame(sceneParams);
 
 		// Update object uniforms
-		m_objectUniforms = {
+		const auto objectUniforms = ObjectUniforms{
 		    .model = modelMatrix,
 		};
 
@@ -377,7 +384,7 @@ public:
 			    .viewProj = m_shadowMatrix,
 			};
 			const auto viewParams = ShaderParameters{
-			    .uniformBufferData = ToBytes(viewUniforms),
+			    .uniformData = ToBytes(viewUniforms),
 			    .textures = {},
 			};
 
@@ -391,7 +398,7 @@ public:
 			        .indexCount = m_indexCount,
 			        .pipeline = m_shadowMapPipeline,
 			        .materialParameters = m_materialParams,
-			        .pushConstants = m_objectUniforms,
+			        .objectParameters = {.uniformData = ToBytes(objectUniforms)},
 			    }},
 			};
 
@@ -420,7 +427,7 @@ public:
 			    .viewProj = viewProj,
 			};
 			const auto viewParams = ShaderParameters{
-			    .uniformBufferData = ToBytes(viewUniforms),
+			    .uniformData = ToBytes(viewUniforms),
 			    .textures = {m_shadowMap.get()},
 			};
 
@@ -435,7 +442,7 @@ public:
 			        .indexCount = m_indexCount,
 			        .pipeline = m_pipeline,
 			        .materialParameters = m_materialParams,
-			        .pushConstants = m_objectUniforms,
+			        .objectParameters = {.uniformData = ToBytes(objectUniforms)},
 			    }},
 			};
 
@@ -637,8 +644,7 @@ private:
 	void CreateParameterBlocks()
 	{
 		const auto materialData = ParameterBlockData{
-		    .shader = m_shader,
-		    .blockType = ParameterBlockType::Material,
+		    .layout = m_shader->GetMaterialPblockLayout(),
 		    .parameters = {
 		        .textures = {m_texture.get()},
 		    },
@@ -756,6 +762,7 @@ private:
 
 	GraphicsDevicePtr m_device;
 	SurfacePtr m_surface;
+	ShaderEnvironmentPtr m_shaderEnvironment;
 
 	// Object setup
 	ShaderPtr m_shader;
@@ -768,7 +775,6 @@ private:
 	TexturePtr m_texture;
 
 	const uint32_t m_passCount = 2;
-	ObjectUniforms m_objectUniforms;
 	ParameterBlockPtr m_materialParams;
 
 	// Lights

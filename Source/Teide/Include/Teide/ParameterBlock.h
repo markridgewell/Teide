@@ -9,14 +9,19 @@
 
 struct ShaderParameters
 {
-	std::vector<std::byte> uniformBufferData;
+	std::vector<std::byte> uniformData;
 	std::vector<const Texture*> textures;
+};
+
+class ParameterBlockLayout
+{
+public:
+	virtual ~ParameterBlockLayout() = default;
 };
 
 struct ParameterBlockData
 {
-	ShaderPtr shader;
-	ParameterBlockType blockType;
+	ParameterBlockLayoutPtr layout = nullptr;
 	ShaderParameters parameters;
 };
 
@@ -26,4 +31,5 @@ public:
 	virtual ~ParameterBlock() = default;
 
 	virtual std::size_t GetUniformBufferSize() const = 0;
+	virtual std::size_t GetPushConstantSize() const = 0;
 };

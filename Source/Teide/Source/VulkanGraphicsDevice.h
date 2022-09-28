@@ -16,6 +16,11 @@
 #include <type_traits>
 #include <unordered_map>
 
+struct ParameterBlockDesc;
+struct VulkanParameterBlockLayout;
+
+using VulkanParameterBlockLayoutPtr = std::shared_ptr<const VulkanParameterBlockLayout>;
+
 class VulkanGraphicsDevice : public GraphicsDevice
 {
 public:
@@ -24,10 +29,11 @@ public:
 	~VulkanGraphicsDevice();
 
 	SurfacePtr CreateSurface(SDL_Window* window, bool multisampled) override;
-	RendererPtr CreateRenderer(ShaderPtr shaderEnvironment) override;
+	RendererPtr CreateRenderer(ShaderEnvironmentPtr shaderEnvironment) override;
 
 	BufferPtr CreateBuffer(const BufferData& data, const char* name) override;
 
+	ShaderEnvironmentPtr CreateShaderEnvironment(const ShaderEnvironmentData& data, const char* name) override;
 	ShaderPtr CreateShader(const ShaderData& data, const char* name) override;
 
 	TexturePtr CreateTexture(const TextureData& data, const char* name) override;
@@ -86,6 +92,8 @@ private:
 	std::vector<vk::UniqueDescriptorSet> CreateDescriptorSets(
 	    vk::DescriptorPool pool, vk::DescriptorSetLayout layout, size_t numSets, const Buffer* uniformBuffer,
 	    std::span<const Texture* const> textures, const char* name);
+
+	VulkanParameterBlockLayoutPtr CreateParameterBlockLayout(const ParameterBlockDesc& desc, int set);
 
 	vk::DynamicLoader m_loader;
 	vk::UniqueInstance m_instance;

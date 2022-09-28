@@ -185,9 +185,9 @@ ParameterBlockDesc& GetPblockLayout(ShaderData& data, int set)
 	switch (set)
 	{
 		case 0:
-			return data.scenePblock;
+			return data.environment.scenePblock;
 		case 1:
-			return data.viewPblock;
+			return data.environment.viewPblock;
 		case 2:
 			return data.materialPblock;
 		case 3:
@@ -419,14 +419,13 @@ void BuildVaryings(std::string& source, const ShaderStageDefinition& stage)
 ShaderData CompileShader(const ShaderSourceData& sourceData)
 {
 	ShaderData data;
-	data.scenePblock = sourceData.scenePblock;
-	data.viewPblock = sourceData.viewPblock;
+	data.environment = sourceData.environment;
 	data.materialPblock = sourceData.materialPblock;
 	data.objectPblock = sourceData.objectPblock;
 
 	std::string parameters = "";
-	BuildBindings(parameters, sourceData.scenePblock, 0);
-	BuildBindings(parameters, sourceData.viewPblock, 1);
+	BuildBindings(parameters, sourceData.environment.scenePblock, 0);
+	BuildBindings(parameters, sourceData.environment.viewPblock, 1);
 	BuildBindings(parameters, sourceData.materialPblock, 2);
 	BuildBindings(parameters, sourceData.objectPblock, 3);
 

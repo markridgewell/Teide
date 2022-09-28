@@ -66,10 +66,15 @@ struct ParameterBlockDesc
 	auto operator<=>(const ParameterBlockDesc&) const = default;
 };
 
-struct ShaderData
+struct ShaderEnvironmentData
 {
 	ParameterBlockDesc scenePblock;
 	ParameterBlockDesc viewPblock;
+};
+
+struct ShaderData
+{
+	ShaderEnvironmentData environment;
 	ParameterBlockDesc materialPblock;
 	ParameterBlockDesc objectPblock;
 	std::vector<std::uint32_t> vertexShaderSpirv;
@@ -99,7 +104,7 @@ struct UniformDesc
 	std::uint32_t offset = 0;
 };
 
-struct ParameterBlockLayout
+struct ParameterBlockLayoutData
 {
 	std::uint32_t uniformsSize = 0;
 	std::vector<UniformDesc> uniformDescs;
@@ -108,4 +113,4 @@ struct ParameterBlockLayout
 	ShaderStageFlags uniformsStages = {};
 };
 
-ParameterBlockLayout BuildParameterBlockLayout(const ParameterBlockDesc& pblock, int set);
+ParameterBlockLayoutData BuildParameterBlockLayout(const ParameterBlockDesc& pblock, int set);
