@@ -364,11 +364,10 @@ public:
 		    .ambientColorBottom = {0.003f, 0.003f, 0.002f},
 		    .shadowMatrix = m_shadowMatrix,
 		};
-		const auto sceneParams = ShaderParameters{
-		    .uniformData = ToBytes(sceneUniforms),
-		};
 
-		m_renderer->BeginFrame(sceneParams);
+		m_renderer->BeginFrame(ShaderParameters{
+		    .uniformData = ToBytes(sceneUniforms),
+		});
 
 		// Update object uniforms
 		const auto objectUniforms = ObjectUniforms{

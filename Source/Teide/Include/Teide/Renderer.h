@@ -54,7 +54,7 @@ public:
 	Renderer& operator=(Renderer&&) = delete;
 
 	virtual std::uint32_t GetFrameNumber() const = 0;
-	virtual void BeginFrame(const ShaderParameters& sceneParameters) = 0;
+	virtual void BeginFrame(ShaderParameters sceneParameters) = 0;
 	virtual void EndFrame() = 0;
 
 	virtual void RenderToTexture(DynamicTexturePtr texture, RenderList renderList) = 0;

@@ -64,7 +64,7 @@ std::uint32_t VulkanRenderer::GetFrameNumber() const
 	return m_frameNumber;
 }
 
-void VulkanRenderer::BeginFrame(const ShaderParameters& sceneParameters)
+void VulkanRenderer::BeginFrame(ShaderParameters sceneParameters)
 {
 	constexpr uint64_t timeout = std::numeric_limits<uint64_t>::max();
 
@@ -79,7 +79,7 @@ void VulkanRenderer::BeginFrame(const ShaderParameters& sceneParameters)
 	auto& frameResources = m_frameResources[m_frameNumber];
 	const auto pblockData = ParameterBlockData{
 	    .layout = m_shaderEnvironment ? m_shaderEnvironment->GetScenePblockLayout() : nullptr,
-	    .parameters = sceneParameters, // COPY!
+	    .parameters = std::move(sceneParameters),
 	};
 	frameResources.sceneParameters = m_device.CreateParameterBlock(pblockData, "Scene");
 	for (auto& threadResources : frameResources.threadResources)
@@ -179,7 +179,8 @@ void VulkanRenderer::RenderToTexture(DynamicTexturePtr texture, RenderList rende
 		TextureState textureState;
 		textureImpl.TransitionToRenderTarget(textureState, commandBuffer);
 
-		BuildCommandBuffer(commandBuffer, renderList, framebufferLayout, {}, textureImpl.size, {textureImpl.imageView.get()});
+		BuildCommandBuffer(
+		    commandBuffer, std::move(renderList), framebufferLayout, {}, textureImpl.size, {textureImpl.imageView.get()});
 
 		textureImpl.TransitionToShaderInput(textureState, commandBuffer);
 	});
@@ -204,7 +205,7 @@ void VulkanRenderer::RenderToSurface(Surface& surface, RenderList renderList)
 		m_device.GetScheduler().Schedule([=, this, renderList = std::move(renderList)](uint32_t taskIndex) {
 			CommandBuffer& commandBuffer = m_device.GetScheduler().GetCommandBuffer(taskIndex);
 
-			BuildCommandBuffer(commandBuffer, renderList, framebufferLayout, framebuffer, extent, {});
+			BuildCommandBuffer(commandBuffer, std::move(renderList), framebufferLayout, framebuffer, extent, {});
 
 			commandBuffer.Get()->end();
 
@@ -261,7 +262,7 @@ Task<TextureData> VulkanRenderer::CopyTextureData(TexturePtr texture)
 }
 
 void VulkanRenderer::BuildCommandBuffer(
-    CommandBuffer& commandBufferWrapper, const RenderList& renderList, const FramebufferLayout& framebufferLayout,
+    CommandBuffer& commandBufferWrapper, RenderList renderList, const FramebufferLayout& framebufferLayout,
     vk::Framebuffer framebuffer, vk::Extent2D framebufferSize, std::vector<vk::ImageView> framebufferAttachments)
 {
 	using std::data;
@@ -324,7 +325,7 @@ void VulkanRenderer::BuildCommandBuffer(
 	const auto threadIndex = m_device.GetScheduler().GetThreadIndex();
 	const auto viewParamsData = ParameterBlockData{
 	    .layout = m_shaderEnvironment ? m_shaderEnvironment->GetViewPblockLayout() : nullptr,
-	    .parameters = renderList.viewParameters, // COPY!
+	    .parameters = std::move(renderList.viewParameters),
 	};
 	const auto viewParamsName = fmt::format("{}:View", renderList.name);
 	const auto viewParameters = AddViewParameterBlock(

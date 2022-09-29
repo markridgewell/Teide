@@ -25,7 +25,7 @@ public:
 	~VulkanRenderer();
 
 	std::uint32_t GetFrameNumber() const override;
-	void BeginFrame(const ShaderParameters& sceneParameters) override;
+	void BeginFrame(ShaderParameters sceneParameters) override;
 	void EndFrame() override;
 
 	void RenderToTexture(DynamicTexturePtr texture, RenderList renderList) override;
@@ -47,7 +47,7 @@ private:
 	}
 
 	void BuildCommandBuffer(
-	    CommandBuffer& commandBuffer, const RenderList& renderList, const FramebufferLayout& framebufferLayout,
+	    CommandBuffer& commandBuffer, RenderList renderList, const FramebufferLayout& framebufferLayout,
 	    vk::Framebuffer framebuffer, vk::Extent2D framebufferSize, std::vector<vk::ImageView> framebufferAttachments);
 
 	std::optional<SurfaceImage> AddSurfaceToPresent(VulkanSurface& surface);
