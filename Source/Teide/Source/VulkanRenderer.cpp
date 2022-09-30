@@ -79,6 +79,7 @@ void VulkanRenderer::BeginFrame(ShaderParameters sceneParameters)
 	auto& frameResources = m_frameResources[m_frameNumber];
 	const auto pblockData = ParameterBlockData{
 	    .layout = m_shaderEnvironment ? m_shaderEnvironment->GetScenePblockLayout() : nullptr,
+	    .lifetime = ResourceLifetime::Transient,
 	    .parameters = std::move(sceneParameters),
 	};
 	frameResources.sceneParameters = m_device.CreateParameterBlock(pblockData, "Scene");
@@ -325,6 +326,7 @@ void VulkanRenderer::BuildCommandBuffer(
 	const auto threadIndex = m_device.GetScheduler().GetThreadIndex();
 	const auto viewParamsData = ParameterBlockData{
 	    .layout = m_shaderEnvironment ? m_shaderEnvironment->GetViewPblockLayout() : nullptr,
+	    .lifetime = ResourceLifetime::Transient,
 	    .parameters = std::move(renderList.viewParameters),
 	};
 	const auto viewParamsName = fmt::format("{}:View", renderList.name);

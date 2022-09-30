@@ -21,8 +21,8 @@ TEST(GraphicsDeviceTest, CreateBuffer)
 	auto device = CreateGraphicsDevice();
 	const auto contents = std::array{1, 2, 3, 4};
 	const auto bufferData = BufferData{
-	    .usage = vk::BufferUsageFlagBits::eVertexBuffer,
-	    .memoryFlags = vk::MemoryPropertyFlagBits ::eDeviceLocal,
+	    .usage = BufferUsage::Vertex,
+	    .lifetime = ResourceLifetime::Permanent,
 	    .data = contents,
 	};
 	const auto buffer = device->CreateBuffer(bufferData, "Buffer");

@@ -2,16 +2,23 @@
 #pragma once
 
 #include "Teide/BytesView.h"
-
-#include <vulkan/vulkan.hpp>
+#include "Teide/ForwardDeclare.h"
 
 #include <cstddef>
 #include <span>
 
+enum class BufferUsage
+{
+	Generic,
+	Vertex,
+	Index,
+	Uniform,
+};
+
 struct BufferData
 {
-	vk::BufferUsageFlags usage;
-	vk::MemoryPropertyFlags memoryFlags;
+	BufferUsage usage = BufferUsage::Generic;
+	ResourceLifetime lifetime = ResourceLifetime::Permanent;
 	BytesView data;
 };
 

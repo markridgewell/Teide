@@ -27,3 +27,9 @@ using DynamicTexturePtr = std::shared_ptr<Texture>;
 using PipelinePtr = std::shared_ptr<const Pipeline>;
 using ParameterBlockLayoutPtr = std::shared_ptr<const ParameterBlockLayout>;
 using ParameterBlockPtr = std::shared_ptr<const ParameterBlock>;
+
+enum class ResourceLifetime
+{
+	Permanent,
+	Transient
+};

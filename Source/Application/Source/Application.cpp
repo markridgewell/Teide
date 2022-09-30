@@ -537,18 +537,12 @@ public:
 private:
 	void CreateVertexBuffer(BytesView data)
 	{
-		m_vertexBuffer = m_device->CreateBuffer(
-		    {.usage = vk::BufferUsageFlagBits::eVertexBuffer,
-		     .memoryFlags = vk::MemoryPropertyFlagBits::eDeviceLocal,
-		     .data = data},
-		    "VertexBuffer");
+		m_vertexBuffer = m_device->CreateBuffer({.usage = BufferUsage::Vertex, .data = data}, "VertexBuffer");
 	}
 
 	void CreateIndexBuffer(std::span<const uint16_t> data)
 	{
-		m_indexBuffer = m_device->CreateBuffer(
-		    {.usage = vk::BufferUsageFlagBits::eIndexBuffer, .memoryFlags = vk::MemoryPropertyFlagBits::eDeviceLocal, .data = data},
-		    "IndexBuffer");
+		m_indexBuffer = m_device->CreateBuffer({.usage = BufferUsage::Index, .data = data}, "IndexBuffer");
 		m_indexCount = static_cast<std::uint32_t>(size(data));
 	}
 

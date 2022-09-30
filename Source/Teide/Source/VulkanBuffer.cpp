@@ -29,3 +29,20 @@ VulkanBuffer CreateBufferUninitialized(
 
 	return ret;
 }
+
+vk::BufferUsageFlags GetBufferUsageFlags(BufferUsage usage)
+{
+	switch (usage)
+	{
+		using enum BufferUsage;
+		case Generic:
+			return {};
+		case Vertex:
+			return vk::BufferUsageFlagBits::eVertexBuffer;
+		case Index:
+			return vk::BufferUsageFlagBits::eIndexBuffer;
+		case Uniform:
+			return vk::BufferUsageFlagBits::eUniformBuffer;
+	}
+	return {};
+}

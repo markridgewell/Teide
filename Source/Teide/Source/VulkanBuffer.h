@@ -25,3 +25,5 @@ struct VulkanImpl<Buffer>
 VulkanBuffer CreateBufferUninitialized(
     vk::DeviceSize size, vk::BufferUsageFlags usage, vk::MemoryPropertyFlags memoryFlags, vk::Device device,
     MemoryAllocator& allocator);
+
+vk::BufferUsageFlags GetBufferUsageFlags(BufferUsage usage);

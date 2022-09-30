@@ -156,10 +156,12 @@ void CopyBuffer(vk::CommandBuffer cmdBuffer, vk::Buffer source, vk::Buffer desti
 }
 
 VulkanBuffer CreateBufferWithData(
-    BytesView data, vk::BufferUsageFlags usage, vk::MemoryPropertyFlags memoryFlags, vk::Device device,
-    MemoryAllocator& allocator, CommandBuffer& cmdBuffer)
+    BytesView data, BufferUsage usage, ResourceLifetime lifetime, vk::Device device, MemoryAllocator& allocator,
+    CommandBuffer& cmdBuffer)
 {
-	if ((memoryFlags & vk::MemoryPropertyFlagBits::eHostCoherent) == vk::MemoryPropertyFlags{})
+	const vk::BufferUsageFlags usageFlags = GetBufferUsageFlags(usage);
+
+	if (lifetime == ResourceLifetime::Permanent)
 	{
 		// Create staging buffer
 		auto stagingBuffer = std::make_shared<VulkanBuffer>(CreateBufferUninitialized(
@@ -170,7 +172,8 @@ VulkanBuffer CreateBufferWithData(
 
 		// Create device-local buffer
 		VulkanBuffer ret = CreateBufferUninitialized(
-		    data.size(), usage | vk::BufferUsageFlagBits::eTransferDst, memoryFlags, device, allocator);
+		    data.size(), usageFlags | vk::BufferUsageFlagBits::eTransferDst, vk::MemoryPropertyFlagBits::eDeviceLocal,
+		    device, allocator);
 		CopyBuffer(cmdBuffer, stagingBuffer->buffer.get(), ret.buffer.get(), data.size());
 
 		// Add pipeline barrier to make the buffer usable in shader
@@ -190,8 +193,9 @@ VulkanBuffer CreateBufferWithData(
 	}
 	else
 	{
-		VulkanBuffer ret
-		    = CreateBufferUninitialized(data.size(), vk::BufferUsageFlagBits::eTransferSrc, memoryFlags, device, allocator);
+		VulkanBuffer ret = CreateBufferUninitialized(
+		    data.size(), usageFlags | vk::BufferUsageFlagBits::eTransferDst,
+		    vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent, device, allocator);
 		SetBufferData(ret, data);
 		return ret;
 	}
@@ -567,7 +571,7 @@ BufferPtr VulkanGraphicsDevice::CreateBuffer(const BufferData& data, const char*
 
 BufferPtr VulkanGraphicsDevice::CreateBuffer(const BufferData& data, const char* name, CommandBuffer& cmdBuffer)
 {
-	auto ret = CreateBufferWithData(data.data, data.usage, data.memoryFlags, m_device.get(), *m_allocator, cmdBuffer);
+	auto ret = CreateBufferWithData(data.data, data.usage, data.lifetime, m_device.get(), *m_allocator, cmdBuffer);
 	SetDebugName(ret.buffer, name);
 	return std::make_shared<const VulkanBuffer>(std::move(ret));
 }
@@ -875,8 +879,8 @@ ParameterBlockPtr VulkanGraphicsDevice::CreateParameterBlock(
 			const auto uniformBufferName = DebugFormat("{}UniformBuffer", name);
 			ret.uniformBuffer = CreateBuffer(
 			    BufferData{
-			        .usage = vk::BufferUsageFlagBits::eUniformBuffer,
-			        .memoryFlags = vk::MemoryPropertyFlagBits::eDeviceLocal,
+			        .usage = BufferUsage::Uniform,
+			        .lifetime = data.lifetime,
 			        .data = data.parameters.uniformData,
 			    },
 			    uniformBufferName.c_str(), cmdBuffer);

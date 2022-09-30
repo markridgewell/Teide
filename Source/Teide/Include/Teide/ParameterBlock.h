@@ -22,6 +22,7 @@ public:
 struct ParameterBlockData
 {
 	ParameterBlockLayoutPtr layout = nullptr;
+	ResourceLifetime lifetime = ResourceLifetime::Permanent;
 	ShaderParameters parameters;
 };
 

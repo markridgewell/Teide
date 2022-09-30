@@ -63,8 +63,7 @@ TEST_F(RendererTest, RenderFullscreenTri)
 
 	constexpr auto vertices = std::array{-1.0f, -1.0f, 3.0f, -1.0f, -1.0f, 3.0f};
 	const auto vbuffer = m_device->CreateBuffer(
-	    {.usage = vk::BufferUsageFlagBits::eVertexBuffer, .memoryFlags = vk::MemoryPropertyFlagBits::eDeviceLocal, .data = vertices},
-	    "VertexBuffer");
+	    {.usage = BufferUsage::Vertex, .lifetime = ResourceLifetime::Permanent, .data = vertices}, "VertexBuffer");
 	const auto vertexLayout = VertexLayout{
 	    .inputAssembly = {.topology = vk::PrimitiveTopology::eTriangleList},
 	    .vertexInputBindings = {{.binding = 0, .stride = sizeof(float) * 2}},
