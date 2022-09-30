@@ -1,6 +1,8 @@
 
 #pragma once
 
+#include "Teide/ForwardDeclare.h"
+
 enum class ParameterBlockType
 {
 	Scene,

@@ -664,7 +664,7 @@ private:
 			};
 			const auto data = TextureData{
 			    .size = {8, 8},
-			    .format = vk::Format::eR8G8B8A8Srgb,
+			    .format = TextureFormat::Byte4Srgb,
 			    .mipLevelCount = static_cast<uint32_t>(std::floor(std::log2(8))) + 1,
 			    .samplerInfo={.magFilter = vk::Filter::eNearest,.minFilter = vk::Filter::eNearest,},
 			    .pixels = CopyBytes(pixels),
@@ -692,7 +692,7 @@ private:
 
 		const auto data = TextureData{
 		    .size = {static_cast<uint32_t>(width), static_cast<uint32_t>(height)},
-		    .format = vk::Format::eR8G8B8A8Srgb,
+		    .format = TextureFormat::Byte4Srgb,
 		    .mipLevelCount = static_cast<uint32_t>(std::floor(std::log2(std::max(width, height)))) + 1,
 			.samplerInfo={.magFilter = vk::Filter::eLinear,.minFilter = vk::Filter::eLinear,},
 		    .pixels = CopyBytes(std::span(pixels.get(), imageSize)),
@@ -707,7 +707,7 @@ private:
 
 		const auto data = TextureData{
 		    .size = {shadowMapSize, shadowMapSize},
-		    .format = vk::Format::eD16Unorm,
+		    .format = TextureFormat::Depth16,
 		    .samplerInfo = {
 		        .magFilter = vk::Filter::eLinear,
 		        .minFilter = vk::Filter::eLinear,
@@ -737,7 +737,6 @@ private:
 		    .vertexLayout = VertexLayoutDesc,
 		    .renderStates = MakeRenderStates(depthBiasConstant, depthBiasSlope),
 		    .framebufferLayout = {
-		        .colorFormat = vk::Format::eUndefined,
 		        .depthStencilFormat = m_shadowMap->GetFormat(),
 		        .sampleCount = m_shadowMap->GetSampleCount(),
 		    },

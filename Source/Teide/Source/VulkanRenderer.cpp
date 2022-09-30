@@ -166,8 +166,8 @@ void VulkanRenderer::RenderToTexture(DynamicTexturePtr texture, RenderList rende
 {
 	const bool isColorTarget = !HasDepthOrStencilComponent(texture->GetFormat());
 	const auto framebufferLayout = FramebufferLayout{
-	    .colorFormat = isColorTarget ? texture->GetFormat() : vk::Format::eUndefined,
-	    .depthStencilFormat = isColorTarget ? vk::Format::eUndefined : texture->GetFormat(),
+	    .colorFormat = isColorTarget ? std::make_optional(texture->GetFormat()) : std::nullopt,
+	    .depthStencilFormat = isColorTarget ? std::nullopt : std::make_optional(texture->GetFormat()),
 	    .sampleCount = texture->GetSampleCount(),
 	};
 
@@ -287,9 +287,9 @@ void VulkanRenderer::BuildCommandBuffer(
 	}
 
 	auto clearValues = std::vector<vk::ClearValue>();
-	if (framebufferLayout.colorFormat != vk::Format::eUndefined)
+	if (framebufferLayout.colorFormat.has_value())
 	{
-		if (renderList.clearColorValue)
+		if (renderList.clearColorValue.has_value())
 		{
 			clearValues.push_back(vk::ClearColorValue{*renderList.clearColorValue});
 		}
@@ -298,7 +298,7 @@ void VulkanRenderer::BuildCommandBuffer(
 			clearValues.emplace_back();
 		}
 	}
-	if (framebufferLayout.depthStencilFormat != vk::Format::eUndefined)
+	if (framebufferLayout.depthStencilFormat.has_value())
 	{
 		clearValues.push_back(vk::ClearDepthStencilValue{
 		    renderList.clearDepthValue.value_or(1.0f), renderList.clearStencilValue.value_or(0)});

@@ -2,10 +2,12 @@
 #pragma once
 
 #include "Teide/ForwardDeclare.h"
+#include "Types/TextureData.h"
 
 #include <vulkan/vulkan.hpp>
 
 #include <compare>
+#include <optional>
 #include <vector>
 
 struct VertexLayout
@@ -30,8 +32,8 @@ struct RenderStates
 
 struct FramebufferLayout
 {
-	vk::Format colorFormat = vk::Format::eUndefined;
-	vk::Format depthStencilFormat = vk::Format::eUndefined;
+	std::optional<TextureFormat> colorFormat;
+	std::optional<TextureFormat> depthStencilFormat;
 	vk::SampleCountFlagBits sampleCount = vk::SampleCountFlagBits::e1;
 
 	auto operator<=>(const FramebufferLayout&) const = default;

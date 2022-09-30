@@ -235,7 +235,7 @@ TextureAndState CreateTextureImpl(
 	const auto imageExtent = vk::Extent3D{data.size.width, data.size.height, 1};
 	const auto imageInfo = vk::ImageCreateInfo{
 	    .imageType = vk::ImageType::e2D,
-	    .format = data.format,
+	    .format = ToVulkan(data.format),
 	    .extent = imageExtent,
 	    .mipLevels = data.mipLevelCount,
 	    .arrayLayers = 1,
@@ -261,14 +261,14 @@ TextureAndState CreateTextureImpl(
 
 		// Copy staging buffer to image
 		TransitionImageLayout(
-		    cmdBuffer, image.get(), imageInfo.format, data.mipLevelCount, imageInfo.initialLayout,
+		    cmdBuffer, image.get(), data.format, data.mipLevelCount, imageInfo.initialLayout,
 		    vk::ImageLayout::eTransferDstOptimal, vk::PipelineStageFlagBits::eTopOfPipe,
 		    vk::PipelineStageFlagBits::eTransfer);
 		initialState = {
 		    .layout = vk::ImageLayout::eTransferDstOptimal,
 		    .lastPipelineStageUsage = vk::PipelineStageFlagBits::eTransfer,
 		};
-		CopyBufferToImage(cmdBuffer, stagingBuffer.buffer.get(), image.get(), imageInfo.format, imageExtent);
+		CopyBufferToImage(cmdBuffer, stagingBuffer.buffer.get(), image.get(), data.format, imageExtent);
 
 		cmdBuffer.TakeOwnership(std::move(stagingBuffer.buffer));
 	}
@@ -277,7 +277,7 @@ TextureAndState CreateTextureImpl(
 	const auto viewInfo = vk::ImageViewCreateInfo{
 		.image = image.get(),
 		.viewType = vk::ImageViewType::e2D,
-		.format = data.format,
+		.format = imageInfo.format,
 		.subresourceRange = {
 			.aspectMask =  GetImageAspect(data.format),
 			.baseMipLevel = 0,
@@ -353,7 +353,7 @@ CreateGraphicsPipeline(const VulkanShader& shader, const PipelineData& piplineDa
 
 	std::vector<vk::PipelineShaderStageCreateInfo> shaderStages;
 	shaderStages.push_back({.stage = vk::ShaderStageFlagBits::eVertex, .module = vertexShader, .pName = "main"});
-	if (piplineData.framebufferLayout.colorFormat != vk::Format::eUndefined)
+	if (piplineData.framebufferLayout.colorFormat.has_value())
 	{
 		shaderStages.push_back({.stage = vk::ShaderStageFlagBits::eFragment, .module = pixelShader, .pName = "main"});
 	}

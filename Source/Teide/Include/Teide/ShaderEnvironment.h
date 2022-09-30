@@ -1,6 +1,8 @@
 
 #pragma once
 
+#include "Teide/ForwardDeclare.h"
+
 class ShaderEnvironment
 {
 public:

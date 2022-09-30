@@ -278,7 +278,7 @@ CreateDevice(vk::PhysicalDevice physicalDevice, std::span<const uint32_t> queueF
 }
 
 void TransitionImageLayout(
-    vk::CommandBuffer cmdBuffer, vk::Image image, vk::Format format, uint32_t mipLevelCount, vk::ImageLayout oldLayout,
+    vk::CommandBuffer cmdBuffer, vk::Image image, TextureFormat format, uint32_t mipLevelCount, vk::ImageLayout oldLayout,
     vk::ImageLayout newLayout, vk::PipelineStageFlags srcStageMask, vk::PipelineStageFlags dstStageMask)
 {
 	const auto accessMasks = GetTransitionAccessMasks(oldLayout, newLayout);
@@ -322,7 +322,7 @@ vk::UniqueCommandPool CreateCommandPool(uint32_t queueFamilyIndex, vk::Device de
 	return device.createCommandPoolUnique(createInfo, s_allocator);
 }
 
-vk::ImageAspectFlags GetImageAspect(vk::Format format)
+vk::ImageAspectFlags GetImageAspect(TextureFormat format)
 {
 	if (HasDepthComponent(format) && HasStencilComponent(format))
 	{
@@ -339,7 +339,8 @@ vk::ImageAspectFlags GetImageAspect(vk::Format format)
 	return vk::ImageAspectFlagBits::eColor;
 }
 
-void CopyBufferToImage(vk::CommandBuffer cmdBuffer, vk::Buffer source, vk::Image destination, vk::Format imageFormat, vk::Extent3D imageExtent)
+void CopyBufferToImage(
+    vk::CommandBuffer cmdBuffer, vk::Buffer source, vk::Image destination, TextureFormat imageFormat, vk::Extent3D imageExtent)
 {
 	const auto copyRegion = vk::BufferImageCopy
 	{
@@ -359,7 +360,7 @@ void CopyBufferToImage(vk::CommandBuffer cmdBuffer, vk::Buffer source, vk::Image
 }
 
 void CopyImageToBuffer(
-    vk::CommandBuffer cmdBuffer, vk::Image source, vk::Buffer destination, vk::Format imageFormat,
+    vk::CommandBuffer cmdBuffer, vk::Image source, vk::Buffer destination, TextureFormat imageFormat,
     vk::Extent3D imageExtent, std::uint32_t numMipLevels)
 {
 	const auto aspectMask = GetImageAspect(imageFormat);
@@ -400,7 +401,7 @@ vk::UniqueRenderPass CreateRenderPass(vk::Device device, const FramebufferLayout
 
 vk::UniqueRenderPass CreateRenderPass(vk::Device device, const FramebufferLayout& layout, const RenderPassInfo& renderPassInfo)
 {
-	assert(layout.colorFormat != vk::Format::eUndefined || layout.depthStencilFormat != vk::Format::eUndefined);
+	assert(layout.colorFormat.has_value() || layout.depthStencilFormat.has_value());
 
 	const bool multisampling = layout.sampleCount != vk::SampleCountFlagBits::e1;
 	const bool loadColor = renderPassInfo.colorLoadOp == vk::AttachmentLoadOp::eLoad;
@@ -410,15 +411,17 @@ vk::UniqueRenderPass CreateRenderPass(vk::Device device, const FramebufferLayout
 	std::vector<vk::AttachmentReference> resolveAttachmentRefs;
 	std::optional<vk::AttachmentReference> depthStencilAttachmentRef;
 
-	if (layout.colorFormat != vk::Format::eUndefined)
+	if (layout.colorFormat.has_value())
 	{
+		assert(*layout.colorFormat != TextureFormat::Unknown);
+
 		colorAttachmentRefs.push_back({
 		    .attachment = size32(attachments),
 		    .layout = vk::ImageLayout::eColorAttachmentOptimal,
 		});
 
 		attachments.push_back({
-		    .format = layout.colorFormat,
+		    .format = ToVulkan(*layout.colorFormat),
 		    .samples = layout.sampleCount,
 		    .loadOp = renderPassInfo.colorLoadOp,
 		    .storeOp = multisampling ? vk::AttachmentStoreOp::eDontCare : renderPassInfo.colorStoreOp,
@@ -427,19 +430,20 @@ vk::UniqueRenderPass CreateRenderPass(vk::Device device, const FramebufferLayout
 		});
 	}
 
-	if (layout.depthStencilFormat != vk::Format::eUndefined)
+	if (layout.depthStencilFormat.has_value())
 	{
+		assert(*layout.depthStencilFormat != TextureFormat::Unknown);
+
 		depthStencilAttachmentRef = vk::AttachmentReference{
 		    .attachment = size32(attachments),
 		    .layout = vk::ImageLayout::eDepthStencilAttachmentOptimal,
 		};
 
-		const auto storeOp = (layout.colorFormat == vk::Format::eUndefined && !multisampling)
-		    ? vk::AttachmentStoreOp::eStore
-		    : vk::AttachmentStoreOp::eDontCare;
+		const auto storeOp = (!layout.colorFormat.has_value() && !multisampling) ? vk::AttachmentStoreOp::eStore
+		                                                                         : vk::AttachmentStoreOp::eDontCare;
 
 		attachments.push_back({
-		    .format = layout.depthStencilFormat,
+		    .format = ToVulkan(*layout.depthStencilFormat),
 		    .samples = layout.sampleCount,
 		    .loadOp = vk::AttachmentLoadOp::eClear,
 		    .storeOp = storeOp,
@@ -452,13 +456,15 @@ vk::UniqueRenderPass CreateRenderPass(vk::Device device, const FramebufferLayout
 
 	if (multisampling)
 	{
+		assert(layout.colorFormat.has_value());
+
 		resolveAttachmentRefs.push_back({
 		    .attachment = size32(attachments),
 		    .layout = vk::ImageLayout::eColorAttachmentOptimal,
 		});
 
 		attachments.push_back({
-		    .format = layout.colorFormat,
+		    .format = ToVulkan(*layout.colorFormat),
 		    .samples = vk::SampleCountFlagBits::e1,
 		    .loadOp = vk::AttachmentLoadOp::eDontCare,
 		    .storeOp = renderPassInfo.colorStoreOp,
@@ -509,4 +515,138 @@ CreateFramebuffer(vk::Device device, vk::RenderPass renderPass, vk::Extent2D siz
 	};
 
 	return device.createFramebufferUnique(framebufferCreateInfo, s_allocator);
+}
+
+vk::Format ToVulkan(TextureFormat format)
+{
+	switch (format)
+	{
+		using enum TextureFormat;
+		case Unknown:
+			return vk::Format::eUndefined;
+
+		case Byte1:
+			return vk::Format::eR8Unorm;
+		case Int8x1:
+			return vk::Format::eR8Snorm;
+		case Short1:
+			return vk::Format::eR16Sint;
+		case Int1:
+			return vk::Format::eR32Sint;
+		case Half1:
+			return vk::Format::eR16Sfloat;
+		case Float1:
+			return vk::Format::eR32Sfloat;
+
+		case Byte2:
+			return vk::Format::eR8G8Unorm;
+		case Int8x2:
+			return vk::Format::eR8G8Snorm;
+		case Short2:
+			return vk::Format::eR16G16Sint;
+		case Int2:
+			return vk::Format::eR32G32Sint;
+		case Half2:
+			return vk::Format::eR16G16Sfloat;
+		case Float2:
+			return vk::Format::eR32G32Sfloat;
+
+		case Byte4:
+			return vk::Format::eR8G8B8A8Unorm;
+		case Int8x4:
+			return vk::Format::eR8G8B8A8Snorm;
+		case Short4:
+			return vk::Format::eR16G16B16A16Sint;
+		case Int4:
+			return vk::Format::eR32G32B32A32Sint;
+		case Half4:
+			return vk::Format::eR16G16B16A16Sfloat;
+		case Float4:
+			return vk::Format::eR32G32B32A32Sfloat;
+
+		case Byte4Srgb:
+			return vk::Format::eR8G8B8A8Srgb;
+		case Byte4SrgbBGRA:
+			return vk::Format::eB8G8R8A8Srgb;
+
+		case Depth16:
+			return vk::Format::eD16Unorm;
+		case Depth32:
+			return vk::Format::eD32Sfloat;
+		case Depth16Stencil8:
+			return vk::Format::eD16UnormS8Uint;
+		case Depth24Stencil8:
+			return vk::Format::eD24UnormS8Uint;
+		case Depth32Stencil8:
+			return vk::Format::eD32SfloatS8Uint;
+		case Stencil8:
+			return vk::Format::eS8Uint;
+	}
+	return vk::Format::eUndefined;
+}
+
+TextureFormat FromVulkan(vk::Format format)
+{
+	switch (format)
+	{
+		using enum vk::Format;
+		case eUndefined:
+			return TextureFormat::Unknown;
+
+		case eR8Unorm:
+			return TextureFormat::Byte1;
+		case eR8Snorm:
+			return TextureFormat::Int8x1;
+		case eR16Sint:
+			return TextureFormat::Short1;
+		case eR32Sint:
+			return TextureFormat::Int1;
+		case eR16Sfloat:
+			return TextureFormat::Half1;
+		case eR32Sfloat:
+			return TextureFormat::Float1;
+
+		case eR8G8Unorm:
+			return TextureFormat::Byte2;
+		case eR8G8Snorm:
+			return TextureFormat::Int8x2;
+		case eR16G16Sint:
+			return TextureFormat::Short2;
+		case eR32G32Sint:
+			return TextureFormat::Int2;
+		case eR16G16Sfloat:
+			return TextureFormat::Half2;
+		case eR32G32Sfloat:
+			return TextureFormat::Float2;
+
+		case eR8G8B8A8Unorm:
+			return TextureFormat::Byte4;
+		case eR8G8B8A8Snorm:
+			return TextureFormat::Int8x4;
+		case eR16G16B16A16Sint:
+			return TextureFormat::Short4;
+		case eR32G32B32A32Sint:
+			return TextureFormat::Int4;
+		case eR16G16B16A16Sfloat:
+			return TextureFormat::Half4;
+		case eR32G32B32A32Sfloat:
+			return TextureFormat::Float4;
+
+		case eR8G8B8A8Srgb:
+			return TextureFormat::Byte4Srgb;
+		case eB8G8R8A8Srgb:
+			return TextureFormat::Byte4SrgbBGRA;
+
+		case eD16Unorm:
+			return TextureFormat::Depth16;
+		case eD32Sfloat:
+			return TextureFormat::Depth32;
+		case eD24UnormS8Uint:
+			return TextureFormat::Depth24Stencil8;
+		case eD32SfloatS8Uint:
+			return TextureFormat::Depth32Stencil8;
+
+		default:
+			return TextureFormat::Unknown;
+	}
 }

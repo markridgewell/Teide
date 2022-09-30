@@ -15,7 +15,7 @@ TEST(TextureTest, GenerateMipmaps)
 	auto device = CreateGraphicsDevice();
 	const auto textureData = TextureData{
 	    .size = {2, 2},
-	    .format = vk::Format::eR8G8B8A8Unorm,
+	    .format = TextureFormat::Byte4,
 	    .mipLevelCount = 2,
 	    .sampleCount = vk::SampleCountFlagBits::e1,
 	    .samplerInfo = {},

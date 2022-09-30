@@ -9,7 +9,7 @@ TEST(TextureTest, GetByteSize)
 {
 	const auto textureData = TextureData{
 	    .size = {2, 2},
-	    .format = vk::Format::eR8G8B8A8Unorm,
+	    .format = TextureFormat::Byte4,
 	    .mipLevelCount = 1,
 	    .sampleCount = vk::SampleCountFlagBits::e1,
 	    .samplerInfo = {}};
@@ -20,7 +20,7 @@ TEST(TextureTest, GetByteSizeWithMipmaps)
 {
 	const auto textureData = TextureData{
 	    .size = {2, 2},
-	    .format = vk::Format::eR8G8B8A8Unorm,
+	    .format = TextureFormat::Byte4,
 	    .mipLevelCount = 2,
 	    .sampleCount = vk::SampleCountFlagBits::e1,
 	    .samplerInfo = {}};
@@ -29,9 +29,8 @@ TEST(TextureTest, GetByteSizeWithMipmaps)
 
 TEST(TextureTest, GetFormatElementSize)
 {
-	EXPECT_THAT(GetFormatElementSize(vk::Format::eR8Unorm), Eq(1));
-	EXPECT_THAT(GetFormatElementSize(vk::Format::eR8G8Unorm), Eq(2));
-	EXPECT_THAT(GetFormatElementSize(vk::Format::eR8G8B8Unorm), Eq(3));
-	EXPECT_THAT(GetFormatElementSize(vk::Format::eR8G8B8A8Unorm), Eq(4));
-	EXPECT_THAT(GetFormatElementSize(vk::Format{-1}), Eq(0));
+	EXPECT_THAT(GetFormatElementSize(TextureFormat::Byte1), Eq(1));
+	EXPECT_THAT(GetFormatElementSize(TextureFormat::Byte2), Eq(2));
+	EXPECT_THAT(GetFormatElementSize(TextureFormat::Byte4), Eq(4));
+	EXPECT_THAT(GetFormatElementSize(TextureFormat::Unknown), Eq(0));
 }

@@ -25,7 +25,7 @@ protected:
 	{
 		const auto textureData = TextureData{
 		    .size = size,
-		    .format = vk::Format::eR8G8B8A8Srgb,
+		    .format = TextureFormat::Byte4Srgb,
 		    .mipLevelCount = 1,
 		    .sampleCount = vk::SampleCountFlagBits::e1,
 		};
@@ -49,7 +49,7 @@ TEST_F(RendererTest, RenderNothing)
 	const TextureData outputData = m_renderer->CopyTextureData(texture).get().value();
 
 	EXPECT_THAT(outputData.size, Eq(vk::Extent2D{2, 2}));
-	EXPECT_THAT(outputData.format, Eq(vk::Format::eR8G8B8A8Srgb));
+	EXPECT_THAT(outputData.format, Eq(TextureFormat::Byte4Srgb));
 	EXPECT_THAT(outputData.mipLevelCount, Eq(1));
 	EXPECT_THAT(outputData.sampleCount, Eq(vk::SampleCountFlagBits::e1));
 
@@ -92,7 +92,7 @@ TEST_F(RendererTest, RenderFullscreenTri)
 	const TextureData outputData = m_renderer->CopyTextureData(texture).get().value();
 
 	EXPECT_THAT(outputData.size, Eq(vk::Extent2D{2, 2}));
-	EXPECT_THAT(outputData.format, Eq(vk::Format::eR8G8B8A8Srgb));
+	EXPECT_THAT(outputData.format, Eq(TextureFormat::Byte4Srgb));
 	EXPECT_THAT(outputData.mipLevelCount, Eq(1));
 	EXPECT_THAT(outputData.sampleCount, Eq(vk::SampleCountFlagBits::e1));
 

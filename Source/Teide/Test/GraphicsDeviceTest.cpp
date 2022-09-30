@@ -43,7 +43,7 @@ TEST(GraphicsDeviceTest, CreateTexture)
 	auto device = CreateGraphicsDevice();
 	const auto textureData = TextureData{
 	    .size = {2, 2},
-	    .format = vk::Format::eR8G8B8A8Srgb,
+	    .format = TextureFormat::Byte4Srgb,
 	    .mipLevelCount = 1,
 	    .sampleCount = vk::SampleCountFlagBits::e1,
 	    .samplerInfo = {},
@@ -53,7 +53,7 @@ TEST(GraphicsDeviceTest, CreateTexture)
 	EXPECT_THAT(texture.get(), NotNull());
 	EXPECT_THAT(texture->GetSize().width, Eq(2u));
 	EXPECT_THAT(texture->GetSize().height, Eq(2u));
-	EXPECT_THAT(texture->GetFormat(), Eq(vk::Format::eR8G8B8A8Srgb));
+	EXPECT_THAT(texture->GetFormat(), Eq(TextureFormat::Byte4Srgb));
 	EXPECT_THAT(texture->GetMipLevelCount(), Eq(1u));
 	EXPECT_THAT(texture->GetSampleCount(), Eq(vk::SampleCountFlagBits::e1));
 }
@@ -63,7 +63,7 @@ TEST(GraphicsDeviceTest, CreateRenderableTexture)
 	auto device = CreateGraphicsDevice();
 	const auto textureData = TextureData{
 	    .size = {600, 400},
-	    .format = vk::Format::eR8G8B8A8Srgb,
+	    .format = TextureFormat::Byte4Srgb,
 	    .mipLevelCount = 1,
 	    .sampleCount = vk::SampleCountFlagBits::e1,
 	    .samplerInfo = {},
@@ -72,7 +72,7 @@ TEST(GraphicsDeviceTest, CreateRenderableTexture)
 	EXPECT_THAT(texture.get(), NotNull());
 	EXPECT_THAT(texture->GetSize().width, Eq(600u));
 	EXPECT_THAT(texture->GetSize().height, Eq(400u));
-	EXPECT_THAT(texture->GetFormat(), Eq(vk::Format::eR8G8B8A8Srgb));
+	EXPECT_THAT(texture->GetFormat(), Eq(TextureFormat::Byte4Srgb));
 	EXPECT_THAT(texture->GetMipLevelCount(), Eq(1u));
 	EXPECT_THAT(texture->GetSampleCount(), Eq(vk::SampleCountFlagBits::e1));
 }
@@ -94,8 +94,8 @@ TEST(GraphicsDeviceTest, CreatePipeline)
 	        .rasterizationState = {.lineWidth = 1.0f},
 	    },
 	    .framebufferLayout = {
-			.colorFormat = vk::Format::eR8G8B8A8Srgb,
-			.depthStencilFormat = vk::Format::eD16Unorm,
+			.colorFormat = TextureFormat::Byte4Srgb,
+			.depthStencilFormat = TextureFormat::Depth16,
 			.sampleCount = vk::SampleCountFlagBits::e2,
 	    },
 	};

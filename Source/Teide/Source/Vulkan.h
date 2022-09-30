@@ -2,6 +2,7 @@
 #pragma once
 
 #include "Teide/Definitions.h"
+#include "Types/TextureData.h"
 
 #include <fmt/core.h>
 #include <vulkan/vulkan.hpp>
@@ -46,7 +47,7 @@ inline uint32_t size32(const T& cont)
 }
 
 void TransitionImageLayout(
-    vk::CommandBuffer cmdBuffer, vk::Image image, vk::Format format, uint32_t mipLevelCount, vk::ImageLayout oldLayout,
+    vk::CommandBuffer cmdBuffer, vk::Image image, TextureFormat format, uint32_t mipLevelCount, vk::ImageLayout oldLayout,
     vk::ImageLayout newLayout, vk::PipelineStageFlags srcStageMask, vk::PipelineStageFlags dstStageMask);
 
 vk::UniqueSemaphore CreateSemaphore(vk::Device device);
@@ -107,18 +108,22 @@ private:
 	std::string m_what;
 };
 
-vk::ImageAspectFlags GetImageAspect(vk::Format format);
+vk::ImageAspectFlags GetImageAspect(TextureFormat format);
 
 void CopyBufferToImage(
-    vk::CommandBuffer cmdBuffer, vk::Buffer source, vk::Image destination, vk::Format imageFormat, vk::Extent3D imageExtent);
+    vk::CommandBuffer cmdBuffer, vk::Buffer source, vk::Image destination, TextureFormat imageFormat,
+    vk::Extent3D imageExtent);
 void CopyImageToBuffer(
-    vk::CommandBuffer cmdBuffer, vk::Image source, vk::Buffer destination, vk::Format imageFormat,
+    vk::CommandBuffer cmdBuffer, vk::Image source, vk::Buffer destination, TextureFormat imageFormat,
     vk::Extent3D imageExtent, std::uint32_t numMipLevels);
 
 vk::UniqueRenderPass CreateRenderPass(vk::Device device, const FramebufferLayout& layout);
 vk::UniqueRenderPass CreateRenderPass(vk::Device device, const FramebufferLayout& layout, const RenderPassInfo& renderPassInfo);
 vk::UniqueFramebuffer
 CreateFramebuffer(vk::Device device, vk::RenderPass renderPass, vk::Extent2D size, std::span<const vk::ImageView> imageViews);
+
+vk::Format ToVulkan(TextureFormat format);
+TextureFormat FromVulkan(vk::Format format);
 
 template <class Rep, class Period>
 constexpr std::uint64_t Timeout(std::chrono::duration<Rep, Period> duration)

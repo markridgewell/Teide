@@ -33,8 +33,8 @@ public:
 	    std::vector<uint32_t> queueFamilyIndices, vk::CommandPool commandPool, vk::Queue queue, bool multisampled);
 
 	vk::Extent2D GetExtent() const override { return m_surfaceExtent; }
-	vk::Format GetColorFormat() const override { return m_colorFormat; }
-	vk::Format GetDepthFormat() const override { return m_depthFormat; }
+	TextureFormat GetColorFormat() const override { return m_colorFormat; }
+	TextureFormat GetDepthFormat() const override { return m_depthFormat; }
 	vk::SampleCountFlagBits GetSampleCount() const override { return m_msaaSampleCount; }
 
 	void OnResize() override;
@@ -67,11 +67,11 @@ private:
 	std::vector<vk::UniqueImageView> m_swapchainImageViews;
 	std::vector<vk::UniqueCommandBuffer> m_transitionToPresentSrc;
 	vk::SampleCountFlagBits m_msaaSampleCount = vk::SampleCountFlagBits::e1;
-	vk::Format m_colorFormat;
+	TextureFormat m_colorFormat;
 	vk::UniqueImage m_colorImage;
 	MemoryAllocation m_colorMemory;
 	vk::UniqueImageView m_colorImageView;
-	vk::Format m_depthFormat;
+	TextureFormat m_depthFormat;
 	vk::UniqueImage m_depthImage;
 	MemoryAllocation m_depthMemory;
 	vk::UniqueImageView m_depthImageView;
