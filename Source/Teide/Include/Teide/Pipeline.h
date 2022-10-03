@@ -34,7 +34,7 @@ struct FramebufferLayout
 {
 	std::optional<TextureFormat> colorFormat;
 	std::optional<TextureFormat> depthStencilFormat;
-	vk::SampleCountFlagBits sampleCount = vk::SampleCountFlagBits::e1;
+	std::uint32_t sampleCount = 1;
 
 	auto operator<=>(const FramebufferLayout&) const = default;
 };

@@ -1,17 +1,18 @@
 
 #pragma once
 
+#include "GeoLib/Vector.h"
 #include "Types/TextureData.h"
 
-#include <vulkan/vulkan.hpp>
+#include <cstdint>
 
 class Texture
 {
 public:
 	virtual ~Texture() = default;
 
-	virtual vk::Extent2D GetSize() const = 0;
+	virtual Geo::Size2i GetSize() const = 0;
 	virtual TextureFormat GetFormat() const = 0;
 	virtual std::uint32_t GetMipLevelCount() const = 0;
-	virtual vk::SampleCountFlagBits GetSampleCount() const = 0;
+	virtual std::uint32_t GetSampleCount() const = 0;
 };

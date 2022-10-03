@@ -24,8 +24,7 @@ TEST(SurfaceTest, CreateSurface)
 
 	auto device = CreateGraphicsDevice(window.get());
 	auto surface = device->CreateSurface(window.get(), false);
-	EXPECT_THAT(surface->GetExtent().width, Eq(800u));
-	EXPECT_THAT(surface->GetExtent().height, Eq(600u));
+	EXPECT_THAT(surface->GetExtent(), Eq(Geo::Size2i{800, 600}));
 }
 
 TEST(SurfaceTest, CreateSurfaceMultisampled)
@@ -35,8 +34,7 @@ TEST(SurfaceTest, CreateSurfaceMultisampled)
 
 	auto device = CreateGraphicsDevice(window.get());
 	auto surface = device->CreateSurface(window.get(), true);
-	EXPECT_THAT(surface->GetExtent().width, Eq(800u));
-	EXPECT_THAT(surface->GetExtent().height, Eq(600u));
+	EXPECT_THAT(surface->GetExtent(), Eq(Geo::Size2i{800, 600}));
 }
 
 TEST(SurfaceTest, CreatePipelineForSurface)

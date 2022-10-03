@@ -1,6 +1,7 @@
 
 #include "VulkanSurface.h"
 
+#include "GeoLib/Vector.h"
 #include "Teide/Pipeline.h"
 
 #include <SDL_vulkan.h>
@@ -38,22 +39,22 @@ vk::PresentModeKHR ChoosePresentMode(std::span<const vk::PresentModeKHR> availab
 	return vk::PresentModeKHR::eFifo;
 }
 
-vk::Extent2D ChooseSwapExtent(const vk::SurfaceCapabilitiesKHR& capabilities, SDL_Window* window)
+Geo::Size2i ChooseSwapExtent(const vk::SurfaceCapabilitiesKHR& capabilities, SDL_Window* window)
 {
 	if (capabilities.currentExtent.width != std::numeric_limits<uint32_t>::max())
 	{
-		return capabilities.currentExtent;
+		return {capabilities.currentExtent.width, capabilities.currentExtent.height};
 	}
 	else
 	{
 		int width = 0, height = 0;
 		SDL_Vulkan_GetDrawableSize(window, &width, &height);
 
-		const vk::Extent2D windowExtent = {static_cast<uint32_t>(width), static_cast<uint32_t>(height)};
+		const Geo::Size2i windowExtent = {static_cast<uint32_t>(width), static_cast<uint32_t>(height)};
 
-		const vk::Extent2D actualExtent
-		    = {std::clamp(windowExtent.width, capabilities.minImageExtent.width, capabilities.maxImageExtent.width),
-		       std::clamp(windowExtent.height, capabilities.minImageExtent.height, capabilities.maxImageExtent.height)};
+		const Geo::Size2i actualExtent
+		    = {std::clamp(windowExtent.x, capabilities.minImageExtent.width, capabilities.maxImageExtent.width),
+		       std::clamp(windowExtent.y, capabilities.minImageExtent.height, capabilities.maxImageExtent.height)};
 
 		return actualExtent;
 	}
@@ -61,7 +62,7 @@ vk::Extent2D ChooseSwapExtent(const vk::SurfaceCapabilitiesKHR& capabilities, SD
 
 vk::UniqueSwapchainKHR CreateSwapchain(
     vk::PhysicalDevice physicalDevice, std::span<const uint32_t> queueFamilyIndices, vk::SurfaceKHR surface,
-    vk::SurfaceFormatKHR surfaceFormat, vk::Extent2D surfaceExtent, vk::Device device, vk::SwapchainKHR oldSwapchain)
+    vk::SurfaceFormatKHR surfaceFormat, Geo::Size2i surfaceExtent, vk::Device device, vk::SwapchainKHR oldSwapchain)
 {
 	const auto surfaceCapabilities = physicalDevice.getSurfaceCapabilitiesKHR(surface);
 
@@ -85,7 +86,7 @@ vk::UniqueSwapchainKHR CreateSwapchain(
 	    .minImageCount = imageCount,
 	    .imageFormat = surfaceFormat.format,
 	    .imageColorSpace = surfaceFormat.colorSpace,
-	    .imageExtent = surfaceExtent,
+	    .imageExtent = {surfaceExtent.x, surfaceExtent.y},
 	    .imageArrayLayers = 1,
 	    .imageUsage = vk::ImageUsageFlagBits::eColorAttachment,
 	    .imageSharingMode = sharingMode,
@@ -144,7 +145,7 @@ TextureFormat FindSupportedFormat(
 
 std::vector<vk::UniqueFramebuffer> CreateFramebuffers(
     std::span<const vk::UniqueImageView> imageViews, vk::ImageView colorImageView, vk::ImageView depthImageView,
-    vk::RenderPass renderPass, vk::Extent2D surfaceExtent, vk::Device device)
+    vk::RenderPass renderPass, Geo::Size2i surfaceExtent, vk::Device device)
 {
 	auto framebuffers = std::vector<vk::UniqueFramebuffer>(imageViews.size());
 
@@ -160,8 +161,8 @@ std::vector<vk::UniqueFramebuffer> CreateFramebuffers(
 		    .renderPass = renderPass,
 		    .attachmentCount = size32(attachments),
 		    .pAttachments = data(attachments),
-		    .width = surfaceExtent.width,
-		    .height = surfaceExtent.height,
+		    .width = surfaceExtent.x,
+		    .height = surfaceExtent.y,
 		    .layers = 1,
 		};
 
@@ -176,7 +177,7 @@ std::vector<vk::UniqueFramebuffer> CreateFramebuffers(
 
 VulkanSurface::VulkanSurface(
     SDL_Window* window, vk::UniqueSurfaceKHR surface, vk::Device device, vk::PhysicalDevice physicalDevice,
-    std::vector<uint32_t> queueFamilyIndices, vk::CommandPool commandPool, vk::Queue queue, bool multisampled) :
+    std::vector<std::uint32_t> queueFamilyIndices, vk::CommandPool commandPool, vk::Queue queue, bool multisampled) :
     m_device{device},
     m_physicalDevice{physicalDevice},
     m_queueFamilyIndices{std::move(queueFamilyIndices)},
@@ -193,7 +194,7 @@ VulkanSurface::VulkanSurface(
 		const auto deviceLimits = physicalDevice.getProperties().limits;
 		const auto supportedSampleCounts
 		    = deviceLimits.framebufferColorSampleCounts & deviceLimits.framebufferDepthSampleCounts;
-		m_msaaSampleCount = vk::SampleCountFlagBits{std::bit_floor(static_cast<uint32_t>(supportedSampleCounts))};
+		m_msaaSampleCount = std::bit_floor(static_cast<std::uint32_t>(supportedSampleCounts));
 	}
 
 	CreateSwapchainAndImages();
@@ -265,10 +266,10 @@ void VulkanSurface::CreateColorBuffer(vk::Format format)
 	const auto imageInfo = vk::ImageCreateInfo{
 	    .imageType = vk::ImageType::e2D,
 	    .format = format,
-	    .extent = {m_surfaceExtent.width, m_surfaceExtent.height, 1},
+	    .extent = {m_surfaceExtent.x, m_surfaceExtent.y, 1},
 	    .mipLevels = 1,
 	    .arrayLayers = 1,
-	    .samples = m_msaaSampleCount,
+	    .samples = vk::SampleCountFlagBits{m_msaaSampleCount},
 	    .tiling = vk::ImageTiling::eOptimal,
 	    .usage = vk::ImageUsageFlagBits::eTransientAttachment | vk::ImageUsageFlagBits::eColorAttachment,
 	    .sharingMode = vk::SharingMode::eExclusive,
@@ -309,10 +310,10 @@ void VulkanSurface::CreateDepthBuffer()
 	const auto imageInfo = vk::ImageCreateInfo{
 	    .imageType = vk::ImageType::e2D,
 	    .format = ToVulkan(m_depthFormat),
-	    .extent = {m_surfaceExtent.width, m_surfaceExtent.height, 1},
+	    .extent = {m_surfaceExtent.x, m_surfaceExtent.y, 1},
 	    .mipLevels = 1,
 	    .arrayLayers = 1,
-	    .samples = m_msaaSampleCount,
+	    .samples = vk::SampleCountFlagBits{m_msaaSampleCount},
 	    .tiling = vk::ImageTiling::eOptimal,
 	    .usage = vk::ImageUsageFlagBits::eDepthStencilAttachment,
 	    .sharingMode = vk::SharingMode::eExclusive,
@@ -355,7 +356,7 @@ void VulkanSurface::CreateSwapchainAndImages()
 	m_swapchainImageViews = CreateSwapchainImageViews(surfaceFormat.format, m_swapchainImages, m_device);
 	m_imagesInFlight.resize(m_swapchainImages.size());
 
-	if (m_msaaSampleCount != vk::SampleCountFlagBits::e1)
+	if (m_msaaSampleCount != 1)
 	{
 		CreateColorBuffer(surfaceFormat.format);
 	}

@@ -1,7 +1,12 @@
-td_add_library(Types SOURCES Include/Types/ShaderData.h Source/ShaderData.cpp Include/Types/TextureData.h
-                             Source/TextureData.cpp)
+td_add_library(
+    Types
+    SOURCES Include/Types/ShaderData.h
+            Source/ShaderData.cpp
+            Include/Types/StaticMap.h
+            Include/Types/TextureData.h
+            Source/TextureData.cpp)
 
-target_link_libraries(Types PUBLIC Vulkan::Vulkan)
+target_link_libraries(Types PUBLIC GeoLib Vulkan::Vulkan)
 
 target_compile_definitions(Types PUBLIC VULKAN_HPP_NO_STRUCT_CONSTRUCTORS VULKAN_HPP_DISPATCH_LOADER_DYNAMIC=1)
 

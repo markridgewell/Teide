@@ -65,7 +65,7 @@ public:
 	    const ParameterBlockData& data, const char* name, CommandBuffer& cmdBuffer, vk::DescriptorPool descriptorPool);
 
 	vk::RenderPass CreateRenderPass(const FramebufferLayout& framebufferLayout, const RenderPassInfo& renderPassInfo = {});
-	vk::Framebuffer CreateFramebuffer(vk::RenderPass renderPass, vk::Extent2D size, std::vector<vk::ImageView> attachments);
+	vk::Framebuffer CreateFramebuffer(vk::RenderPass renderPass, Geo::Size2i size, std::vector<vk::ImageView> attachments);
 
 private:
 	struct RenderPassDesc
@@ -79,7 +79,7 @@ private:
 	struct FramebufferDesc
 	{
 		vk::RenderPass renderPass;
-		vk::Extent2D size;
+		Geo::Size2i size;
 		std::vector<vk::ImageView> attachments;
 
 		auto operator<=>(const FramebufferDesc&) const = default;

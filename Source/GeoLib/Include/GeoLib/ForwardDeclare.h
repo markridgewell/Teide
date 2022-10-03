@@ -2,6 +2,7 @@
 #pragma once
 
 #include <cstddef>
+#include <cstdint>
 
 namespace Geo
 {
@@ -25,6 +26,14 @@ using Point4 = Vector<float, 4, PointTag>;
 using Point2i = Vector<int, 2, PointTag>;
 using Point3i = Vector<int, 3, PointTag>;
 using Point4i = Vector<int, 4, PointTag>;
+
+struct SizeTag;
+using Size2 = Vector<float, 2, SizeTag>;
+using Size3 = Vector<float, 3, SizeTag>;
+using Size4 = Vector<float, 4, SizeTag>;
+using Size2i = Vector<std::uint32_t, 2, SizeTag>;
+using Size3i = Vector<std::uint32_t, 3, SizeTag>;
+using Size4i = Vector<std::uint32_t, 4, SizeTag>;
 
 struct ScaleTag;
 using Scale2 = Vector<float, 2, ScaleTag>;

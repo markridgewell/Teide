@@ -44,6 +44,7 @@ td_add_library(
 target_link_libraries(
     Teide
     PUBLIC Types
+           GeoLib
            Vulkan::Vulkan
            SDL2::SDL2
            fmt::fmt

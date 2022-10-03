@@ -243,7 +243,7 @@ Task<TextureData> VulkanRenderer::CopyTextureData(TexturePtr texture)
 		    .lastPipelineStageUsage = vk::PipelineStageFlagBits::eFragmentShader,
 		};
 		textureImpl.TransitionToTransferSrc(textureState, commandBuffer);
-		const auto extent = vk::Extent3D{textureImpl.size.width, textureImpl.size.height, 1};
+		const auto extent = vk::Extent3D{textureImpl.size.x, textureImpl.size.y, 1};
 		CopyImageToBuffer(
 		    commandBuffer, textureImpl.image.get(), buffer.buffer.get(), textureImpl.format, extent,
 		    textureImpl.mipLevelCount);
@@ -264,7 +264,7 @@ Task<TextureData> VulkanRenderer::CopyTextureData(TexturePtr texture)
 
 void VulkanRenderer::BuildCommandBuffer(
     CommandBuffer& commandBufferWrapper, RenderList renderList, const FramebufferLayout& framebufferLayout,
-    vk::Framebuffer framebuffer, vk::Extent2D framebufferSize, std::vector<vk::ImageView> framebufferAttachments)
+    vk::Framebuffer framebuffer, Geo::Size2i framebufferSize, std::vector<vk::ImageView> framebufferAttachments)
 {
 	using std::data;
 
@@ -307,7 +307,7 @@ void VulkanRenderer::BuildCommandBuffer(
 	const auto renderPassBegin = vk::RenderPassBeginInfo{
 	    .renderPass = renderPass,
 	    .framebuffer = framebuffer,
-	    .renderArea = {.offset = {0, 0}, .extent = framebufferSize},
+	    .renderArea = {.offset = {0, 0}, .extent = {framebufferSize.x, framebufferSize.y}},
 	    .clearValueCount = size32(clearValues),
 	    .pClearValues = data(clearValues),
 	};
@@ -315,13 +315,13 @@ void VulkanRenderer::BuildCommandBuffer(
 	const auto viewport = vk::Viewport{
 	    .x = 0.0f,
 	    .y = 0.0f,
-	    .width = static_cast<float>(framebufferSize.width),
-	    .height = static_cast<float>(framebufferSize.height),
+	    .width = static_cast<float>(framebufferSize.x),
+	    .height = static_cast<float>(framebufferSize.y),
 	    .minDepth = 0.0f,
 	    .maxDepth = 1.0f,
 	};
 	commandBuffer.setViewport(0, viewport);
-	commandBuffer.setScissor(0, vk::Rect2D{.extent = framebufferSize});
+	commandBuffer.setScissor(0, vk::Rect2D{.extent = {framebufferSize.x, framebufferSize.y}});
 
 	const auto threadIndex = m_device.GetScheduler().GetThreadIndex();
 	const auto viewParamsData = ParameterBlockData{

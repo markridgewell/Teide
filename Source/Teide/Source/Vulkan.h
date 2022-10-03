@@ -1,6 +1,7 @@
 
 #pragma once
 
+#include "GeoLib/Vector.h"
 #include "Teide/Definitions.h"
 #include "Types/TextureData.h"
 
@@ -120,9 +121,14 @@ void CopyImageToBuffer(
 vk::UniqueRenderPass CreateRenderPass(vk::Device device, const FramebufferLayout& layout);
 vk::UniqueRenderPass CreateRenderPass(vk::Device device, const FramebufferLayout& layout, const RenderPassInfo& renderPassInfo);
 vk::UniqueFramebuffer
-CreateFramebuffer(vk::Device device, vk::RenderPass renderPass, vk::Extent2D size, std::span<const vk::ImageView> imageViews);
+CreateFramebuffer(vk::Device device, vk::RenderPass renderPass, Geo::Size2i size, std::span<const vk::ImageView> imageViews);
 
-vk::Format ToVulkan(TextureFormat format);
+vk::Format ToVulkan(TextureFormat);
+vk::Filter ToVulkan(Filter);
+vk::SamplerMipmapMode ToVulkan(MipmapMode);
+vk::SamplerAddressMode ToVulkan(SamplerAddressMode);
+vk::CompareOp ToVulkan(CompareOp);
+
 TextureFormat FromVulkan(vk::Format format);
 
 template <class Rep, class Period>

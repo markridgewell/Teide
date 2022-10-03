@@ -35,7 +35,7 @@ struct Vector<T, 1, Tag>
 		return this->*members[i];
 	}
 
-	friend bool operator==(const Vector& a, const Vector& b) noexcept = default;
+	friend auto operator<=>(const Vector& a, const Vector& b) noexcept = default;
 
 	static constexpr Vector Zero() noexcept { return {}; }
 	static constexpr Vector UnitX() noexcept { return {1.0f}; }
@@ -68,7 +68,7 @@ struct Vector<T, 2, Tag>
 		return this->*members[i];
 	}
 
-	friend bool operator==(const Vector& a, const Vector& b) noexcept = default;
+	friend auto operator<=>(const Vector& a, const Vector& b) noexcept = default;
 
 	static constexpr Vector Zero() noexcept { return {}; }
 	static constexpr Vector UnitX() noexcept { return {1.0f, 0.0f}; }
@@ -102,7 +102,7 @@ struct Vector<T, 3, Tag>
 		return this->*members[i];
 	}
 
-	friend bool operator==(const Vector& a, const Vector& b) = default;
+	friend auto operator<=>(const Vector& a, const Vector& b) = default;
 
 	static constexpr Vector Zero() noexcept { return {}; }
 	static constexpr Vector UnitX() noexcept { return {1.0f, 0.0f, 0.0f}; }
@@ -137,7 +137,7 @@ struct Vector<T, 4, Tag>
 		return this->*members[i];
 	}
 
-	friend bool operator==(const Vector& a, const Vector& b) = default;
+	friend auto operator<=>(const Vector& a, const Vector& b) = default;
 
 	static constexpr Vector Zero() noexcept { return {}; }
 	static constexpr Vector UnitX() noexcept { return {1.0f, 0.0f, 0.0f, 0.0f}; }

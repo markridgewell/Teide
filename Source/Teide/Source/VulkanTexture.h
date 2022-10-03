@@ -1,6 +1,7 @@
 
 #pragma once
 
+#include "GeoLib/Vector.h"
 #include "MemoryAllocator.h"
 #include "Teide/Texture.h"
 #include "Vulkan.h"
@@ -17,20 +18,20 @@ struct VulkanTextureData
 	MemoryAllocation memory;
 	vk::UniqueImageView imageView;
 	vk::UniqueSampler sampler;
-	vk::Extent2D size;
+	Geo::Size2i size;
 	TextureFormat format;
-	uint32_t mipLevelCount = 1;
-	vk::SampleCountFlagBits sampleCount = vk::SampleCountFlagBits::e1;
+	std::uint32_t mipLevelCount = 1;
+	std::uint32_t sampleCount = 1;
 };
 
 struct VulkanTexture : public Texture, VulkanTextureData
 {
 	VulkanTexture(VulkanTextureData data) : VulkanTextureData{std::move(data)} {}
 
-	vk::Extent2D GetSize() const override { return size; }
+	Geo::Size2i GetSize() const override { return size; }
 	TextureFormat GetFormat() const override { return format; }
 	std::uint32_t GetMipLevelCount() const override { return mipLevelCount; }
-	vk::SampleCountFlagBits GetSampleCount() const override { return sampleCount; }
+	std::uint32_t GetSampleCount() const override { return sampleCount; }
 
 	void GenerateMipmaps(TextureState& state, vk::CommandBuffer cmdBuffer);
 

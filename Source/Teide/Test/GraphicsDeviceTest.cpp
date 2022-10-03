@@ -45,17 +45,15 @@ TEST(GraphicsDeviceTest, CreateTexture)
 	    .size = {2, 2},
 	    .format = TextureFormat::Byte4Srgb,
 	    .mipLevelCount = 1,
-	    .sampleCount = vk::SampleCountFlagBits::e1,
-	    .samplerInfo = {},
+	    .sampleCount = 1,
 	    .pixels = HexToBytes("ff 00 00 ff 00 ff 00 ff ff 00 ff ff 00 00 ff ff"),
 	};
 	const auto texture = device->CreateTexture(textureData, "Texture");
 	EXPECT_THAT(texture.get(), NotNull());
-	EXPECT_THAT(texture->GetSize().width, Eq(2u));
-	EXPECT_THAT(texture->GetSize().height, Eq(2u));
+	EXPECT_THAT(texture->GetSize(), Eq(Geo::Size2i{2, 2}));
 	EXPECT_THAT(texture->GetFormat(), Eq(TextureFormat::Byte4Srgb));
 	EXPECT_THAT(texture->GetMipLevelCount(), Eq(1u));
-	EXPECT_THAT(texture->GetSampleCount(), Eq(vk::SampleCountFlagBits::e1));
+	EXPECT_THAT(texture->GetSampleCount(), Eq(1u));
 }
 
 TEST(GraphicsDeviceTest, CreateRenderableTexture)
@@ -65,16 +63,14 @@ TEST(GraphicsDeviceTest, CreateRenderableTexture)
 	    .size = {600, 400},
 	    .format = TextureFormat::Byte4Srgb,
 	    .mipLevelCount = 1,
-	    .sampleCount = vk::SampleCountFlagBits::e1,
-	    .samplerInfo = {},
+	    .sampleCount = 1,
 	};
 	const auto texture = device->CreateRenderableTexture(textureData, "Texture");
 	EXPECT_THAT(texture.get(), NotNull());
-	EXPECT_THAT(texture->GetSize().width, Eq(600u));
-	EXPECT_THAT(texture->GetSize().height, Eq(400u));
+	EXPECT_THAT(texture->GetSize(), Eq(Geo::Size2i{600, 400}));
 	EXPECT_THAT(texture->GetFormat(), Eq(TextureFormat::Byte4Srgb));
 	EXPECT_THAT(texture->GetMipLevelCount(), Eq(1u));
-	EXPECT_THAT(texture->GetSampleCount(), Eq(vk::SampleCountFlagBits::e1));
+	EXPECT_THAT(texture->GetSampleCount(), Eq(1u));
 }
 
 TEST(GraphicsDeviceTest, CreatePipeline)
@@ -96,7 +92,7 @@ TEST(GraphicsDeviceTest, CreatePipeline)
 	    .framebufferLayout = {
 			.colorFormat = TextureFormat::Byte4Srgb,
 			.depthStencilFormat = TextureFormat::Depth16,
-			.sampleCount = vk::SampleCountFlagBits::e2,
+			.sampleCount = 2,
 	    },
 	};
 

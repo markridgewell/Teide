@@ -232,14 +232,14 @@ TextureAndState CreateTextureImpl(
 	};
 
 	// Create image
-	const auto imageExtent = vk::Extent3D{data.size.width, data.size.height, 1};
+	const auto imageExtent = vk::Extent3D{data.size.x, data.size.y, 1};
 	const auto imageInfo = vk::ImageCreateInfo{
 	    .imageType = vk::ImageType::e2D,
 	    .format = ToVulkan(data.format),
 	    .extent = imageExtent,
 	    .mipLevels = data.mipLevelCount,
 	    .arrayLayers = 1,
-	    .samples = data.sampleCount,
+	    .samples = vk::SampleCountFlagBits{data.sampleCount},
 	    .tiling = vk::ImageTiling::eOptimal,
 	    .usage = usage,
 	    .sharingMode = vk::SharingMode::eExclusive,
@@ -287,7 +287,21 @@ TextureAndState CreateTextureImpl(
 		},
 	};
 	auto imageView = device.createImageViewUnique(viewInfo, s_allocator);
-	auto sampler = device.createSamplerUnique(data.samplerInfo, s_allocator);
+
+	const auto& ss = data.samplerState;
+	const auto samplerInfo = vk::SamplerCreateInfo{
+	    .magFilter = ToVulkan(ss.magFilter),
+	    .minFilter = ToVulkan(ss.minFilter),
+	    .mipmapMode = ToVulkan(ss.mipmapMode),
+	    .addressModeU = ToVulkan(ss.addressModeU),
+	    .addressModeV = ToVulkan(ss.addressModeV),
+	    .addressModeW = ToVulkan(ss.addressModeW),
+	    .anisotropyEnable = ss.maxAnisotropy.has_value(),
+	    .maxAnisotropy = ss.maxAnisotropy.value_or(0.0f),
+	    .compareEnable = ss.compareOp.has_value(),
+	    .compareOp = ToVulkan(ss.compareOp.value_or(CompareOp::Never)),
+	};
+	auto sampler = device.createSamplerUnique(samplerInfo, s_allocator);
 
 	auto ret = VulkanTextureData{
 	    .image = std::move(image),
@@ -373,7 +387,7 @@ CreateGraphicsPipeline(const VulkanShader& shader, const PipelineData& piplineDa
 	};
 
 	const auto multisampleState = vk::PipelineMultisampleStateCreateInfo{
-	    .rasterizationSamples = piplineData.framebufferLayout.sampleCount,
+	    .rasterizationSamples = vk::SampleCountFlagBits{piplineData.framebufferLayout.sampleCount},
 	    .sampleShadingEnable = false,
 	    .minSampleShading = 1.0f,
 	    .pSampleMask = nullptr,
@@ -825,7 +839,7 @@ vk::RenderPass VulkanGraphicsDevice::CreateRenderPass(const FramebufferLayout& f
 }
 
 vk::Framebuffer
-VulkanGraphicsDevice::CreateFramebuffer(vk::RenderPass renderPass, vk::Extent2D size, std::vector<vk::ImageView> attachments)
+VulkanGraphicsDevice::CreateFramebuffer(vk::RenderPass renderPass, Geo::Size2i size, std::vector<vk::ImageView> attachments)
 {
 	const auto lock = std::scoped_lock(m_framebufferCacheMutex);
 

@@ -3,6 +3,7 @@
 
 #include "Teide/Pipeline.h"
 #include "Teide/Renderer.h"
+#include "Types/StaticMap.h"
 #include "Types/TextureData.h"
 
 #include <SDL_vulkan.h>
@@ -16,6 +17,37 @@ constexpr bool BreakOnVulkanWarning = false;
 constexpr bool BreakOnVulkanError = true;
 
 const vk::Optional<const vk::AllocationCallbacks> s_allocator = nullptr;
+
+static constexpr StaticMap<TextureFormat, vk::Format, TextureFormatCount> VulkanFormats = {{{
+    {TextureFormat::Unknown, vk::Format::eUndefined},
+    {TextureFormat::Byte1, vk::Format::eR8Unorm},
+    {TextureFormat::Int8x1, vk::Format::eR8Snorm},
+    {TextureFormat::Short1, vk::Format::eR16Sint},
+    {TextureFormat::Int1, vk::Format::eR32Sint},
+    {TextureFormat::Half1, vk::Format::eR16Sfloat},
+    {TextureFormat::Float1, vk::Format::eR32Sfloat},
+    {TextureFormat::Byte2, vk::Format::eR8G8Unorm},
+    {TextureFormat::Int8x2, vk::Format::eR8G8Snorm},
+    {TextureFormat::Short2, vk::Format::eR16G16Sint},
+    {TextureFormat::Int2, vk::Format::eR32G32Sint},
+    {TextureFormat::Half2, vk::Format::eR16G16Sfloat},
+    {TextureFormat::Float2, vk::Format::eR32G32Sfloat},
+    {TextureFormat::Byte4, vk::Format::eR8G8B8A8Unorm},
+    {TextureFormat::Int8x4, vk::Format::eR8G8B8A8Snorm},
+    {TextureFormat::Short4, vk::Format::eR16G16B16A16Sint},
+    {TextureFormat::Int4, vk::Format::eR32G32B32A32Sint},
+    {TextureFormat::Half4, vk::Format::eR16G16B16A16Sfloat},
+    {TextureFormat::Float4, vk::Format::eR32G32B32A32Sfloat},
+    {TextureFormat::Byte4Srgb, vk::Format::eR8G8B8A8Srgb},
+    {TextureFormat::Byte4SrgbBGRA, vk::Format::eB8G8R8A8Srgb},
+    {TextureFormat::Depth16, vk::Format::eD16Unorm},
+    {TextureFormat::Depth32, vk::Format::eD32Sfloat},
+    {TextureFormat::Depth16Stencil8, vk::Format::eD16UnormS8Uint},
+    {TextureFormat::Depth24Stencil8, vk::Format::eD24UnormS8Uint},
+    {TextureFormat::Depth32Stencil8, vk::Format::eD32SfloatS8Uint},
+    {TextureFormat::Stencil8, vk::Format::eS8Uint},
+}}};
+
 
 VKAPI_ATTR VkBool32 VKAPI_CALL DebugCallback(
     VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, [[maybe_unused]] VkDebugUtilsMessageTypeFlagsEXT messageType,
@@ -403,7 +435,7 @@ vk::UniqueRenderPass CreateRenderPass(vk::Device device, const FramebufferLayout
 {
 	assert(layout.colorFormat.has_value() || layout.depthStencilFormat.has_value());
 
-	const bool multisampling = layout.sampleCount != vk::SampleCountFlagBits::e1;
+	const bool multisampling = layout.sampleCount != 1;
 	const bool loadColor = renderPassInfo.colorLoadOp == vk::AttachmentLoadOp::eLoad;
 
 	std::vector<vk::AttachmentDescription> attachments;
@@ -422,7 +454,7 @@ vk::UniqueRenderPass CreateRenderPass(vk::Device device, const FramebufferLayout
 
 		attachments.push_back({
 		    .format = ToVulkan(*layout.colorFormat),
-		    .samples = layout.sampleCount,
+		    .samples = vk::SampleCountFlagBits{layout.sampleCount},
 		    .loadOp = renderPassInfo.colorLoadOp,
 		    .storeOp = multisampling ? vk::AttachmentStoreOp::eDontCare : renderPassInfo.colorStoreOp,
 		    .initialLayout = loadColor ? vk::ImageLayout::eColorAttachmentOptimal : vk::ImageLayout::eUndefined,
@@ -444,7 +476,7 @@ vk::UniqueRenderPass CreateRenderPass(vk::Device device, const FramebufferLayout
 
 		attachments.push_back({
 		    .format = ToVulkan(*layout.depthStencilFormat),
-		    .samples = layout.sampleCount,
+		    .samples = vk::SampleCountFlagBits{layout.sampleCount},
 		    .loadOp = vk::AttachmentLoadOp::eClear,
 		    .storeOp = storeOp,
 		    .stencilLoadOp = vk::AttachmentLoadOp::eDontCare,
@@ -503,14 +535,14 @@ vk::UniqueRenderPass CreateRenderPass(vk::Device device, const FramebufferLayout
 }
 
 vk::UniqueFramebuffer
-CreateFramebuffer(vk::Device device, vk::RenderPass renderPass, vk::Extent2D size, std::span<const vk::ImageView> imageViews)
+CreateFramebuffer(vk::Device device, vk::RenderPass renderPass, Geo::Size2i size, std::span<const vk::ImageView> imageViews)
 {
 	const auto framebufferCreateInfo = vk::FramebufferCreateInfo{
 	    .renderPass = renderPass,
 	    .attachmentCount = size32(imageViews),
 	    .pAttachments = data(imageViews),
-	    .width = size.width,
-	    .height = size.height,
+	    .width = size.x,
+	    .height = size.y,
 	    .layers = 1,
 	};
 
@@ -519,134 +551,58 @@ CreateFramebuffer(vk::Device device, vk::RenderPass renderPass, vk::Extent2D siz
 
 vk::Format ToVulkan(TextureFormat format)
 {
-	switch (format)
-	{
-		using enum TextureFormat;
-		case Unknown:
-			return vk::Format::eUndefined;
+	return VulkanFormats.at(format);
+}
 
-		case Byte1:
-			return vk::Format::eR8Unorm;
-		case Int8x1:
-			return vk::Format::eR8Snorm;
-		case Short1:
-			return vk::Format::eR16Sint;
-		case Int1:
-			return vk::Format::eR32Sint;
-		case Half1:
-			return vk::Format::eR16Sfloat;
-		case Float1:
-			return vk::Format::eR32Sfloat;
+vk::Filter ToVulkan(Filter filter)
+{
+	static constexpr StaticMap<Filter, vk::Filter, 2> map = {{{
+	    {Filter::Nearest, vk::Filter::eNearest},
+	    {Filter::Linear, vk::Filter::eNearest},
+	}}};
 
-		case Byte2:
-			return vk::Format::eR8G8Unorm;
-		case Int8x2:
-			return vk::Format::eR8G8Snorm;
-		case Short2:
-			return vk::Format::eR16G16Sint;
-		case Int2:
-			return vk::Format::eR32G32Sint;
-		case Half2:
-			return vk::Format::eR16G16Sfloat;
-		case Float2:
-			return vk::Format::eR32G32Sfloat;
+	return map.at(filter);
+}
 
-		case Byte4:
-			return vk::Format::eR8G8B8A8Unorm;
-		case Int8x4:
-			return vk::Format::eR8G8B8A8Snorm;
-		case Short4:
-			return vk::Format::eR16G16B16A16Sint;
-		case Int4:
-			return vk::Format::eR32G32B32A32Sint;
-		case Half4:
-			return vk::Format::eR16G16B16A16Sfloat;
-		case Float4:
-			return vk::Format::eR32G32B32A32Sfloat;
+vk::SamplerMipmapMode ToVulkan(MipmapMode mode)
+{
+	static constexpr StaticMap<MipmapMode, vk::SamplerMipmapMode, 2> map = {{{
+	    {MipmapMode::Nearest, vk::SamplerMipmapMode::eNearest},
+	    {MipmapMode::Linear, vk::SamplerMipmapMode::eNearest},
+	}}};
 
-		case Byte4Srgb:
-			return vk::Format::eR8G8B8A8Srgb;
-		case Byte4SrgbBGRA:
-			return vk::Format::eB8G8R8A8Srgb;
+	return map.at(mode);
+}
 
-		case Depth16:
-			return vk::Format::eD16Unorm;
-		case Depth32:
-			return vk::Format::eD32Sfloat;
-		case Depth16Stencil8:
-			return vk::Format::eD16UnormS8Uint;
-		case Depth24Stencil8:
-			return vk::Format::eD24UnormS8Uint;
-		case Depth32Stencil8:
-			return vk::Format::eD32SfloatS8Uint;
-		case Stencil8:
-			return vk::Format::eS8Uint;
-	}
-	return vk::Format::eUndefined;
+vk::SamplerAddressMode ToVulkan(SamplerAddressMode mode)
+{
+	static constexpr StaticMap<SamplerAddressMode, vk::SamplerAddressMode, 4> map = {{{
+	    {SamplerAddressMode::Repeat, vk::SamplerAddressMode::eRepeat},
+	    {SamplerAddressMode::Mirror, vk::SamplerAddressMode::eMirroredRepeat},
+	    {SamplerAddressMode::Clamp, vk::SamplerAddressMode::eClampToEdge},
+	    {SamplerAddressMode::Border, vk::SamplerAddressMode::eClampToBorder},
+	}}};
+
+	return map.at(mode);
+}
+
+vk::CompareOp ToVulkan(CompareOp op)
+{
+	static constexpr StaticMap<CompareOp, vk::CompareOp, 8> map = {{{
+	    {CompareOp::Never, vk::CompareOp::eNever},
+	    {CompareOp::Less, vk::CompareOp::eLess},
+	    {CompareOp::Equal, vk::CompareOp::eEqual},
+	    {CompareOp::LessEqual, vk::CompareOp::eLessOrEqual},
+	    {CompareOp::Greater, vk::CompareOp::eGreater},
+	    {CompareOp::GreaterEqual, vk::CompareOp::eGreaterOrEqual},
+	    {CompareOp::NotEqual, vk::CompareOp::eNotEqual},
+	    {CompareOp::Always, vk::CompareOp::eAlways},
+	}}};
+
+	return map.at(op);
 }
 
 TextureFormat FromVulkan(vk::Format format)
 {
-	switch (format)
-	{
-		using enum vk::Format;
-		case eUndefined:
-			return TextureFormat::Unknown;
-
-		case eR8Unorm:
-			return TextureFormat::Byte1;
-		case eR8Snorm:
-			return TextureFormat::Int8x1;
-		case eR16Sint:
-			return TextureFormat::Short1;
-		case eR32Sint:
-			return TextureFormat::Int1;
-		case eR16Sfloat:
-			return TextureFormat::Half1;
-		case eR32Sfloat:
-			return TextureFormat::Float1;
-
-		case eR8G8Unorm:
-			return TextureFormat::Byte2;
-		case eR8G8Snorm:
-			return TextureFormat::Int8x2;
-		case eR16G16Sint:
-			return TextureFormat::Short2;
-		case eR32G32Sint:
-			return TextureFormat::Int2;
-		case eR16G16Sfloat:
-			return TextureFormat::Half2;
-		case eR32G32Sfloat:
-			return TextureFormat::Float2;
-
-		case eR8G8B8A8Unorm:
-			return TextureFormat::Byte4;
-		case eR8G8B8A8Snorm:
-			return TextureFormat::Int8x4;
-		case eR16G16B16A16Sint:
-			return TextureFormat::Short4;
-		case eR32G32B32A32Sint:
-			return TextureFormat::Int4;
-		case eR16G16B16A16Sfloat:
-			return TextureFormat::Half4;
-		case eR32G32B32A32Sfloat:
-			return TextureFormat::Float4;
-
-		case eR8G8B8A8Srgb:
-			return TextureFormat::Byte4Srgb;
-		case eB8G8R8A8Srgb:
-			return TextureFormat::Byte4SrgbBGRA;
-
-		case eD16Unorm:
-			return TextureFormat::Depth16;
-		case eD32Sfloat:
-			return TextureFormat::Depth32;
-		case eD24UnormS8Uint:
-			return TextureFormat::Depth24Stencil8;
-		case eD32SfloatS8Uint:
-			return TextureFormat::Depth32Stencil8;
-
-		default:
-			return TextureFormat::Unknown;
-	}
+	return VulkanFormats.inverse_at(format);
 }

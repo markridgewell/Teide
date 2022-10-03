@@ -21,13 +21,13 @@ public:
 	RendererTest() : m_device{CreateGraphicsDevice()}, m_renderer{m_device->CreateRenderer(nullptr)} {}
 
 protected:
-	DynamicTexturePtr CreateRenderableTexture(vk::Extent2D size)
+	DynamicTexturePtr CreateRenderableTexture(Geo::Size2i size)
 	{
 		const auto textureData = TextureData{
 		    .size = size,
 		    .format = TextureFormat::Byte4Srgb,
 		    .mipLevelCount = 1,
-		    .sampleCount = vk::SampleCountFlagBits::e1,
+		    .sampleCount = 1,
 		};
 		return m_device->CreateRenderableTexture(textureData, "Texture");
 	}
@@ -48,10 +48,10 @@ TEST_F(RendererTest, RenderNothing)
 
 	const TextureData outputData = m_renderer->CopyTextureData(texture).get().value();
 
-	EXPECT_THAT(outputData.size, Eq(vk::Extent2D{2, 2}));
+	EXPECT_THAT(outputData.size, Eq(Geo::Size2i{2, 2}));
 	EXPECT_THAT(outputData.format, Eq(TextureFormat::Byte4Srgb));
 	EXPECT_THAT(outputData.mipLevelCount, Eq(1));
-	EXPECT_THAT(outputData.sampleCount, Eq(vk::SampleCountFlagBits::e1));
+	EXPECT_THAT(outputData.sampleCount, Eq(1));
 
 	const auto expectedPixels = HexToBytes("ff 00 00 ff ff 00 00 ff ff 00 00 ff ff 00 00 ff");
 	EXPECT_THAT(outputData.pixels, ContainerEq(expectedPixels));
@@ -91,10 +91,10 @@ TEST_F(RendererTest, RenderFullscreenTri)
 
 	const TextureData outputData = m_renderer->CopyTextureData(texture).get().value();
 
-	EXPECT_THAT(outputData.size, Eq(vk::Extent2D{2, 2}));
+	EXPECT_THAT(outputData.size, Eq(Geo::Size2i{2, 2}));
 	EXPECT_THAT(outputData.format, Eq(TextureFormat::Byte4Srgb));
 	EXPECT_THAT(outputData.mipLevelCount, Eq(1));
-	EXPECT_THAT(outputData.sampleCount, Eq(vk::SampleCountFlagBits::e1));
+	EXPECT_THAT(outputData.sampleCount, Eq(1));
 
 	const auto expectedPixels = HexToBytes("ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff");
 	EXPECT_THAT(outputData.pixels, ContainerEq(expectedPixels));

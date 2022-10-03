@@ -1,10 +1,11 @@
 
 #pragma once
 
-#include <vulkan/vulkan.hpp>
+#include "GeoLib/Vector.h"
 
 #include <cstddef>
 #include <cstdint>
+#include <optional>
 #include <vector>
 
 enum class TextureFormat : std::uint16_t
@@ -42,14 +43,59 @@ enum class TextureFormat : std::uint16_t
 	Depth32Stencil8,
 	Stencil8,
 };
+constexpr std::size_t TextureFormatCount = 27;
+
+enum class Filter
+{
+	Nearest,
+	Linear,
+};
+
+enum class MipmapMode
+{
+	Nearest,
+	Linear,
+};
+
+enum class SamplerAddressMode
+{
+	Repeat,
+	Mirror,
+	Clamp,
+	Border,
+};
+
+enum class CompareOp
+{
+	Never,
+	Less,
+	Equal,
+	LessEqual,
+	Greater,
+	GreaterEqual,
+	NotEqual,
+	Always,
+};
+
+struct SamplerState
+{
+	Filter magFilter = Filter::Nearest;
+	Filter minFilter = Filter::Nearest;
+	MipmapMode mipmapMode = MipmapMode::Nearest;
+	SamplerAddressMode addressModeU = SamplerAddressMode::Repeat;
+	SamplerAddressMode addressModeV = SamplerAddressMode::Repeat;
+	SamplerAddressMode addressModeW = SamplerAddressMode::Repeat;
+	std::optional<float> maxAnisotropy = {};
+	std::optional<CompareOp> compareOp = {};
+};
 
 struct TextureData
 {
-	vk::Extent2D size;
+	Geo::Size2i size;
 	TextureFormat format;
 	std::uint32_t mipLevelCount = 1;
-	vk::SampleCountFlagBits sampleCount = vk::SampleCountFlagBits::e1;
-	vk::SamplerCreateInfo samplerInfo;
+	std::uint32_t sampleCount = 1;
+	SamplerState samplerState;
 	std::vector<std::byte> pixels;
 };
 

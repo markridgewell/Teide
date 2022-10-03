@@ -410,7 +410,7 @@ public:
 		{
 			// Update view uniforms
 			const auto extent = m_surface->GetExtent();
-			const float aspectRatio = static_cast<float>(extent.width) / static_cast<float>(extent.height);
+			const float aspectRatio = static_cast<float>(extent.x) / static_cast<float>(extent.y);
 
 			const Geo::Matrix4 rotation = Geo::Matrix4::RotationZ(m_cameraYaw) * Geo::Matrix4::RotationX(m_cameraPitch);
 			const Geo::Vector3 cameraDirection = Geo::Normalise(rotation * Geo::Vector3{0.0f, 1.0f, 0.0f});
@@ -666,7 +666,7 @@ private:
 			    .size = {8, 8},
 			    .format = TextureFormat::Byte4Srgb,
 			    .mipLevelCount = static_cast<uint32_t>(std::floor(std::log2(8))) + 1,
-			    .samplerInfo={.magFilter = vk::Filter::eNearest,.minFilter = vk::Filter::eNearest,},
+			    .samplerState = {.magFilter = Filter::Nearest, .minFilter = Filter::Nearest},
 			    .pixels = CopyBytes(pixels),
 			};
 
@@ -694,7 +694,7 @@ private:
 		    .size = {static_cast<uint32_t>(width), static_cast<uint32_t>(height)},
 		    .format = TextureFormat::Byte4Srgb,
 		    .mipLevelCount = static_cast<uint32_t>(std::floor(std::log2(std::max(width, height)))) + 1,
-			.samplerInfo={.magFilter = vk::Filter::eLinear,.minFilter = vk::Filter::eLinear,},
+		    .samplerState = {.magFilter = Filter::Linear, .minFilter = Filter::Linear},
 		    .pixels = CopyBytes(std::span(pixels.get(), imageSize)),
 		};
 
@@ -708,18 +708,15 @@ private:
 		const auto data = TextureData{
 		    .size = {shadowMapSize, shadowMapSize},
 		    .format = TextureFormat::Depth16,
-		    .samplerInfo = {
-		        .magFilter = vk::Filter::eLinear,
-		        .minFilter = vk::Filter::eLinear,
-		        .mipmapMode = vk::SamplerMipmapMode::eNearest,
-		        .addressModeU = vk::SamplerAddressMode::eRepeat,
-		        .addressModeV = vk::SamplerAddressMode::eRepeat,
-		        .addressModeW = vk::SamplerAddressMode::eRepeat,
-		        .anisotropyEnable = true,
+		    .samplerState = {
+		        .magFilter = Filter::Linear,
+		        .minFilter = Filter::Linear,
+		        .mipmapMode = MipmapMode::Nearest,
+		        .addressModeU = SamplerAddressMode::Repeat,
+		        .addressModeV = SamplerAddressMode::Repeat,
+		        .addressModeW = SamplerAddressMode::Repeat,
 		        .maxAnisotropy = 8.0f,
-		        .compareEnable = true,
-		        .compareOp = vk::CompareOp::eLess,
-		        .borderColor = vk::BorderColor::eFloatOpaqueWhite,
+		        .compareOp = CompareOp::Less,
 		    },
 		};
 

@@ -17,8 +17,7 @@ TEST(TextureTest, GenerateMipmaps)
 	    .size = {2, 2},
 	    .format = TextureFormat::Byte4,
 	    .mipLevelCount = 2,
-	    .sampleCount = vk::SampleCountFlagBits::e1,
-	    .samplerInfo = {},
+	    .sampleCount = 1,
 	    .pixels = HexToBytes("ff 00 00 ff 00 ff 00 ff ff 00 ff ff 00 00 ff ff"),
 	};
 

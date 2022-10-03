@@ -11,8 +11,9 @@ TEST(TextureTest, GetByteSize)
 	    .size = {2, 2},
 	    .format = TextureFormat::Byte4,
 	    .mipLevelCount = 1,
-	    .sampleCount = vk::SampleCountFlagBits::e1,
-	    .samplerInfo = {}};
+	    .sampleCount = 1,
+	    .samplerState = {},
+	};
 	EXPECT_THAT(GetByteSize(textureData), Eq(16));
 }
 
@@ -22,8 +23,9 @@ TEST(TextureTest, GetByteSizeWithMipmaps)
 	    .size = {2, 2},
 	    .format = TextureFormat::Byte4,
 	    .mipLevelCount = 2,
-	    .sampleCount = vk::SampleCountFlagBits::e1,
-	    .samplerInfo = {}};
+	    .sampleCount = 1,
+	    .samplerState = {},
+	};
 	EXPECT_THAT(GetByteSize(textureData), Eq(20));
 }
 

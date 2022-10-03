@@ -1,6 +1,7 @@
 
 #pragma once
 
+#include "GeoLib/Vector.h"
 #include "MemoryAllocator.h"
 #include "Teide/Surface.h"
 #include "Vulkan.h"
@@ -21,7 +22,7 @@ struct SurfaceImage
 	vk::Semaphore imageAvailable;
 	vk::Image image;
 	vk::Framebuffer framebuffer;
-	vk::Extent2D extent;
+	Geo::Size2i extent;
 	vk::CommandBuffer prePresentCommandBuffer;
 };
 
@@ -32,10 +33,10 @@ public:
 	    SDL_Window* window, vk::UniqueSurfaceKHR surface, vk::Device device, vk::PhysicalDevice physicalDevice,
 	    std::vector<uint32_t> queueFamilyIndices, vk::CommandPool commandPool, vk::Queue queue, bool multisampled);
 
-	vk::Extent2D GetExtent() const override { return m_surfaceExtent; }
+	Geo::Size2i GetExtent() const override { return m_surfaceExtent; }
 	TextureFormat GetColorFormat() const override { return m_colorFormat; }
 	TextureFormat GetDepthFormat() const override { return m_depthFormat; }
-	vk::SampleCountFlagBits GetSampleCount() const override { return m_msaaSampleCount; }
+	std::uint32_t GetSampleCount() const override { return m_msaaSampleCount; }
 
 	void OnResize() override;
 
@@ -60,13 +61,13 @@ private:
 
 	SDL_Window* m_window;
 	vk::UniqueSurfaceKHR m_surface;
-	vk::Extent2D m_surfaceExtent;
+	Geo::Size2i m_surfaceExtent;
 	MemoryAllocator m_swapchainAllocator;
 	vk::UniqueSwapchainKHR m_swapchain;
 	std::vector<vk::Image> m_swapchainImages;
 	std::vector<vk::UniqueImageView> m_swapchainImageViews;
 	std::vector<vk::UniqueCommandBuffer> m_transitionToPresentSrc;
-	vk::SampleCountFlagBits m_msaaSampleCount = vk::SampleCountFlagBits::e1;
+	std::uint32_t m_msaaSampleCount = 1;
 	TextureFormat m_colorFormat;
 	vk::UniqueImage m_colorImage;
 	MemoryAllocation m_colorMemory;
