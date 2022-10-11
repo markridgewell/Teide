@@ -36,7 +36,7 @@ constexpr Vector<SizeType<T>, N, SizeTag> GetSize(const Box<T, N>& box)
 	Vector<SizeType<T>, N, SizeTag> ret;
 	for (Extent i = 0; i < N; i++)
 	{
-		ret[i] = static_cast<SizeType>(box.max[i] - box.min[i]);
+		ret[i] = static_cast<SizeType<T>>(box.max[i] - box.min[i]);
 	}
 	return ret;
 }
