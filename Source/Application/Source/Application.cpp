@@ -248,10 +248,6 @@ std::vector<std::byte> CopyBytes(BytesView src)
 RenderStates MakeRenderStates(float depthBiasConstant = 0.0f, float depthBiasSlope = 0.0f)
 {
 	return {
-		// Viewport and scissor will be dynamic states, so their initial values don't matter
-		.viewport = vk::Viewport{},
-		.scissor = vk::Rect2D{},
-
 		.rasterizationState = vk::PipelineRasterizationStateCreateInfo{
 			.depthClampEnable = false,
 			.rasterizerDiscardEnable = false,
@@ -281,8 +277,7 @@ RenderStates MakeRenderStates(float depthBiasConstant = 0.0f, float depthBiasSlo
 			.alphaBlendOp = vk::BlendOp::eAdd,
 			.colorWriteMask = vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG
 				| vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA,
-		},
-		.dynamicStates = {vk::DynamicState::eViewport, vk::DynamicState::eScissor}
+		}
 	};
 }
 

@@ -19,15 +19,12 @@ struct VertexLayout
 
 struct RenderStates
 {
-	vk::Viewport viewport;
-	vk::Rect2D scissor;
 	vk::PipelineRasterizationStateCreateInfo rasterizationState = {.lineWidth = 1.0f};
 	vk::PipelineDepthStencilStateCreateInfo depthStencilState;
 	vk::PipelineColorBlendAttachmentState colorBlendAttachment
 	    = {.colorWriteMask = vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG
 	           | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA};
 	vk::PipelineColorBlendStateCreateInfo colorBlendState;
-	std::vector<vk::DynamicState> dynamicStates;
 };
 
 struct FramebufferLayout

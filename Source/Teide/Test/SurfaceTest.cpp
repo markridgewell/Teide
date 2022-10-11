@@ -52,7 +52,6 @@ TEST(SurfaceTest, CreatePipelineForSurface)
 	    .vertexInputAttributes = {{.location = 0, .binding = 0, .format = vk::Format::eR32G32B32Sfloat, .offset = 0}},
 	};
 	const auto renderStates = RenderStates{
-	    .viewport = {0, 0, 600, 400},
 	    .rasterizationState = {.lineWidth = 1.0f},
 	};
 	const auto framebufferLayout = FramebufferLayout{

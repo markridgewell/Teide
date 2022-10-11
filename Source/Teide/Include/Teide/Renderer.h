@@ -1,6 +1,8 @@
 
 #pragma once
 
+#include "GeoLib/Box.h"
+#include "GeoLib/Vector.h"
 #include "Teide/BytesView.h"
 #include "Teide/ForwardDeclare.h"
 #include "Teide/ParameterBlock.h"
@@ -16,6 +18,14 @@
 #include <optional>
 
 class GraphicsDevice;
+
+struct ViewportRegion
+{
+	float left = 0.0f;
+	float top = 0.0f;
+	float right = 1.0f;
+	float bottom = 1.0f;
+};
 
 struct RenderObject
 {
@@ -38,6 +48,9 @@ struct RenderList
 	std::optional<std::uint32_t> clearStencilValue;
 
 	ShaderParameters viewParameters;
+
+	ViewportRegion viewportRegion;
+	std::optional<Geo::Box2i> scissor;
 
 	std::vector<RenderObject> objects;
 };

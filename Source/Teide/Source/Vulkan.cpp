@@ -602,6 +602,24 @@ vk::CompareOp ToVulkan(CompareOp op)
 	return map.at(op);
 }
 
+vk::Offset2D ToVulkan(Geo::Point2i point)
+{
+	return {point.x, point.y};
+}
+
+vk::Extent2D ToVulkan(Geo::Size2i vector)
+{
+	return {vector.x, vector.y};
+}
+
+vk::Rect2D ToVulkan(Geo::Box2i box)
+{
+	return {
+	    .offset = ToVulkan(box.min),
+	    .extent = ToVulkan(GetSize(box)),
+	};
+}
+
 TextureFormat FromVulkan(vk::Format format)
 {
 	return VulkanFormats.inverse_at(format);

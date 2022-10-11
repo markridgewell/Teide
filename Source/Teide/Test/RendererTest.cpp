@@ -72,16 +72,12 @@ TEST_F(RendererTest, RenderFullscreenTri)
 	const auto shaderData = CompileShader(SimpleShader);
 	const auto shader = m_device->CreateShader(shaderData, "SimpleShader");
 
-	const auto pipeline = m_device->CreatePipeline({
-	    .shader = shader,
-	    .vertexLayout = vertexLayout,
-	    .renderStates = {
-	        .viewport = {0, 0, 2, 2},
-	        .scissor = {{0, 0}, {2, 2}},
-	    },
-	    .framebufferLayout = {
-	        .colorFormat = texture->GetFormat(),
-	    }});
+	const auto pipeline = m_device->CreatePipeline(
+	    {.shader = shader,
+	     .vertexLayout = vertexLayout,
+	     .framebufferLayout = {
+	         .colorFormat = texture->GetFormat(),
+	     }});
 
 	const auto renderList = RenderList{
 	    .clearColorValue = Color{1.0f, 0.0f, 0.0f, 1.0f},

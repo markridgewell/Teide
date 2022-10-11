@@ -128,6 +128,9 @@ vk::Filter ToVulkan(Filter);
 vk::SamplerMipmapMode ToVulkan(MipmapMode);
 vk::SamplerAddressMode ToVulkan(SamplerAddressMode);
 vk::CompareOp ToVulkan(CompareOp);
+vk::Offset2D ToVulkan(Geo::Point2i);
+vk::Extent2D ToVulkan(Geo::Size2i);
+vk::Rect2D ToVulkan(Geo::Box2i);
 
 TextureFormat FromVulkan(vk::Format format);
 

@@ -359,35 +359,39 @@ vk::UniquePipelineLayout CreateGraphicsPipelineLayout(vk::Device device, const V
 	return device.createPipelineLayoutUnique(createInfo, s_allocator);
 }
 
-vk::UniquePipeline
-CreateGraphicsPipeline(const VulkanShader& shader, const PipelineData& piplineData, vk::RenderPass renderPass, vk::Device device)
+vk::UniquePipeline CreateGraphicsPipeline(
+    const VulkanShader& shader, const PipelineData& pipelineData, vk::RenderPass renderPass, vk::Device device)
 {
 	const auto vertexShader = shader.vertexShader.get();
 	const auto pixelShader = shader.pixelShader.get();
 
 	std::vector<vk::PipelineShaderStageCreateInfo> shaderStages;
 	shaderStages.push_back({.stage = vk::ShaderStageFlagBits::eVertex, .module = vertexShader, .pName = "main"});
-	if (piplineData.framebufferLayout.colorFormat.has_value())
+	if (pipelineData.framebufferLayout.colorFormat.has_value())
 	{
 		shaderStages.push_back({.stage = vk::ShaderStageFlagBits::eFragment, .module = pixelShader, .pName = "main"});
 	}
 
 	const auto vertexInput = vk::PipelineVertexInputStateCreateInfo{
-	    .vertexBindingDescriptionCount = size32(piplineData.vertexLayout.vertexInputBindings),
-	    .pVertexBindingDescriptions = data(piplineData.vertexLayout.vertexInputBindings),
-	    .vertexAttributeDescriptionCount = size32(piplineData.vertexLayout.vertexInputAttributes),
-	    .pVertexAttributeDescriptions = data(piplineData.vertexLayout.vertexInputAttributes),
+	    .vertexBindingDescriptionCount = size32(pipelineData.vertexLayout.vertexInputBindings),
+	    .pVertexBindingDescriptions = data(pipelineData.vertexLayout.vertexInputBindings),
+	    .vertexAttributeDescriptionCount = size32(pipelineData.vertexLayout.vertexInputAttributes),
+	    .pVertexAttributeDescriptions = data(pipelineData.vertexLayout.vertexInputAttributes),
 	};
+
+	// Viewport and scissor will be dynamic states, so their initial values don't matter
+	const auto viewport = vk::Viewport{};
+	const auto scissor = vk::Rect2D{};
 
 	const auto viewportState = vk::PipelineViewportStateCreateInfo{
 	    .viewportCount = 1,
-	    .pViewports = &piplineData.renderStates.viewport,
+	    .pViewports = &viewport,
 	    .scissorCount = 1,
-	    .pScissors = &piplineData.renderStates.scissor,
+	    .pScissors = &scissor,
 	};
 
 	const auto multisampleState = vk::PipelineMultisampleStateCreateInfo{
-	    .rasterizationSamples = vk::SampleCountFlagBits{piplineData.framebufferLayout.sampleCount},
+	    .rasterizationSamples = vk::SampleCountFlagBits{pipelineData.framebufferLayout.sampleCount},
 	    .sampleShadingEnable = false,
 	    .minSampleShading = 1.0f,
 	    .pSampleMask = nullptr,
@@ -398,22 +402,25 @@ CreateGraphicsPipeline(const VulkanShader& shader, const PipelineData& piplineDa
 	const auto colorBlendState = vk::PipelineColorBlendStateCreateInfo{
 	    .logicOpEnable = false,
 	    .attachmentCount = 1,
-	    .pAttachments = &piplineData.renderStates.colorBlendAttachment,
+	    .pAttachments = &pipelineData.renderStates.colorBlendAttachment,
 	};
 
+	const auto dynamicStates = std::array{vk::DynamicState::eViewport, vk::DynamicState::eScissor};
+
 	const auto dynamicState = vk::PipelineDynamicStateCreateInfo{
-	    .dynamicStateCount = size32(piplineData.renderStates.dynamicStates),
-	    .pDynamicStates = data(piplineData.renderStates.dynamicStates),
+	    .dynamicStateCount = size32(dynamicStates),
+	    .pDynamicStates = data(dynamicStates),
 	};
+
 	const auto createInfo = vk::GraphicsPipelineCreateInfo{
 	    .stageCount = size32(shaderStages),
 	    .pStages = data(shaderStages),
 	    .pVertexInputState = &vertexInput,
-	    .pInputAssemblyState = &piplineData.vertexLayout.inputAssembly,
+	    .pInputAssemblyState = &pipelineData.vertexLayout.inputAssembly,
 	    .pViewportState = &viewportState,
-	    .pRasterizationState = &piplineData.renderStates.rasterizationState,
+	    .pRasterizationState = &pipelineData.renderStates.rasterizationState,
 	    .pMultisampleState = &multisampleState,
-	    .pDepthStencilState = &piplineData.renderStates.depthStencilState,
+	    .pDepthStencilState = &pipelineData.renderStates.depthStencilState,
 	    .pColorBlendState = pixelShader ? &colorBlendState : nullptr,
 	    .pDynamicState = &dynamicState,
 	    .layout = shader.pipelineLayout.get(),

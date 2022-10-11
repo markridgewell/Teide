@@ -21,6 +21,19 @@
 namespace
 {
 static const vk::Optional<const vk::AllocationCallbacks> s_allocator = nullptr;
+
+vk::Viewport MakeViewport(Geo::Size2i size, const ViewportRegion& region = {})
+{
+	return {
+	    .x = region.left * size.x,
+	    .y = region.top * size.y,
+	    .width = region.right * size.x,
+	    .height = region.bottom * size.y,
+	    .minDepth = 0.0f,
+	    .maxDepth = 1.0f,
+	};
+}
+
 } // namespace
 
 VulkanRenderer::VulkanRenderer(
@@ -312,16 +325,11 @@ void VulkanRenderer::BuildCommandBuffer(
 	    .pClearValues = data(clearValues),
 	};
 
-	const auto viewport = vk::Viewport{
-	    .x = 0.0f,
-	    .y = 0.0f,
-	    .width = static_cast<float>(framebufferSize.x),
-	    .height = static_cast<float>(framebufferSize.y),
-	    .minDepth = 0.0f,
-	    .maxDepth = 1.0f,
-	};
+	const auto viewport = MakeViewport(framebufferSize, renderList.viewportRegion);
 	commandBuffer.setViewport(0, viewport);
-	commandBuffer.setScissor(0, vk::Rect2D{.extent = {framebufferSize.x, framebufferSize.y}});
+	const auto scissor = renderList.scissor ? ToVulkan(*renderList.scissor)
+	                                        : vk::Rect2D{.extent = {framebufferSize.x, framebufferSize.y}};
+	commandBuffer.setScissor(0, scissor);
 
 	const auto threadIndex = m_device.GetScheduler().GetThreadIndex();
 	const auto viewParamsData = ParameterBlockData{

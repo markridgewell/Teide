@@ -5,6 +5,7 @@ td_add_library(
             Include/GeoLib/Angle.h
             Include/GeoLib/Vector.h
             Include/GeoLib/Scalar.h
+            Include/GeoLib/Box.h
             GeoLib.natvis)
 
 # Test
