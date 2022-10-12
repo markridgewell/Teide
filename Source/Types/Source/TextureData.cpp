@@ -22,7 +22,7 @@ std::size_t GetByteSize(const TextureData& data)
 
 std::uint32_t GetFormatElementSize(TextureFormat format)
 {
-	static constexpr StaticMap<TextureFormat, std::uint32_t, TextureFormatCount> map = {{{
+	static constexpr StaticMap<TextureFormat, std::uint32_t, TextureFormatCount> map = {
 	    {TextureFormat::Unknown, 0},
 	    {TextureFormat::Byte1, 1},
 	    {TextureFormat::Int8x1, 1},
@@ -50,7 +50,7 @@ std::uint32_t GetFormatElementSize(TextureFormat format)
 	    {TextureFormat::Depth24Stencil8, 4},
 	    {TextureFormat::Depth32Stencil8, 8},
 	    {TextureFormat::Stencil8, 1},
-	}}};
+	};
 
 	return map.at(format);
 }

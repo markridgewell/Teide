@@ -248,36 +248,20 @@ std::vector<std::byte> CopyBytes(BytesView src)
 RenderStates MakeRenderStates(float depthBiasConstant = 0.0f, float depthBiasSlope = 0.0f)
 {
 	return {
-		.rasterizationState = vk::PipelineRasterizationStateCreateInfo{
-			.depthClampEnable = false,
-			.rasterizerDiscardEnable = false,
-			.polygonMode = vk::PolygonMode::eFill,
-			.cullMode = vk::CullModeFlagBits::eNone,
-			.frontFace = vk::FrontFace::eClockwise,
-			.depthBiasEnable = depthBiasConstant != 0.0f || depthBiasSlope != 0.0f,
-			.depthBiasConstantFactor = depthBiasConstant,
-			.depthBiasClamp = 0.0f,
-			.depthBiasSlopeFactor = depthBiasSlope,
-			.lineWidth = 1.0f,
+		.blendState = BlendState{
+			.blendFunc = { BlendFactor::One, BlendFactor::Zero, BlendOp::Add },
 		},
-		.depthStencilState = {
-			.depthTestEnable = true,
-			.depthWriteEnable = true,
-			.depthCompareOp = vk::CompareOp::eLess,
-			.depthBoundsTestEnable = false,
-			.stencilTestEnable = false,
+		.depthState = {
+			.depthTest = true,
+			.depthWrite = true,
+			.depthFunc = CompareOp::Less,
 		},
-		.colorBlendAttachment = {
-			.blendEnable = false,
-			.srcColorBlendFactor = vk::BlendFactor::eOne,
-			.dstColorBlendFactor = vk::BlendFactor::eZero,
-			.colorBlendOp = vk::BlendOp::eAdd,
-			.srcAlphaBlendFactor = vk::BlendFactor::eOne,
-			.dstAlphaBlendFactor = vk::BlendFactor::eZero,
-			.alphaBlendOp = vk::BlendOp::eAdd,
-			.colorWriteMask = vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG
-				| vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA,
-		}
+		.rasterState = {
+			.fillMode = FillMode::Solid,
+			.cullMode = CullMode::None,
+			.depthBiasConstant = depthBiasConstant,
+			.depthBiasSlope = depthBiasSlope,
+		},
 	};
 }
 

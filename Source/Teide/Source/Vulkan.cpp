@@ -18,7 +18,7 @@ constexpr bool BreakOnVulkanError = true;
 
 const vk::Optional<const vk::AllocationCallbacks> s_allocator = nullptr;
 
-static constexpr StaticMap<TextureFormat, vk::Format, TextureFormatCount> VulkanFormats = {{{
+static constexpr StaticMap<TextureFormat, vk::Format, TextureFormatCount> VulkanFormats = {
     {TextureFormat::Unknown, vk::Format::eUndefined},
     {TextureFormat::Byte1, vk::Format::eR8Unorm},
     {TextureFormat::Int8x1, vk::Format::eR8Snorm},
@@ -46,7 +46,7 @@ static constexpr StaticMap<TextureFormat, vk::Format, TextureFormatCount> Vulkan
     {TextureFormat::Depth24Stencil8, vk::Format::eD24UnormS8Uint},
     {TextureFormat::Depth32Stencil8, vk::Format::eD32SfloatS8Uint},
     {TextureFormat::Stencil8, vk::Format::eS8Uint},
-}}};
+};
 
 
 VKAPI_ATTR VkBool32 VKAPI_CALL DebugCallback(
@@ -556,48 +556,44 @@ vk::Format ToVulkan(TextureFormat format)
 
 vk::Filter ToVulkan(Filter filter)
 {
-	static constexpr StaticMap<Filter, vk::Filter, 2> map = {{{
+	static constexpr StaticMap<Filter, vk::Filter, 2> map{
 	    {Filter::Nearest, vk::Filter::eNearest},
 	    {Filter::Linear, vk::Filter::eNearest},
-	}}};
+	};
 
 	return map.at(filter);
 }
 
 vk::SamplerMipmapMode ToVulkan(MipmapMode mode)
 {
-	static constexpr StaticMap<MipmapMode, vk::SamplerMipmapMode, 2> map = {{{
+	static constexpr StaticMap<MipmapMode, vk::SamplerMipmapMode, 2> map = {
 	    {MipmapMode::Nearest, vk::SamplerMipmapMode::eNearest},
 	    {MipmapMode::Linear, vk::SamplerMipmapMode::eNearest},
-	}}};
+	};
 
 	return map.at(mode);
 }
 
 vk::SamplerAddressMode ToVulkan(SamplerAddressMode mode)
 {
-	static constexpr StaticMap<SamplerAddressMode, vk::SamplerAddressMode, 4> map = {{{
+	static constexpr StaticMap<SamplerAddressMode, vk::SamplerAddressMode, 4> map = {
 	    {SamplerAddressMode::Repeat, vk::SamplerAddressMode::eRepeat},
 	    {SamplerAddressMode::Mirror, vk::SamplerAddressMode::eMirroredRepeat},
 	    {SamplerAddressMode::Clamp, vk::SamplerAddressMode::eClampToEdge},
 	    {SamplerAddressMode::Border, vk::SamplerAddressMode::eClampToBorder},
-	}}};
+	};
 
 	return map.at(mode);
 }
 
 vk::CompareOp ToVulkan(CompareOp op)
 {
-	static constexpr StaticMap<CompareOp, vk::CompareOp, 8> map = {{{
-	    {CompareOp::Never, vk::CompareOp::eNever},
-	    {CompareOp::Less, vk::CompareOp::eLess},
-	    {CompareOp::Equal, vk::CompareOp::eEqual},
-	    {CompareOp::LessEqual, vk::CompareOp::eLessOrEqual},
-	    {CompareOp::Greater, vk::CompareOp::eGreater},
-	    {CompareOp::GreaterEqual, vk::CompareOp::eGreaterOrEqual},
-	    {CompareOp::NotEqual, vk::CompareOp::eNotEqual},
-	    {CompareOp::Always, vk::CompareOp::eAlways},
-	}}};
+	static constexpr StaticMap<CompareOp, vk::CompareOp, 8> map = {
+	    {CompareOp::Never, vk::CompareOp::eNever},       {CompareOp::Less, vk::CompareOp::eLess},
+	    {CompareOp::Equal, vk::CompareOp::eEqual},       {CompareOp::LessEqual, vk::CompareOp::eLessOrEqual},
+	    {CompareOp::Greater, vk::CompareOp::eGreater},   {CompareOp::GreaterEqual, vk::CompareOp::eGreaterOrEqual},
+	    {CompareOp::NotEqual, vk::CompareOp::eNotEqual}, {CompareOp::Always, vk::CompareOp::eAlways},
+	};
 
 	return map.at(op);
 }
@@ -618,6 +614,91 @@ vk::Rect2D ToVulkan(Geo::Box2i box)
 	    .offset = ToVulkan(box.min),
 	    .extent = ToVulkan(GetSize(box)),
 	};
+}
+
+vk::BlendFactor ToVulkan(BlendFactor factor)
+{
+	static constexpr StaticMap<BlendFactor, vk::BlendFactor, 11> map = {
+	    {BlendFactor::Zero, vk::BlendFactor::eZero},
+	    {BlendFactor::One, vk::BlendFactor::eOne},
+	    {BlendFactor::SrcColor, vk::BlendFactor::eSrcColor},
+	    {BlendFactor::InvSrcColor, vk::BlendFactor::eOneMinusSrcColor},
+	    {BlendFactor::SrcAlpha, vk::BlendFactor::eSrcAlpha},
+	    {BlendFactor::InvSrcAlpha, vk::BlendFactor::eOneMinusSrcAlpha},
+	    {BlendFactor::DestAlpha, vk::BlendFactor::eDstAlpha},
+	    {BlendFactor::InvDestAlpha, vk::BlendFactor::eOneMinusDstAlpha},
+	    {BlendFactor::DestColor, vk::BlendFactor::eDstColor},
+	    {BlendFactor::InvDestColor, vk::BlendFactor::eOneMinusDstColor},
+	    {BlendFactor::SrcAlphaSaturate, vk::BlendFactor::eSrcAlphaSaturate},
+	};
+
+	return map.at(factor);
+}
+
+vk::BlendOp ToVulkan(BlendOp op)
+{
+	static constexpr StaticMap<BlendOp, vk::BlendOp, 5> map = {
+	    {BlendOp::Add, vk::BlendOp::eAdd},
+	    {BlendOp::Subtract, vk::BlendOp::eSubtract},
+	    {BlendOp::RevSubtract, vk::BlendOp::eReverseSubtract},
+	    {BlendOp::Min, vk::BlendOp::eMin},
+	    {BlendOp::Max, vk::BlendOp::eMax},
+	};
+
+	return map.at(op);
+}
+
+vk::StencilOp ToVulkan(StencilOp op)
+{
+	static constexpr StaticMap<StencilOp, vk::StencilOp, 8> map = {
+	    {StencilOp::Keep, vk::StencilOp::eKeep},
+	    {StencilOp::Zero, vk::StencilOp::eZero},
+	    {StencilOp::Replace, vk::StencilOp::eReplace},
+	    {StencilOp::Increment, vk::StencilOp::eIncrementAndWrap},
+	    {StencilOp::Decrement, vk::StencilOp::eDecrementAndWrap},
+	    {StencilOp::IncrementSaturate, vk::StencilOp::eIncrementAndClamp},
+	    {StencilOp::DecrementSaturate, vk::StencilOp::eDecrementAndClamp},
+	    {StencilOp::Invert, vk::StencilOp::eInvert},
+	};
+
+	return map.at(op);
+}
+
+
+vk::PolygonMode ToVulkan(FillMode mode)
+{
+	static constexpr StaticMap<FillMode, vk::PolygonMode, 3> map = {
+	    {FillMode::Solid, vk::PolygonMode::eFill},
+	    {FillMode::Wireframe, vk::PolygonMode::eLine},
+	    {FillMode::Point, vk::PolygonMode::ePoint},
+	};
+
+	return map.at(mode);
+}
+
+vk::CullModeFlags ToVulkan(CullMode mode)
+{
+	static constexpr StaticMap<CullMode, vk::CullModeFlags, 3> map = {
+	    {CullMode::None, vk::CullModeFlagBits::eNone},
+	    {CullMode::Anticlockwise, vk::CullModeFlagBits::eFront},
+	    {CullMode::Clockwise, vk::CullModeFlagBits::eBack},
+	};
+
+	return map.at(mode);
+}
+
+vk::ColorComponentFlags ToVulkan(ColorMask mask)
+{
+	vk::ColorComponentFlags ret = {};
+	if (mask.red)
+		ret |= vk::ColorComponentFlagBits::eR;
+	if (mask.green)
+		ret |= vk::ColorComponentFlagBits::eG;
+	if (mask.blue)
+		ret |= vk::ColorComponentFlagBits::eB;
+	if (mask.alpha)
+		ret |= vk::ColorComponentFlagBits::eA;
+	return ret;
 }
 
 TextureFormat FromVulkan(vk::Format format)

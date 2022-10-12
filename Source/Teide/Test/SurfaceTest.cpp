@@ -51,9 +51,7 @@ TEST(SurfaceTest, CreatePipelineForSurface)
 	    .vertexInputBindings = {{.binding = 0, .stride = 0}},
 	    .vertexInputAttributes = {{.location = 0, .binding = 0, .format = vk::Format::eR32G32B32Sfloat, .offset = 0}},
 	};
-	const auto renderStates = RenderStates{
-	    .rasterizationState = {.lineWidth = 1.0f},
-	};
+	const auto renderStates = RenderStates{};
 	const auto framebufferLayout = FramebufferLayout{
 	    .colorFormat = surface->GetColorFormat(),
 	    .depthStencilFormat = surface->GetDepthFormat(),

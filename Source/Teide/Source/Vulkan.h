@@ -3,6 +3,7 @@
 
 #include "GeoLib/Vector.h"
 #include "Teide/Definitions.h"
+#include "Types/PipelineData.h"
 #include "Types/TextureData.h"
 
 #include <fmt/core.h>
@@ -131,6 +132,12 @@ vk::CompareOp ToVulkan(CompareOp);
 vk::Offset2D ToVulkan(Geo::Point2i);
 vk::Extent2D ToVulkan(Geo::Size2i);
 vk::Rect2D ToVulkan(Geo::Box2i);
+vk::BlendFactor ToVulkan(BlendFactor);
+vk::BlendOp ToVulkan(BlendOp);
+vk::StencilOp ToVulkan(StencilOp);
+vk::PolygonMode ToVulkan(FillMode);
+vk::CullModeFlags ToVulkan(CullMode);
+vk::ColorComponentFlags ToVulkan(ColorMask);
 
 TextureFormat FromVulkan(vk::Format format);
 

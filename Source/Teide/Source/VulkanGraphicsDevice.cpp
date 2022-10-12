@@ -359,11 +359,36 @@ vk::UniquePipelineLayout CreateGraphicsPipelineLayout(vk::Device device, const V
 	return device.createPipelineLayoutUnique(createInfo, s_allocator);
 }
 
+vk::PipelineColorBlendAttachmentState MakeBlendState(const std::optional<BlendState>& state, ColorMask colorMask)
+{
+	vk::PipelineColorBlendAttachmentState ret;
+	if (state)
+	{
+		const auto colorBlendFunc = state->blendFunc;
+		const auto alphaBlendFunc = state->alphaBlendFunc.value_or(state->blendFunc);
+
+		ret.blendEnable = true;
+		ret.srcColorBlendFactor = ToVulkan(colorBlendFunc.source);
+		ret.dstColorBlendFactor = ToVulkan(colorBlendFunc.dest);
+		ret.colorBlendOp = ToVulkan(colorBlendFunc.op);
+		ret.srcAlphaBlendFactor = ToVulkan(alphaBlendFunc.source);
+		ret.dstAlphaBlendFactor = ToVulkan(alphaBlendFunc.dest);
+		ret.alphaBlendOp = ToVulkan(alphaBlendFunc.op);
+	}
+	else
+	{
+		ret.blendEnable = false;
+	}
+	ret.colorWriteMask = ToVulkan(colorMask);
+	return ret;
+}
+
 vk::UniquePipeline CreateGraphicsPipeline(
     const VulkanShader& shader, const PipelineData& pipelineData, vk::RenderPass renderPass, vk::Device device)
 {
 	const auto vertexShader = shader.vertexShader.get();
 	const auto pixelShader = shader.pixelShader.get();
+	const auto& renderStates = pipelineData.renderStates;
 
 	std::vector<vk::PipelineShaderStageCreateInfo> shaderStages;
 	shaderStages.push_back({.stage = vk::ShaderStageFlagBits::eVertex, .module = vertexShader, .pName = "main"});
@@ -378,6 +403,30 @@ vk::UniquePipeline CreateGraphicsPipeline(
 	    .vertexAttributeDescriptionCount = size32(pipelineData.vertexLayout.vertexInputAttributes),
 	    .pVertexAttributeDescriptions = data(pipelineData.vertexLayout.vertexInputAttributes),
 	};
+
+	const auto& rasterState = renderStates.rasterState;
+	const auto rasterizationState = vk::PipelineRasterizationStateCreateInfo{
+	    .depthClampEnable = false,
+	    .rasterizerDiscardEnable = false,
+	    .polygonMode = ToVulkan(rasterState.fillMode),
+	    .cullMode = ToVulkan(rasterState.cullMode),
+	    .frontFace = vk::FrontFace::eCounterClockwise,
+	    .depthBiasEnable = rasterState.depthBiasConstant != 0.0f || rasterState.depthBiasSlope != 0.0f,
+	    .depthBiasConstantFactor = rasterState.depthBiasConstant,
+	    .depthBiasClamp = 0.0f,
+	    .depthBiasSlopeFactor = rasterState.depthBiasSlope,
+	    .lineWidth = rasterState.lineWidth,
+	};
+
+	const auto depthStencilState = vk::PipelineDepthStencilStateCreateInfo{
+	    .depthTestEnable = true,
+	    .depthWriteEnable = true,
+	    .depthCompareOp = vk::CompareOp::eLess,
+	    .depthBoundsTestEnable = false,
+	    .stencilTestEnable = false,
+	};
+
+	const auto colorBlendAttachment = MakeBlendState(renderStates.blendState, renderStates.colorWriteMask);
 
 	// Viewport and scissor will be dynamic states, so their initial values don't matter
 	const auto viewport = vk::Viewport{};
@@ -402,7 +451,7 @@ vk::UniquePipeline CreateGraphicsPipeline(
 	const auto colorBlendState = vk::PipelineColorBlendStateCreateInfo{
 	    .logicOpEnable = false,
 	    .attachmentCount = 1,
-	    .pAttachments = &pipelineData.renderStates.colorBlendAttachment,
+	    .pAttachments = &colorBlendAttachment,
 	};
 
 	const auto dynamicStates = std::array{vk::DynamicState::eViewport, vk::DynamicState::eScissor};
@@ -418,9 +467,9 @@ vk::UniquePipeline CreateGraphicsPipeline(
 	    .pVertexInputState = &vertexInput,
 	    .pInputAssemblyState = &pipelineData.vertexLayout.inputAssembly,
 	    .pViewportState = &viewportState,
-	    .pRasterizationState = &pipelineData.renderStates.rasterizationState,
+	    .pRasterizationState = &rasterizationState,
 	    .pMultisampleState = &multisampleState,
-	    .pDepthStencilState = &pipelineData.renderStates.depthStencilState,
+	    .pDepthStencilState = &depthStencilState,
 	    .pColorBlendState = pixelShader ? &colorBlendState : nullptr,
 	    .pDynamicState = &dynamicState,
 	    .layout = shader.pipelineLayout.get(),

@@ -9,7 +9,19 @@ template <typename K, typename V, std::size_t N>
 class StaticMap
 {
 public:
-	constexpr StaticMap(std::array<std::pair<K, V>, N> args) : m_data{args} {}
+	constexpr StaticMap(std::initializer_list<std::pair<K, V>> args)
+	{
+		if (args.size() != N)
+		{
+			throw std::invalid_argument("args must have exactly N elements");
+		}
+		std::size_t i = 0;
+		for (const auto& elem : args)
+		{
+			m_data[i] = elem;
+			++i;
+		}
+	}
 
 	[[nodiscard]] constexpr V at(const K& key) const
 	{

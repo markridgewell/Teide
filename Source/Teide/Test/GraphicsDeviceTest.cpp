@@ -85,9 +85,6 @@ TEST(GraphicsDeviceTest, CreatePipeline)
 	        .vertexInputBindings = {{.binding = 0, .stride = 0}},
 	        .vertexInputAttributes = {{.location = 0, .binding = 0, .format = vk::Format::eR32G32B32Sfloat, .offset = 0}},
 	    },
-	    .renderStates = {
-	        .rasterizationState = {.lineWidth = 1.0f},
-	    },
 	    .framebufferLayout = {
 			.colorFormat = TextureFormat::Byte4Srgb,
 			.depthStencilFormat = TextureFormat::Depth16,
