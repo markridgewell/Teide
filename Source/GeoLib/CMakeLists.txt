@@ -8,12 +8,11 @@ td_add_library(
             Include/GeoLib/Box.h
             GeoLib.natvis)
 
-# Test
 td_add_test(
     GeoLibTest
     SOURCES Test/Main.cpp
             Test/TestUtils.h
             Test/AngleTest.cpp
             Test/MatrixTest.cpp
-            Test/VectorTest.cpp)
-target_link_libraries(GeoLibTest PRIVATE GeoLib GTest::gtest GTest::gmock fmt::fmt)
+            Test/VectorTest.cpp
+    DEPS GeoLib GTest::gtest GTest::gmock fmt::fmt)

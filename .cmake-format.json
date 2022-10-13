@@ -3,19 +3,23 @@
     "td_add_library": {
       "pargs": 1,
       "kwargs": {
-        "SOURCES": "*"
+        "SOURCES": "*",
+        "PUBLIC_DEPS": "*",
+        "PRIVATE_DEPS": "*"
       }
     },
     "td_add_application": {
       "pargs": 1,
       "kwargs": {
-        "SOURCES": "*"
+        "SOURCES": "*",
+        "DEPS": "*"
       }
     },
     "td_add_test": {
       "pargs": 1,
       "kwargs": {
-        "SOURCES": "*"
+        "SOURCES": "*",
+        "DEPS": "*"
       }
     }
   },

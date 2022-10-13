@@ -39,22 +39,12 @@ td_add_library(
             Source/VulkanSurface.h
             Source/VulkanTexture.cpp
             Source/VulkanTexture.h
-            Vulkan.natvis)
-
-target_link_libraries(
-    Teide
-    PUBLIC Types
-           GeoLib
-           Vulkan::Vulkan
-           SDL2::SDL2
-           fmt::fmt
-           spdlog::spdlog
-           Taskflow::Taskflow
-           function2::function2)
+            Vulkan.natvis
+    PUBLIC_DEPS Types GeoLib spdlog::spdlog Vulkan::Vulkan
+    PRIVATE_DEPS SDL2::SDL2 fmt::fmt Taskflow::Taskflow function2::function2)
 
 target_compile_definitions(Teide PUBLIC VULKAN_HPP_NO_STRUCT_CONSTRUCTORS VULKAN_HPP_DISPATCH_LOADER_DYNAMIC=1)
 
-# Test
 td_add_test(
     TeideTest
     SOURCES Test/CpuExecutorTest.cpp
@@ -67,6 +57,9 @@ td_add_test(
             Test/TestData.h
             Test/TestUtils.cpp
             Test/TestUtils.h
-            Test/TextureTest.cpp)
-
-target_link_libraries(TeideTest PRIVATE Teide ShaderCompiler GTest::gtest GTest::gmock)
+            Test/TextureTest.cpp
+    DEPS Teide
+         SDL2::SDL2
+         ShaderCompiler
+         GTest::gtest
+         GTest::gmock)
