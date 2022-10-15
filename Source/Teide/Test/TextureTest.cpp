@@ -15,7 +15,7 @@ TEST(TextureTest, GenerateMipmaps)
 	auto device = CreateGraphicsDevice();
 	const auto textureData = TextureData{
 	    .size = {2, 2},
-	    .format = TextureFormat::Byte4,
+	    .format = Format::Byte4Norm,
 	    .mipLevelCount = 2,
 	    .sampleCount = 1,
 	    .pixels = HexToBytes("ff 00 00 ff 00 ff 00 ff ff 00 ff ff 00 00 ff ff"),

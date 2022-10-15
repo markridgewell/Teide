@@ -1,9 +1,11 @@
 td_add_library(
     Types
-    SOURCES Include/Types/PipelineData.h
+    SOURCES Include/Types/Format.h
+            Include/Types/PipelineData.h
             Include/Types/ShaderData.h
             Include/Types/StaticMap.h
             Include/Types/TextureData.h
+            Source/Format.cpp
             Source/ShaderData.cpp
             Source/TextureData.cpp
     PUBLIC_DEPS GeoLib)

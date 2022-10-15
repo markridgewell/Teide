@@ -47,9 +47,9 @@ TEST(SurfaceTest, CreatePipelineForSurface)
 	const auto shaderData = CompileShader(SimpleShader);
 	const auto shader = device->CreateShader(shaderData, "Shader");
 	const auto vertexLayout = VertexLayout{
-	    .inputAssembly = {.topology = vk::PrimitiveTopology::eTriangleList},
-	    .vertexInputBindings = {{.binding = 0, .stride = 0}},
-	    .vertexInputAttributes = {{.location = 0, .binding = 0, .format = vk::Format::eR32G32B32Sfloat, .offset = 0}},
+	    .topology = PrimitiveTopology::TriangleList,
+	    .bufferBindings = {{.stride = 0}},
+	    .attributes = {{.name = "inPosition", .format = Format::Float3, .bufferIndex = 0, .offset = 0}},
 	};
 	const auto renderStates = RenderStates{};
 	const auto framebufferLayout = FramebufferLayout{

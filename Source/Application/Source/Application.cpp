@@ -91,10 +91,10 @@ const ShaderSourceData ModelShader = {
     },
     .vertexShader = {
         .inputs = {{
-            {"inPosition", Type::Vector3},
-            {"inTexCoord", Type::Vector2},
-            {"inNormal", Type::Vector3},
-            {"inColor", Type::Vector3},
+            {"position", Type::Vector3},
+            {"texCoord", Type::Vector2},
+            {"normal", Type::Vector3},
+            {"color", Type::Vector3},
         }},
         .outputs = {{
             {"outTexCoord", Type::Vector2},
@@ -105,11 +105,11 @@ const ShaderSourceData ModelShader = {
         }},
         .source = R"--(
 void main() {
-    outPosition = mul(object.model, vec4(inPosition, 1.0)).xyz;
+    outPosition = mul(object.model, vec4(position, 1.0)).xyz;
     gl_Position = mul(view.viewProj, vec4(outPosition, 1.0));
-    outTexCoord = inTexCoord;
-    outNormal = mul(object.model, vec4(inNormal, 0.0)).xyz;
-    outColor = inColor;
+    outTexCoord = texCoord;
+    outNormal = mul(object.model, vec4(normal, 0.0)).xyz;
+    outColor = color;
 }
 )--",
     },
@@ -176,41 +176,32 @@ constexpr auto QuadVertices = std::array<Vertex, 4>{{
 
 constexpr auto QuadIndices = std::array<uint16_t, 6>{{0, 1, 2, 2, 3, 0}};
 
-const auto VertexLayoutDesc = VertexLayout
-{
-	.inputAssembly = {
-	    .topology = vk::PrimitiveTopology::eTriangleList,
-	    .primitiveRestartEnable = false,
-	},
-    .vertexInputBindings = {{
-        .binding = 0,
+const auto VertexLayoutDesc = VertexLayout{
+    .topology = PrimitiveTopology::TriangleList,
+    .bufferBindings = {{
         .stride = sizeof(Vertex),
-        .inputRate = vk::VertexInputRate::eVertex,
     }},
-    .vertexInputAttributes = {{
-        .location = 0,
-        .binding = 0,
-        .format = vk::Format::eR32G32B32Sfloat,
-        .offset = offsetof(Vertex, position),
-    },
-    {
-        .location = 1,
-        .binding = 0,
-        .format = vk::Format::eR32G32B32Sfloat,
-        .offset = offsetof(Vertex, texCoord),
-    },
-    {
-        .location = 2,
-        .binding = 0,
-        .format = vk::Format::eR32G32B32Sfloat,
-        .offset = offsetof(Vertex, normal),
-    },
-    {
-        .location = 3,
-        .binding = 0,
-        .format = vk::Format::eR32G32B32Sfloat,
-        .offset = offsetof(Vertex, color),
-    }},
+    .attributes
+    = {{
+           .name = "position",
+           .format = Format::Float3,
+           .offset = offsetof(Vertex, position),
+       },
+       {
+           .name = "texCoord",
+           .format = Format::Float2,
+           .offset = offsetof(Vertex, texCoord),
+       },
+       {
+           .name = "normal",
+           .format = Format::Float3,
+           .offset = offsetof(Vertex, normal),
+       },
+       {
+           .name = "color",
+           .format = Format::Float3,
+           .offset = offsetof(Vertex, color),
+       }},
 };
 
 struct SceneUniforms
@@ -237,8 +228,6 @@ struct ObjectUniforms
 };
 
 constexpr auto ShaderLang = ShaderLanguage::Glsl;
-
-static const vk::Optional<const vk::AllocationCallbacks> s_allocator = nullptr;
 
 std::vector<std::byte> CopyBytes(BytesView src)
 {
@@ -643,7 +632,7 @@ private:
 			};
 			const auto data = TextureData{
 			    .size = {8, 8},
-			    .format = TextureFormat::Byte4Srgb,
+			    .format = Format::Byte4Srgb,
 			    .mipLevelCount = static_cast<uint32_t>(std::floor(std::log2(8))) + 1,
 			    .samplerState = {.magFilter = Filter::Nearest, .minFilter = Filter::Nearest},
 			    .pixels = CopyBytes(pixels),
@@ -667,11 +656,11 @@ private:
 			throw ApplicationError(fmt::format("Error loading texture '{}'", filename));
 		}
 
-		const vk::DeviceSize imageSize = static_cast<vk::DeviceSize>(width) * height * 4;
+		const auto imageSize = static_cast<std::size_t>(width) * height * 4;
 
 		const auto data = TextureData{
 		    .size = {static_cast<uint32_t>(width), static_cast<uint32_t>(height)},
-		    .format = TextureFormat::Byte4Srgb,
+		    .format = Format::Byte4Srgb,
 		    .mipLevelCount = static_cast<uint32_t>(std::floor(std::log2(std::max(width, height)))) + 1,
 		    .samplerState = {.magFilter = Filter::Linear, .minFilter = Filter::Linear},
 		    .pixels = CopyBytes(std::span(pixels.get(), imageSize)),
@@ -686,7 +675,7 @@ private:
 
 		const auto data = TextureData{
 		    .size = {shadowMapSize, shadowMapSize},
-		    .format = TextureFormat::Depth16,
+		    .format = Format::Depth16,
 		    .samplerState = {
 		        .magFilter = Filter::Linear,
 		        .minFilter = Filter::Linear,
@@ -790,13 +779,6 @@ int Run(int argc, char* argv[])
 		auto application = Application(window.get(), imageFilename, modelFilename);
 		application.MainLoop();
 	}
-	catch (const vk::Error& e)
-	{
-		spdlog::critical("Vulkan error: {}", e.what());
-		std::string message = fmt::format("The following error occurred when initializing Vulkan:\n{}", e.what());
-		SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Error", message.c_str(), window.get());
-		return 1;
-	}
 	catch (const ApplicationError& e)
 	{
 		spdlog::critical("Application error: {}", e.what());
@@ -811,7 +793,13 @@ int Run(int argc, char* argv[])
 		SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Error", message.c_str(), window.get());
 		return 1;
 	}
-
+	catch (const std::exception& e)
+	{
+		spdlog::critical("Vulkan error: {}", e.what());
+		std::string message = fmt::format("The following error occurred when initializing Vulkan:\n{}", e.what());
+		SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Error", message.c_str(), window.get());
+		return 1;
+	}
 
 	return 0;
 }

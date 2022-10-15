@@ -25,7 +25,7 @@ protected:
 	{
 		const auto textureData = TextureData{
 		    .size = size,
-		    .format = TextureFormat::Byte4Srgb,
+		    .format = Format::Byte4Srgb,
 		    .mipLevelCount = 1,
 		    .sampleCount = 1,
 		};
@@ -49,7 +49,7 @@ TEST_F(RendererTest, RenderNothing)
 	const TextureData outputData = m_renderer->CopyTextureData(texture).get().value();
 
 	EXPECT_THAT(outputData.size, Eq(Geo::Size2i{2, 2}));
-	EXPECT_THAT(outputData.format, Eq(TextureFormat::Byte4Srgb));
+	EXPECT_THAT(outputData.format, Eq(Format::Byte4Srgb));
 	EXPECT_THAT(outputData.mipLevelCount, Eq(1));
 	EXPECT_THAT(outputData.sampleCount, Eq(1));
 
@@ -65,9 +65,9 @@ TEST_F(RendererTest, RenderFullscreenTri)
 	const auto vbuffer = m_device->CreateBuffer(
 	    {.usage = BufferUsage::Vertex, .lifetime = ResourceLifetime::Permanent, .data = vertices}, "VertexBuffer");
 	const auto vertexLayout = VertexLayout{
-	    .inputAssembly = {.topology = vk::PrimitiveTopology::eTriangleList},
-	    .vertexInputBindings = {{.binding = 0, .stride = sizeof(float) * 2}},
-	    .vertexInputAttributes = {{.location = 0, .binding = 0, .format = vk::Format::eR32G32Sfloat, .offset = 0}}};
+	    .topology = PrimitiveTopology::TriangleList,
+	    .bufferBindings = {{.stride = sizeof(float) * 2}},
+	    .attributes = {{.name = "inPosition", .format = Format::Float2, .bufferIndex = 0, .offset = 0}}};
 
 	const auto shaderData = CompileShader(SimpleShader);
 	const auto shader = m_device->CreateShader(shaderData, "SimpleShader");
@@ -88,7 +88,7 @@ TEST_F(RendererTest, RenderFullscreenTri)
 	const TextureData outputData = m_renderer->CopyTextureData(texture).get().value();
 
 	EXPECT_THAT(outputData.size, Eq(Geo::Size2i{2, 2}));
-	EXPECT_THAT(outputData.format, Eq(TextureFormat::Byte4Srgb));
+	EXPECT_THAT(outputData.format, Eq(Format::Byte4Srgb));
 	EXPECT_THAT(outputData.mipLevelCount, Eq(1));
 	EXPECT_THAT(outputData.sampleCount, Eq(1));
 

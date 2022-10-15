@@ -19,7 +19,7 @@ struct VulkanTextureData
 	vk::UniqueImageView imageView;
 	vk::UniqueSampler sampler;
 	Geo::Size2i size;
-	TextureFormat format;
+	Format format;
 	std::uint32_t mipLevelCount = 1;
 	std::uint32_t sampleCount = 1;
 };
@@ -29,7 +29,7 @@ struct VulkanTexture : public Texture, VulkanTextureData
 	VulkanTexture(VulkanTextureData data) : VulkanTextureData{std::move(data)} {}
 
 	Geo::Size2i GetSize() const override { return size; }
-	TextureFormat GetFormat() const override { return format; }
+	Format GetFormat() const override { return format; }
 	std::uint32_t GetMipLevelCount() const override { return mipLevelCount; }
 	std::uint32_t GetSampleCount() const override { return sampleCount; }
 

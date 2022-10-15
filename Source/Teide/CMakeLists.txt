@@ -1,3 +1,5 @@
+set(vulkan_options VULKAN_HPP_NO_STRUCT_CONSTRUCTORS VULKAN_HPP_DISPATCH_LOADER_DYNAMIC=1)
+
 td_add_library(
     Teide
     SOURCES Include/Teide/Buffer.h
@@ -40,10 +42,15 @@ td_add_library(
             Source/VulkanTexture.cpp
             Source/VulkanTexture.h
             Vulkan.natvis
-    PUBLIC_DEPS Types GeoLib spdlog::spdlog Vulkan::Vulkan
-    PRIVATE_DEPS SDL2::SDL2 fmt::fmt Taskflow::Taskflow function2::function2)
+    PUBLIC_DEPS Types GeoLib spdlog::spdlog
+    PRIVATE_DEPS
+        Vulkan::Vulkan
+        SDL2::SDL2
+        fmt::fmt
+        Taskflow::Taskflow
+        function2::function2)
 
-target_compile_definitions(Teide PUBLIC VULKAN_HPP_NO_STRUCT_CONSTRUCTORS VULKAN_HPP_DISPATCH_LOADER_DYNAMIC=1)
+target_compile_definitions(Teide PRIVATE ${vulkan_options})
 
 td_add_test(
     TeideTest
@@ -59,7 +66,10 @@ td_add_test(
             Test/TestUtils.h
             Test/TextureTest.cpp
     DEPS Teide
+         Vulkan::Vulkan
          SDL2::SDL2
          ShaderCompiler
          GTest::gtest
          GTest::gmock)
+
+target_compile_definitions(TeideTest PRIVATE ${vulkan_options})

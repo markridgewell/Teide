@@ -83,8 +83,8 @@ void main() {
 TEST(ShaderCompilerTest, CompileSimple)
 {
 	const auto result = CompileShader(TestShader);
-	EXPECT_THAT(result.vertexShaderSpirv, Not(IsEmpty()));
-	EXPECT_THAT(result.pixelShaderSpirv, Not(IsEmpty()));
+	EXPECT_THAT(result.vertexShader.spirv, Not(IsEmpty()));
+	EXPECT_THAT(result.pixelShader.spirv, Not(IsEmpty()));
 	EXPECT_THAT(result.environment.scenePblock.parameters, Eq(TestShader.environment.scenePblock.parameters));
 	EXPECT_THAT(result.environment.scenePblock.uniformsStages, Eq(ShaderStageFlags::Pixel));
 	EXPECT_THAT(result.environment.viewPblock.parameters, Eq(TestShader.environment.viewPblock.parameters));

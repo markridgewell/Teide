@@ -291,8 +291,8 @@ void Compile(ShaderData& data, std::string_view vertexSource, std::string_view p
 	spvOptions.disassemble = false;
 	spvOptions.validate = true;
 
-	glslang::GlslangToSpv(*program.getIntermediate(EShLangVertex), data.vertexShaderSpirv, &logger, &spvOptions);
-	glslang::GlslangToSpv(*program.getIntermediate(EShLangFragment), data.pixelShaderSpirv, &logger, &spvOptions);
+	glslang::GlslangToSpv(*program.getIntermediate(EShLangVertex), data.vertexShader.spirv, &logger, &spvOptions);
+	glslang::GlslangToSpv(*program.getIntermediate(EShLangFragment), data.pixelShader.spirv, &logger, &spvOptions);
 
 	program.buildReflection(EShReflectionAllBlockVariables | EShReflectionSeparateBuffers | EShReflectionAllIOVariables);
 
@@ -387,27 +387,29 @@ void BuildBindings(std::string& source, const ParameterBlockDesc& pblock, int se
 	BuildResourceBindings(source, pblock, set);
 }
 
-void BuildVaryings(std::string& source, const ShaderStageDefinition& stage)
+void BuildVaryings(std::string& source, ShaderStageData& data, const ShaderStageDefinition& sourceStage)
 {
 	auto out = std::back_inserter(source);
 
-	for (std::size_t i = 0; i < stage.inputs.size(); i++)
+	for (std::size_t i = 0; i < sourceStage.inputs.size(); i++)
 	{
-		const auto& input = stage.inputs[i];
+		const auto& input = sourceStage.inputs[i];
 
 		if (input.name.starts_with("gl_"))
 			continue;
 
+		data.inputs.push_back(input);
 		fmt::format_to(out, "layout(location = {}) in {} {};\n", i, ToString(input.type), input.name);
 	}
 
-	for (std::size_t i = 0; i < stage.outputs.size(); i++)
+	for (std::size_t i = 0; i < sourceStage.outputs.size(); i++)
 	{
-		const auto& output = stage.outputs[i];
+		const auto& output = sourceStage.outputs[i];
 
 		if (output.name.starts_with("gl_"))
 			continue;
 
+		data.outputs.push_back(output);
 		fmt::format_to(out, "layout(location = {}) out {} {};\n", i, ToString(output.type), output.name);
 	}
 
@@ -430,11 +432,11 @@ ShaderData CompileShader(const ShaderSourceData& sourceData)
 	BuildBindings(parameters, sourceData.objectPblock, 3);
 
 	std::string vertexShader = parameters;
-	BuildVaryings(vertexShader, sourceData.vertexShader);
+	BuildVaryings(vertexShader, data.vertexShader, sourceData.vertexShader);
 	vertexShader += sourceData.vertexShader.source;
 
 	std::string pixelShader = parameters;
-	BuildVaryings(pixelShader, sourceData.pixelShader);
+	BuildVaryings(pixelShader, data.pixelShader, sourceData.pixelShader);
 	pixelShader += sourceData.pixelShader.source;
 
 	Compile(data, vertexShader, pixelShader, GetEShSource(sourceData.language));

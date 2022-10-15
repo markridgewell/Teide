@@ -1,9 +1,6 @@
 
 #include "CpuExecutor.h"
 
-#include "Teide/Buffer.h"
-#include "Vulkan.h"
-
 #include <gmock/gmock.h>
 
 #include <algorithm>

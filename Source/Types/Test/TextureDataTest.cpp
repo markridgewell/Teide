@@ -9,7 +9,7 @@ TEST(TextureTest, GetByteSize)
 {
 	const auto textureData = TextureData{
 	    .size = {2, 2},
-	    .format = TextureFormat::Byte4,
+	    .format = Format::Byte4,
 	    .mipLevelCount = 1,
 	    .sampleCount = 1,
 	    .samplerState = {},
@@ -21,7 +21,7 @@ TEST(TextureTest, GetByteSizeWithMipmaps)
 {
 	const auto textureData = TextureData{
 	    .size = {2, 2},
-	    .format = TextureFormat::Byte4,
+	    .format = Format::Byte4,
 	    .mipLevelCount = 2,
 	    .sampleCount = 1,
 	    .samplerState = {},
@@ -31,8 +31,8 @@ TEST(TextureTest, GetByteSizeWithMipmaps)
 
 TEST(TextureTest, GetFormatElementSize)
 {
-	EXPECT_THAT(GetFormatElementSize(TextureFormat::Byte1), Eq(1));
-	EXPECT_THAT(GetFormatElementSize(TextureFormat::Byte2), Eq(2));
-	EXPECT_THAT(GetFormatElementSize(TextureFormat::Byte4), Eq(4));
-	EXPECT_THAT(GetFormatElementSize(TextureFormat::Unknown), Eq(0));
+	EXPECT_THAT(GetFormatElementSize(Format::Byte1), Eq(1));
+	EXPECT_THAT(GetFormatElementSize(Format::Byte2), Eq(2));
+	EXPECT_THAT(GetFormatElementSize(Format::Byte4), Eq(4));
+	EXPECT_THAT(GetFormatElementSize(Format::Unknown), Eq(0));
 }

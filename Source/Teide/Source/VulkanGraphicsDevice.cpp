@@ -389,6 +389,7 @@ vk::UniquePipeline CreateGraphicsPipeline(
 	const auto vertexShader = shader.vertexShader.get();
 	const auto pixelShader = shader.pixelShader.get();
 	const auto& renderStates = pipelineData.renderStates;
+	const auto& vertexLayout = pipelineData.vertexLayout;
 
 	std::vector<vk::PipelineShaderStageCreateInfo> shaderStages;
 	shaderStages.push_back({.stage = vk::ShaderStageFlagBits::eVertex, .module = vertexShader, .pName = "main"});
@@ -397,11 +398,34 @@ vk::UniquePipeline CreateGraphicsPipeline(
 		shaderStages.push_back({.stage = vk::ShaderStageFlagBits::eFragment, .module = pixelShader, .pName = "main"});
 	}
 
+	std::vector<vk::VertexInputBindingDescription> vertexInputBindings(vertexLayout.bufferBindings.size());
+	for (std::uint32_t i = 0; i < vertexInputBindings.size(); i++)
+	{
+		vertexInputBindings[i] = {
+		    .binding = i,
+		    .stride = vertexLayout.bufferBindings[i].stride,
+		    .inputRate = ToVulkan(vertexLayout.bufferBindings[i].vertexClass),
+		};
+	}
+
+	std::vector<vk::VertexInputAttributeDescription> vertexInputAttributes(vertexLayout.attributes.size());
+	for (std::uint32_t i = 0; i < vertexInputAttributes.size(); i++)
+	{
+		const auto& attribute = vertexLayout.attributes[i];
+
+		vertexInputAttributes[i] = {
+		    .location = shader.GetAttributeLocation(attribute.name),
+		    .binding = attribute.bufferIndex,
+		    .format = ToVulkan(attribute.format),
+		    .offset = attribute.offset,
+		};
+	}
+
 	const auto vertexInput = vk::PipelineVertexInputStateCreateInfo{
-	    .vertexBindingDescriptionCount = size32(pipelineData.vertexLayout.vertexInputBindings),
-	    .pVertexBindingDescriptions = data(pipelineData.vertexLayout.vertexInputBindings),
-	    .vertexAttributeDescriptionCount = size32(pipelineData.vertexLayout.vertexInputAttributes),
-	    .pVertexAttributeDescriptions = data(pipelineData.vertexLayout.vertexInputAttributes),
+	    .vertexBindingDescriptionCount = size32(vertexInputBindings),
+	    .pVertexBindingDescriptions = data(vertexInputBindings),
+	    .vertexAttributeDescriptionCount = size32(vertexInputAttributes),
+	    .pVertexAttributeDescriptions = data(vertexInputAttributes),
 	};
 
 	const auto& rasterState = renderStates.rasterState;
@@ -461,11 +485,15 @@ vk::UniquePipeline CreateGraphicsPipeline(
 	    .pDynamicStates = data(dynamicStates),
 	};
 
+	const auto inputAssembly = vk::PipelineInputAssemblyStateCreateInfo{
+	    .topology = ToVulkan(vertexLayout.topology),
+	};
+
 	const auto createInfo = vk::GraphicsPipelineCreateInfo{
 	    .stageCount = size32(shaderStages),
 	    .pStages = data(shaderStages),
 	    .pVertexInputState = &vertexInput,
-	    .pInputAssemblyState = &pipelineData.vertexLayout.inputAssembly,
+	    .pInputAssemblyState = &inputAssembly,
 	    .pViewportState = &viewportState,
 	    .pRasterizationState = &rasterizationState,
 	    .pMultisampleState = &multisampleState,
@@ -660,17 +688,18 @@ VulkanGraphicsDevice::CreateShaderEnvironment(const ShaderEnvironmentData& data,
 ShaderPtr VulkanGraphicsDevice::CreateShader(const ShaderData& data, const char* name)
 {
 	const auto vertexCreateInfo = vk::ShaderModuleCreateInfo{
-	    .codeSize = data.vertexShaderSpirv.size() * sizeof(uint32_t),
-	    .pCode = data.vertexShaderSpirv.data(),
+	    .codeSize = data.vertexShader.spirv.size() * sizeof(uint32_t),
+	    .pCode = data.vertexShader.spirv.data(),
 	};
 	const auto pixelCreateInfo = vk::ShaderModuleCreateInfo{
-	    .codeSize = data.pixelShaderSpirv.size() * sizeof(uint32_t),
-	    .pCode = data.pixelShaderSpirv.data(),
+	    .codeSize = data.pixelShader.spirv.size() * sizeof(uint32_t),
+	    .pCode = data.pixelShader.spirv.data(),
 	};
 
 	auto shader = VulkanShaderBase{
 	    .vertexShader = m_device->createShaderModuleUnique(vertexCreateInfo, s_allocator),
 	    .pixelShader = m_device->createShaderModuleUnique(pixelCreateInfo, s_allocator),
+	    .vertexShaderInputs = data.vertexShader.inputs,
 	    .scenePblockLayout = CreateParameterBlockLayout(data.environment.scenePblock, 0),
 	    .viewPblockLayout = CreateParameterBlockLayout(data.environment.viewPblock, 1),
 	    .materialPblockLayout = CreateParameterBlockLayout(data.materialPblock, 2),

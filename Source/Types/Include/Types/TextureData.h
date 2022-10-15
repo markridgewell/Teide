@@ -2,48 +2,12 @@
 #pragma once
 
 #include "GeoLib/Vector.h"
+#include "Types/Format.h"
 
 #include <cstddef>
 #include <cstdint>
 #include <optional>
 #include <vector>
-
-enum class TextureFormat : std::uint16_t
-{
-	Unknown = 0,
-
-	Byte1,
-	Int8x1,
-	Short1,
-	Int1,
-	Half1,
-	Float1,
-
-	Byte2,
-	Int8x2,
-	Short2,
-	Int2,
-	Half2,
-	Float2,
-
-	Byte4,
-	Int8x4,
-	Short4,
-	Int4,
-	Half4,
-	Float4,
-
-	Byte4Srgb,
-	Byte4SrgbBGRA,
-
-	Depth16,
-	Depth32,
-	Depth16Stencil8,
-	Depth24Stencil8,
-	Depth32Stencil8,
-	Stencil8,
-};
-constexpr std::size_t TextureFormatCount = 27;
 
 enum class Filter
 {
@@ -92,7 +56,7 @@ struct SamplerState
 struct TextureData
 {
 	Geo::Size2i size;
-	TextureFormat format;
+	Format format;
 	std::uint32_t mipLevelCount = 1;
 	std::uint32_t sampleCount = 1;
 	SamplerState samplerState;
@@ -100,7 +64,3 @@ struct TextureData
 };
 
 std::size_t GetByteSize(const TextureData& data);
-std::uint32_t GetFormatElementSize(TextureFormat format);
-bool HasDepthComponent(TextureFormat format);
-bool HasStencilComponent(TextureFormat format);
-bool HasDepthOrStencilComponent(TextureFormat format);

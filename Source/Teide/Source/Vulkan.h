@@ -16,6 +16,9 @@
 struct SDL_Window;
 struct FramebufferLayout;
 
+enum class PrimitiveTopology;
+enum class VertexClass;
+
 struct RenderPassInfo
 {
 	vk::AttachmentLoadOp colorLoadOp = vk::AttachmentLoadOp::eDontCare;
@@ -49,7 +52,7 @@ inline uint32_t size32(const T& cont)
 }
 
 void TransitionImageLayout(
-    vk::CommandBuffer cmdBuffer, vk::Image image, TextureFormat format, uint32_t mipLevelCount, vk::ImageLayout oldLayout,
+    vk::CommandBuffer cmdBuffer, vk::Image image, Format format, uint32_t mipLevelCount, vk::ImageLayout oldLayout,
     vk::ImageLayout newLayout, vk::PipelineStageFlags srcStageMask, vk::PipelineStageFlags dstStageMask);
 
 vk::UniqueSemaphore CreateSemaphore(vk::Device device);
@@ -110,21 +113,20 @@ private:
 	std::string m_what;
 };
 
-vk::ImageAspectFlags GetImageAspect(TextureFormat format);
+vk::ImageAspectFlags GetImageAspect(Format format);
 
 void CopyBufferToImage(
-    vk::CommandBuffer cmdBuffer, vk::Buffer source, vk::Image destination, TextureFormat imageFormat,
-    vk::Extent3D imageExtent);
+    vk::CommandBuffer cmdBuffer, vk::Buffer source, vk::Image destination, Format imageFormat, vk::Extent3D imageExtent);
 void CopyImageToBuffer(
-    vk::CommandBuffer cmdBuffer, vk::Image source, vk::Buffer destination, TextureFormat imageFormat,
-    vk::Extent3D imageExtent, std::uint32_t numMipLevels);
+    vk::CommandBuffer cmdBuffer, vk::Image source, vk::Buffer destination, Format imageFormat, vk::Extent3D imageExtent,
+    std::uint32_t numMipLevels);
 
 vk::UniqueRenderPass CreateRenderPass(vk::Device device, const FramebufferLayout& layout);
 vk::UniqueRenderPass CreateRenderPass(vk::Device device, const FramebufferLayout& layout, const RenderPassInfo& renderPassInfo);
 vk::UniqueFramebuffer
 CreateFramebuffer(vk::Device device, vk::RenderPass renderPass, Geo::Size2i size, std::span<const vk::ImageView> imageViews);
 
-vk::Format ToVulkan(TextureFormat);
+vk::Format ToVulkan(Format);
 vk::Filter ToVulkan(Filter);
 vk::SamplerMipmapMode ToVulkan(MipmapMode);
 vk::SamplerAddressMode ToVulkan(SamplerAddressMode);
@@ -138,8 +140,10 @@ vk::StencilOp ToVulkan(StencilOp);
 vk::PolygonMode ToVulkan(FillMode);
 vk::CullModeFlags ToVulkan(CullMode);
 vk::ColorComponentFlags ToVulkan(ColorMask);
+vk::PrimitiveTopology ToVulkan(PrimitiveTopology);
+vk::VertexInputRate ToVulkan(VertexClass);
 
-TextureFormat FromVulkan(vk::Format format);
+Format FromVulkan(vk::Format format);
 
 template <class Rep, class Period>
 constexpr std::uint64_t Timeout(std::chrono::duration<Rep, Period> duration)

@@ -43,7 +43,7 @@ TEST(GraphicsDeviceTest, CreateTexture)
 	auto device = CreateGraphicsDevice();
 	const auto textureData = TextureData{
 	    .size = {2, 2},
-	    .format = TextureFormat::Byte4Srgb,
+	    .format = Format::Byte4Srgb,
 	    .mipLevelCount = 1,
 	    .sampleCount = 1,
 	    .pixels = HexToBytes("ff 00 00 ff 00 ff 00 ff ff 00 ff ff 00 00 ff ff"),
@@ -51,7 +51,7 @@ TEST(GraphicsDeviceTest, CreateTexture)
 	const auto texture = device->CreateTexture(textureData, "Texture");
 	EXPECT_THAT(texture.get(), NotNull());
 	EXPECT_THAT(texture->GetSize(), Eq(Geo::Size2i{2, 2}));
-	EXPECT_THAT(texture->GetFormat(), Eq(TextureFormat::Byte4Srgb));
+	EXPECT_THAT(texture->GetFormat(), Eq(Format::Byte4Srgb));
 	EXPECT_THAT(texture->GetMipLevelCount(), Eq(1u));
 	EXPECT_THAT(texture->GetSampleCount(), Eq(1u));
 }
@@ -61,14 +61,14 @@ TEST(GraphicsDeviceTest, CreateRenderableTexture)
 	auto device = CreateGraphicsDevice();
 	const auto textureData = TextureData{
 	    .size = {600, 400},
-	    .format = TextureFormat::Byte4Srgb,
+	    .format = Format::Byte4Srgb,
 	    .mipLevelCount = 1,
 	    .sampleCount = 1,
 	};
 	const auto texture = device->CreateRenderableTexture(textureData, "Texture");
 	EXPECT_THAT(texture.get(), NotNull());
 	EXPECT_THAT(texture->GetSize(), Eq(Geo::Size2i{600, 400}));
-	EXPECT_THAT(texture->GetFormat(), Eq(TextureFormat::Byte4Srgb));
+	EXPECT_THAT(texture->GetFormat(), Eq(Format::Byte4Srgb));
 	EXPECT_THAT(texture->GetMipLevelCount(), Eq(1u));
 	EXPECT_THAT(texture->GetSampleCount(), Eq(1u));
 }
@@ -81,13 +81,13 @@ TEST(GraphicsDeviceTest, CreatePipeline)
 	const auto pipelineData = PipelineData{
 	    .shader = device->CreateShader(shaderData, "Shader"),
 	    .vertexLayout = {
-	        .inputAssembly = {.topology = vk::PrimitiveTopology::eTriangleList},
-	        .vertexInputBindings = {{.binding = 0, .stride = 0}},
-	        .vertexInputAttributes = {{.location = 0, .binding = 0, .format = vk::Format::eR32G32B32Sfloat, .offset = 0}},
+	        .topology = PrimitiveTopology::TriangleList,
+	        .bufferBindings = {{.stride = 0}},
+	        .attributes = {{.name = "inPosition", .format = Format::Float3, .bufferIndex = 0, .offset = 0}},
 	    },
 	    .framebufferLayout = {
-			.colorFormat = TextureFormat::Byte4Srgb,
-			.depthStencilFormat = TextureFormat::Depth16,
+			.colorFormat = Format::Byte4Srgb,
+			.depthStencilFormat = Format::Depth16,
 			.sampleCount = 2,
 	    },
 	};

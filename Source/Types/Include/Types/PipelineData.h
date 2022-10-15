@@ -118,8 +118,8 @@ struct RenderStates
 
 struct FramebufferLayout
 {
-	std::optional<TextureFormat> colorFormat;
-	std::optional<TextureFormat> depthStencilFormat;
+	std::optional<Format> colorFormat;
+	std::optional<Format> depthStencilFormat;
 	std::uint32_t sampleCount = 1;
 
 	auto operator<=>(const FramebufferLayout&) const = default;

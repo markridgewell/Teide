@@ -18,34 +18,61 @@ constexpr bool BreakOnVulkanError = true;
 
 const vk::Optional<const vk::AllocationCallbacks> s_allocator = nullptr;
 
-static constexpr StaticMap<TextureFormat, vk::Format, TextureFormatCount> VulkanFormats = {
-    {TextureFormat::Unknown, vk::Format::eUndefined},
-    {TextureFormat::Byte1, vk::Format::eR8Unorm},
-    {TextureFormat::Int8x1, vk::Format::eR8Snorm},
-    {TextureFormat::Short1, vk::Format::eR16Sint},
-    {TextureFormat::Int1, vk::Format::eR32Sint},
-    {TextureFormat::Half1, vk::Format::eR16Sfloat},
-    {TextureFormat::Float1, vk::Format::eR32Sfloat},
-    {TextureFormat::Byte2, vk::Format::eR8G8Unorm},
-    {TextureFormat::Int8x2, vk::Format::eR8G8Snorm},
-    {TextureFormat::Short2, vk::Format::eR16G16Sint},
-    {TextureFormat::Int2, vk::Format::eR32G32Sint},
-    {TextureFormat::Half2, vk::Format::eR16G16Sfloat},
-    {TextureFormat::Float2, vk::Format::eR32G32Sfloat},
-    {TextureFormat::Byte4, vk::Format::eR8G8B8A8Unorm},
-    {TextureFormat::Int8x4, vk::Format::eR8G8B8A8Snorm},
-    {TextureFormat::Short4, vk::Format::eR16G16B16A16Sint},
-    {TextureFormat::Int4, vk::Format::eR32G32B32A32Sint},
-    {TextureFormat::Half4, vk::Format::eR16G16B16A16Sfloat},
-    {TextureFormat::Float4, vk::Format::eR32G32B32A32Sfloat},
-    {TextureFormat::Byte4Srgb, vk::Format::eR8G8B8A8Srgb},
-    {TextureFormat::Byte4SrgbBGRA, vk::Format::eB8G8R8A8Srgb},
-    {TextureFormat::Depth16, vk::Format::eD16Unorm},
-    {TextureFormat::Depth32, vk::Format::eD32Sfloat},
-    {TextureFormat::Depth16Stencil8, vk::Format::eD16UnormS8Uint},
-    {TextureFormat::Depth24Stencil8, vk::Format::eD24UnormS8Uint},
-    {TextureFormat::Depth32Stencil8, vk::Format::eD32SfloatS8Uint},
-    {TextureFormat::Stencil8, vk::Format::eS8Uint},
+static constexpr StaticMap<Format, vk::Format, FormatCount> VulkanFormats = {
+    {Format::Unknown, vk::Format::eUndefined},
+
+    {Format::Byte1, vk::Format::eR8Uint},
+    {Format::Byte1Norm, vk::Format::eR8Unorm},
+    {Format::Short1, vk::Format::eR16Sint},
+    {Format::Short1Norm, vk::Format::eR16Snorm},
+    {Format::Ushort1, vk::Format::eR16Uint},
+    {Format::Ushort1Norm, vk::Format::eR16Unorm},
+    {Format::Half1, vk::Format::eR16Sfloat},
+    {Format::Int1, vk::Format::eR32Sint},
+    {Format::Uint1, vk::Format::eR32Uint},
+    {Format::Float1, vk::Format::eR32Sfloat},
+
+    {Format::Byte2, vk::Format::eR8G8Uint},
+    {Format::Byte2Norm, vk::Format::eR8G8Unorm},
+    {Format::Short2, vk::Format::eR16G16Sint},
+    {Format::Short2Norm, vk::Format::eR16G16Snorm},
+    {Format::Ushort2, vk::Format::eR16G16Uint},
+    {Format::Ushort2Norm, vk::Format::eR16G16Unorm},
+    {Format::Half2, vk::Format::eR16G16Sfloat},
+    {Format::Int2, vk::Format::eR32G32Sint},
+    {Format::Uint2, vk::Format::eR32G32Uint},
+    {Format::Float2, vk::Format::eR32G32Sfloat},
+
+    {Format::Byte3, vk::Format::eR8G8B8Uint},
+    {Format::Byte3Norm, vk::Format::eR8G8B8Unorm},
+    {Format::Short3, vk::Format::eR16G16B16Sint},
+    {Format::Short3Norm, vk::Format::eR16G16B16Snorm},
+    {Format::Ushort3, vk::Format::eR16G16B16Uint},
+    {Format::Ushort3Norm, vk::Format::eR16G16B16Unorm},
+    {Format::Half3, vk::Format::eR16G16B16Sfloat},
+    {Format::Int3, vk::Format::eR32G32B32Sint},
+    {Format::Uint3, vk::Format::eR32G32B32Uint},
+    {Format::Float3, vk::Format::eR32G32B32Sfloat},
+
+    {Format::Byte4, vk::Format::eR8G8B8A8Uint},
+    {Format::Byte4Norm, vk::Format::eR8G8B8A8Unorm},
+    {Format::Byte4Srgb, vk::Format::eR8G8B8A8Srgb},
+    {Format::Byte4SrgbBGRA, vk::Format::eB8G8R8A8Srgb},
+    {Format::Short4, vk::Format::eR16G16B16A16Sint},
+    {Format::Short4Norm, vk::Format::eR16G16B16A16Snorm},
+    {Format::Ushort4, vk::Format::eR16G16B16A16Uint},
+    {Format::Ushort4Norm, vk::Format::eR16G16B16A16Unorm},
+    {Format::Half4, vk::Format::eR16G16B16A16Sfloat},
+    {Format::Int4, vk::Format::eR32G32B32A32Sint},
+    {Format::Uint4, vk::Format::eR32G32B32A32Uint},
+    {Format::Float4, vk::Format::eR32G32B32A32Sfloat},
+
+    {Format::Depth16, vk::Format::eD16Unorm},
+    {Format::Depth32, vk::Format::eD32Sfloat},
+    {Format::Depth16Stencil8, vk::Format::eD16UnormS8Uint},
+    {Format::Depth24Stencil8, vk::Format::eD24UnormS8Uint},
+    {Format::Depth32Stencil8, vk::Format::eD32SfloatS8Uint},
+    {Format::Stencil8, vk::Format::eS8Uint},
 };
 
 
@@ -310,7 +337,7 @@ CreateDevice(vk::PhysicalDevice physicalDevice, std::span<const uint32_t> queueF
 }
 
 void TransitionImageLayout(
-    vk::CommandBuffer cmdBuffer, vk::Image image, TextureFormat format, uint32_t mipLevelCount, vk::ImageLayout oldLayout,
+    vk::CommandBuffer cmdBuffer, vk::Image image, Format format, uint32_t mipLevelCount, vk::ImageLayout oldLayout,
     vk::ImageLayout newLayout, vk::PipelineStageFlags srcStageMask, vk::PipelineStageFlags dstStageMask)
 {
 	const auto accessMasks = GetTransitionAccessMasks(oldLayout, newLayout);
@@ -354,7 +381,7 @@ vk::UniqueCommandPool CreateCommandPool(uint32_t queueFamilyIndex, vk::Device de
 	return device.createCommandPoolUnique(createInfo, s_allocator);
 }
 
-vk::ImageAspectFlags GetImageAspect(TextureFormat format)
+vk::ImageAspectFlags GetImageAspect(Format format)
 {
 	if (HasDepthComponent(format) && HasStencilComponent(format))
 	{
@@ -371,8 +398,7 @@ vk::ImageAspectFlags GetImageAspect(TextureFormat format)
 	return vk::ImageAspectFlagBits::eColor;
 }
 
-void CopyBufferToImage(
-    vk::CommandBuffer cmdBuffer, vk::Buffer source, vk::Image destination, TextureFormat imageFormat, vk::Extent3D imageExtent)
+void CopyBufferToImage(vk::CommandBuffer cmdBuffer, vk::Buffer source, vk::Image destination, Format imageFormat, vk::Extent3D imageExtent)
 {
 	const auto copyRegion = vk::BufferImageCopy
 	{
@@ -392,8 +418,8 @@ void CopyBufferToImage(
 }
 
 void CopyImageToBuffer(
-    vk::CommandBuffer cmdBuffer, vk::Image source, vk::Buffer destination, TextureFormat imageFormat,
-    vk::Extent3D imageExtent, std::uint32_t numMipLevels)
+    vk::CommandBuffer cmdBuffer, vk::Image source, vk::Buffer destination, Format imageFormat, vk::Extent3D imageExtent,
+    std::uint32_t numMipLevels)
 {
 	const auto aspectMask = GetImageAspect(imageFormat);
 	const auto pixelSize = GetFormatElementSize(imageFormat);
@@ -445,7 +471,7 @@ vk::UniqueRenderPass CreateRenderPass(vk::Device device, const FramebufferLayout
 
 	if (layout.colorFormat.has_value())
 	{
-		assert(*layout.colorFormat != TextureFormat::Unknown);
+		assert(*layout.colorFormat != Format::Unknown);
 
 		colorAttachmentRefs.push_back({
 		    .attachment = size32(attachments),
@@ -464,7 +490,7 @@ vk::UniqueRenderPass CreateRenderPass(vk::Device device, const FramebufferLayout
 
 	if (layout.depthStencilFormat.has_value())
 	{
-		assert(*layout.depthStencilFormat != TextureFormat::Unknown);
+		assert(*layout.depthStencilFormat != Format::Unknown);
 
 		depthStencilAttachmentRef = vk::AttachmentReference{
 		    .attachment = size32(attachments),
@@ -549,7 +575,7 @@ CreateFramebuffer(vk::Device device, vk::RenderPass renderPass, Geo::Size2i size
 	return device.createFramebufferUnique(framebufferCreateInfo, s_allocator);
 }
 
-vk::Format ToVulkan(TextureFormat format)
+vk::Format ToVulkan(Format format)
 {
 	return VulkanFormats.at(format);
 }
@@ -701,7 +727,35 @@ vk::ColorComponentFlags ToVulkan(ColorMask mask)
 	return ret;
 }
 
-TextureFormat FromVulkan(vk::Format format)
+vk::PrimitiveTopology ToVulkan(PrimitiveTopology topology)
+{
+	static constexpr StaticMap<PrimitiveTopology, vk::PrimitiveTopology, 9> map = {
+	    {PrimitiveTopology::PointList, vk::PrimitiveTopology::ePointList},
+	    {PrimitiveTopology::LineList, vk::PrimitiveTopology::eLineList},
+	    {PrimitiveTopology::LineStrip, vk::PrimitiveTopology::eLineStrip},
+	    {PrimitiveTopology::TriangleList, vk::PrimitiveTopology::eTriangleList},
+	    {PrimitiveTopology::TriangleStrip, vk::PrimitiveTopology::eTriangleStrip},
+	    {PrimitiveTopology::LineListAdj, vk::PrimitiveTopology::eLineListWithAdjacency},
+	    {PrimitiveTopology::LineStripAdj, vk::PrimitiveTopology::eLineStripWithAdjacency},
+	    {PrimitiveTopology::TriangleListAdj, vk::PrimitiveTopology::eTriangleListWithAdjacency},
+	    {PrimitiveTopology::TriangleStripAdj, vk::PrimitiveTopology::eTriangleStripWithAdjacency},
+	};
+
+	return map.at(topology);
+}
+
+
+vk::VertexInputRate ToVulkan(VertexClass vc)
+{
+	static constexpr StaticMap<VertexClass, vk::VertexInputRate, 2> map = {
+	    {VertexClass::PerVertex, vk::VertexInputRate::eVertex},
+	    {VertexClass::PerInstance, vk::VertexInputRate::eInstance},
+	};
+
+	return map.at(vc);
+}
+
+Format FromVulkan(vk::Format format)
 {
 	return VulkanFormats.inverse_at(format);
 }

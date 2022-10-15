@@ -13,8 +13,8 @@ public:
 	virtual ~Surface() = default;
 
 	virtual Geo::Size2i GetExtent() const = 0;
-	virtual TextureFormat GetColorFormat() const = 0;
-	virtual TextureFormat GetDepthFormat() const = 0;
+	virtual Format GetColorFormat() const = 0;
+	virtual Format GetDepthFormat() const = 0;
 	virtual std::uint32_t GetSampleCount() const = 0;
 
 	virtual void OnResize() = 0;

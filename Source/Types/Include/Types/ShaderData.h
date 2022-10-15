@@ -72,13 +72,20 @@ struct ShaderEnvironmentData
 	ParameterBlockDesc viewPblock;
 };
 
+struct ShaderStageData
+{
+	std::vector<ShaderVariable> inputs;
+	std::vector<ShaderVariable> outputs;
+	std::vector<std::uint32_t> spirv;
+};
+
 struct ShaderData
 {
 	ShaderEnvironmentData environment;
 	ParameterBlockDesc materialPblock;
 	ParameterBlockDesc objectPblock;
-	std::vector<std::uint32_t> vertexShaderSpirv;
-	std::vector<std::uint32_t> pixelShaderSpirv;
+	ShaderStageData vertexShader;
+	ShaderStageData pixelShader;
 
 	auto operator<=>(const ShaderData&) const = default;
 };

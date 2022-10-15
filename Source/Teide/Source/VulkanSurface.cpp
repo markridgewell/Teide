@@ -123,8 +123,8 @@ CreateSwapchainImageViews(vk::Format swapchainFormat, std::span<const vk::Image>
 	return imageViews;
 }
 
-TextureFormat FindSupportedFormat(
-    vk::PhysicalDevice physicalDevice, std::span<const TextureFormat> candidates, vk::ImageTiling tiling,
+Format FindSupportedFormat(
+    vk::PhysicalDevice physicalDevice, std::span<const Format> candidates, vk::ImageTiling tiling,
     vk::FormatFeatureFlags features)
 {
 	for (const auto format : candidates)
@@ -301,8 +301,7 @@ void VulkanSurface::CreateColorBuffer(vk::Format format)
 
 void VulkanSurface::CreateDepthBuffer()
 {
-	const auto formatCandidates
-	    = std::array{TextureFormat::Depth32, TextureFormat::Depth32Stencil8, TextureFormat::Depth24Stencil8};
+	const auto formatCandidates = std::array{Format::Depth32, Format::Depth32Stencil8, Format::Depth24Stencil8};
 	m_depthFormat = FindSupportedFormat(
 	    m_physicalDevice, formatCandidates, vk::ImageTiling::eOptimal, vk::FormatFeatureFlagBits::eDepthStencilAttachment);
 
@@ -384,7 +383,7 @@ void VulkanSurface::CreateSwapchainAndImages()
 		const auto cmdBuffer = *m_transitionToPresentSrc[i];
 		cmdBuffer.begin(vk::CommandBufferBeginInfo{});
 		TransitionImageLayout(
-		    cmdBuffer, m_swapchainImages[i], TextureFormat::Unknown, 1, vk::ImageLayout::eColorAttachmentOptimal,
+		    cmdBuffer, m_swapchainImages[i], Format::Unknown, 1, vk::ImageLayout::eColorAttachmentOptimal,
 		    vk::ImageLayout::ePresentSrcKHR, vk::PipelineStageFlagBits::eColorAttachmentOutput,
 		    vk::PipelineStageFlagBits::eTopOfPipe);
 		cmdBuffer.end();
