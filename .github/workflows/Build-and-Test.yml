@@ -40,7 +40,7 @@ jobs:
     - name: Setup vcpkg
       uses: lukka/run-vcpkg@v10
       with:
-        vcpkgGitCommitId: 'bd1ef2df46303989eeb048eb7aa9b816aa46365e'
+        vcpkgGitCommitId: '0321a8422e786e4c35f3abbc1f03acbcfae35758'
 
     - name: Setup OpenCppCoverage
       run: |
@@ -133,7 +133,7 @@ jobs:
     - name: Setup vcpkg
       uses: lukka/run-vcpkg@v10
       with:
-        vcpkgGitCommitId: 'bd1ef2df46303989eeb048eb7aa9b816aa46365e'
+        vcpkgGitCommitId: '0321a8422e786e4c35f3abbc1f03acbcfae35758'
 
     - name: Install GCC 11
       run: |
