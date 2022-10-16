@@ -23,11 +23,11 @@
     },
     {
       "name": "stb",
-      "version>=": "2020-09-14"
+      "version>=": "2021-09-10"
     },
     {
       "name": "assimp",
-      "version>=": "5.0.1"
+      "version>=": "5.2.5"
     },
     {
       "name": "gtest",
@@ -42,5 +42,5 @@
       "version>=": "4.2.0"
     }
   ],
-  "builtin-baseline": "bd1ef2df46303989eeb048eb7aa9b816aa46365e"
+  "builtin-baseline": "0321a8422e786e4c35f3abbc1f03acbcfae35758"
 }
