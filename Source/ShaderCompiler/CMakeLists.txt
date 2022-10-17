@@ -3,10 +3,10 @@ td_add_library(
     SOURCES Include/ShaderCompiler/ShaderCompiler.h Source/ShaderCompiler.cpp
     PUBLIC_DEPS Types
     PRIVATE_DEPS
-        HLSL
-        SPIRV
-        glslang
-        OGLCompiler
+        glslang::HLSL
+        glslang::SPIRV
+        glslang::glslang
+        glslang::OGLCompiler
         fmt::fmt)
 
 td_add_test(
