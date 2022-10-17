@@ -18,7 +18,7 @@ find_package(assimp CONFIG REQUIRED)
 find_package(GTest CONFIG REQUIRED)
 find_package(Taskflow CONFIG REQUIRED)
 find_package(function2 CONFIG REQUIRED)
-find_path(STB_INCLUDE_DIRS "stb.h")
+find_path(STB_INCLUDE_DIRS "stb_c_lexer.h")
 
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT Application)
