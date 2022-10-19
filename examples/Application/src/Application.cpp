@@ -227,6 +227,11 @@ struct ObjectUniforms
 	Geo::Matrix4 model;
 };
 
+constexpr FramebufferLayout ShadowFramebufferLayout = {
+    .depthStencilFormat = Format::Depth16,
+    .sampleCount = 1,
+};
+
 constexpr auto ShaderLang = ShaderLanguage::Glsl;
 
 std::vector<std::byte> CopyBytes(BytesView src)
@@ -271,21 +276,9 @@ public:
 	    m_shader{m_device->CreateShader(CompileShader(ModelShader), "ModelShader")},
 	    m_renderer{m_device->CreateRenderer(m_shaderEnvironment)}
 	{
-		const auto pipelineData = PipelineData{
-		    .shader = m_shader,
-		    .vertexLayout = VertexLayoutDesc,
-		    .renderStates = MakeRenderStates(),
-		    .framebufferLayout = {
-		        .colorFormat = m_surface->GetColorFormat(),
-		        .depthStencilFormat = m_surface->GetDepthFormat(),
-		        .sampleCount = m_surface->GetSampleCount(),
-		    },
-		};
-		m_pipeline = m_device->CreatePipeline(pipelineData);
-
 		CreateMesh(modelFilename);
 		LoadTexture(imageFilename);
-		CreateShadowMap();
+		CreatePipelines();
 		CreateParameterBlocks();
 
 		spdlog::info("Vulkan initialised successfully");
@@ -345,6 +338,7 @@ public:
 		//
 		// Pass 0. Draw shadows
 		//
+		TexturePtr shadowMap;
 		{
 			// Update view uniforms
 			const auto viewUniforms = ViewUniforms{
@@ -369,7 +363,26 @@ public:
 			    }},
 			};
 
-			m_renderer->RenderToTexture(m_shadowMap, std::move(renderList));
+			constexpr uint32_t shadowMapSize = 2048;
+
+			const auto shadowRenderTarget = RenderTargetInfo{
+				.size = {shadowMapSize, shadowMapSize},
+				.framebufferLayout = ShadowFramebufferLayout,
+				.samplerState = {
+					.magFilter = Filter::Linear,
+					.minFilter = Filter::Linear,
+					.mipmapMode = MipmapMode::Nearest,
+					.addressModeU = SamplerAddressMode::Repeat,
+					.addressModeV = SamplerAddressMode::Repeat,
+					.addressModeW = SamplerAddressMode::Repeat,
+					.maxAnisotropy = 8.0f,
+					.compareOp = CompareOp::Less,
+				},
+				.captureDepthStencil = true,
+			};
+
+			const auto shadowResult = m_renderer->RenderToTexture(shadowRenderTarget, std::move(renderList));
+			shadowMap = shadowResult.depthStencilTexture;
 		}
 
 		//
@@ -395,7 +408,7 @@ public:
 			};
 			const auto viewParams = ShaderParameters{
 			    .uniformData = ToBytes(viewUniforms),
-			    .textures = {m_shadowMap.get()},
+			    .textures = {shadowMap.get()},
 			};
 
 			RenderList renderList = {
@@ -669,26 +682,18 @@ private:
 		m_texture = m_device->CreateTexture(data, filename);
 	}
 
-	void CreateShadowMap()
+	void CreatePipelines()
 	{
-		constexpr uint32_t shadowMapSize = 2048;
-
-		const auto data = TextureData{
-		    .size = {shadowMapSize, shadowMapSize},
-		    .format = Format::Depth16,
-		    .samplerState = {
-		        .magFilter = Filter::Linear,
-		        .minFilter = Filter::Linear,
-		        .mipmapMode = MipmapMode::Nearest,
-		        .addressModeU = SamplerAddressMode::Repeat,
-		        .addressModeV = SamplerAddressMode::Repeat,
-		        .addressModeW = SamplerAddressMode::Repeat,
-		        .maxAnisotropy = 8.0f,
-		        .compareOp = CompareOp::Less,
+		m_pipeline = m_device->CreatePipeline({
+		    .shader = m_shader,
+		    .vertexLayout = VertexLayoutDesc,
+		    .renderStates = MakeRenderStates(),
+		    .framebufferLayout = {
+		        .colorFormat = m_surface->GetColorFormat(),
+		        .depthStencilFormat = m_surface->GetDepthFormat(),
+		        .sampleCount = m_surface->GetSampleCount(),
 		    },
-		};
-
-		m_shadowMap = m_device->CreateRenderableTexture(data, "ShadowMap");
+		});
 
 		// Depth bias (and slope) are used to avoid shadowing artifacts
 		// Constant depth bias factor (always applied)
@@ -696,17 +701,12 @@ private:
 		// Slope depth bias factor, applied depending on polygon's slope
 		float depthBiasSlope = 2.75f;
 
-		// Create pipeline
-		const auto pipelineData = PipelineData{
+		m_shadowMapPipeline = m_device->CreatePipeline({
 		    .shader = m_shader,
 		    .vertexLayout = VertexLayoutDesc,
 		    .renderStates = MakeRenderStates(depthBiasConstant, depthBiasSlope),
-		    .framebufferLayout = {
-		        .depthStencilFormat = m_shadowMap->GetFormat(),
-		        .sampleCount = m_shadowMap->GetSampleCount(),
-		    },
-		};
-		m_shadowMapPipeline = m_device->CreatePipeline(pipelineData);
+		    .framebufferLayout = ShadowFramebufferLayout,
+		});
 	}
 
 	//
@@ -737,7 +737,6 @@ private:
 	// Lights
 	Geo::Angle m_lightYaw = 45.0_deg;
 	Geo::Angle m_lightPitch = -45.0_deg;
-	DynamicTexturePtr m_shadowMap;
 	PipelinePtr m_shadowMapPipeline;
 	Geo::Matrix4 m_shadowMatrix;
 

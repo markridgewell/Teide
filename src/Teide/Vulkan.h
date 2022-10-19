@@ -31,6 +31,13 @@ struct RenderPassInfo
 	auto operator<=>(const RenderPassInfo&) const = default;
 };
 
+struct Framebuffer
+{
+	vk::Framebuffer framebuffer;
+	FramebufferLayout layout;
+	Geo::Size2i size;
+};
+
 void EnableOptionalVulkanLayer(
     std::vector<const char*>& enabledLayers, const std::vector<vk::LayerProperties>& availableLayers, const char* layerName);
 void EnableRequiredVulkanExtension(

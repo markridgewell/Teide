@@ -56,23 +56,6 @@ TEST(GraphicsDeviceTest, CreateTexture)
 	EXPECT_THAT(texture->GetSampleCount(), Eq(1u));
 }
 
-TEST(GraphicsDeviceTest, CreateRenderableTexture)
-{
-	auto device = CreateGraphicsDevice();
-	const auto textureData = TextureData{
-	    .size = {600, 400},
-	    .format = Format::Byte4Srgb,
-	    .mipLevelCount = 1,
-	    .sampleCount = 1,
-	};
-	const auto texture = device->CreateRenderableTexture(textureData, "Texture");
-	EXPECT_THAT(texture.get(), NotNull());
-	EXPECT_THAT(texture->GetSize(), Eq(Geo::Size2i{600, 400}));
-	EXPECT_THAT(texture->GetFormat(), Eq(Format::Byte4Srgb));
-	EXPECT_THAT(texture->GetMipLevelCount(), Eq(1u));
-	EXPECT_THAT(texture->GetSampleCount(), Eq(1u));
-}
-
 TEST(GraphicsDeviceTest, CreatePipeline)
 {
 	auto device = CreateGraphicsDevice();

@@ -28,7 +28,7 @@ public:
 	void BeginFrame(ShaderParameters sceneParameters) override;
 	void EndFrame() override;
 
-	void RenderToTexture(DynamicTexturePtr texture, RenderList renderList) override;
+	RenderToTextureResult RenderToTexture(const RenderTargetInfo& renderTarget, RenderList renderList) override;
 	void RenderToSurface(Surface& surface, RenderList renderList) override;
 
 	Task<TextureData> CopyTextureData(TexturePtr texture) override;
@@ -47,8 +47,7 @@ private:
 	}
 
 	void BuildCommandBuffer(
-	    CommandBuffer& commandBuffer, RenderList renderList, const FramebufferLayout& framebufferLayout,
-	    vk::Framebuffer framebuffer, Geo::Size2i framebufferSize, std::vector<vk::ImageView> framebufferAttachments);
+	    CommandBuffer& commandBuffer, const RenderList& renderList, vk::RenderPass renderPass, const Framebuffer& framebuffer);
 
 	std::optional<SurfaceImage> AddSurfaceToPresent(VulkanSurface& surface);
 

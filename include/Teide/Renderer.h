@@ -55,6 +55,21 @@ struct RenderList
 	std::vector<RenderObject> objects;
 };
 
+struct RenderToTextureResult
+{
+	TexturePtr colorTexture;
+	TexturePtr depthStencilTexture;
+};
+
+struct RenderTargetInfo
+{
+	Geo::Size2i size;
+	FramebufferLayout framebufferLayout;
+	SamplerState samplerState;
+	bool captureColor = false;
+	bool captureDepthStencil = false;
+};
+
 class Renderer
 {
 public:
@@ -70,7 +85,7 @@ public:
 	virtual void BeginFrame(ShaderParameters sceneParameters) = 0;
 	virtual void EndFrame() = 0;
 
-	virtual void RenderToTexture(DynamicTexturePtr texture, RenderList renderList) = 0;
+	virtual RenderToTextureResult RenderToTexture(const RenderTargetInfo& renderTarget, RenderList renderList) = 0;
 	virtual void RenderToSurface(Surface& surface, RenderList renderList) = 0;
 
 	virtual Task<TextureData> CopyTextureData(TexturePtr texture) = 0;

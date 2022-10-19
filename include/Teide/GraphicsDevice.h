@@ -28,7 +28,6 @@ public:
 	virtual ShaderPtr CreateShader(const ShaderData& data, const char* name) = 0;
 
 	virtual TexturePtr CreateTexture(const TextureData& data, const char* name) = 0;
-	virtual DynamicTexturePtr CreateRenderableTexture(const TextureData& data, const char* name) = 0;
 
 	virtual PipelinePtr CreatePipeline(const PipelineData& data) = 0;
 

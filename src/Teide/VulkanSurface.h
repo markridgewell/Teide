@@ -21,8 +21,7 @@ struct SurfaceImage
 	uint32_t imageIndex = 0;
 	vk::Semaphore imageAvailable;
 	vk::Image image;
-	vk::Framebuffer framebuffer;
-	Geo::Size2i extent;
+	Framebuffer framebuffer;
 	vk::CommandBuffer prePresentCommandBuffer;
 };
 

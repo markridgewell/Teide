@@ -37,7 +37,6 @@ public:
 	ShaderPtr CreateShader(const ShaderData& data, const char* name) override;
 
 	TexturePtr CreateTexture(const TextureData& data, const char* name) override;
-	DynamicTexturePtr CreateRenderableTexture(const TextureData& data, const char* name) override;
 
 	PipelinePtr CreatePipeline(const PipelineData& data) override;
 
@@ -58,14 +57,17 @@ public:
 
 	BufferPtr CreateBuffer(const BufferData& data, const char* name, CommandBuffer& cmdBuffer);
 	TexturePtr CreateTexture(const TextureData& data, const char* name, CommandBuffer& cmdBuffer);
-	DynamicTexturePtr CreateRenderableTexture(const TextureData& data, const char* name, CommandBuffer& cmdBuffer);
+	TexturePtr CreateRenderableTexture(const TextureData& data, const char* name);
+	TexturePtr CreateRenderableTexture(const TextureData& data, const char* name, CommandBuffer& cmdBuffer);
 	ParameterBlockPtr CreateParameterBlock(
 	    const ParameterBlockData& data, const char* name, CommandBuffer& cmdBuffer, std::uint32_t threadIndex);
 	ParameterBlockPtr CreateParameterBlock(
 	    const ParameterBlockData& data, const char* name, CommandBuffer& cmdBuffer, vk::DescriptorPool descriptorPool);
 
-	vk::RenderPass CreateRenderPass(const FramebufferLayout& framebufferLayout, const RenderPassInfo& renderPassInfo = {});
-	vk::Framebuffer CreateFramebuffer(vk::RenderPass renderPass, Geo::Size2i size, std::vector<vk::ImageView> attachments);
+	vk::RenderPass CreateRenderPassLayout(const FramebufferLayout& framebufferLayout);
+	vk::RenderPass CreateRenderPass(const FramebufferLayout& framebufferLayout, const RenderList& renderList);
+	Framebuffer CreateFramebuffer(
+	    vk::RenderPass renderPass, const FramebufferLayout& layout, Geo::Size2i size, std::vector<vk::ImageView> attachments);
 
 private:
 	struct RenderPassDesc

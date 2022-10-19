@@ -21,15 +21,19 @@ public:
 	RendererTest() : m_device{CreateGraphicsDevice()}, m_renderer{m_device->CreateRenderer(nullptr)} {}
 
 protected:
-	DynamicTexturePtr CreateRenderableTexture(Geo::Size2i size)
+	RenderTargetInfo CreateRenderTargetInfo(Geo::Size2i size)
 	{
-		const auto textureData = TextureData{
-		    .size = size,
-		    .format = Format::Byte4Srgb,
-		    .mipLevelCount = 1,
-		    .sampleCount = 1,
+		return {
+			.size = size,
+			.framebufferLayout = {
+				.colorFormat = Format::Byte4Srgb,
+				.depthStencilFormat = std::nullopt,
+				.sampleCount=1,
+			},
+			.samplerState = {},
+			.captureColor = true,
+			.captureDepthStencil = false,
 		};
-		return m_device->CreateRenderableTexture(textureData, "Texture");
 	}
 
 	GraphicsDevicePtr m_device;
@@ -38,13 +42,13 @@ protected:
 
 TEST_F(RendererTest, RenderNothing)
 {
-	const auto texture = CreateRenderableTexture({2, 2});
+	const auto renderTarget = CreateRenderTargetInfo({2, 2});
 
 	const auto renderList = RenderList{
 	    .clearColorValue = Color{1.0f, 0.0f, 0.0f, 1.0f},
 	};
 
-	m_renderer->RenderToTexture(texture, renderList);
+	const auto texture = m_renderer->RenderToTexture(renderTarget, renderList).colorTexture;
 
 	const TextureData outputData = m_renderer->CopyTextureData(texture).get().value();
 
@@ -59,7 +63,7 @@ TEST_F(RendererTest, RenderNothing)
 
 TEST_F(RendererTest, RenderFullscreenTri)
 {
-	const auto texture = CreateRenderableTexture({2, 2});
+	const auto renderTarget = CreateRenderTargetInfo({2, 2});
 
 	constexpr auto vertices = std::array{-1.0f, -1.0f, 3.0f, -1.0f, -1.0f, 3.0f};
 	const auto vbuffer = m_device->CreateBuffer(
@@ -72,18 +76,17 @@ TEST_F(RendererTest, RenderFullscreenTri)
 	const auto shaderData = CompileShader(SimpleShader);
 	const auto shader = m_device->CreateShader(shaderData, "SimpleShader");
 
-	const auto pipeline = m_device->CreatePipeline(
-	    {.shader = shader,
-	     .vertexLayout = vertexLayout,
-	     .framebufferLayout = {
-	         .colorFormat = texture->GetFormat(),
-	     }});
+	const auto pipeline = m_device->CreatePipeline({
+	    .shader = shader,
+	    .vertexLayout = vertexLayout,
+	    .framebufferLayout = renderTarget.framebufferLayout,
+	});
 
 	const auto renderList = RenderList{
 	    .clearColorValue = Color{1.0f, 0.0f, 0.0f, 1.0f},
 	    .objects = {RenderObject{.vertexBuffer = vbuffer, .indexCount = 3, .pipeline = pipeline}}};
 
-	m_renderer->RenderToTexture(texture, renderList);
+	const auto texture = m_renderer->RenderToTexture(renderTarget, renderList).colorTexture;
 
 	const TextureData outputData = m_renderer->CopyTextureData(texture).get().value();
 

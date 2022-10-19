@@ -743,7 +743,7 @@ TexturePtr VulkanGraphicsDevice::CreateTexture(const TextureData& data, const ch
 	return std::make_shared<const VulkanTexture>(std::move(texture));
 }
 
-DynamicTexturePtr VulkanGraphicsDevice::CreateRenderableTexture(const TextureData& data, const char* name)
+TexturePtr VulkanGraphicsDevice::CreateRenderableTexture(const TextureData& data, const char* name)
 {
 	auto task = m_scheduler->ScheduleGpu([=, this](CommandBuffer& cmdBuffer) { //
 		return CreateRenderableTexture(data, name, cmdBuffer);
@@ -751,7 +751,7 @@ DynamicTexturePtr VulkanGraphicsDevice::CreateRenderableTexture(const TextureDat
 	return task.get().value();
 }
 
-DynamicTexturePtr VulkanGraphicsDevice::CreateRenderableTexture(const TextureData& data, const char* name, CommandBuffer& cmdBuffer)
+TexturePtr VulkanGraphicsDevice::CreateRenderableTexture(const TextureData& data, const char* name, CommandBuffer& cmdBuffer)
 {
 	const bool isColorTarget = !HasDepthOrStencilComponent(data.format);
 	const auto renderUsage
@@ -778,7 +778,8 @@ PipelinePtr VulkanGraphicsDevice::CreatePipeline(const PipelineData& data)
 	const auto& shaderImpl = GetImpl(*data.shader);
 
 	return std::make_shared<const VulkanPipeline>(
-	    shaderImpl, CreateGraphicsPipeline(shaderImpl, data, CreateRenderPass(data.framebufferLayout), m_device.get()));
+	    shaderImpl,
+	    CreateGraphicsPipeline(shaderImpl, data, CreateRenderPassLayout(data.framebufferLayout), m_device.get()));
 }
 
 vk::UniqueDescriptorSet VulkanGraphicsDevice::CreateDescriptorSet(
@@ -910,11 +911,25 @@ VulkanParameterBlockLayoutPtr VulkanGraphicsDevice::CreateParameterBlockLayout(c
 	return std::make_shared<const VulkanParameterBlockLayout>(std::move(ret));
 }
 
-vk::RenderPass VulkanGraphicsDevice::CreateRenderPass(const FramebufferLayout& framebufferLayout, const RenderPassInfo& renderPassInfo)
+vk::RenderPass VulkanGraphicsDevice::CreateRenderPassLayout(const FramebufferLayout& framebufferLayout)
 {
-	const auto lock = std::scoped_lock(m_renderPassCacheMutex);
+	return CreateRenderPass(framebufferLayout, {});
+}
+
+vk::RenderPass VulkanGraphicsDevice::CreateRenderPass(const FramebufferLayout& framebufferLayout, const RenderList& renderList)
+{
+	const auto renderPassInfo = RenderPassInfo{
+	    .colorLoadOp = renderList.clearColorValue ? vk::AttachmentLoadOp::eClear : vk::AttachmentLoadOp::eDontCare,
+	    .colorStoreOp = vk::AttachmentStoreOp::eStore,
+	    .depthLoadOp = renderList.clearDepthValue ? vk::AttachmentLoadOp::eClear : vk::AttachmentLoadOp::eDontCare,
+	    .depthStoreOp = vk::AttachmentStoreOp::eStore,
+	    .stencilLoadOp = renderList.clearStencilValue ? vk::AttachmentLoadOp::eClear : vk::AttachmentLoadOp::eDontCare,
+	    .stencilStoreOp = vk::AttachmentStoreOp::eStore,
+	};
 
 	const auto desc = RenderPassDesc{framebufferLayout, renderPassInfo};
+
+	const auto lock = std::scoped_lock(m_renderPassCacheMutex);
 	const auto [it, inserted] = m_renderPassCache.emplace(desc, nullptr);
 	if (inserted)
 	{
@@ -923,18 +938,27 @@ vk::RenderPass VulkanGraphicsDevice::CreateRenderPass(const FramebufferLayout& f
 	return it->second.get();
 }
 
-vk::Framebuffer
-VulkanGraphicsDevice::CreateFramebuffer(vk::RenderPass renderPass, Geo::Size2i size, std::vector<vk::ImageView> attachments)
+Framebuffer VulkanGraphicsDevice::CreateFramebuffer(
+    vk::RenderPass renderPass, const FramebufferLayout& layout, Geo::Size2i size, std::vector<vk::ImageView> attachments)
 {
-	const auto lock = std::scoped_lock(m_framebufferCacheMutex);
-
 	const auto desc = FramebufferDesc{renderPass, size, std::move(attachments)};
-	const auto [it, inserted] = m_framebufferCache.emplace(desc, nullptr);
-	if (inserted)
-	{
-		it->second = ::CreateFramebuffer(m_device.get(), desc.renderPass, desc.size, desc.attachments);
-	}
-	return it->second.get();
+
+	const auto framebuffer = [&] {
+		const auto lock = std::scoped_lock(m_framebufferCacheMutex);
+
+		const auto [it, inserted] = m_framebufferCache.emplace(desc, nullptr);
+		if (inserted)
+		{
+			it->second = ::CreateFramebuffer(m_device.get(), desc.renderPass, desc.size, desc.attachments);
+		}
+		return it->second.get();
+	}();
+
+	return {
+	    .framebuffer = framebuffer,
+	    .layout = layout,
+	    .size = size,
+	};
 }
 
 ParameterBlockPtr VulkanGraphicsDevice::CreateParameterBlock(const ParameterBlockData& data, const char* name)

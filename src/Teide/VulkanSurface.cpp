@@ -245,8 +245,15 @@ std::optional<SurfaceImage> VulkanSurface::AcquireNextImage(vk::Fence fence)
 	    .imageIndex = imageIndex,
 	    .imageAvailable = semaphore,
 	    .image = m_swapchainImages[imageIndex],
-	    .framebuffer = m_swapchainFramebuffers[imageIndex].get(),
-	    .extent = m_surfaceExtent,
+	    .framebuffer = {
+	        .framebuffer = m_swapchainFramebuffers[imageIndex].get(),
+			.layout = {
+				.colorFormat = m_colorFormat,
+				.depthStencilFormat = m_depthFormat,
+				.sampleCount = m_msaaSampleCount,
+			},
+	        .size = m_surfaceExtent,
+	    },
 	    .prePresentCommandBuffer = m_transitionToPresentSrc[imageIndex].get(),
 	};
 

@@ -175,29 +175,74 @@ void VulkanRenderer::EndFrame()
 	}
 }
 
-void VulkanRenderer::RenderToTexture(DynamicTexturePtr texture, RenderList renderList)
+RenderToTextureResult VulkanRenderer::RenderToTexture(const RenderTargetInfo& renderTarget, RenderList renderList)
 {
-	const bool isColorTarget = !HasDepthOrStencilComponent(texture->GetFormat());
-	const auto framebufferLayout = FramebufferLayout{
-	    .colorFormat = isColorTarget ? std::make_optional(texture->GetFormat()) : std::nullopt,
-	    .depthStencilFormat = isColorTarget ? std::nullopt : std::make_optional(texture->GetFormat()),
-	    .sampleCount = texture->GetSampleCount(),
+	assert((renderTarget.captureColor || renderTarget.captureDepthStencil) && "Nothing to capture in RTT pass");
+
+	const auto CreateRenderableTexture = [&](std::optional<Format> format, const char* name) -> TexturePtr {
+		if (!format)
+			return nullptr;
+
+		const TextureData data = {
+		    .size = renderTarget.size,
+		    .format = *format,
+		    .mipLevelCount = 1,
+		    .sampleCount = renderTarget.framebufferLayout.sampleCount,
+		    .samplerState = renderTarget.samplerState,
+		};
+
+		const auto textureName = fmt::format("{}:{}", renderList.name, name);
+		return m_device.CreateRenderableTexture(data, textureName.c_str());
 	};
 
-	ScheduleGpu([this, renderList = std::move(renderList), texture = std::move(texture),
-	             framebufferLayout](CommandBuffer& commandBuffer) {
-		commandBuffer.AddTexture(texture);
+	const auto& fb = renderTarget.framebufferLayout;
+	const auto color = CreateRenderableTexture(fb.colorFormat, "color");
+	const auto depthStencil = CreateRenderableTexture(fb.depthStencilFormat, "depthStencil");
 
-		const auto& textureImpl = m_device.GetImpl(*texture);
+	ScheduleGpu([this, renderList = std::move(renderList), renderTarget, color, depthStencil](CommandBuffer& commandBuffer) {
+		commandBuffer.AddTexture(depthStencil);
 
-		TextureState textureState;
-		textureImpl.TransitionToRenderTarget(textureState, commandBuffer);
+		std::vector<vk::ImageView> attachments;
 
-		BuildCommandBuffer(
-		    commandBuffer, std::move(renderList), framebufferLayout, {}, textureImpl.size, {textureImpl.imageView.get()});
+		TextureState colorTextureState;
+		TextureState depthStencilTextureState;
 
-		textureImpl.TransitionToShaderInput(textureState, commandBuffer);
+		const auto addAttachment = [&](TexturePtr texture, TextureState& textureState) {
+			const auto& textureImpl = m_device.GetImpl(*texture);
+			commandBuffer.AddTexture(texture);
+			textureImpl.TransitionToRenderTarget(textureState, commandBuffer);
+			attachments.push_back(textureImpl.imageView.get());
+		};
+
+		if (color)
+		{
+			addAttachment(color, colorTextureState);
+		}
+		if (depthStencil)
+		{
+			addAttachment(depthStencil, depthStencilTextureState);
+		}
+
+		const auto renderPass = m_device.CreateRenderPass(renderTarget.framebufferLayout, renderList);
+		const auto framebuffer
+		    = m_device.CreateFramebuffer(renderPass, renderTarget.framebufferLayout, renderTarget.size, attachments);
+
+		BuildCommandBuffer(commandBuffer, renderList, renderPass, framebuffer);
+
+		if (color && renderTarget.captureColor)
+		{
+			m_device.GetImpl(*color).TransitionToShaderInput(colorTextureState, commandBuffer);
+		}
+		if (depthStencil && renderTarget.captureDepthStencil)
+		{
+			m_device.GetImpl(*depthStencil).TransitionToShaderInput(depthStencilTextureState, commandBuffer);
+		}
 	});
+
+	return {
+	    .colorTexture = renderTarget.captureColor ? color : nullptr,
+	    .depthStencilTexture = renderTarget.captureDepthStencil ? depthStencil : nullptr,
+	};
 }
 
 void VulkanRenderer::RenderToSurface(Surface& surface, RenderList renderList)
@@ -208,18 +253,13 @@ void VulkanRenderer::RenderToSurface(Surface& surface, RenderList renderList)
 		const auto& surfaceImage = *surfaceImageOpt;
 
 		const auto framebuffer = surfaceImage.framebuffer;
-		const auto extent = surfaceImage.extent;
-
-		const auto framebufferLayout = FramebufferLayout{
-		    .colorFormat = surface.GetColorFormat(),
-		    .depthStencilFormat = surface.GetDepthFormat(),
-		    .sampleCount = surface.GetSampleCount(),
-		};
 
 		m_device.GetScheduler().Schedule([=, this, renderList = std::move(renderList)](uint32_t taskIndex) {
 			CommandBuffer& commandBuffer = m_device.GetScheduler().GetCommandBuffer(taskIndex);
 
-			BuildCommandBuffer(commandBuffer, std::move(renderList), framebufferLayout, framebuffer, extent, {});
+			const auto renderPass = m_device.CreateRenderPass(framebuffer.layout, renderList);
+
+			BuildCommandBuffer(commandBuffer, renderList, renderPass, framebuffer);
 
 			commandBuffer.Get()->end();
 
@@ -276,31 +316,14 @@ Task<TextureData> VulkanRenderer::CopyTextureData(TexturePtr texture)
 }
 
 void VulkanRenderer::BuildCommandBuffer(
-    CommandBuffer& commandBufferWrapper, RenderList renderList, const FramebufferLayout& framebufferLayout,
-    vk::Framebuffer framebuffer, Geo::Size2i framebufferSize, std::vector<vk::ImageView> framebufferAttachments)
+    CommandBuffer& commandBufferWrapper, const RenderList& renderList, vk::RenderPass renderPass, const Framebuffer& framebuffer)
 {
 	using std::data;
 
 	vk::CommandBuffer commandBuffer = commandBufferWrapper;
 
-	const auto renderPassInfo = RenderPassInfo{
-	    .colorLoadOp = renderList.clearColorValue ? vk::AttachmentLoadOp::eClear : vk::AttachmentLoadOp::eDontCare,
-	    .colorStoreOp = vk::AttachmentStoreOp::eStore,
-	    .depthLoadOp = renderList.clearDepthValue ? vk::AttachmentLoadOp::eClear : vk::AttachmentLoadOp::eDontCare,
-	    .depthStoreOp = vk::AttachmentStoreOp::eStore,
-	    .stencilLoadOp = renderList.clearStencilValue ? vk::AttachmentLoadOp::eClear : vk::AttachmentLoadOp::eDontCare,
-	    .stencilStoreOp = vk::AttachmentStoreOp::eStore,
-	};
-
-	const auto renderPass = m_device.CreateRenderPass(framebufferLayout, renderPassInfo);
-
-	if (!framebuffer)
-	{
-		framebuffer = m_device.CreateFramebuffer(renderPass, framebufferSize, framebufferAttachments);
-	}
-
 	auto clearValues = std::vector<vk::ClearValue>();
-	if (framebufferLayout.colorFormat.has_value())
+	if (framebuffer.layout.colorFormat.has_value())
 	{
 		if (renderList.clearColorValue.has_value())
 		{
@@ -311,7 +334,7 @@ void VulkanRenderer::BuildCommandBuffer(
 			clearValues.emplace_back();
 		}
 	}
-	if (framebufferLayout.depthStencilFormat.has_value())
+	if (framebuffer.layout.depthStencilFormat.has_value())
 	{
 		clearValues.push_back(vk::ClearDepthStencilValue{
 		    renderList.clearDepthValue.value_or(1.0f), renderList.clearStencilValue.value_or(0)});
@@ -319,23 +342,23 @@ void VulkanRenderer::BuildCommandBuffer(
 
 	const auto renderPassBegin = vk::RenderPassBeginInfo{
 	    .renderPass = renderPass,
-	    .framebuffer = framebuffer,
-	    .renderArea = {.offset = {0, 0}, .extent = {framebufferSize.x, framebufferSize.y}},
+	    .framebuffer = framebuffer.framebuffer,
+	    .renderArea = {.offset = {0, 0}, .extent = {framebuffer.size.x, framebuffer.size.y}},
 	    .clearValueCount = size32(clearValues),
 	    .pClearValues = data(clearValues),
 	};
 
-	const auto viewport = MakeViewport(framebufferSize, renderList.viewportRegion);
+	const auto viewport = MakeViewport(framebuffer.size, renderList.viewportRegion);
 	commandBuffer.setViewport(0, viewport);
 	const auto scissor = renderList.scissor ? ToVulkan(*renderList.scissor)
-	                                        : vk::Rect2D{.extent = {framebufferSize.x, framebufferSize.y}};
+	                                        : vk::Rect2D{.extent = {framebuffer.size.x, framebuffer.size.y}};
 	commandBuffer.setScissor(0, scissor);
 
 	const auto threadIndex = m_device.GetScheduler().GetThreadIndex();
 	const auto viewParamsData = ParameterBlockData{
 	    .layout = m_shaderEnvironment ? m_shaderEnvironment->GetViewPblockLayout() : nullptr,
 	    .lifetime = ResourceLifetime::Transient,
-	    .parameters = std::move(renderList.viewParameters),
+	    .parameters = renderList.viewParameters,
 	};
 	const auto viewParamsName = fmt::format("{}:View", renderList.name);
 	const auto viewParameters = AddViewParameterBlock(
