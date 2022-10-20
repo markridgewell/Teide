@@ -7,7 +7,7 @@ using namespace testing;
 
 TEST(TextureTest, GetByteSize)
 {
-	const auto textureData = TextureData{
+	const TextureData textureData = {
 	    .size = {2, 2},
 	    .format = Format::Byte4,
 	    .mipLevelCount = 1,
@@ -19,7 +19,7 @@ TEST(TextureTest, GetByteSize)
 
 TEST(TextureTest, GetByteSizeWithMipmaps)
 {
-	const auto textureData = TextureData{
+	const TextureData textureData = {
 	    .size = {2, 2},
 	    .format = Format::Byte4,
 	    .mipLevelCount = 2,

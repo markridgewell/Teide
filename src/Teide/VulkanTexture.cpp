@@ -35,7 +35,7 @@ void VulkanTexture::GenerateMipmaps(TextureState& state, vk::CommandBuffer cmdBu
 	// Iterate all mip levels starting at 1
 	for (uint32_t i = 1; i < mipLevelCount; i++)
 	{
-		const auto currMipSize = vk::Offset3D{
+		const vk::Offset3D currMipSize = {
 		    prevMipSize.x > 1 ? prevMipSize.x / 2 : 1,
 		    prevMipSize.y > 1 ? prevMipSize.y / 2 : 1,
 		    prevMipSize.z > 1 ? prevMipSize.z / 2 : 1,
@@ -50,7 +50,7 @@ void VulkanTexture::GenerateMipmaps(TextureState& state, vk::CommandBuffer cmdBu
 		    vk::PipelineStageFlagBits::eTransfer, vk::PipelineStageFlagBits::eTransfer, {}, {}, {}, beforeBarrier);
 
 		// Blit previous mip to current mip
-		const auto blit = vk::ImageBlit{
+		const vk::ImageBlit blit = {
 		    .srcSubresource = {
 		        .aspectMask = vk::ImageAspectFlagBits::eColor,
 		        .mipLevel = i - 1,

@@ -48,7 +48,7 @@ CommandBuffer& Scheduler::GetCommandBuffer(uint32_t threadIndex)
 
 	if (threadResources.numUsedCommandBuffers == threadResources.commandBuffers.size())
 	{
-		const auto allocateInfo = vk::CommandBufferAllocateInfo{
+		const vk::CommandBufferAllocateInfo allocateInfo = {
 		    .commandPool = threadResources.commandPool.get(),
 		    .level = vk::CommandBufferLevel::ePrimary,
 		    .commandBufferCount = std::max(1u, static_cast<std::uint32_t>(threadResources.commandBuffers.size())),

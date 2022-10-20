@@ -83,7 +83,7 @@ MemoryAllocator::FindMemoryBlock(uint32_t memoryType, vk::DeviceSize availableSi
 		// Make sure the new block has at least enough space for the allocation
 		const auto newBlockSize = std::max(MemoryBlockSize, availableSize);
 
-		const auto allocInfo = vk::MemoryAllocateInfo{
+		const vk::MemoryAllocateInfo allocInfo = {
 		    .allocationSize = newBlockSize,
 		    .memoryTypeIndex = memoryType,
 		};

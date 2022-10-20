@@ -147,7 +147,7 @@ void SetBufferData(VulkanBuffer& buffer, BytesView data)
 
 void CopyBuffer(vk::CommandBuffer cmdBuffer, vk::Buffer source, vk::Buffer destination, vk::DeviceSize size)
 {
-	const auto copyRegion = vk::BufferCopy{
+	const vk::BufferCopy copyRegion = {
 	    .srcOffset = 0,
 	    .dstOffset = 0,
 	    .size = size,
@@ -233,7 +233,7 @@ TextureAndState CreateTextureImpl(
 
 	// Create image
 	const auto imageExtent = vk::Extent3D{data.size.x, data.size.y, 1};
-	const auto imageInfo = vk::ImageCreateInfo{
+	const vk::ImageCreateInfo imageInfo = {
 	    .imageType = vk::ImageType::e2D,
 	    .format = ToVulkan(data.format),
 	    .extent = imageExtent,
@@ -274,7 +274,7 @@ TextureAndState CreateTextureImpl(
 	}
 
 	// Create image view
-	const auto viewInfo = vk::ImageViewCreateInfo{
+	const vk::ImageViewCreateInfo viewInfo = {
 		.image = image.get(),
 		.viewType = vk::ImageViewType::e2D,
 		.format = imageInfo.format,
@@ -289,7 +289,7 @@ TextureAndState CreateTextureImpl(
 	auto imageView = device.createImageViewUnique(viewInfo, s_allocator);
 
 	const auto& ss = data.samplerState;
-	const auto samplerInfo = vk::SamplerCreateInfo{
+	const vk::SamplerCreateInfo samplerInfo = {
 	    .magFilter = ToVulkan(ss.magFilter),
 	    .minFilter = ToVulkan(ss.minFilter),
 	    .mipmapMode = ToVulkan(ss.mipmapMode),
@@ -329,7 +329,7 @@ CreateDescriptorSetLayout(vk::Device device, std::span<const vk::DescriptorSetLa
 		return {};
 	}
 
-	const auto createInfo = vk::DescriptorSetLayoutCreateInfo{
+	const vk::DescriptorSetLayoutCreateInfo createInfo = {
 	    .bindingCount = size32(layoutBindings),
 	    .pBindings = data(layoutBindings),
 	};
@@ -349,7 +349,7 @@ vk::UniquePipelineLayout CreateGraphicsPipelineLayout(vk::Device device, const V
 
 	const bool hasPushConstants = shader.objectPblockLayout->pushConstantRange.has_value();
 
-	const auto createInfo = vk::PipelineLayoutCreateInfo{
+	const vk::PipelineLayoutCreateInfo createInfo = {
 	    .setLayoutCount = size32(setLayouts),
 	    .pSetLayouts = data(setLayouts),
 	    .pushConstantRangeCount = hasPushConstants ? 1u : 0u,
@@ -421,7 +421,7 @@ vk::UniquePipeline CreateGraphicsPipeline(
 		};
 	}
 
-	const auto vertexInput = vk::PipelineVertexInputStateCreateInfo{
+	const vk::PipelineVertexInputStateCreateInfo vertexInput = {
 	    .vertexBindingDescriptionCount = size32(vertexInputBindings),
 	    .pVertexBindingDescriptions = data(vertexInputBindings),
 	    .vertexAttributeDescriptionCount = size32(vertexInputAttributes),
@@ -429,7 +429,7 @@ vk::UniquePipeline CreateGraphicsPipeline(
 	};
 
 	const auto& rasterState = renderStates.rasterState;
-	const auto rasterizationState = vk::PipelineRasterizationStateCreateInfo{
+	const vk::PipelineRasterizationStateCreateInfo rasterizationState = {
 	    .depthClampEnable = false,
 	    .rasterizerDiscardEnable = false,
 	    .polygonMode = ToVulkan(rasterState.fillMode),
@@ -442,7 +442,7 @@ vk::UniquePipeline CreateGraphicsPipeline(
 	    .lineWidth = rasterState.lineWidth,
 	};
 
-	const auto depthStencilState = vk::PipelineDepthStencilStateCreateInfo{
+	const vk::PipelineDepthStencilStateCreateInfo depthStencilState = {
 	    .depthTestEnable = true,
 	    .depthWriteEnable = true,
 	    .depthCompareOp = vk::CompareOp::eLess,
@@ -456,14 +456,14 @@ vk::UniquePipeline CreateGraphicsPipeline(
 	const auto viewport = vk::Viewport{};
 	const auto scissor = vk::Rect2D{};
 
-	const auto viewportState = vk::PipelineViewportStateCreateInfo{
+	const vk::PipelineViewportStateCreateInfo viewportState = {
 	    .viewportCount = 1,
 	    .pViewports = &viewport,
 	    .scissorCount = 1,
 	    .pScissors = &scissor,
 	};
 
-	const auto multisampleState = vk::PipelineMultisampleStateCreateInfo{
+	const vk::PipelineMultisampleStateCreateInfo multisampleState = {
 	    .rasterizationSamples = vk::SampleCountFlagBits{pipelineData.framebufferLayout.sampleCount},
 	    .sampleShadingEnable = false,
 	    .minSampleShading = 1.0f,
@@ -472,7 +472,7 @@ vk::UniquePipeline CreateGraphicsPipeline(
 	    .alphaToOneEnable = false,
 	};
 
-	const auto colorBlendState = vk::PipelineColorBlendStateCreateInfo{
+	const vk::PipelineColorBlendStateCreateInfo colorBlendState = {
 	    .logicOpEnable = false,
 	    .attachmentCount = 1,
 	    .pAttachments = &colorBlendAttachment,
@@ -480,16 +480,16 @@ vk::UniquePipeline CreateGraphicsPipeline(
 
 	const auto dynamicStates = std::array{vk::DynamicState::eViewport, vk::DynamicState::eScissor};
 
-	const auto dynamicState = vk::PipelineDynamicStateCreateInfo{
+	const vk::PipelineDynamicStateCreateInfo dynamicState = {
 	    .dynamicStateCount = size32(dynamicStates),
 	    .pDynamicStates = data(dynamicStates),
 	};
 
-	const auto inputAssembly = vk::PipelineInputAssemblyStateCreateInfo{
+	const vk::PipelineInputAssemblyStateCreateInfo inputAssembly = {
 	    .topology = ToVulkan(vertexLayout.topology),
 	};
 
-	const auto createInfo = vk::GraphicsPipelineCreateInfo{
+	const vk::GraphicsPipelineCreateInfo createInfo = {
 	    .stageCount = size32(shaderStages),
 	    .pStages = data(shaderStages),
 	    .pVertexInputState = &vertexInput,
@@ -505,12 +505,12 @@ vk::UniquePipeline CreateGraphicsPipeline(
 	    .subpass = 0,
 	};
 
-	auto [result, pipeline] = device.createGraphicsPipelineUnique(nullptr, createInfo, s_allocator);
-	if (result != vk::Result::eSuccess)
+	auto result = device.createGraphicsPipelineUnique(nullptr, createInfo, s_allocator);
+	if (result.result != vk::Result::eSuccess)
 	{
 		throw VulkanError("Couldn't create graphics pipeline");
 	}
-	return std::move(pipeline);
+	return std::move(result.value);
 }
 
 vk::ShaderStageFlags GetShaderStageFlags(ShaderStageFlags flags)
@@ -591,7 +591,7 @@ VulkanGraphicsDevice::VulkanGraphicsDevice(SDL_Window* window, std::uint32_t num
 	m_scheduler.emplace(numThreads, m_device.get(), m_graphicsQueue, m_graphicsQueueFamily);
 
 	// TODO: Don't hardcode descriptor pool sizes
-	const auto poolSizes = std::array{
+	const std::array poolSizes = {
 	    vk::DescriptorPoolSize{
 	        .type = vk::DescriptorType::eUniformBuffer,
 	        .descriptorCount = MaxFramesInFlight * 10,
@@ -602,7 +602,7 @@ VulkanGraphicsDevice::VulkanGraphicsDevice(SDL_Window* window, std::uint32_t num
 	    },
 	};
 
-	const auto poolCreateInfo = vk::DescriptorPoolCreateInfo{
+	const vk::DescriptorPoolCreateInfo poolCreateInfo = {
 	    .flags = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet,
 	    .maxSets = MaxFramesInFlight * 10,
 	    .poolSizeCount = size32(poolSizes),
@@ -687,11 +687,11 @@ VulkanGraphicsDevice::CreateShaderEnvironment(const ShaderEnvironmentData& data,
 
 ShaderPtr VulkanGraphicsDevice::CreateShader(const ShaderData& data, const char* name)
 {
-	const auto vertexCreateInfo = vk::ShaderModuleCreateInfo{
+	const vk::ShaderModuleCreateInfo vertexCreateInfo = {
 	    .codeSize = data.vertexShader.spirv.size() * sizeof(uint32_t),
 	    .pCode = data.vertexShader.spirv.data(),
 	};
-	const auto pixelCreateInfo = vk::ShaderModuleCreateInfo{
+	const vk::ShaderModuleCreateInfo pixelCreateInfo = {
 	    .codeSize = data.pixelShader.spirv.size() * sizeof(uint32_t),
 	    .pCode = data.pixelShader.spirv.data(),
 	};
@@ -797,7 +797,7 @@ std::vector<vk::UniqueDescriptorSet> VulkanGraphicsDevice::CreateDescriptorSets(
 	assert(textures.size() <= 1 && "Multiple textures not yet supported!");
 
 	const auto layouts = std::vector<vk::DescriptorSetLayout>(numSets, layout);
-	const auto allocInfo = vk::DescriptorSetAllocateInfo{
+	const vk::DescriptorSetAllocateInfo allocInfo = {
 	    .descriptorPool = pool,
 	    .descriptorSetCount = size32(layouts),
 	    .pSetLayouts = data(layouts),
@@ -817,7 +817,7 @@ std::vector<vk::UniqueDescriptorSet> VulkanGraphicsDevice::CreateDescriptorSets(
 		if (uniformBuffer)
 		{
 			const auto& uniformBufferImpl = GetImpl(*uniformBuffer);
-			const auto bufferInfo = vk::DescriptorBufferInfo{
+			const vk::DescriptorBufferInfo bufferInfo = {
 			    .buffer = uniformBufferImpl.buffer.get(),
 			    .offset = 0,
 			    .range = uniformBufferImpl.size,
@@ -918,7 +918,7 @@ vk::RenderPass VulkanGraphicsDevice::CreateRenderPassLayout(const FramebufferLay
 
 vk::RenderPass VulkanGraphicsDevice::CreateRenderPass(const FramebufferLayout& framebufferLayout, const RenderList& renderList)
 {
-	const auto renderPassInfo = RenderPassInfo{
+	const RenderPassInfo renderPassInfo = {
 	    .colorLoadOp = renderList.clearColorValue ? vk::AttachmentLoadOp::eClear : vk::AttachmentLoadOp::eDontCare,
 	    .colorStoreOp = vk::AttachmentStoreOp::eStore,
 	    .depthLoadOp = renderList.clearDepthValue ? vk::AttachmentLoadOp::eClear : vk::AttachmentLoadOp::eDontCare,

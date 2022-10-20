@@ -118,7 +118,7 @@ void GpuExecutor::SubmitCommandBuffer(std::uint32_t index, vk::CommandBuffer com
 		auto fence = getFence();
 		m_numSubmittedCommandBuffers += commandBuffersToSubmit.size();
 
-		const auto submitInfo = vk::SubmitInfo{
+		const vk::SubmitInfo submitInfo = {
 		    .commandBufferCount = size32(commandBuffersToSubmit),
 		    .pCommandBuffers = data(commandBuffersToSubmit),
 		};

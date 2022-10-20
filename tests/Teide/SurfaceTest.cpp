@@ -46,13 +46,13 @@ TEST(SurfaceTest, CreatePipelineForSurface)
 	auto surface = device->CreateSurface(window.get(), true);
 	const auto shaderData = CompileShader(SimpleShader);
 	const auto shader = device->CreateShader(shaderData, "Shader");
-	const auto vertexLayout = VertexLayout{
+	const VertexLayout vertexLayout = {
 	    .topology = PrimitiveTopology::TriangleList,
 	    .bufferBindings = {{.stride = 0}},
 	    .attributes = {{.name = "inPosition", .format = Format::Float3, .bufferIndex = 0, .offset = 0}},
 	};
 	const auto renderStates = RenderStates{};
-	const auto framebufferLayout = FramebufferLayout{
+	const FramebufferLayout framebufferLayout = {
 	    .colorFormat = surface->GetColorFormat(),
 	    .depthStencilFormat = surface->GetDepthFormat(),
 	    .sampleCount = surface->GetSampleCount(),
@@ -71,7 +71,7 @@ TEST(SurfaceTest, RenderToSurface)
 	auto renderer = device->CreateRenderer(nullptr);
 
 	renderer->BeginFrame({});
-	const auto renderList = RenderList{
+	const RenderList renderList = {
 	    .clearColorValue = Color{1.0f, 0.0f, 0.0f, 1.0f},
 	};
 	renderer->RenderToSurface(*surface, renderList);
@@ -103,7 +103,7 @@ TEST(SurfaceTest, RenderToSurfaceTwice)
 	auto renderer = device->CreateRenderer(nullptr);
 
 	renderer->BeginFrame({});
-	const auto renderListWithClear = RenderList{
+	const RenderList renderListWithClear = {
 	    .clearColorValue = Color{1.0f, 0.0f, 0.0f, 1.0f},
 	};
 	const auto renderListWithoutClear = RenderList{};

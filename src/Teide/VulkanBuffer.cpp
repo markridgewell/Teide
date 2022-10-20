@@ -16,7 +16,7 @@ VulkanBuffer CreateBufferUninitialized(
 {
 	VulkanBuffer ret{};
 
-	const auto createInfo = vk::BufferCreateInfo{
+	const vk::BufferCreateInfo createInfo = {
 	    .size = size,
 	    .usage = usage,
 	    .sharingMode = vk::SharingMode::eExclusive,

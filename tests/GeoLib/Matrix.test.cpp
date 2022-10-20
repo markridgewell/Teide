@@ -102,7 +102,7 @@ TEST(MatrixTest, MultiplyMatrix4Vector4)
 {
 	EXPECT_THAT(Matrix4::Identity() * Vector4(1, 2, 3, 1), ApproxEq(Vector4(1, 2, 3, 1)));
 
-	const auto rotation = Matrix4{
+	const Matrix4 rotation = {
 	    {1, 0, 0, 0},
 	    {0, 0, -1, 0},
 	    {0, 1, 0, 0},
@@ -110,7 +110,7 @@ TEST(MatrixTest, MultiplyMatrix4Vector4)
 	};
 	EXPECT_THAT(rotation * Vector4(1, 2, 3, 1), ApproxEq(Vector4(1, -3, 2, 1)));
 
-	const auto translation = Matrix4{
+	const Matrix4 translation = {
 	    {1, 0, 0, 10},
 	    {0, 1, 0, 50},
 	    {0, 0, 1, 20},
@@ -118,7 +118,7 @@ TEST(MatrixTest, MultiplyMatrix4Vector4)
 	};
 	EXPECT_THAT(translation * Vector4(1, 2, 3, 1), ApproxEq(Vector4(11, 52, 23, 1)));
 
-	const auto scaling = Matrix4{
+	const Matrix4 scaling = {
 	    {10, 0, 0, 0},
 	    {0, 2, 0, 0},
 	    {0, 0, 100, 0},
@@ -136,7 +136,7 @@ TEST(MatrixTest, MultiplyMatrix4Vector3)
 {
 	EXPECT_THAT(Matrix4::Identity() * Vector3(1, 2, 3), ApproxEq(Vector3(1, 2, 3)));
 
-	const auto rotation = Matrix4{
+	const Matrix4 rotation = {
 	    {1, 0, 0, 0},
 	    {0, 0, -1, 0},
 	    {0, 1, 0, 0},
@@ -144,7 +144,7 @@ TEST(MatrixTest, MultiplyMatrix4Vector3)
 	};
 	EXPECT_THAT(rotation * Vector3(1, 2, 3), ApproxEq(Vector3(1, -3, 2)));
 
-	const auto translation = Matrix4{
+	const Matrix4 translation = {
 	    {1, 0, 0, 10},
 	    {0, 1, 0, 50},
 	    {0, 0, 1, 20},
@@ -152,7 +152,7 @@ TEST(MatrixTest, MultiplyMatrix4Vector3)
 	};
 	EXPECT_THAT(translation * Vector3(1, 2, 3), ApproxEq(Vector3(1, 2, 3))); // Vectors can't be translated, only Points!
 
-	const auto scaling = Matrix4{
+	const Matrix4 scaling = {
 	    {10, 0, 0, 0},
 	    {0, 2, 0, 0},
 	    {0, 0, 100, 0},
@@ -170,7 +170,7 @@ TEST(MatrixTest, MultiplyMatrix4Point3)
 {
 	EXPECT_THAT(Matrix4::Identity() * Point3(1, 2, 3), ApproxEq(Point3(1, 2, 3)));
 
-	const auto rotation = Matrix4{
+	const Matrix4 rotation = {
 	    {1, 0, 0, 0},
 	    {0, 0, -1, 0},
 	    {0, 1, 0, 0},
@@ -178,7 +178,7 @@ TEST(MatrixTest, MultiplyMatrix4Point3)
 	};
 	EXPECT_THAT(rotation * Point3(1, 2, 3), ApproxEq(Point3(1, -3, 2)));
 
-	const auto translation = Matrix4{
+	const Matrix4 translation = {
 	    {1, 0, 0, 10},
 	    {0, 1, 0, 50},
 	    {0, 0, 1, 20},
@@ -186,7 +186,7 @@ TEST(MatrixTest, MultiplyMatrix4Point3)
 	};
 	EXPECT_THAT(translation * Point3(1, 2, 3), ApproxEq(Point3(11, 52, 23)));
 
-	const auto scaling = Matrix4{
+	const Matrix4 scaling = {
 	    {10, 0, 0, 0},
 	    {0, 2, 0, 0},
 	    {0, 0, 100, 0},
@@ -202,18 +202,18 @@ TEST(MatrixTest, MultiplyMatrix4Point3)
 
 TEST(MatrixTest, MultiplyMatrix2x3Matrix3x4)
 {
-	const auto a = Matrix2x3{
+	const Matrix2x3 a = {
 	    {1, 2, 3},
 	    {4, 5, 6},
 	};
 
-	const auto b = Matrix3x4{
+	const Matrix3x4 b = {
 	    {1, 2, 3, 4},
 	    {5, 6, 7, 8},
 	    {9, 10, 11, 12},
 	};
 
-	const auto expected = Matrix2x4{
+	const Matrix2x4 expected = {
 	    {38, 44, 50, 56},
 	    {83, 98, 113, 128},
 	};
@@ -223,18 +223,18 @@ TEST(MatrixTest, MultiplyMatrix2x3Matrix3x4)
 
 TEST(MatrixTest, MultiplyMatrix1x4Matrix4x1)
 {
-	const auto a = Matrix1x4{
+	const Matrix1x4 a = {
 	    {1, 2, 3, 4},
 	};
 
-	const auto b = Matrix4x1{
+	const Matrix4x1 b = {
 	    {5},
 	    {6},
 	    {7},
 	    {8},
 	};
 
-	const auto expected = Matrix1x1{
+	const Matrix1x1 expected = {
 	    {70},
 	};
 
@@ -252,13 +252,13 @@ TEST(MatrixTest, Matrix4Rotation)
 
 TEST(MatrixTest, TransposeMatrix4)
 {
-	const auto a = Matrix4{
+	const Matrix4 a = {
 	    {1, 2, 3, 4},
 	    {5, 6, 7, 8},
 	    {9, 10, 11, 12},
 	    {13, 14, 15, 16},
 	};
-	const auto b = Matrix4{
+	const Matrix4 b = {
 	    {1, 5, 9, 13},
 	    {2, 6, 10, 14},
 	    {3, 7, 11, 15},
@@ -270,12 +270,12 @@ TEST(MatrixTest, TransposeMatrix4)
 
 TEST(MatrixTest, TransposeMatrix3x4)
 {
-	const auto a = Matrix3x4{
+	const Matrix3x4 a = {
 	    {1, 2, 3, 4},
 	    {5, 6, 7, 8},
 	    {9, 10, 11, 12},
 	};
-	const auto b = Matrix4x3{
+	const Matrix4x3 b = {
 	    {1, 5, 9},
 	    {2, 6, 10},
 	    {3, 7, 11},

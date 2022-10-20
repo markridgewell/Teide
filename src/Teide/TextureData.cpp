@@ -10,13 +10,14 @@ std::size_t GetByteSize(const TextureData& data)
 	const auto pixelSize = GetFormatElementSize(data.format);
 
 	std::size_t result = 0;
-	Geo::Size2i mipExtent = data.size;
+	std::size_t mipw = data.size.x;
+	std::size_t miph = data.size.y;
 
 	for (auto i = 0u; i < data.mipLevelCount; i++)
 	{
-		result += mipExtent.x * mipExtent.y * pixelSize;
-		mipExtent.x = std::max(1u, mipExtent.x / 2);
-		mipExtent.y = std::max(1u, mipExtent.y / 2);
+		result += mipw * miph * pixelSize;
+		mipw = std::max(std::size_t{1}, mipw / 2);
+		miph = std::max(std::size_t{1}, miph / 2);
 	}
 
 	return result;

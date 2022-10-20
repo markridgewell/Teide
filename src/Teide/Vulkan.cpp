@@ -259,12 +259,12 @@ vk::UniqueInstance CreateInstance(vk::DynamicLoader& loader, SDL_Window* window)
 		EnableOptionalVulkanLayer(layers, availableLayers, "VK_LAYER_KHRONOS_validation");
 		EnableRequiredVulkanExtension(extensions, availableExtensions, "VK_EXT_debug_utils");
 
-		const auto enabledFeatures = std::array{
+		const std::array enabledFeatures = {
 		    vk::ValidationFeatureEnableEXT::eSynchronizationValidation,
 		    vk::ValidationFeatureEnableEXT::eBestPractices,
 		};
 
-		const auto createInfo = vk::StructureChain{
+		const vk::StructureChain createInfo = {
 		    vk::InstanceCreateInfo{
 		        .pApplicationInfo = &applicationInfo,
 		        .enabledLayerCount = size32(layers),
@@ -282,7 +282,7 @@ vk::UniqueInstance CreateInstance(vk::DynamicLoader& loader, SDL_Window* window)
 	}
 	else
 	{
-		const auto createInfo = vk::InstanceCreateInfo{
+		const vk::InstanceCreateInfo createInfo = {
 		    .pApplicationInfo = &applicationInfo,
 		    .enabledLayerCount = size32(layers),
 		    .ppEnabledLayerNames = data(layers),
@@ -311,7 +311,7 @@ CreateDevice(vk::PhysicalDevice physicalDevice, std::span<const uint32_t> queueF
 		}
 	}
 
-	const auto deviceFeatures = vk::PhysicalDeviceFeatures{
+	const vk::PhysicalDeviceFeatures deviceFeatures = {
 	    .samplerAnisotropy = true,
 	};
 
@@ -324,14 +324,14 @@ CreateDevice(vk::PhysicalDevice physicalDevice, std::span<const uint32_t> queueF
 		EnableOptionalVulkanLayer(layers, availableLayers, "VK_LAYER_KHRONOS_validation");
 	}
 
-	const auto deviceCreateInfo = vk::DeviceCreateInfo{
-	    .queueCreateInfoCount = size32(queueCreateInfos),
-	    .pQueueCreateInfos = data(queueCreateInfos),
-	    .enabledLayerCount = size32(layers),
-	    .ppEnabledLayerNames = data(layers),
-	    .enabledExtensionCount = size32(extensions),
-	    .ppEnabledExtensionNames = data(extensions),
-	    .pEnabledFeatures = &deviceFeatures};
+	const vk::DeviceCreateInfo deviceCreateInfo
+	    = {.queueCreateInfoCount = size32(queueCreateInfos),
+	       .pQueueCreateInfos = data(queueCreateInfos),
+	       .enabledLayerCount = size32(layers),
+	       .ppEnabledLayerNames = data(layers),
+	       .enabledExtensionCount = size32(extensions),
+	       .ppEnabledExtensionNames = data(extensions),
+	       .pEnabledFeatures = &deviceFeatures};
 
 	return physicalDevice.createDeviceUnique(deviceCreateInfo, s_allocator);
 }
@@ -342,7 +342,7 @@ void TransitionImageLayout(
 {
 	const auto accessMasks = GetTransitionAccessMasks(oldLayout, newLayout);
 
-	const auto barrier = vk::ImageMemoryBarrier{
+	const vk::ImageMemoryBarrier barrier = {
 	    .srcAccessMask = accessMasks.source,
 	    .dstAccessMask = accessMasks.destination,
 	    .oldLayout = oldLayout,
@@ -374,7 +374,7 @@ vk::UniqueFence CreateFence(vk::Device device, vk::FenceCreateFlags flags)
 
 vk::UniqueCommandPool CreateCommandPool(uint32_t queueFamilyIndex, vk::Device device)
 {
-	const auto createInfo = vk::CommandPoolCreateInfo{
+	const vk::CommandPoolCreateInfo createInfo = {
 	    .queueFamilyIndex = queueFamilyIndex,
 	};
 
@@ -531,7 +531,7 @@ vk::UniqueRenderPass CreateRenderPass(vk::Device device, const FramebufferLayout
 		});
 	}
 
-	const auto subpass = vk::SubpassDescription{
+	const vk::SubpassDescription subpass = {
 	    .pipelineBindPoint = vk::PipelineBindPoint::eGraphics,
 	    .colorAttachmentCount = size32(colorAttachmentRefs),
 	    .pColorAttachments = data(colorAttachmentRefs),
@@ -539,7 +539,7 @@ vk::UniqueRenderPass CreateRenderPass(vk::Device device, const FramebufferLayout
 	    .pDepthStencilAttachment = depthStencilAttachmentRef ? &depthStencilAttachmentRef.value() : nullptr,
 	};
 
-	const auto dependency = vk::SubpassDependency{
+	const vk::SubpassDependency dependency = {
 	    .srcSubpass = VK_SUBPASS_EXTERNAL,
 	    .dstSubpass = 0,
 	    .srcStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput | vk::PipelineStageFlagBits::eEarlyFragmentTests,
@@ -548,7 +548,7 @@ vk::UniqueRenderPass CreateRenderPass(vk::Device device, const FramebufferLayout
 	    .dstAccessMask = vk ::AccessFlagBits::eColorAttachmentWrite | vk::AccessFlagBits::eDepthStencilAttachmentWrite,
 	};
 
-	const auto createInfo = vk::RenderPassCreateInfo{
+	const vk::RenderPassCreateInfo createInfo = {
 	    .attachmentCount = size32(attachments),
 	    .pAttachments = data(attachments),
 	    .subpassCount = 1,
@@ -563,7 +563,7 @@ vk::UniqueRenderPass CreateRenderPass(vk::Device device, const FramebufferLayout
 vk::UniqueFramebuffer
 CreateFramebuffer(vk::Device device, vk::RenderPass renderPass, Geo::Size2i size, std::span<const vk::ImageView> imageViews)
 {
-	const auto framebufferCreateInfo = vk::FramebufferCreateInfo{
+	const vk::FramebufferCreateInfo framebufferCreateInfo = {
 	    .renderPass = renderPass,
 	    .attachmentCount = size32(imageViews),
 	    .pAttachments = data(imageViews),

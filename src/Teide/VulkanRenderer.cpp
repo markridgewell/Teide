@@ -90,7 +90,7 @@ void VulkanRenderer::BeginFrame(ShaderParameters sceneParameters)
 	m_device.GetScheduler().NextFrame();
 
 	auto& frameResources = m_frameResources[m_frameNumber];
-	const auto pblockData = ParameterBlockData{
+	const ParameterBlockData pblockData = {
 	    .layout = m_shaderEnvironment ? m_shaderEnvironment->GetScenePblockLayout() : nullptr,
 	    .lifetime = ResourceLifetime::Transient,
 	    .parameters = std::move(sceneParameters),
@@ -147,7 +147,7 @@ void VulkanRenderer::EndFrame()
 			commandBuffers.push_back(surfaceImage.prePresentCommandBuffer);
 		}
 
-		const auto submitInfo = vk::SubmitInfo{
+		const vk::SubmitInfo submitInfo = {
 		    .waitSemaphoreCount = size32(waitSemaphores),
 		    .pWaitSemaphores = data(waitSemaphores),
 		    .pWaitDstStageMask = data(waitStages),
@@ -160,7 +160,7 @@ void VulkanRenderer::EndFrame()
 	}
 
 	// Present
-	const auto presentInfo = vk::PresentInfoKHR{
+	const vk::PresentInfoKHR presentInfo = {
 	    .waitSemaphoreCount = 1,
 	    .pWaitSemaphores = &m_renderFinished[m_frameNumber].get(),
 	    .swapchainCount = size32(swapchains),
@@ -340,7 +340,7 @@ void VulkanRenderer::BuildCommandBuffer(
 		    renderList.clearDepthValue.value_or(1.0f), renderList.clearStencilValue.value_or(0)});
 	};
 
-	const auto renderPassBegin = vk::RenderPassBeginInfo{
+	const vk::RenderPassBeginInfo renderPassBegin = {
 	    .renderPass = renderPass,
 	    .framebuffer = framebuffer.framebuffer,
 	    .renderArea = {.offset = {0, 0}, .extent = {framebuffer.size.x, framebuffer.size.y}},
@@ -355,7 +355,7 @@ void VulkanRenderer::BuildCommandBuffer(
 	commandBuffer.setScissor(0, scissor);
 
 	const auto threadIndex = m_device.GetScheduler().GetThreadIndex();
-	const auto viewParamsData = ParameterBlockData{
+	const ParameterBlockData viewParamsData = {
 	    .layout = m_shaderEnvironment ? m_shaderEnvironment->GetViewPblockLayout() : nullptr,
 	    .lifetime = ResourceLifetime::Transient,
 	    .parameters = renderList.viewParameters,

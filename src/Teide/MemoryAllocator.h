@@ -11,8 +11,8 @@ constexpr vk::DeviceSize MemoryBlockSize = 64 * 1024 * 1024;
 struct MemoryAllocation
 {
 	vk::DeviceMemory memory;
-	vk::DeviceSize offset;
-	vk::DeviceSize size;
+	vk::DeviceSize offset = 0;
+	vk::DeviceSize size = 0;
 	void* mappedData = nullptr;
 };
 

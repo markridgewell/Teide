@@ -81,7 +81,7 @@ vk::UniqueSwapchainKHR CreateSwapchain(
 	assert(!uniqueQueueFamilies.empty());
 	const auto sharingMode = uniqueQueueFamilies.size() == 1 ? vk::SharingMode::eExclusive : vk::SharingMode::eConcurrent;
 
-	const auto createInfo = vk::SwapchainCreateInfoKHR{
+	const vk::SwapchainCreateInfoKHR createInfo = {
 	    .surface = surface,
 	    .minImageCount = imageCount,
 	    .imageFormat = surfaceFormat.format,
@@ -109,7 +109,7 @@ CreateSwapchainImageViews(vk::Format swapchainFormat, std::span<const vk::Image>
 
 	for (size_t i = 0; i < images.size(); i++)
 	{
-		const auto createInfo = vk::ImageViewCreateInfo{
+		const vk::ImageViewCreateInfo createInfo = {
 		    .image = images[i],
 		    .viewType = vk::ImageViewType::e2D,
 		    .format = swapchainFormat,
@@ -157,7 +157,7 @@ std::vector<vk::UniqueFramebuffer> CreateFramebuffers(
 		const auto attachments = colorImageView ? std::span<const vk::ImageView>(msaaAttachments)
 		                                        : std::span<const vk::ImageView>(nonMsaattachments);
 
-		const auto createInfo = vk::FramebufferCreateInfo{
+		const vk::FramebufferCreateInfo createInfo = {
 		    .renderPass = renderPass,
 		    .attachmentCount = size32(attachments),
 		    .pAttachments = data(attachments),
@@ -239,7 +239,7 @@ std::optional<SurfaceImage> VulkanSurface::AcquireNextImage(vk::Fence fence)
 	// Mark the image as in flight
 	m_imagesInFlight[imageIndex] = fence;
 
-	const auto ret = SurfaceImage{
+	const SurfaceImage ret = {
 	    .surface = m_surface.get(),
 	    .swapchain = m_swapchain.get(),
 	    .imageIndex = imageIndex,
@@ -270,7 +270,7 @@ vk::Semaphore VulkanSurface::GetNextSemaphore()
 void VulkanSurface::CreateColorBuffer(vk::Format format)
 {
 	// Create image
-	const auto imageInfo = vk::ImageCreateInfo{
+	const vk::ImageCreateInfo imageInfo = {
 	    .imageType = vk::ImageType::e2D,
 	    .format = format,
 	    .extent = {m_surfaceExtent.x, m_surfaceExtent.y, 1},
@@ -290,7 +290,7 @@ void VulkanSurface::CreateColorBuffer(vk::Format format)
 	m_device.bindImageMemory(m_colorImage.get(), allocation.memory, allocation.offset);
 
 	// Create image view
-	const auto viewInfo = vk::ImageViewCreateInfo{
+	const vk::ImageViewCreateInfo viewInfo = {
 		.image = m_colorImage.get(),
 		.viewType = vk::ImageViewType::e2D,
 		.format = imageInfo.format,
@@ -313,7 +313,7 @@ void VulkanSurface::CreateDepthBuffer()
 	    m_physicalDevice, formatCandidates, vk::ImageTiling::eOptimal, vk::FormatFeatureFlagBits::eDepthStencilAttachment);
 
 	// Create image
-	const auto imageInfo = vk::ImageCreateInfo{
+	const vk::ImageCreateInfo imageInfo = {
 	    .imageType = vk::ImageType::e2D,
 	    .format = ToVulkan(m_depthFormat),
 	    .extent = {m_surfaceExtent.x, m_surfaceExtent.y, 1},
@@ -333,7 +333,7 @@ void VulkanSurface::CreateDepthBuffer()
 	m_device.bindImageMemory(m_depthImage.get(), allocation.memory, allocation.offset);
 
 	// Create image view
-	const auto viewInfo = vk::ImageViewCreateInfo{
+	const vk::ImageViewCreateInfo viewInfo = {
 		.image = m_depthImage.get(),
 		.viewType = vk::ImageViewType::e2D,
 		.format = imageInfo.format,
@@ -368,7 +368,7 @@ void VulkanSurface::CreateSwapchainAndImages()
 	}
 	CreateDepthBuffer();
 
-	const auto framebufferLayout = FramebufferLayout{
+	const FramebufferLayout framebufferLayout = {
 	    .colorFormat = FromVulkan(surfaceFormat.format),
 	    .depthStencilFormat = m_depthFormat,
 	    .sampleCount = m_msaaSampleCount,
@@ -379,7 +379,7 @@ void VulkanSurface::CreateSwapchainAndImages()
 	    m_swapchainImageViews, m_colorImageView.get(), m_depthImageView.get(), m_renderPass.get(), m_surfaceExtent, m_device);
 
 	// Create command buffers for transitioning images to present source
-	const auto cmdBufferAllocInfo = vk::CommandBufferAllocateInfo{
+	const vk::CommandBufferAllocateInfo cmdBufferAllocInfo = {
 	    .commandPool = m_commandPool,
 	    .commandBufferCount = size32(m_swapchainImages),
 	};

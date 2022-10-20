@@ -44,7 +44,7 @@ TEST_F(RendererTest, RenderNothing)
 {
 	const auto renderTarget = CreateRenderTargetInfo({2, 2});
 
-	const auto renderList = RenderList{
+	const RenderList renderList = {
 	    .clearColorValue = Color{1.0f, 0.0f, 0.0f, 1.0f},
 	};
 
@@ -68,10 +68,10 @@ TEST_F(RendererTest, RenderFullscreenTri)
 	constexpr auto vertices = std::array{-1.0f, -1.0f, 3.0f, -1.0f, -1.0f, 3.0f};
 	const auto vbuffer = m_device->CreateBuffer(
 	    {.usage = BufferUsage::Vertex, .lifetime = ResourceLifetime::Permanent, .data = vertices}, "VertexBuffer");
-	const auto vertexLayout = VertexLayout{
-	    .topology = PrimitiveTopology::TriangleList,
-	    .bufferBindings = {{.stride = sizeof(float) * 2}},
-	    .attributes = {{.name = "inPosition", .format = Format::Float2, .bufferIndex = 0, .offset = 0}}};
+	const VertexLayout vertexLayout
+	    = {.topology = PrimitiveTopology::TriangleList,
+	       .bufferBindings = {{.stride = sizeof(float) * 2}},
+	       .attributes = {{.name = "inPosition", .format = Format::Float2, .bufferIndex = 0, .offset = 0}}};
 
 	const auto shaderData = CompileShader(SimpleShader);
 	const auto shader = m_device->CreateShader(shaderData, "SimpleShader");
@@ -82,9 +82,9 @@ TEST_F(RendererTest, RenderFullscreenTri)
 	    .framebufferLayout = renderTarget.framebufferLayout,
 	});
 
-	const auto renderList = RenderList{
-	    .clearColorValue = Color{1.0f, 0.0f, 0.0f, 1.0f},
-	    .objects = {RenderObject{.vertexBuffer = vbuffer, .indexCount = 3, .pipeline = pipeline}}};
+	const RenderList renderList
+	    = {.clearColorValue = Color{1.0f, 0.0f, 0.0f, 1.0f},
+	       .objects = {RenderObject{.vertexBuffer = vbuffer, .indexCount = 3, .pipeline = pipeline}}};
 
 	const auto texture = m_renderer->RenderToTexture(renderTarget, renderList).colorTexture;
 

@@ -13,7 +13,7 @@ using namespace testing;
 TEST(TextureTest, GenerateMipmaps)
 {
 	auto device = CreateGraphicsDevice();
-	const auto textureData = TextureData{
+	const TextureData textureData = {
 	    .size = {2, 2},
 	    .format = Format::Byte4Norm,
 	    .mipLevelCount = 2,

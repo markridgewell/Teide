@@ -176,7 +176,7 @@ constexpr auto QuadVertices = std::array<Vertex, 4>{{
 
 constexpr auto QuadIndices = std::array<uint16_t, 6>{{0, 1, 2, 2, 3, 0}};
 
-const auto VertexLayoutDesc = VertexLayout{
+const VertexLayout VertexLayoutDesc = {
     .topology = PrimitiveTopology::TriangleList,
     .bufferBindings = {{
         .stride = sizeof(Vertex),
@@ -318,7 +318,7 @@ public:
 		m_shadowMatrix = shadowCamProjFitted * shadowCamView;
 
 		// Update scene uniforms
-		const auto sceneUniforms = SceneUniforms{
+		const SceneUniforms sceneUniforms = {
 		    .lightDir = Geo::Normalise(lightDirection),
 		    .lightColor = {1.0f, 1.0f, 1.0f},
 		    .ambientColorTop = {0.08f, 0.1f, 0.1f},
@@ -331,7 +331,7 @@ public:
 		});
 
 		// Update object uniforms
-		const auto objectUniforms = ObjectUniforms{
+		const ObjectUniforms objectUniforms = {
 		    .model = modelMatrix,
 		};
 
@@ -341,10 +341,10 @@ public:
 		TexturePtr shadowMap;
 		{
 			// Update view uniforms
-			const auto viewUniforms = ViewUniforms{
+			const ViewUniforms viewUniforms = {
 			    .viewProj = m_shadowMatrix,
 			};
-			const auto viewParams = ShaderParameters{
+			const ShaderParameters viewParams = {
 			    .uniformData = ToBytes(viewUniforms),
 			    .textures = {},
 			};
@@ -365,7 +365,7 @@ public:
 
 			constexpr uint32_t shadowMapSize = 2048;
 
-			const auto shadowRenderTarget = RenderTargetInfo{
+			const RenderTargetInfo shadowRenderTarget = {
 				.size = {shadowMapSize, shadowMapSize},
 				.framebufferLayout = ShadowFramebufferLayout,
 				.samplerState = {
@@ -403,10 +403,10 @@ public:
 			const Geo::Matrix proj = Geo::Perspective(45.0_deg, aspectRatio, 0.1f, 10.0f);
 			const Geo::Matrix viewProj = proj * view;
 
-			const auto viewUniforms = ViewUniforms{
+			const ViewUniforms viewUniforms = {
 			    .viewProj = viewProj,
 			};
-			const auto viewParams = ShaderParameters{
+			const ShaderParameters viewParams = {
 			    .uniformData = ToBytes(viewUniforms),
 			    .textures = {shadowMap.get()},
 			};
@@ -617,7 +617,7 @@ private:
 
 	void CreateParameterBlocks()
 	{
-		const auto materialData = ParameterBlockData{
+		const ParameterBlockData materialData = {
 		    .layout = m_shader->GetMaterialPblockLayout(),
 		    .parameters = {
 		        .textures = {m_texture.get()},
@@ -643,7 +643,7 @@ private:
 			    c0, c1, c0, c1, c0, c1, c0, c1, //
 			    c1, c0, c1, c0, c1, c0, c1, c0,
 			};
-			const auto data = TextureData{
+			const TextureData data = {
 			    .size = {8, 8},
 			    .format = Format::Byte4Srgb,
 			    .mipLevelCount = static_cast<uint32_t>(std::floor(std::log2(8))) + 1,
@@ -671,7 +671,7 @@ private:
 
 		const auto imageSize = static_cast<std::size_t>(width) * height * 4;
 
-		const auto data = TextureData{
+		const TextureData data = {
 		    .size = {static_cast<uint32_t>(width), static_cast<uint32_t>(height)},
 		    .format = Format::Byte4Srgb,
 		    .mipLevelCount = static_cast<uint32_t>(std::floor(std::log2(std::max(width, height)))) + 1,
