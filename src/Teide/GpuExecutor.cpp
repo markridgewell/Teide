@@ -8,6 +8,9 @@
 #include <ranges>
 #include <span>
 
+namespace Teide
+{
+
 GpuExecutor::GpuExecutor(vk::Device device, vk::Queue queue) : m_device{device}, m_queue{queue}
 {
 	m_schedulerThread = std::jthread([this, stop_token = m_schedulerStopSource.get_token()] {
@@ -131,3 +134,5 @@ void GpuExecutor::SubmitCommandBuffer(std::uint32_t index, vk::CommandBuffer com
 		m_inFlightSubmits.emplace_back(std::move(fence), std::move(callbacks));
 	}
 }
+
+} // namespace Teide

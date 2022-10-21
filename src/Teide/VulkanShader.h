@@ -6,6 +6,9 @@
 #include "Vulkan.h"
 #include "VulkanParameterBlock.h"
 
+namespace Teide
+{
+
 struct VulkanShaderBase
 {
 	vk::UniqueShaderModule vertexShader;
@@ -45,3 +48,5 @@ struct VulkanImpl<Shader>
 {
 	using type = VulkanShader;
 };
+
+} // namespace Teide

@@ -10,6 +10,8 @@
 #include <numeric>
 #include <span>
 
+using namespace Teide;
+
 namespace
 {
 constexpr auto PblockNames = std::array{"Scene", "View", "Material", "Object"};

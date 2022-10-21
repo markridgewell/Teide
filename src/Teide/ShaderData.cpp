@@ -1,6 +1,9 @@
 
 #include "Teide/ShaderData.h"
 
+namespace Teide
+{
+
 #ifdef __GNUC__ // GCC 4.8+, Clang, Intel and other compilers compatible with GCC (-std=c++0x or above)
 [[noreturn]] inline __attribute__((always_inline)) void Unreachable()
 {
@@ -15,10 +18,7 @@
 
 namespace
 {
-constexpr auto RoundUp(std::integral auto a, std::integral auto b)
-{
-	return ((a - 1) / b + 1) * b;
-}
+	constexpr auto RoundUp(std::integral auto a, std::integral auto b) { return ((a - 1) / b + 1) * b; }
 } // namespace
 
 bool IsResourceType(ShaderVariableType::BaseType type)
@@ -136,3 +136,5 @@ ParameterBlockLayoutData BuildParameterBlockLayout(const ParameterBlockDesc& pbl
 
 	return bindings;
 }
+
+} // namespace Teide

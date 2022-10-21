@@ -7,6 +7,9 @@
 #include <cstdint>
 #include <memory>
 
+namespace Teide
+{
+
 class Surface
 {
 public:
@@ -21,3 +24,5 @@ public:
 };
 
 using SurfacePtr = std::unique_ptr<Surface>;
+
+} // namespace Teide

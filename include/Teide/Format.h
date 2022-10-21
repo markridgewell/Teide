@@ -4,6 +4,9 @@
 #include <cstddef>
 #include <cstdint>
 
+namespace Teide
+{
+
 enum class Format : std::uint16_t
 {
 	Unknown,
@@ -67,3 +70,5 @@ std::uint32_t GetFormatElementSize(Format format);
 bool HasDepthComponent(Format format);
 bool HasStencilComponent(Format format);
 bool HasDepthOrStencilComponent(Format format);
+
+} // namespace Teide

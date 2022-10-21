@@ -1,6 +1,9 @@
 
 #include "CommandBuffer.h"
 
+namespace Teide
+{
+
 CommandBuffer::CommandBuffer(vk::UniqueCommandBuffer commandBuffer) : m_cmdBuffer(std::move(commandBuffer))
 {}
 
@@ -46,3 +49,5 @@ vk::CommandBuffer* CommandBuffer::operator->()
 	assert(m_cmdBuffer);
 	return &m_cmdBuffer.get();
 }
+
+} // namespace Teide

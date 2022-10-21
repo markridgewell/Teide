@@ -7,24 +7,27 @@
 
 #include <algorithm>
 
+namespace Teide
+{
+
 namespace
 {
-static uint32_t s_nextBlockID = 0;
+	static uint32_t s_nextBlockID = 0;
 
-uint32_t FindMemoryType(vk::PhysicalDevice physicalDevice, uint32_t typeFilter, vk::MemoryPropertyFlags flags)
-{
-	const auto memoryProperties = physicalDevice.getMemoryProperties();
-
-	for (uint32_t i = 0; i < memoryProperties.memoryTypeCount; i++)
+	uint32_t FindMemoryType(vk::PhysicalDevice physicalDevice, uint32_t typeFilter, vk::MemoryPropertyFlags flags)
 	{
-		if ((typeFilter & (1 << i) && (memoryProperties.memoryTypes[i].propertyFlags & flags) == flags))
-		{
-			return i;
-		}
-	}
+		const auto memoryProperties = physicalDevice.getMemoryProperties();
 
-	throw VulkanError("Failed to find suitable memory type");
-}
+		for (uint32_t i = 0; i < memoryProperties.memoryTypeCount; i++)
+		{
+			if ((typeFilter & (1 << i) && (memoryProperties.memoryTypes[i].propertyFlags & flags) == flags))
+			{
+				return i;
+			}
+		}
+
+		throw VulkanError("Failed to find suitable memory type");
+	}
 
 } // namespace
 
@@ -116,3 +119,5 @@ MemoryAllocator::FindMemoryBlock(uint32_t memoryType, vk::DeviceSize availableSi
 	}
 	return *it;
 }
+
+} // namespace Teide

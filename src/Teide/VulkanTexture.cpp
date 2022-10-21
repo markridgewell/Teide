@@ -4,6 +4,9 @@
 #include "Teide/TextureData.h"
 #include "Vulkan.h"
 
+namespace Teide
+{
+
 void VulkanTexture::GenerateMipmaps(TextureState& state, vk::CommandBuffer cmdBuffer)
 {
 	const auto makeBarrier = [&](vk::AccessFlags srcAccessMask, vk::AccessFlags dstAccessMask,
@@ -157,3 +160,5 @@ void VulkanTexture::TransitionToPresentSrc(TextureState& state, vk::CommandBuffe
 {
 	DoTransition(state, cmdBuffer, vk::ImageLayout::ePresentSrcKHR, vk::PipelineStageFlagBits::eColorAttachmentOutput);
 }
+
+} // namespace Teide

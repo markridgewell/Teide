@@ -5,6 +5,9 @@
 #include <type_traits>
 #include <vector>
 
+namespace Teide
+{
+
 template <class T>
 concept Span = requires(T t)
 {
@@ -67,3 +70,5 @@ inline auto ToBytes(BytesView view)
 {
 	return std::vector<std::byte>(view.begin(), view.end());
 }
+
+} // namespace Teide

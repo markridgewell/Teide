@@ -3,6 +3,9 @@
 
 using namespace std::chrono_literals;
 
+namespace Teide
+{
+
 CpuExecutor::CpuExecutor(std::uint32_t numThreads) : m_executor(numThreads)
 {
 	m_schedulerThread = std::jthread([this, stop_token = m_schedulerStopSource.get_token()] {
@@ -54,3 +57,5 @@ void CpuExecutor::WaitForTasks()
 
 	m_executor.wait_for_all();
 }
+
+} // namespace Teide

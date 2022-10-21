@@ -5,6 +5,9 @@
 
 #include <cstddef>
 
+namespace Teide
+{
+
 std::size_t GetByteSize(const TextureData& data)
 {
 	const auto pixelSize = GetFormatElementSize(data.format);
@@ -22,3 +25,5 @@ std::size_t GetByteSize(const TextureData& data)
 
 	return result;
 }
+
+} // namespace Teide

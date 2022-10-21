@@ -17,6 +17,9 @@
 #include <mutex>
 #include <optional>
 
+namespace Teide
+{
+
 class GraphicsDevice;
 
 struct ViewportRegion
@@ -92,3 +95,5 @@ public:
 };
 
 using RendererPtr = std::unique_ptr<Renderer>;
+
+} // namespace Teide

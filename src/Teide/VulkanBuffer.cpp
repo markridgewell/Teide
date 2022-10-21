@@ -5,9 +5,12 @@
 
 #include <cassert>
 
+namespace Teide
+{
+
 namespace
 {
-const vk::Optional<const vk::AllocationCallbacks> s_allocator = nullptr;
+	const vk::Optional<const vk::AllocationCallbacks> s_allocator = nullptr;
 }
 
 VulkanBuffer CreateBufferUninitialized(
@@ -46,3 +49,5 @@ vk::BufferUsageFlags GetBufferUsageFlags(BufferUsage usage)
 	}
 	return {};
 }
+
+} // namespace Teide

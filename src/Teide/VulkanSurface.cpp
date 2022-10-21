@@ -10,168 +10,171 @@
 #include <algorithm>
 #include <span>
 
+namespace Teide
+{
+
 namespace
 {
-static const vk::Optional<const vk::AllocationCallbacks> s_allocator = nullptr;
+	static const vk::Optional<const vk::AllocationCallbacks> s_allocator = nullptr;
 
-vk::SurfaceFormatKHR ChooseSurfaceFormat(std::span<const vk::SurfaceFormatKHR> availableFormats)
-{
-	const auto preferredFormat = vk::SurfaceFormatKHR{vk::Format::eB8G8R8A8Srgb, vk::ColorSpaceKHR::eSrgbNonlinear};
-
-	if (const auto it = std::ranges::find(availableFormats, preferredFormat); it != availableFormats.end())
+	vk::SurfaceFormatKHR ChooseSurfaceFormat(std::span<const vk::SurfaceFormatKHR> availableFormats)
 	{
-		return *it;
+		const auto preferredFormat = vk::SurfaceFormatKHR{vk::Format::eB8G8R8A8Srgb, vk::ColorSpaceKHR::eSrgbNonlinear};
+
+		if (const auto it = std::ranges::find(availableFormats, preferredFormat); it != availableFormats.end())
+		{
+			return *it;
+		}
+
+		return availableFormats.front();
 	}
 
-	return availableFormats.front();
-}
-
-vk::PresentModeKHR ChoosePresentMode(std::span<const vk::PresentModeKHR> availableModes)
-{
-	const auto preferredMode = vk::PresentModeKHR::eMailbox;
-
-	if (const auto it = std::ranges::find(availableModes, preferredMode); it != availableModes.end())
+	vk::PresentModeKHR ChoosePresentMode(std::span<const vk::PresentModeKHR> availableModes)
 	{
-		return *it;
+		const auto preferredMode = vk::PresentModeKHR::eMailbox;
+
+		if (const auto it = std::ranges::find(availableModes, preferredMode); it != availableModes.end())
+		{
+			return *it;
+		}
+
+		// FIFO mode is guaranteed to be supported
+		return vk::PresentModeKHR::eFifo;
 	}
 
-	// FIFO mode is guaranteed to be supported
-	return vk::PresentModeKHR::eFifo;
-}
-
-Geo::Size2i ChooseSwapExtent(const vk::SurfaceCapabilitiesKHR& capabilities, SDL_Window* window)
-{
-	if (capabilities.currentExtent.width != std::numeric_limits<uint32_t>::max())
+	Geo::Size2i ChooseSwapExtent(const vk::SurfaceCapabilitiesKHR& capabilities, SDL_Window* window)
 	{
-		return {capabilities.currentExtent.width, capabilities.currentExtent.height};
-	}
-	else
-	{
-		int width = 0, height = 0;
-		SDL_Vulkan_GetDrawableSize(window, &width, &height);
+		if (capabilities.currentExtent.width != std::numeric_limits<uint32_t>::max())
+		{
+			return {capabilities.currentExtent.width, capabilities.currentExtent.height};
+		}
+		else
+		{
+			int width = 0, height = 0;
+			SDL_Vulkan_GetDrawableSize(window, &width, &height);
 
-		const Geo::Size2i windowExtent = {static_cast<uint32_t>(width), static_cast<uint32_t>(height)};
+			const Geo::Size2i windowExtent = {static_cast<uint32_t>(width), static_cast<uint32_t>(height)};
 
-		const Geo::Size2i actualExtent
-		    = {std::clamp(windowExtent.x, capabilities.minImageExtent.width, capabilities.maxImageExtent.width),
-		       std::clamp(windowExtent.y, capabilities.minImageExtent.height, capabilities.maxImageExtent.height)};
+			const Geo::Size2i actualExtent
+			    = {std::clamp(windowExtent.x, capabilities.minImageExtent.width, capabilities.maxImageExtent.width),
+			       std::clamp(windowExtent.y, capabilities.minImageExtent.height, capabilities.maxImageExtent.height)};
 
-		return actualExtent;
-	}
-}
-
-vk::UniqueSwapchainKHR CreateSwapchain(
-    vk::PhysicalDevice physicalDevice, std::span<const uint32_t> queueFamilyIndices, vk::SurfaceKHR surface,
-    vk::SurfaceFormatKHR surfaceFormat, Geo::Size2i surfaceExtent, vk::Device device, vk::SwapchainKHR oldSwapchain)
-{
-	const auto surfaceCapabilities = physicalDevice.getSurfaceCapabilitiesKHR(surface);
-
-	const auto mode = ChoosePresentMode(physicalDevice.getSurfacePresentModesKHR(surface));
-
-	uint32_t imageCount = surfaceCapabilities.minImageCount + 1;
-	if (surfaceCapabilities.maxImageCount > 0)
-	{
-		imageCount = std::min(imageCount, surfaceCapabilities.maxImageCount);
+			return actualExtent;
+		}
 	}
 
-	std::vector<uint32_t> queueFamiliesCopy;
-	std::ranges::copy(queueFamilyIndices, std::back_inserter(queueFamiliesCopy));
-	std::ranges::sort(queueFamiliesCopy);
-	const auto uniqueQueueFamilies = std::ranges::unique(queueFamiliesCopy);
-	assert(!uniqueQueueFamilies.empty());
-	const auto sharingMode = uniqueQueueFamilies.size() == 1 ? vk::SharingMode::eExclusive : vk::SharingMode::eConcurrent;
-
-	const vk::SwapchainCreateInfoKHR createInfo = {
-	    .surface = surface,
-	    .minImageCount = imageCount,
-	    .imageFormat = surfaceFormat.format,
-	    .imageColorSpace = surfaceFormat.colorSpace,
-	    .imageExtent = {surfaceExtent.x, surfaceExtent.y},
-	    .imageArrayLayers = 1,
-	    .imageUsage = vk::ImageUsageFlagBits::eColorAttachment,
-	    .imageSharingMode = sharingMode,
-	    .queueFamilyIndexCount = size32(uniqueQueueFamilies),
-	    .pQueueFamilyIndices = data(uniqueQueueFamilies),
-	    .preTransform = surfaceCapabilities.currentTransform,
-	    .compositeAlpha = vk::CompositeAlphaFlagBitsKHR::eOpaque,
-	    .presentMode = mode,
-	    .clipped = true,
-	    .oldSwapchain = oldSwapchain,
-	};
-
-	return device.createSwapchainKHRUnique(createInfo, s_allocator);
-}
-
-std::vector<vk::UniqueImageView>
-CreateSwapchainImageViews(vk::Format swapchainFormat, std::span<const vk::Image> images, vk::Device device)
-{
-	auto imageViews = std::vector<vk::UniqueImageView>(images.size());
-
-	for (size_t i = 0; i < images.size(); i++)
+	vk::UniqueSwapchainKHR CreateSwapchain(
+	    vk::PhysicalDevice physicalDevice, std::span<const uint32_t> queueFamilyIndices, vk::SurfaceKHR surface,
+	    vk::SurfaceFormatKHR surfaceFormat, Geo::Size2i surfaceExtent, vk::Device device, vk::SwapchainKHR oldSwapchain)
 	{
-		const vk::ImageViewCreateInfo createInfo = {
+		const auto surfaceCapabilities = physicalDevice.getSurfaceCapabilitiesKHR(surface);
+
+		const auto mode = ChoosePresentMode(physicalDevice.getSurfacePresentModesKHR(surface));
+
+		uint32_t imageCount = surfaceCapabilities.minImageCount + 1;
+		if (surfaceCapabilities.maxImageCount > 0)
+		{
+			imageCount = std::min(imageCount, surfaceCapabilities.maxImageCount);
+		}
+
+		std::vector<uint32_t> queueFamiliesCopy;
+		std::ranges::copy(queueFamilyIndices, std::back_inserter(queueFamiliesCopy));
+		std::ranges::sort(queueFamiliesCopy);
+		const auto uniqueQueueFamilies = std::ranges::unique(queueFamiliesCopy);
+		assert(!uniqueQueueFamilies.empty());
+		const auto sharingMode = uniqueQueueFamilies.size() == 1 ? vk::SharingMode::eExclusive : vk::SharingMode::eConcurrent;
+
+		const vk::SwapchainCreateInfoKHR createInfo = {
+		    .surface = surface,
+		    .minImageCount = imageCount,
+		    .imageFormat = surfaceFormat.format,
+		    .imageColorSpace = surfaceFormat.colorSpace,
+		    .imageExtent = {surfaceExtent.x, surfaceExtent.y},
+		    .imageArrayLayers = 1,
+		    .imageUsage = vk::ImageUsageFlagBits::eColorAttachment,
+		    .imageSharingMode = sharingMode,
+		    .queueFamilyIndexCount = size32(uniqueQueueFamilies),
+		    .pQueueFamilyIndices = data(uniqueQueueFamilies),
+		    .preTransform = surfaceCapabilities.currentTransform,
+		    .compositeAlpha = vk::CompositeAlphaFlagBitsKHR::eOpaque,
+		    .presentMode = mode,
+		    .clipped = true,
+		    .oldSwapchain = oldSwapchain,
+		};
+
+		return device.createSwapchainKHRUnique(createInfo, s_allocator);
+	}
+
+	std::vector<vk::UniqueImageView>
+	CreateSwapchainImageViews(vk::Format swapchainFormat, std::span<const vk::Image> images, vk::Device device)
+	{
+		auto imageViews = std::vector<vk::UniqueImageView>(images.size());
+
+		for (size_t i = 0; i < images.size(); i++)
+		{
+			const vk::ImageViewCreateInfo createInfo = {
 		    .image = images[i],
 		    .viewType = vk::ImageViewType::e2D,
 		    .format = swapchainFormat,
 		    .subresourceRange
 		    = {.aspectMask = vk::ImageAspectFlagBits::eColor, .baseMipLevel = 0, .levelCount = 1, .baseArrayLayer = 0, .layerCount = 1,},};
 
-		imageViews[i] = device.createImageViewUnique(createInfo, s_allocator);
-		SetDebugName(imageViews[i], "SwapchainImageView[{}]", i);
-	}
-
-	return imageViews;
-}
-
-Format FindSupportedFormat(
-    vk::PhysicalDevice physicalDevice, std::span<const Format> candidates, vk::ImageTiling tiling,
-    vk::FormatFeatureFlags features)
-{
-	for (const auto format : candidates)
-	{
-		const vk::FormatProperties props = physicalDevice.getFormatProperties(ToVulkan(format));
-		if (tiling == vk::ImageTiling::eLinear && (props.linearTilingFeatures & features) == features)
-		{
-			return format;
+			imageViews[i] = device.createImageViewUnique(createInfo, s_allocator);
+			SetDebugName(imageViews[i], "SwapchainImageView[{}]", i);
 		}
-		if (tiling == vk::ImageTiling::eOptimal && (props.optimalTilingFeatures & features) == features)
-		{
-			return format;
-		}
+
+		return imageViews;
 	}
 
-	throw VulkanError("Failed to find a suitable format");
-}
-
-std::vector<vk::UniqueFramebuffer> CreateFramebuffers(
-    std::span<const vk::UniqueImageView> imageViews, vk::ImageView colorImageView, vk::ImageView depthImageView,
-    vk::RenderPass renderPass, Geo::Size2i surfaceExtent, vk::Device device)
-{
-	auto framebuffers = std::vector<vk::UniqueFramebuffer>(imageViews.size());
-
-	for (size_t i = 0; i < imageViews.size(); i++)
+	Format FindSupportedFormat(
+	    vk::PhysicalDevice physicalDevice, std::span<const Format> candidates, vk::ImageTiling tiling,
+	    vk::FormatFeatureFlags features)
 	{
-		const auto msaaAttachments = std::array{colorImageView, depthImageView, imageViews[i].get()};
-		const auto nonMsaattachments = std::array{imageViews[i].get(), depthImageView};
+		for (const auto format : candidates)
+		{
+			const vk::FormatProperties props = physicalDevice.getFormatProperties(ToVulkan(format));
+			if (tiling == vk::ImageTiling::eLinear && (props.linearTilingFeatures & features) == features)
+			{
+				return format;
+			}
+			if (tiling == vk::ImageTiling::eOptimal && (props.optimalTilingFeatures & features) == features)
+			{
+				return format;
+			}
+		}
 
-		const auto attachments = colorImageView ? std::span<const vk::ImageView>(msaaAttachments)
-		                                        : std::span<const vk::ImageView>(nonMsaattachments);
-
-		const vk::FramebufferCreateInfo createInfo = {
-		    .renderPass = renderPass,
-		    .attachmentCount = size32(attachments),
-		    .pAttachments = data(attachments),
-		    .width = surfaceExtent.x,
-		    .height = surfaceExtent.y,
-		    .layers = 1,
-		};
-
-		framebuffers[i] = device.createFramebufferUnique(createInfo, s_allocator);
-		SetDebugName(framebuffers[i], "SwapchainFramebuffer[{}]", i);
+		throw VulkanError("Failed to find a suitable format");
 	}
 
-	return framebuffers;
-}
+	std::vector<vk::UniqueFramebuffer> CreateFramebuffers(
+	    std::span<const vk::UniqueImageView> imageViews, vk::ImageView colorImageView, vk::ImageView depthImageView,
+	    vk::RenderPass renderPass, Geo::Size2i surfaceExtent, vk::Device device)
+	{
+		auto framebuffers = std::vector<vk::UniqueFramebuffer>(imageViews.size());
+
+		for (size_t i = 0; i < imageViews.size(); i++)
+		{
+			const auto msaaAttachments = std::array{colorImageView, depthImageView, imageViews[i].get()};
+			const auto nonMsaattachments = std::array{imageViews[i].get(), depthImageView};
+
+			const auto attachments = colorImageView ? std::span<const vk::ImageView>(msaaAttachments)
+			                                        : std::span<const vk::ImageView>(nonMsaattachments);
+
+			const vk::FramebufferCreateInfo createInfo = {
+			    .renderPass = renderPass,
+			    .attachmentCount = size32(attachments),
+			    .pAttachments = data(attachments),
+			    .width = surfaceExtent.x,
+			    .height = surfaceExtent.y,
+			    .layers = 1,
+			};
+
+			framebuffers[i] = device.createFramebufferUnique(createInfo, s_allocator);
+			SetDebugName(framebuffers[i], "SwapchainFramebuffer[{}]", i);
+		}
+
+		return framebuffers;
+	}
 
 } // namespace
 
@@ -404,3 +407,5 @@ void VulkanSurface::RecreateSwapchain()
 	m_device.waitIdle();
 	CreateSwapchainAndImages();
 }
+
+} // namespace Teide

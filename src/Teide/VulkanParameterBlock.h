@@ -8,6 +8,9 @@
 #include <optional>
 #include <vector>
 
+namespace Teide
+{
+
 struct VulkanParameterBlockLayout : public ParameterBlockLayout
 {
 	vk::UniqueDescriptorSetLayout setLayout;
@@ -40,3 +43,5 @@ struct VulkanImpl<ParameterBlock>
 {
 	using type = VulkanParameterBlock;
 };
+
+} // namespace Teide

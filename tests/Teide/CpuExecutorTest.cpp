@@ -10,6 +10,8 @@ using namespace testing;
 using namespace std::chrono_literals;
 using std::this_thread::sleep_for;
 
+using namespace Teide;
+
 namespace
 {
 

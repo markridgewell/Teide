@@ -14,8 +14,11 @@
 #include <unordered_set>
 
 struct SDL_Window;
-struct FramebufferLayout;
 
+namespace Teide
+{
+
+struct FramebufferLayout;
 enum class PrimitiveTopology;
 enum class VertexClass;
 
@@ -160,3 +163,5 @@ constexpr std::uint64_t Timeout(std::chrono::duration<Rep, Period> duration)
 
 template <class T>
 struct VulkanImpl;
+
+} // namespace Teide

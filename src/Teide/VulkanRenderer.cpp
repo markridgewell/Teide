@@ -18,21 +18,24 @@
 #include <algorithm>
 #include <array>
 
+namespace Teide
+{
+
 namespace
 {
-static const vk::Optional<const vk::AllocationCallbacks> s_allocator = nullptr;
+	static const vk::Optional<const vk::AllocationCallbacks> s_allocator = nullptr;
 
-vk::Viewport MakeViewport(Geo::Size2i size, const ViewportRegion& region = {})
-{
-	return {
-	    .x = region.left * size.x,
-	    .y = region.top * size.y,
-	    .width = region.right * size.x,
-	    .height = region.bottom * size.y,
-	    .minDepth = 0.0f,
-	    .maxDepth = 1.0f,
-	};
-}
+	vk::Viewport MakeViewport(Geo::Size2i size, const ViewportRegion& region = {})
+	{
+		return {
+		    .x = region.left * size.x,
+		    .y = region.top * size.y,
+		    .width = region.right * size.x,
+		    .height = region.bottom * size.y,
+		    .minDepth = 0.0f,
+		    .maxDepth = 1.0f,
+		};
+	}
 
 } // namespace
 
@@ -461,3 +464,5 @@ vk::DescriptorSet VulkanRenderer::GetDescriptorSet(const ParameterBlock* paramet
 	const auto& parameterBlockImpl = m_device.GetImpl(*parameterBlock);
 	return parameterBlockImpl.descriptorSet.get();
 }
+
+} // namespace Teide

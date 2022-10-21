@@ -6,6 +6,9 @@
 #include "VulkanParameterBlock.h"
 #include "VulkanShader.h"
 
+namespace Teide
+{
+
 struct VulkanPipeline : public Pipeline
 {
 	VulkanPipeline(const VulkanShader& shader, vk::UniquePipeline pipeline) :
@@ -26,3 +29,5 @@ struct VulkanImpl<Pipeline>
 {
 	using type = VulkanPipeline;
 };
+
+} // namespace Teide

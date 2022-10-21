@@ -11,179 +11,182 @@
 
 VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE;
 
+namespace Teide
+{
+
 namespace
 {
-constexpr bool BreakOnVulkanWarning = false;
-constexpr bool BreakOnVulkanError = true;
+	constexpr bool BreakOnVulkanWarning = false;
+	constexpr bool BreakOnVulkanError = true;
 
-const vk::Optional<const vk::AllocationCallbacks> s_allocator = nullptr;
+	const vk::Optional<const vk::AllocationCallbacks> s_allocator = nullptr;
 
-static constexpr StaticMap<Format, vk::Format, FormatCount> VulkanFormats = {
-    {Format::Unknown, vk::Format::eUndefined},
+	static constexpr StaticMap<Format, vk::Format, FormatCount> VulkanFormats = {
+	    {Format::Unknown, vk::Format::eUndefined},
 
-    {Format::Byte1, vk::Format::eR8Uint},
-    {Format::Byte1Norm, vk::Format::eR8Unorm},
-    {Format::Short1, vk::Format::eR16Sint},
-    {Format::Short1Norm, vk::Format::eR16Snorm},
-    {Format::Ushort1, vk::Format::eR16Uint},
-    {Format::Ushort1Norm, vk::Format::eR16Unorm},
-    {Format::Half1, vk::Format::eR16Sfloat},
-    {Format::Int1, vk::Format::eR32Sint},
-    {Format::Uint1, vk::Format::eR32Uint},
-    {Format::Float1, vk::Format::eR32Sfloat},
+	    {Format::Byte1, vk::Format::eR8Uint},
+	    {Format::Byte1Norm, vk::Format::eR8Unorm},
+	    {Format::Short1, vk::Format::eR16Sint},
+	    {Format::Short1Norm, vk::Format::eR16Snorm},
+	    {Format::Ushort1, vk::Format::eR16Uint},
+	    {Format::Ushort1Norm, vk::Format::eR16Unorm},
+	    {Format::Half1, vk::Format::eR16Sfloat},
+	    {Format::Int1, vk::Format::eR32Sint},
+	    {Format::Uint1, vk::Format::eR32Uint},
+	    {Format::Float1, vk::Format::eR32Sfloat},
 
-    {Format::Byte2, vk::Format::eR8G8Uint},
-    {Format::Byte2Norm, vk::Format::eR8G8Unorm},
-    {Format::Short2, vk::Format::eR16G16Sint},
-    {Format::Short2Norm, vk::Format::eR16G16Snorm},
-    {Format::Ushort2, vk::Format::eR16G16Uint},
-    {Format::Ushort2Norm, vk::Format::eR16G16Unorm},
-    {Format::Half2, vk::Format::eR16G16Sfloat},
-    {Format::Int2, vk::Format::eR32G32Sint},
-    {Format::Uint2, vk::Format::eR32G32Uint},
-    {Format::Float2, vk::Format::eR32G32Sfloat},
+	    {Format::Byte2, vk::Format::eR8G8Uint},
+	    {Format::Byte2Norm, vk::Format::eR8G8Unorm},
+	    {Format::Short2, vk::Format::eR16G16Sint},
+	    {Format::Short2Norm, vk::Format::eR16G16Snorm},
+	    {Format::Ushort2, vk::Format::eR16G16Uint},
+	    {Format::Ushort2Norm, vk::Format::eR16G16Unorm},
+	    {Format::Half2, vk::Format::eR16G16Sfloat},
+	    {Format::Int2, vk::Format::eR32G32Sint},
+	    {Format::Uint2, vk::Format::eR32G32Uint},
+	    {Format::Float2, vk::Format::eR32G32Sfloat},
 
-    {Format::Byte3, vk::Format::eR8G8B8Uint},
-    {Format::Byte3Norm, vk::Format::eR8G8B8Unorm},
-    {Format::Short3, vk::Format::eR16G16B16Sint},
-    {Format::Short3Norm, vk::Format::eR16G16B16Snorm},
-    {Format::Ushort3, vk::Format::eR16G16B16Uint},
-    {Format::Ushort3Norm, vk::Format::eR16G16B16Unorm},
-    {Format::Half3, vk::Format::eR16G16B16Sfloat},
-    {Format::Int3, vk::Format::eR32G32B32Sint},
-    {Format::Uint3, vk::Format::eR32G32B32Uint},
-    {Format::Float3, vk::Format::eR32G32B32Sfloat},
+	    {Format::Byte3, vk::Format::eR8G8B8Uint},
+	    {Format::Byte3Norm, vk::Format::eR8G8B8Unorm},
+	    {Format::Short3, vk::Format::eR16G16B16Sint},
+	    {Format::Short3Norm, vk::Format::eR16G16B16Snorm},
+	    {Format::Ushort3, vk::Format::eR16G16B16Uint},
+	    {Format::Ushort3Norm, vk::Format::eR16G16B16Unorm},
+	    {Format::Half3, vk::Format::eR16G16B16Sfloat},
+	    {Format::Int3, vk::Format::eR32G32B32Sint},
+	    {Format::Uint3, vk::Format::eR32G32B32Uint},
+	    {Format::Float3, vk::Format::eR32G32B32Sfloat},
 
-    {Format::Byte4, vk::Format::eR8G8B8A8Uint},
-    {Format::Byte4Norm, vk::Format::eR8G8B8A8Unorm},
-    {Format::Byte4Srgb, vk::Format::eR8G8B8A8Srgb},
-    {Format::Byte4SrgbBGRA, vk::Format::eB8G8R8A8Srgb},
-    {Format::Short4, vk::Format::eR16G16B16A16Sint},
-    {Format::Short4Norm, vk::Format::eR16G16B16A16Snorm},
-    {Format::Ushort4, vk::Format::eR16G16B16A16Uint},
-    {Format::Ushort4Norm, vk::Format::eR16G16B16A16Unorm},
-    {Format::Half4, vk::Format::eR16G16B16A16Sfloat},
-    {Format::Int4, vk::Format::eR32G32B32A32Sint},
-    {Format::Uint4, vk::Format::eR32G32B32A32Uint},
-    {Format::Float4, vk::Format::eR32G32B32A32Sfloat},
+	    {Format::Byte4, vk::Format::eR8G8B8A8Uint},
+	    {Format::Byte4Norm, vk::Format::eR8G8B8A8Unorm},
+	    {Format::Byte4Srgb, vk::Format::eR8G8B8A8Srgb},
+	    {Format::Byte4SrgbBGRA, vk::Format::eB8G8R8A8Srgb},
+	    {Format::Short4, vk::Format::eR16G16B16A16Sint},
+	    {Format::Short4Norm, vk::Format::eR16G16B16A16Snorm},
+	    {Format::Ushort4, vk::Format::eR16G16B16A16Uint},
+	    {Format::Ushort4Norm, vk::Format::eR16G16B16A16Unorm},
+	    {Format::Half4, vk::Format::eR16G16B16A16Sfloat},
+	    {Format::Int4, vk::Format::eR32G32B32A32Sint},
+	    {Format::Uint4, vk::Format::eR32G32B32A32Uint},
+	    {Format::Float4, vk::Format::eR32G32B32A32Sfloat},
 
-    {Format::Depth16, vk::Format::eD16Unorm},
-    {Format::Depth32, vk::Format::eD32Sfloat},
-    {Format::Depth16Stencil8, vk::Format::eD16UnormS8Uint},
-    {Format::Depth24Stencil8, vk::Format::eD24UnormS8Uint},
-    {Format::Depth32Stencil8, vk::Format::eD32SfloatS8Uint},
-    {Format::Stencil8, vk::Format::eS8Uint},
-};
-
-
-VKAPI_ATTR VkBool32 VKAPI_CALL DebugCallback(
-    VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, [[maybe_unused]] VkDebugUtilsMessageTypeFlagsEXT messageType,
-    const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, [[maybe_unused]] void* pUserData)
-{
-	using MessageType = vk::DebugUtilsMessageTypeFlagBitsEXT;
-	using MessageSeverity = vk::DebugUtilsMessageSeverityFlagBitsEXT;
-
-	// Filter unwanted messages
-	constexpr std::int32_t UnwantedMessages[] = {
-	    0,           // Loader Message
-	    767975156,   // UNASSIGNED-BestPractices-vkCreateInstance-specialuse-extension
-	    -2111305990, // UNASSIGNED-BestPractices-vkCreateInstance-specialuse-extension-debugging
+	    {Format::Depth16, vk::Format::eD16Unorm},
+	    {Format::Depth32, vk::Format::eD32Sfloat},
+	    {Format::Depth16Stencil8, vk::Format::eD16UnormS8Uint},
+	    {Format::Depth24Stencil8, vk::Format::eD24UnormS8Uint},
+	    {Format::Depth32Stencil8, vk::Format::eD32SfloatS8Uint},
+	    {Format::Stencil8, vk::Format::eS8Uint},
 	};
-	if (std::ranges::find(UnwantedMessages, pCallbackData->messageIdNumber) != std::end(UnwantedMessages))
+
+
+	VKAPI_ATTR VkBool32 VKAPI_CALL DebugCallback(
+	    VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, [[maybe_unused]] VkDebugUtilsMessageTypeFlagsEXT messageType,
+	    const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, [[maybe_unused]] void* pUserData)
 	{
+		using MessageType = vk::DebugUtilsMessageTypeFlagBitsEXT;
+		using MessageSeverity = vk::DebugUtilsMessageSeverityFlagBitsEXT;
+
+		// Filter unwanted messages
+		constexpr std::int32_t UnwantedMessages[] = {
+		    0,           // Loader Message
+		    767975156,   // UNASSIGNED-BestPractices-vkCreateInstance-specialuse-extension
+		    -2111305990, // UNASSIGNED-BestPractices-vkCreateInstance-specialuse-extension-debugging
+		};
+		if (std::ranges::find(UnwantedMessages, pCallbackData->messageIdNumber) != std::end(UnwantedMessages))
+		{
+			return VK_FALSE;
+		}
+
+		const char* prefix = "";
+		switch (MessageType(messageType))
+		{
+			case MessageType::eGeneral:
+				prefix = "";
+				break;
+			case MessageType::eValidation:
+				prefix = "[validation] ";
+				break;
+			case MessageType::ePerformance:
+				prefix = "[performance] ";
+				break;
+		}
+
+		switch (MessageSeverity(messageSeverity))
+		{
+			case MessageSeverity::eVerbose:
+				spdlog::debug("{}{}", prefix, pCallbackData->pMessage);
+				break;
+
+			case MessageSeverity::eInfo:
+				spdlog::info("{}{}", prefix, pCallbackData->pMessage);
+				break;
+
+			case MessageSeverity::eWarning:
+				spdlog::warn("{}{}", prefix, pCallbackData->pMessage);
+				assert(!BreakOnVulkanWarning);
+				break;
+
+			case MessageSeverity::eError:
+				spdlog::error("{}{}", prefix, pCallbackData->pMessage);
+				assert(!BreakOnVulkanError);
+				break;
+		}
 		return VK_FALSE;
 	}
 
-	const char* prefix = "";
-	switch (MessageType(messageType))
+	struct TransitionAccessMasks
 	{
-		case MessageType::eGeneral:
-			prefix = "";
-			break;
-		case MessageType::eValidation:
-			prefix = "[validation] ";
-			break;
-		case MessageType::ePerformance:
-			prefix = "[performance] ";
-			break;
+		vk::AccessFlags source;
+		vk::AccessFlags destination;
+	};
+
+	vk::AccessFlags GetTransitionAccessMask(vk::ImageLayout layout)
+	{
+		using enum vk::ImageLayout;
+		using Access = vk::AccessFlagBits;
+
+		switch (layout)
+		{
+			case eUndefined:
+				return {};
+
+			case eTransferDstOptimal:
+				return Access::eTransferWrite;
+
+			case eColorAttachmentOptimal:
+				return Access::eColorAttachmentRead | Access::eColorAttachmentWrite;
+
+			case eDepthStencilAttachmentOptimal:
+				return Access::eDepthStencilAttachmentRead | Access::eDepthStencilAttachmentWrite;
+
+			case eDepthAttachmentOptimal:
+				return Access::eDepthStencilAttachmentRead | Access::eDepthStencilAttachmentWrite;
+
+			case eStencilAttachmentOptimal:
+				return Access::eDepthStencilAttachmentRead | Access::eDepthStencilAttachmentWrite;
+
+			case eShaderReadOnlyOptimal:
+				return Access::eShaderRead;
+
+			case eTransferSrcOptimal:
+				return Access::eTransferRead;
+
+			case eDepthStencilReadOnlyOptimal:
+				return Access::eShaderRead;
+
+			case ePresentSrcKHR:
+				return Access::eNoneKHR;
+
+			default:
+				assert(false && "Unsupported image transition");
+				return {};
+		}
 	}
 
-	switch (MessageSeverity(messageSeverity))
+	TransitionAccessMasks GetTransitionAccessMasks(vk::ImageLayout oldLayout, vk::ImageLayout newLayout)
 	{
-		case MessageSeverity::eVerbose:
-			spdlog::debug("{}{}", prefix, pCallbackData->pMessage);
-			break;
-
-		case MessageSeverity::eInfo:
-			spdlog::info("{}{}", prefix, pCallbackData->pMessage);
-			break;
-
-		case MessageSeverity::eWarning:
-			spdlog::warn("{}{}", prefix, pCallbackData->pMessage);
-			assert(!BreakOnVulkanWarning);
-			break;
-
-		case MessageSeverity::eError:
-			spdlog::error("{}{}", prefix, pCallbackData->pMessage);
-			assert(!BreakOnVulkanError);
-			break;
+		return {GetTransitionAccessMask(oldLayout), GetTransitionAccessMask(newLayout)};
 	}
-	return VK_FALSE;
-}
-
-struct TransitionAccessMasks
-{
-	vk::AccessFlags source;
-	vk::AccessFlags destination;
-};
-
-vk::AccessFlags GetTransitionAccessMask(vk::ImageLayout layout)
-{
-	using enum vk::ImageLayout;
-	using Access = vk::AccessFlagBits;
-
-	switch (layout)
-	{
-		case eUndefined:
-			return {};
-
-		case eTransferDstOptimal:
-			return Access::eTransferWrite;
-
-		case eColorAttachmentOptimal:
-			return Access::eColorAttachmentRead | Access::eColorAttachmentWrite;
-
-		case eDepthStencilAttachmentOptimal:
-			return Access::eDepthStencilAttachmentRead | Access::eDepthStencilAttachmentWrite;
-
-		case eDepthAttachmentOptimal:
-			return Access::eDepthStencilAttachmentRead | Access::eDepthStencilAttachmentWrite;
-
-		case eStencilAttachmentOptimal:
-			return Access::eDepthStencilAttachmentRead | Access::eDepthStencilAttachmentWrite;
-
-		case eShaderReadOnlyOptimal:
-			return Access::eShaderRead;
-
-		case eTransferSrcOptimal:
-			return Access::eTransferRead;
-
-		case eDepthStencilReadOnlyOptimal:
-			return Access::eShaderRead;
-
-		case ePresentSrcKHR:
-			return Access::eNoneKHR;
-
-		default:
-			assert(false && "Unsupported image transition");
-			return {};
-	}
-}
-
-TransitionAccessMasks GetTransitionAccessMasks(vk::ImageLayout oldLayout, vk::ImageLayout newLayout)
-{
-	return {GetTransitionAccessMask(oldLayout), GetTransitionAccessMask(newLayout)};
-}
 } // namespace
 
 vk::DebugUtilsMessengerCreateInfoEXT GetDebugCreateInfo()
@@ -759,3 +762,5 @@ Format FromVulkan(vk::Format format)
 {
 	return VulkanFormats.inverse_at(format);
 }
+
+} // namespace Teide

@@ -6,6 +6,9 @@
 #include "Teide/Texture.h"
 #include "Vulkan.h"
 
+namespace Teide
+{
+
 struct TextureState
 {
 	vk::ImageLayout layout = vk::ImageLayout::eUndefined;
@@ -53,3 +56,5 @@ struct VulkanImpl<Texture>
 {
 	using type = VulkanTexture;
 };
+
+} // namespace Teide

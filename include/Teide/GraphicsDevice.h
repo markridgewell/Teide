@@ -8,6 +8,9 @@
 
 struct SDL_Window;
 
+namespace Teide
+{
+
 class GraphicsDevice
 {
 public:
@@ -37,3 +40,5 @@ public:
 using GraphicsDevicePtr = std::unique_ptr<GraphicsDevice>;
 
 GraphicsDevicePtr CreateGraphicsDevice(SDL_Window* window = nullptr);
+
+} // namespace Teide

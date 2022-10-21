@@ -4,6 +4,9 @@
 #include "Teide/ForwardDeclare.h"
 #include "Vulkan.h"
 
+namespace Teide
+{
+
 class CommandBuffer
 {
 public:
@@ -32,3 +35,5 @@ protected:
 	std::unordered_set<ParameterBlockPtr> m_referencedParameterBlocks;
 	std::vector<vk::UniqueBuffer> m_ownedBuffers;
 };
+
+} // namespace Teide

@@ -9,6 +9,9 @@
 #include <string>
 #include <vector>
 
+namespace Teide
+{
+
 enum class VertexClass
 {
 	PerVertex,
@@ -64,3 +67,5 @@ class Pipeline
 public:
 	virtual ~Pipeline() = default;
 };
+
+} // namespace Teide

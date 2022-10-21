@@ -7,6 +7,9 @@
 
 #include <vector>
 
+namespace Teide
+{
+
 class Scheduler
 {
 public:
@@ -101,3 +104,5 @@ private:
 
 	std::array<std::vector<ThreadResources>, MaxFramesInFlight> m_frameResources;
 };
+
+} // namespace Teide

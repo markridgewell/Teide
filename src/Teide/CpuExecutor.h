@@ -11,31 +11,34 @@
 #include <mutex>
 #include <thread>
 
+namespace Teide
+{
+
 namespace detail
 {
-template <class T>
-struct PromiseHelper
-{
-	using type = std::promise<std::optional<T>>;
-};
+	template <class T>
+	struct PromiseHelper
+	{
+		using type = std::promise<std::optional<T>>;
+	};
 
-template <>
-struct PromiseHelper<void>
-{
-	using type = std::promise<void>;
-};
+	template <>
+	struct PromiseHelper<void>
+	{
+		using type = std::promise<void>;
+	};
 
-template <class Ret, class Arg>
-struct UnaryFunctionHelper
-{
-	using type = fu2::unique_function<Ret(Arg)>;
-};
+	template <class Ret, class Arg>
+	struct UnaryFunctionHelper
+	{
+		using type = fu2::unique_function<Ret(Arg)>;
+	};
 
-template <class Ret>
-struct UnaryFunctionHelper<Ret, void>
-{
-	using type = fu2::unique_function<Ret()>;
-};
+	template <class Ret>
+	struct UnaryFunctionHelper<Ret, void>
+	{
+		using type = fu2::unique_function<Ret()>;
+	};
 
 } // namespace detail
 
@@ -194,3 +197,5 @@ private:
 	std::stop_source m_schedulerStopSource;
 	std::jthread m_schedulerThread;
 };
+
+} // namespace Teide

@@ -3,6 +3,9 @@
 
 #include "Teide/StaticMap.h"
 
+namespace Teide
+{
+
 enum TypeSizes : std::uint32_t
 {
 	FloatSize = 4,
@@ -94,3 +97,5 @@ bool HasDepthOrStencilComponent(Format format)
 	return format == Format::Depth16 || format == Format::Depth32 || format == Format::Depth16Stencil8
 	    || format == Format::Depth24Stencil8 || format == Format::Depth32Stencil8 || format == Format::Stencil8;
 }
+
+} // namespace Teide

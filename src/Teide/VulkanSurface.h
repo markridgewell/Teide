@@ -10,6 +10,9 @@
 #include <optional>
 #include <vector>
 
+namespace Teide
+{
+
 constexpr uint32_t MaxFramesInFlight = 2;
 
 typedef struct SDL_Window SDL_Window;
@@ -88,3 +91,5 @@ struct VulkanImpl<Surface>
 {
 	using type = VulkanSurface;
 };
+
+} // namespace Teide

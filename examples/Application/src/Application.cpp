@@ -54,9 +54,9 @@ private:
 	std::string m_what;
 };
 
-using Type = ShaderVariableType::BaseType;
+using Type = Teide::ShaderVariableType::BaseType;
 
-const ShaderEnvironmentData ShaderEnv = {
+const Teide::ShaderEnvironmentData ShaderEnv = {
 	.scenePblock = {
         .parameters = {
             {"lightDir", Type::Vector3},
@@ -65,14 +65,14 @@ const ShaderEnvironmentData ShaderEnv = {
             {"ambientColorBottom", Type::Vector3},
             {"shadowMatrix", Type::Matrix4}
         },
-        .uniformsStages = ShaderStageFlags::Pixel,
+        .uniformsStages = Teide::ShaderStageFlags::Pixel,
     },
     .viewPblock = {
         .parameters = {
             {"viewProj", Type::Matrix4},
             {"shadowMapSampler", Type::Texture2DShadow},
         },
-        .uniformsStages = ShaderStageFlags::Vertex,
+        .uniformsStages = Teide::ShaderStageFlags::Vertex,
     },
 };
 
@@ -176,30 +176,30 @@ constexpr auto QuadVertices = std::array<Vertex, 4>{{
 
 constexpr auto QuadIndices = std::array<uint16_t, 6>{{0, 1, 2, 2, 3, 0}};
 
-const VertexLayout VertexLayoutDesc = {
-    .topology = PrimitiveTopology::TriangleList,
+const Teide::VertexLayout VertexLayoutDesc = {
+    .topology = Teide::PrimitiveTopology::TriangleList,
     .bufferBindings = {{
         .stride = sizeof(Vertex),
     }},
     .attributes
     = {{
            .name = "position",
-           .format = Format::Float3,
+           .format = Teide::Format::Float3,
            .offset = offsetof(Vertex, position),
        },
        {
            .name = "texCoord",
-           .format = Format::Float2,
+           .format = Teide::Format::Float2,
            .offset = offsetof(Vertex, texCoord),
        },
        {
            .name = "normal",
-           .format = Format::Float3,
+           .format = Teide::Format::Float3,
            .offset = offsetof(Vertex, normal),
        },
        {
            .name = "color",
-           .format = Format::Float3,
+           .format = Teide::Format::Float3,
            .offset = offsetof(Vertex, color),
        }},
 };
@@ -227,32 +227,32 @@ struct ObjectUniforms
 	Geo::Matrix4 model;
 };
 
-constexpr FramebufferLayout ShadowFramebufferLayout = {
-    .depthStencilFormat = Format::Depth16,
+constexpr Teide::FramebufferLayout ShadowFramebufferLayout = {
+    .depthStencilFormat = Teide::Format::Depth16,
     .sampleCount = 1,
 };
 
 constexpr auto ShaderLang = ShaderLanguage::Glsl;
 
-std::vector<std::byte> CopyBytes(BytesView src)
+std::vector<std::byte> CopyBytes(Teide::BytesView src)
 {
 	return std::vector<std::byte>(src.begin(), src.end());
 }
 
-RenderStates MakeRenderStates(float depthBiasConstant = 0.0f, float depthBiasSlope = 0.0f)
+Teide::RenderStates MakeRenderStates(float depthBiasConstant = 0.0f, float depthBiasSlope = 0.0f)
 {
 	return {
-		.blendState = BlendState{
-			.blendFunc = { BlendFactor::One, BlendFactor::Zero, BlendOp::Add },
+		.blendState = Teide::BlendState{
+			.blendFunc = { Teide::BlendFactor::One, Teide::BlendFactor::Zero, Teide::BlendOp::Add },
 		},
 		.depthState = {
 			.depthTest = true,
 			.depthWrite = true,
-			.depthFunc = CompareOp::Less,
+			.depthFunc = Teide::CompareOp::Less,
 		},
 		.rasterState = {
-			.fillMode = FillMode::Solid,
-			.cullMode = CullMode::None,
+			.fillMode = Teide::FillMode::Solid,
+			.cullMode = Teide::CullMode::None,
 			.depthBiasConstant = depthBiasConstant,
 			.depthBiasSlope = depthBiasSlope,
 		},
@@ -270,7 +270,7 @@ public:
 
 	explicit Application(SDL_Window* window, const char* imageFilename, const char* modelFilename) :
 	    m_window{window},
-	    m_device{CreateGraphicsDevice(window)},
+	    m_device{Teide::CreateGraphicsDevice(window)},
 	    m_surface{m_device->CreateSurface(window, UseMSAA)},
 	    m_shaderEnvironment{m_device->CreateShaderEnvironment(ShaderEnv, "ShaderEnv")},
 	    m_shader{m_device->CreateShader(CompileShader(ModelShader), "ModelShader")},
@@ -326,8 +326,8 @@ public:
 		    .shadowMatrix = m_shadowMatrix,
 		};
 
-		m_renderer->BeginFrame(ShaderParameters{
-		    .uniformData = ToBytes(sceneUniforms),
+		m_renderer->BeginFrame(Teide::ShaderParameters{
+		    .uniformData = Teide::ToBytes(sceneUniforms),
 		});
 
 		// Update object uniforms
@@ -338,18 +338,18 @@ public:
 		//
 		// Pass 0. Draw shadows
 		//
-		TexturePtr shadowMap;
+		Teide::TexturePtr shadowMap;
 		{
 			// Update view uniforms
 			const ViewUniforms viewUniforms = {
 			    .viewProj = m_shadowMatrix,
 			};
-			const ShaderParameters viewParams = {
-			    .uniformData = ToBytes(viewUniforms),
+			const Teide::ShaderParameters viewParams = {
+			    .uniformData = Teide::ToBytes(viewUniforms),
 			    .textures = {},
 			};
 
-			RenderList renderList = {
+			Teide::RenderList renderList = {
 			    .name = "ShadowPass",
 			    .clearDepthValue = 1.0f,
 			    .viewParameters = viewParams,
@@ -359,24 +359,24 @@ public:
 			        .indexCount = m_indexCount,
 			        .pipeline = m_shadowMapPipeline,
 			        .materialParameters = m_materialParams,
-			        .objectParameters = {.uniformData = ToBytes(objectUniforms)},
+			        .objectParameters = {.uniformData = Teide::ToBytes(objectUniforms)},
 			    }},
 			};
 
 			constexpr uint32_t shadowMapSize = 2048;
 
-			const RenderTargetInfo shadowRenderTarget = {
+			const Teide::RenderTargetInfo shadowRenderTarget = {
 				.size = {shadowMapSize, shadowMapSize},
 				.framebufferLayout = ShadowFramebufferLayout,
 				.samplerState = {
-					.magFilter = Filter::Linear,
-					.minFilter = Filter::Linear,
-					.mipmapMode = MipmapMode::Nearest,
-					.addressModeU = SamplerAddressMode::Repeat,
-					.addressModeV = SamplerAddressMode::Repeat,
-					.addressModeW = SamplerAddressMode::Repeat,
+					.magFilter = Teide::Filter::Linear,
+					.minFilter = Teide::Filter::Linear,
+					.mipmapMode = Teide::MipmapMode::Nearest,
+					.addressModeU = Teide::SamplerAddressMode::Repeat,
+					.addressModeV = Teide::SamplerAddressMode::Repeat,
+					.addressModeW = Teide::SamplerAddressMode::Repeat,
 					.maxAnisotropy = 8.0f,
-					.compareOp = CompareOp::Less,
+					.compareOp = Teide::CompareOp::Less,
 				},
 				.captureDepthStencil = true,
 			};
@@ -406,14 +406,14 @@ public:
 			const ViewUniforms viewUniforms = {
 			    .viewProj = viewProj,
 			};
-			const ShaderParameters viewParams = {
-			    .uniformData = ToBytes(viewUniforms),
+			const Teide::ShaderParameters viewParams = {
+			    .uniformData = Teide::ToBytes(viewUniforms),
 			    .textures = {shadowMap.get()},
 			};
 
-			RenderList renderList = {
+			Teide::RenderList renderList = {
 			    .name = "MainPass",
-			    .clearColorValue = Color{0.0f, 0.0f, 0.0f, 1.0f},
+			    .clearColorValue = Teide::Color{0.0f, 0.0f, 0.0f, 1.0f},
 			    .clearDepthValue = 1.0f,
 			    .viewParameters = viewParams,
 			    .objects = {{
@@ -422,7 +422,7 @@ public:
 			        .indexCount = m_indexCount,
 			        .pipeline = m_pipeline,
 			        .materialParameters = m_materialParams,
-			        .objectParameters = {.uniformData = ToBytes(objectUniforms)},
+			        .objectParameters = {.uniformData = Teide::ToBytes(objectUniforms)},
 			    }},
 			};
 
@@ -516,14 +516,14 @@ public:
 	}
 
 private:
-	void CreateVertexBuffer(BytesView data)
+	void CreateVertexBuffer(Teide::BytesView data)
 	{
-		m_vertexBuffer = m_device->CreateBuffer({.usage = BufferUsage::Vertex, .data = data}, "VertexBuffer");
+		m_vertexBuffer = m_device->CreateBuffer({.usage = Teide::BufferUsage::Vertex, .data = data}, "VertexBuffer");
 	}
 
 	void CreateIndexBuffer(std::span<const uint16_t> data)
 	{
-		m_indexBuffer = m_device->CreateBuffer({.usage = BufferUsage::Index, .data = data}, "IndexBuffer");
+		m_indexBuffer = m_device->CreateBuffer({.usage = Teide::BufferUsage::Index, .data = data}, "IndexBuffer");
 		m_indexCount = static_cast<std::uint32_t>(size(data));
 	}
 
@@ -617,7 +617,7 @@ private:
 
 	void CreateParameterBlocks()
 	{
-		const ParameterBlockData materialData = {
+		const Teide::ParameterBlockData materialData = {
 		    .layout = m_shader->GetMaterialPblockLayout(),
 		    .parameters = {
 		        .textures = {m_texture.get()},
@@ -643,11 +643,11 @@ private:
 			    c0, c1, c0, c1, c0, c1, c0, c1, //
 			    c1, c0, c1, c0, c1, c0, c1, c0,
 			};
-			const TextureData data = {
+			const Teide::TextureData data = {
 			    .size = {8, 8},
-			    .format = Format::Byte4Srgb,
+			    .format = Teide::Format::Byte4Srgb,
 			    .mipLevelCount = static_cast<uint32_t>(std::floor(std::log2(8))) + 1,
-			    .samplerState = {.magFilter = Filter::Nearest, .minFilter = Filter::Nearest},
+			    .samplerState = {.magFilter = Teide::Filter::Nearest, .minFilter = Teide::Filter::Nearest},
 			    .pixels = CopyBytes(pixels),
 			};
 
@@ -671,11 +671,11 @@ private:
 
 		const auto imageSize = static_cast<std::size_t>(width) * height * 4;
 
-		const TextureData data = {
+		const Teide::TextureData data = {
 		    .size = {static_cast<uint32_t>(width), static_cast<uint32_t>(height)},
-		    .format = Format::Byte4Srgb,
+		    .format = Teide::Format::Byte4Srgb,
 		    .mipLevelCount = static_cast<uint32_t>(std::floor(std::log2(std::max(width, height)))) + 1,
-		    .samplerState = {.magFilter = Filter::Linear, .minFilter = Filter::Linear},
+		    .samplerState = {.magFilter = Teide::Filter::Linear, .minFilter = Teide::Filter::Linear},
 		    .pixels = CopyBytes(std::span(pixels.get(), imageSize)),
 		};
 
@@ -717,27 +717,27 @@ private:
 
 	std::chrono::high_resolution_clock::time_point m_startTime = std::chrono::high_resolution_clock::now();
 
-	GraphicsDevicePtr m_device;
-	SurfacePtr m_surface;
-	ShaderEnvironmentPtr m_shaderEnvironment;
+	Teide::GraphicsDevicePtr m_device;
+	Teide::SurfacePtr m_surface;
+	Teide::ShaderEnvironmentPtr m_shaderEnvironment;
 
 	// Object setup
-	ShaderPtr m_shader;
-	PipelinePtr m_pipeline;
+	Teide::ShaderPtr m_shader;
+	Teide::PipelinePtr m_pipeline;
 	Geo::Point3 m_meshBoundsMin;
 	Geo::Point3 m_meshBoundsMax;
-	BufferPtr m_vertexBuffer;
-	BufferPtr m_indexBuffer;
+	Teide::BufferPtr m_vertexBuffer;
+	Teide::BufferPtr m_indexBuffer;
 	uint32_t m_indexCount;
-	TexturePtr m_texture;
+	Teide::TexturePtr m_texture;
 
 	const uint32_t m_passCount = 2;
-	ParameterBlockPtr m_materialParams;
+	Teide::ParameterBlockPtr m_materialParams;
 
 	// Lights
 	Geo::Angle m_lightYaw = 45.0_deg;
 	Geo::Angle m_lightPitch = -45.0_deg;
-	PipelinePtr m_shadowMapPipeline;
+	Teide::PipelinePtr m_shadowMapPipeline;
 	Geo::Matrix4 m_shadowMatrix;
 
 	// Camera
@@ -747,7 +747,7 @@ private:
 	float m_cameraDistance = 3.0f;
 
 	// Rendering
-	RendererPtr m_renderer;
+	Teide::RendererPtr m_renderer;
 };
 
 struct SDLWindowDeleter

@@ -3,6 +3,9 @@
 
 #include "Teide/ForwardDeclare.h"
 
+namespace Teide
+{
+
 enum class ParameterBlockType
 {
 	Scene,
@@ -19,3 +22,5 @@ public:
 	virtual ParameterBlockLayoutPtr GetMaterialPblockLayout() const = 0;
 	virtual ParameterBlockLayoutPtr GetObjectPblockLayout() const = 0;
 };
+
+} // namespace Teide

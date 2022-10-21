@@ -6,6 +6,9 @@
 #include <string>
 #include <vector>
 
+namespace Teide
+{
+
 enum class ShaderStageFlags
 {
 	None = 0,
@@ -121,3 +124,5 @@ struct ParameterBlockLayoutData
 };
 
 ParameterBlockLayoutData BuildParameterBlockLayout(const ParameterBlockDesc& pblock, int set);
+
+} // namespace Teide

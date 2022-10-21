@@ -13,6 +13,7 @@
 
 using namespace testing;
 using namespace std::chrono_literals;
+using namespace Teide;
 
 namespace
 {

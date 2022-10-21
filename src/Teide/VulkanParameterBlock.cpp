@@ -3,6 +3,9 @@
 
 #include "Teide/Buffer.h"
 
+namespace Teide
+{
+
 VulkanParameterBlock::VulkanParameterBlock(const VulkanParameterBlockLayout& layout)
 {
 	if (layout.pushConstantRange.has_value())
@@ -20,3 +23,5 @@ std::size_t VulkanParameterBlock::GetPushConstantSize() const
 {
 	return pushConstantData.size();
 }
+
+} // namespace Teide

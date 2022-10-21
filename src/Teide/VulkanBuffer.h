@@ -4,6 +4,9 @@
 #include "Teide/Buffer.h"
 #include "Vulkan.h"
 
+namespace Teide
+{
+
 class MemoryAllocator;
 
 struct VulkanBuffer : public Buffer
@@ -27,3 +30,5 @@ VulkanBuffer CreateBufferUninitialized(
     MemoryAllocator& allocator);
 
 vk::BufferUsageFlags GetBufferUsageFlags(BufferUsage usage);
+
+} // namespace Teide

@@ -6,6 +6,9 @@
 
 #include <cstdint>
 
+namespace Teide
+{
+
 class Texture
 {
 public:
@@ -16,3 +19,5 @@ public:
 	virtual std::uint32_t GetMipLevelCount() const = 0;
 	virtual std::uint32_t GetSampleCount() const = 0;
 };
+
+} // namespace Teide

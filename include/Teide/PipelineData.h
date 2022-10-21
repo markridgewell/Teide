@@ -5,6 +5,9 @@
 
 #include <bitset>
 
+namespace Teide
+{
+
 enum class BlendFactor
 {
 	Zero,
@@ -124,3 +127,5 @@ struct FramebufferLayout
 
 	auto operator<=>(const FramebufferLayout&) const = default;
 };
+
+} // namespace Teide

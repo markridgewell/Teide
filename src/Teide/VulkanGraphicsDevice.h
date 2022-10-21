@@ -16,6 +16,9 @@
 #include <type_traits>
 #include <unordered_map>
 
+namespace Teide
+{
+
 struct ParameterBlockDesc;
 struct VulkanParameterBlockLayout;
 
@@ -123,3 +126,5 @@ private:
 
 	std::unordered_map<SDL_Window*, vk::UniqueSurfaceKHR> m_pendingWindowSurfaces;
 };
+
+} // namespace Teide

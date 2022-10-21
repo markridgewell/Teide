@@ -4,6 +4,7 @@
 #include <gmock/gmock.h>
 
 using namespace testing;
+using namespace Teide;
 using Type = ShaderVariableType::BaseType;
 
 TEST(ShaderDataTest, UniformOffsetFloat)

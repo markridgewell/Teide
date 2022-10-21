@@ -3,12 +3,15 @@
 
 #include "Vulkan.h"
 
+namespace Teide
+{
+
 namespace
 {
-void SetCommandBufferDebugName(vk::UniqueCommandBuffer& commandBuffer, std::uint32_t threadIndex, std::uint32_t cbIndex)
-{
-	SetDebugName(commandBuffer, "RenderThread{}:CommandBuffer{}", threadIndex, cbIndex);
-}
+	void SetCommandBufferDebugName(vk::UniqueCommandBuffer& commandBuffer, std::uint32_t threadIndex, std::uint32_t cbIndex)
+	{
+		SetDebugName(commandBuffer, "RenderThread{}:CommandBuffer{}", threadIndex, cbIndex);
+	}
 
 } // namespace
 
@@ -87,3 +90,5 @@ Scheduler::CreateThreadResources(vk::Device device, uint32_t queueFamilyIndex, u
 
 	return ret;
 }
+
+} // namespace Teide

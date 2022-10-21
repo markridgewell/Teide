@@ -7,6 +7,9 @@
 
 #include <vector>
 
+namespace Teide
+{
+
 struct ShaderParameters
 {
 	std::vector<std::byte> uniformData;
@@ -34,3 +37,5 @@ public:
 	virtual std::size_t GetUniformBufferSize() const = 0;
 	virtual std::size_t GetPushConstantSize() const = 0;
 };
+
+} // namespace Teide

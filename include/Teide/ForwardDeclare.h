@@ -3,6 +3,9 @@
 
 #include <memory>
 
+namespace Teide
+{
+
 struct BufferData;
 struct ShaderData;
 struct ShaderEnvironmentData;
@@ -32,3 +35,5 @@ enum class ResourceLifetime
 	Permanent,
 	Transient
 };
+
+} // namespace Teide

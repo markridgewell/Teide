@@ -9,6 +9,9 @@
 #include <optional>
 #include <vector>
 
+namespace Teide
+{
+
 enum class Filter
 {
 	Nearest,
@@ -64,3 +67,5 @@ struct TextureData
 };
 
 std::size_t GetByteSize(const TextureData& data);
+
+} // namespace Teide

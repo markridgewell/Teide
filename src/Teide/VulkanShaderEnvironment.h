@@ -5,6 +5,9 @@
 #include "Teide/ShaderEnvironment.h"
 #include "Vulkan.h"
 
+namespace Teide
+{
+
 struct VulkanShaderEnvironmentBase
 {
 	VulkanParameterBlockLayoutPtr scenePblockLayout;
@@ -31,3 +34,5 @@ struct VulkanImpl<ShaderEnvironment>
 {
 	using type = VulkanShaderEnvironment;
 };
+
+} // namespace Teide

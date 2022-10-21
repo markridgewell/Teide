@@ -15,6 +15,9 @@
 #include <deque>
 #include <mutex>
 
+namespace Teide
+{
+
 class VulkanRenderer : public Renderer
 {
 public:
@@ -81,3 +84,5 @@ private:
 
 	std::array<FrameResources, MaxFramesInFlight> m_frameResources;
 };
+
+} // namespace Teide

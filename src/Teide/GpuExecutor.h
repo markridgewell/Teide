@@ -11,6 +11,9 @@
 #include <unordered_map>
 #include <vector>
 
+namespace Teide
+{
+
 class GpuExecutor
 {
 public:
@@ -47,3 +50,5 @@ private:
 	std::jthread m_schedulerThread;
 	std::stop_source m_schedulerStopSource;
 };
+
+} // namespace Teide

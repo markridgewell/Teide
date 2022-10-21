@@ -24,7 +24,7 @@ void main() {
     gl_Position = object.mvp * inPosition;
 })--";
 
-using Type = ShaderVariableType::BaseType;
+using Type = Teide::ShaderVariableType::BaseType;
 
 inline const ShaderSourceData SimpleShader = {
     .language = ShaderLanguage::Glsl,

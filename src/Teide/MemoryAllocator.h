@@ -6,6 +6,9 @@
 #include <mutex>
 #include <vector>
 
+namespace Teide
+{
+
 constexpr vk::DeviceSize MemoryBlockSize = 64 * 1024 * 1024;
 
 struct MemoryAllocation
@@ -56,3 +59,5 @@ private:
 	vk::PhysicalDevice m_physicalDevice;
 	std::vector<MemoryBlock> m_memoryBlocks;
 };
+
+} // namespace Teide

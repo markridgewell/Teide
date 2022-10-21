@@ -16,17 +16,17 @@ enum class ShaderLanguage
 
 struct ShaderStageDefinition
 {
-	std::vector<ShaderVariable> inputs;
-	std::vector<ShaderVariable> outputs;
+	std::vector<Teide::ShaderVariable> inputs;
+	std::vector<Teide::ShaderVariable> outputs;
 	std::string source;
 };
 
 struct ShaderSourceData
 {
 	ShaderLanguage language;
-	ShaderEnvironmentData environment;
-	ParameterBlockDesc materialPblock;
-	ParameterBlockDesc objectPblock;
+	Teide::ShaderEnvironmentData environment;
+	Teide::ParameterBlockDesc materialPblock;
+	Teide::ParameterBlockDesc objectPblock;
 	ShaderStageDefinition vertexShader;
 	ShaderStageDefinition pixelShader;
 };
@@ -42,4 +42,4 @@ private:
 	std::string m_message;
 };
 
-ShaderData CompileShader(const ShaderSourceData& sourceData);
+Teide::ShaderData CompileShader(const ShaderSourceData& sourceData);

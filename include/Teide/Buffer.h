@@ -7,6 +7,9 @@
 #include <cstddef>
 #include <span>
 
+namespace Teide
+{
+
 enum class BufferUsage
 {
 	Generic,
@@ -30,3 +33,5 @@ public:
 	virtual std::size_t GetSize() const = 0;
 	virtual BytesView GetData() const = 0;
 };
+
+} // namespace Teide

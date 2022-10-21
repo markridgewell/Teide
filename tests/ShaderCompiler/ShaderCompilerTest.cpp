@@ -4,7 +4,7 @@
 #include <gmock/gmock.h>
 
 using namespace testing;
-using Type = ShaderVariableType::BaseType;
+using Type = Teide::ShaderVariableType::BaseType;
 
 const ShaderSourceData TestShader = {
     .language = ShaderLanguage::Glsl,
@@ -86,11 +86,11 @@ TEST(ShaderCompilerTest, CompileSimple)
 	EXPECT_THAT(result.vertexShader.spirv, Not(IsEmpty()));
 	EXPECT_THAT(result.pixelShader.spirv, Not(IsEmpty()));
 	EXPECT_THAT(result.environment.scenePblock.parameters, Eq(TestShader.environment.scenePblock.parameters));
-	EXPECT_THAT(result.environment.scenePblock.uniformsStages, Eq(ShaderStageFlags::Pixel));
+	EXPECT_THAT(result.environment.scenePblock.uniformsStages, Eq(Teide::ShaderStageFlags::Pixel));
 	EXPECT_THAT(result.environment.viewPblock.parameters, Eq(TestShader.environment.viewPblock.parameters));
-	EXPECT_THAT(result.environment.viewPblock.uniformsStages, Eq(ShaderStageFlags::Vertex));
+	EXPECT_THAT(result.environment.viewPblock.uniformsStages, Eq(Teide::ShaderStageFlags::Vertex));
 	EXPECT_THAT(result.materialPblock.parameters, Eq(TestShader.materialPblock.parameters));
-	EXPECT_THAT(result.materialPblock.uniformsStages, Eq(ShaderStageFlags::None));
+	EXPECT_THAT(result.materialPblock.uniformsStages, Eq(Teide::ShaderStageFlags::None));
 	EXPECT_THAT(result.objectPblock.parameters, Eq(TestShader.objectPblock.parameters));
-	EXPECT_THAT(result.objectPblock.uniformsStages, Eq(ShaderStageFlags::Vertex));
+	EXPECT_THAT(result.objectPblock.uniformsStages, Eq(Teide::ShaderStageFlags::Vertex));
 }
