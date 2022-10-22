@@ -135,14 +135,8 @@
       "configurePreset": "mingw"
     },
     {
-      "name": "linux-debug",
-      "configurePreset": "linux",
-      "configuration": "Debug"
-    },
-    {
-      "name": "linux-release",
-      "configurePreset": "linux",
-      "configuration": "Release"
+      "name": "linux",
+      "configurePreset": "linux"
     }
   ]
 }

@@ -1,0 +1,80 @@
+name: Check-Readme
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+env:
+  VULKAN_VERSION: 1.2.198.1
+  VULKAN_SDK: ./VULKAN_SDK
+
+jobs:
+  windows:
+    name: Check-Readme-Windows
+    runs-on: windows-2022
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+      with:
+        lfs: false
+
+    - name: Setup Vulkan SDK
+      uses: humbletim/setup-vulkan-sdk@v1.2.0
+      with:
+        vulkan-query-version: ${{env.VULKAN_VERSION}}
+        vulkan-components: Vulkan-Headers, Vulkan-Loader
+        vulkan-use-cache: true
+
+    - name: Setup vcpkg
+      uses: lukka/run-vcpkg@v10
+      with:
+        vcpkgGitCommitId: '0321a8422e786e4c35f3abbc1f03acbcfae35758'
+
+    - name: Check readme
+      run: python ${{github.workspace}}/tools/check_readme.py
+
+  linux:
+    name: Check-Readme-Linux
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+      with:
+        lfs: false
+
+    # This step is only needed as long as assimp depends on irrlicht.
+    # If the dependency is removed, this step can be removed.
+    - name: Install Irrlicht dependencies
+      run: |
+          sudo apt-get update
+          sudo apt install libgl1-mesa-dev libxxf86vm-dev
+
+    - name: Setup Vulkan SDK
+      uses: humbletim/setup-vulkan-sdk@v1.2.0
+      with:
+        vulkan-query-version: ${{env.VULKAN_VERSION}}
+        vulkan-components: Vulkan-Headers, Vulkan-Loader
+        vulkan-use-cache: true
+
+    - name: Install Irrlicht dependencies
+      run: |
+          sudo apt-get update
+          sudo apt install libgl1-mesa-dev libxxf86vm-dev
+
+    - name: Setup vcpkg
+      uses: lukka/run-vcpkg@v10
+      with:
+        vcpkgGitCommitId: '0321a8422e786e4c35f3abbc1f03acbcfae35758'
+
+    - name: Install GCC 11
+      run: |
+          sudo apt-get update
+          sudo apt install gcc-11 g++-11
+
+    - name: Check readme
+      run: python ${{github.workspace}}/tools/check_readme.py

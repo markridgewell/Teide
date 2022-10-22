@@ -23,17 +23,21 @@ Building
 
 **Windows**: To generate a Visual Studio solution, run the command:
 
-    cmake --preset msvc
+    $ cmake --preset msvc2022
+
+(msvc2019 is also supported)
 
 To build, either build the sln file in Visual Studio, or run one of the following commands:
 
-    cmake --build --preset msvc-debug
-    cmake --build --preset msvc-release
+    $ cmake --build --preset msvc2022-debug
+    $ cmake --build --preset msvc2022-release
 
 **Linux**: To generate makefiles, run the command:
 
-    cmake --preset unix
+    $ cmake --preset linux -DCMAKE_BUILD_TYPE=Debug
 
-To build, run the command:
+The selected build type may be Debug or Release
 
-    cmake --build --preset unix
+To build with the selected build type, run the command:
+
+    $ cmake --build --preset linux
