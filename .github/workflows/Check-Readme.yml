@@ -3,8 +3,10 @@ name: Check-Readme
 on:
   push:
     branches: [ main ]
-  pull_request:
-    branches: [ main ]
+    paths:
+    - 'README.md'
+    - 'CMakePresets.json'
+    - '**CMakeLists.txt'
   workflow_dispatch:
 
 env:
