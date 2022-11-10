@@ -5,6 +5,7 @@
 #include "Teide/ForwardDeclare.h"
 
 #include <cstddef>
+#include <cstring>
 #include <initializer_list>
 #include <vector>
 
