@@ -32,9 +32,7 @@ struct ViewportRegion
 
 struct RenderObject
 {
-	BufferPtr vertexBuffer = nullptr;
-	BufferPtr indexBuffer = nullptr;
-	uint32_t indexCount = 0;
+	MeshPtr mesh = nullptr;
 	PipelinePtr pipeline = nullptr;
 	ParameterBlockPtr materialParameters = nullptr;
 	ShaderParameters objectParameters;

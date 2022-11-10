@@ -5,6 +5,7 @@
 #include "Teide/ShaderData.h"
 #include "Teide/TextureData.h"
 #include "VulkanBuffer.h"
+#include "VulkanMesh.h"
 #include "VulkanParameterBlock.h"
 #include "VulkanPipeline.h"
 #include "VulkanRenderer.h"
@@ -774,6 +775,34 @@ TexturePtr VulkanGraphicsDevice::CreateRenderableTexture(const TextureData& data
 	}
 
 	return std::make_shared<VulkanTexture>(std::move(texture));
+}
+
+MeshPtr VulkanGraphicsDevice::CreateMesh(const MeshData& data, const char* name)
+{
+	auto task = m_scheduler->ScheduleGpu([data, name, this](CommandBuffer& cmdBuffer) { //
+		return CreateMesh(data, name, cmdBuffer);
+	});
+	return task.get().value();
+}
+
+MeshPtr VulkanGraphicsDevice::CreateMesh(const MeshData& data, const char* name, CommandBuffer& cmdBuffer)
+{
+	VulkanMesh mesh;
+
+	mesh.vertexBuffer = std::make_shared<VulkanBuffer>(CreateBufferWithData(
+	    data.vertexData, BufferUsage::Vertex, data.lifetime, m_device.get(), m_allocator.value(), cmdBuffer));
+	SetDebugName(mesh.vertexBuffer->buffer, "{}:vbuffer", name);
+	mesh.vertexCount = data.vertexCount;
+
+	if (!data.indexData.empty())
+	{
+		mesh.indexBuffer = std::make_shared<VulkanBuffer>(CreateBufferWithData(
+		    data.indexData, BufferUsage::Index, data.lifetime, m_device.get(), m_allocator.value(), cmdBuffer));
+		SetDebugName(mesh.indexBuffer->buffer, "{}:ibuffer", name);
+		mesh.indexCount = static_cast<std::uint32_t>(data.indexData.size()) / sizeof(std::uint16_t);
+	}
+
+	return std::make_shared<VulkanMesh>(std::move(mesh));
 }
 
 PipelinePtr VulkanGraphicsDevice::CreatePipeline(const PipelineData& data)

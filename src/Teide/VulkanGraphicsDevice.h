@@ -38,11 +38,9 @@ public:
 
 	ShaderEnvironmentPtr CreateShaderEnvironment(const ShaderEnvironmentData& data, const char* name) override;
 	ShaderPtr CreateShader(const ShaderData& data, const char* name) override;
-
 	TexturePtr CreateTexture(const TextureData& data, const char* name) override;
-
+	MeshPtr CreateMesh(const MeshData& data, const char* name) override;
 	PipelinePtr CreatePipeline(const PipelineData& data) override;
-
 	ParameterBlockPtr CreateParameterBlock(const ParameterBlockData& data, const char* name) override;
 
 	const vk::PhysicalDeviceProperties GetProperties() const { return m_physicalDevice.getProperties(); }
@@ -62,6 +60,7 @@ public:
 	TexturePtr CreateTexture(const TextureData& data, const char* name, CommandBuffer& cmdBuffer);
 	TexturePtr CreateRenderableTexture(const TextureData& data, const char* name);
 	TexturePtr CreateRenderableTexture(const TextureData& data, const char* name, CommandBuffer& cmdBuffer);
+	MeshPtr CreateMesh(const MeshData& data, const char* name, CommandBuffer& cmdBuffer);
 	ParameterBlockPtr CreateParameterBlock(
 	    const ParameterBlockData& data, const char* name, CommandBuffer& cmdBuffer, std::uint32_t threadIndex);
 	ParameterBlockPtr CreateParameterBlock(

@@ -4,6 +4,7 @@
 #include "ShaderCompiler/ShaderCompiler.h"
 #include "Teide/Buffer.h"
 #include "Teide/GraphicsDevice.h"
+#include "Teide/Mesh.h"
 #include "Teide/Texture.h"
 #include "Teide/TextureData.h"
 #include "TestData.h"
@@ -66,9 +67,8 @@ TEST_F(RendererTest, RenderFullscreenTri)
 {
 	const auto renderTarget = CreateRenderTargetInfo({2, 2});
 
-	constexpr auto vertices = std::array{-1.0f, -1.0f, 3.0f, -1.0f, -1.0f, 3.0f};
-	const auto vbuffer = m_device->CreateBuffer(
-	    {.usage = BufferUsage::Vertex, .lifetime = ResourceLifetime::Permanent, .data = vertices}, "VertexBuffer");
+	const auto vertices = MakeBytes<float>({-1.0f, -1.0f, 3.0f, -1.0f, -1.0f, 3.0f});
+	const auto mesh = m_device->CreateMesh({.vertexData = vertices, .vertexCount = 3}, "Mesh");
 	const VertexLayout vertexLayout
 	    = {.topology = PrimitiveTopology::TriangleList,
 	       .bufferBindings = {{.stride = sizeof(float) * 2}},
@@ -83,9 +83,10 @@ TEST_F(RendererTest, RenderFullscreenTri)
 	    .framebufferLayout = renderTarget.framebufferLayout,
 	});
 
-	const RenderList renderList
-	    = {.clearColorValue = Color{1.0f, 0.0f, 0.0f, 1.0f},
-	       .objects = {RenderObject{.vertexBuffer = vbuffer, .indexCount = 3, .pipeline = pipeline}}};
+	const RenderList renderList = {
+	    .clearColorValue = Color{1.0f, 0.0f, 0.0f, 1.0f},
+	    .objects = {RenderObject{.mesh = mesh, .pipeline = pipeline}},
+	};
 
 	const auto texture = m_renderer->RenderToTexture(renderTarget, renderList).colorTexture;
 

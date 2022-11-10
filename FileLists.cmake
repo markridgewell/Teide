@@ -12,6 +12,7 @@ set(sources
     include/Teide/Format.h
     include/Teide/ForwardDeclare.h
     include/Teide/GraphicsDevice.h
+    include/Teide/Mesh.h
     include/Teide/ParameterBlock.h
     include/Teide/Pipeline.h
     include/Teide/PipelineData.h
@@ -45,6 +46,7 @@ set(sources
     src/Teide/VulkanBuffer.h
     src/Teide/VulkanGraphicsDevice.cpp
     src/Teide/VulkanGraphicsDevice.h
+    src/Teide/VulkanMesh.h
     src/Teide/VulkanParameterBlock.cpp
     src/Teide/VulkanParameterBlock.h
     src/Teide/VulkanPipeline.h

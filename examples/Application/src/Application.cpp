@@ -5,6 +5,7 @@
 #include "Teide/Buffer.h"
 #include "Teide/Definitions.h"
 #include "Teide/GraphicsDevice.h"
+#include "Teide/Mesh.h"
 #include "Teide/Renderer.h"
 #include "Teide/Shader.h"
 #include "Teide/Surface.h"
@@ -354,9 +355,7 @@ public:
 			    .clearDepthValue = 1.0f,
 			    .viewParameters = viewParams,
 			    .objects = {{
-			        .vertexBuffer = m_vertexBuffer,
-			        .indexBuffer = m_indexBuffer,
-			        .indexCount = m_indexCount,
+			        .mesh = m_mesh,
 			        .pipeline = m_shadowMapPipeline,
 			        .materialParameters = m_materialParams,
 			        .objectParameters = {.uniformData = Teide::ToBytes(objectUniforms)},
@@ -417,9 +416,7 @@ public:
 			    .clearDepthValue = 1.0f,
 			    .viewParameters = viewParams,
 			    .objects = {{
-			        .vertexBuffer = m_vertexBuffer,
-			        .indexBuffer = m_indexBuffer,
-			        .indexCount = m_indexCount,
+			        .mesh = m_mesh,
 			        .pipeline = m_pipeline,
 			        .materialParameters = m_materialParams,
 			        .objectParameters = {.uniformData = Teide::ToBytes(objectUniforms)},
@@ -516,24 +513,16 @@ public:
 	}
 
 private:
-	void CreateVertexBuffer(Teide::BytesView data)
-	{
-		m_vertexBuffer = m_device->CreateBuffer({.usage = Teide::BufferUsage::Vertex, .data = data}, "VertexBuffer");
-	}
-
-	void CreateIndexBuffer(std::span<const uint16_t> data)
-	{
-		m_indexBuffer = m_device->CreateBuffer({.usage = Teide::BufferUsage::Index, .data = data}, "IndexBuffer");
-		m_indexCount = static_cast<std::uint32_t>(size(data));
-	}
-
 	void CreateMesh(const char* filename)
 	{
 		if (filename == nullptr)
 		{
-			CreateVertexBuffer(QuadVertices);
-			CreateIndexBuffer(QuadIndices);
+			const auto meshData = Teide::MeshData{
+			    .vertexData = CopyBytes(QuadVertices),
+			    .indexData = CopyBytes(QuadIndices),
+			};
 
+			m_mesh = m_device->CreateMesh(meshData, "Quad");
 			m_meshBoundsMin = {-0.5f, -0.5f, 0.0f};
 			m_meshBoundsMax = {0.5f, 0.5f, 0.0f};
 		}
@@ -563,8 +552,8 @@ private:
 
 			const aiMesh& mesh = **scene->mMeshes;
 
-			std::vector<Vertex> vertices;
-			vertices.reserve(mesh.mNumVertices);
+			Teide::MeshData meshData;
+			meshData.vertexData.reserve(mesh.mNumVertices * sizeof(Vertex));
 
 			m_meshBoundsMin
 			    = {std::numeric_limits<float>::max(), std::numeric_limits<float>::max(), std::numeric_limits<float>::max()};
@@ -577,12 +566,14 @@ private:
 				const auto uv = mesh.HasTextureCoords(0) ? mesh.mTextureCoords[0][i] : aiVector3D{};
 				const auto norm = mesh.HasNormals() ? mesh.mNormals[i] : aiVector3D{};
 				const auto color = mesh.HasVertexColors(0) ? mesh.mColors[0][i] : aiColor4D{1, 1, 1, 1};
-				vertices.push_back(Vertex{
+
+				const Vertex vertex = {
 				    .position = {pos.x, pos.y, pos.z},
 				    .texCoord = {uv.x, uv.y},
 				    .normal = {norm.x, norm.y, norm.z},
 				    .color = {color.r, color.g, color.b},
-				});
+				};
+				Teide::AppendBytes(meshData.vertexData, vertex);
 
 				m_meshBoundsMin.x = std::min(m_meshBoundsMin.x, pos.x);
 				m_meshBoundsMin.y = std::min(m_meshBoundsMin.y, pos.y);
@@ -592,10 +583,7 @@ private:
 				m_meshBoundsMax.z = std::max(m_meshBoundsMax.z, pos.z);
 			}
 
-			CreateVertexBuffer(vertices);
-
-			std::vector<uint16_t> indices;
-			indices.reserve(static_cast<std::size_t>(mesh.mNumFaces) * 3);
+			meshData.indexData.reserve(static_cast<std::size_t>(mesh.mNumFaces) * 3 * sizeof(std::uint16_t));
 
 			for (unsigned int i = 0; i < mesh.mNumFaces; i++)
 			{
@@ -607,11 +595,11 @@ private:
 					{
 						throw ApplicationError("Too many vertices for 16-bit indices");
 					}
-					indices.push_back(static_cast<uint16_t>(face.mIndices[j]));
+					Teide::AppendBytes(meshData.indexData, static_cast<uint16_t>(face.mIndices[j]));
 				}
 			}
 
-			CreateIndexBuffer(indices);
+			m_mesh = m_device->CreateMesh(meshData, filename);
 		}
 	}
 
@@ -726,9 +714,7 @@ private:
 	Teide::PipelinePtr m_pipeline;
 	Geo::Point3 m_meshBoundsMin;
 	Geo::Point3 m_meshBoundsMax;
-	Teide::BufferPtr m_vertexBuffer;
-	Teide::BufferPtr m_indexBuffer;
-	uint32_t m_indexCount;
+	Teide::MeshPtr m_mesh;
 	Teide::TexturePtr m_texture;
 
 	const uint32_t m_passCount = 2;

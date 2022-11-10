@@ -6,6 +6,7 @@
 #include "Vulkan.h"
 #include "VulkanBuffer.h"
 #include "VulkanGraphicsDevice.h"
+#include "VulkanMesh.h"
 #include "VulkanParameterBlock.h"
 #include "VulkanPipeline.h"
 #include "VulkanShader.h"
@@ -411,8 +412,8 @@ void VulkanRenderer::BuildCommandBuffer(
 
 			commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, pipeline.pipeline.get());
 
-			const auto& vertexBufferImpl = m_device.GetImpl(*obj.vertexBuffer);
-			commandBuffer.bindVertexBuffers(0, vertexBufferImpl.buffer.get(), vk::DeviceSize{0});
+			const auto& meshImpl = m_device.GetImpl(*obj.mesh);
+			commandBuffer.bindVertexBuffers(0, meshImpl.vertexBuffer->buffer.get(), vk::DeviceSize{0});
 
 			if (pipeline.objectPblockLayout && pipeline.objectPblockLayout->pushConstantRange.has_value())
 			{
@@ -421,15 +422,14 @@ void VulkanRenderer::BuildCommandBuffer(
 				    size32(obj.objectParameters.uniformData), data(obj.objectParameters.uniformData));
 			}
 
-			if (obj.indexBuffer)
+			if (meshImpl.indexBuffer)
 			{
-				const auto& indexBufferImpl = m_device.GetImpl(*obj.indexBuffer);
-				commandBuffer.bindIndexBuffer(indexBufferImpl.buffer.get(), vk::DeviceSize{0}, vk::IndexType::eUint16);
-				commandBuffer.drawIndexed(obj.indexCount, 1, 0, 0, 0);
+				commandBuffer.bindIndexBuffer(meshImpl.indexBuffer->buffer.get(), vk::DeviceSize{0}, meshImpl.indexType);
+				commandBuffer.drawIndexed(meshImpl.indexCount, 1, 0, 0, 0);
 			}
 			else
 			{
-				commandBuffer.draw(obj.indexCount, 1, 0, 0);
+				commandBuffer.draw(meshImpl.vertexCount, 1, 0, 0);
 			}
 		}
 	}

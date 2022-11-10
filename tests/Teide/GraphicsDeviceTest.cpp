@@ -3,6 +3,7 @@
 
 #include "ShaderCompiler/ShaderCompiler.h"
 #include "Teide/Buffer.h"
+#include "Teide/Mesh.h"
 #include "Teide/Shader.h"
 #include "Teide/Texture.h"
 #include "Teide/TextureData.h"
@@ -20,7 +21,7 @@ namespace
 TEST(GraphicsDeviceTest, CreateBuffer)
 {
 	auto device = CreateGraphicsDevice();
-	const auto contents = std::array{1, 2, 3, 4};
+	const auto contents = std::vector<std::byte>{std::byte{1}, std::byte{2}, std::byte{3}, std::byte{4}};
 	const BufferData bufferData = {
 	    .usage = BufferUsage::Vertex,
 	    .lifetime = ResourceLifetime::Permanent,
@@ -55,6 +56,40 @@ TEST(GraphicsDeviceTest, CreateTexture)
 	EXPECT_THAT(texture->GetFormat(), Eq(Format::Byte4Srgb));
 	EXPECT_THAT(texture->GetMipLevelCount(), Eq(1u));
 	EXPECT_THAT(texture->GetSampleCount(), Eq(1u));
+}
+
+TEST(GraphicsDeviceTest, CreateMesh)
+{
+	auto device = CreateGraphicsDevice();
+	const MeshData meshData = {
+	    .vertexData = MakeBytes<float>({1, 2, 3, 4, 5, 6}),
+	    .vertexCount = 3,
+	};
+	const auto mesh = device->CreateMesh(meshData, "Mesh");
+	ASSERT_THAT(mesh.get(), NotNull());
+	ASSERT_THAT(mesh->GetVertexBuffer(), NotNull());
+	EXPECT_THAT(mesh->GetVertexBuffer()->GetSize(), Eq(meshData.vertexData.size()));
+	EXPECT_THAT(mesh->GetVertexCount(), 3);
+	EXPECT_THAT(mesh->GetIndexBuffer(), IsNull());
+	EXPECT_THAT(mesh->GetIndexCount(), 0);
+}
+
+TEST(GraphicsDeviceTest, CreateMeshWithIndices)
+{
+	auto device = CreateGraphicsDevice();
+	const MeshData meshData = {
+	    .vertexData = MakeBytes<float>({1, 2, 3, 4, 5, 6}),
+	    .indexData = MakeBytes<std::uint16_t>({0, 1, 2}),
+	    .vertexCount = 3,
+	};
+	const auto mesh = device->CreateMesh(meshData, "Mesh");
+	ASSERT_THAT(mesh.get(), NotNull());
+	ASSERT_THAT(mesh->GetVertexBuffer(), NotNull());
+	EXPECT_THAT(mesh->GetVertexBuffer()->GetSize(), Eq(meshData.vertexData.size()));
+	EXPECT_THAT(mesh->GetVertexCount(), 3);
+	EXPECT_THAT(mesh->GetIndexBuffer(), NotNull());
+	EXPECT_THAT(mesh->GetIndexBuffer()->GetSize(), Eq(meshData.indexData.size()));
+	EXPECT_THAT(mesh->GetIndexCount(), 3);
 }
 
 TEST(GraphicsDeviceTest, CreatePipeline)
