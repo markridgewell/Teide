@@ -3,6 +3,8 @@ import os
 import subprocess
 import sys
 import time
+import threading
+import filecmp
 
 
 def is_source_file(filename):
@@ -34,16 +36,24 @@ def gen_filelist(dir):
     test_files.sort()
 
     outfilename = os.path.join(dir, "FileLists.cmake")
-    with open(outfilename, "w") as outfile:
-        outfile.write("set(sources")
-        outfile.write("\n    ")
-        outfile.write("\n    ".join(source_files) + ")\n")
-        outfile.write("\n")
-        outfile.write("set(test_sources")
-        outfile.write("\n    ")
-        outfile.write("\n    ".join(test_files) + ")\n")
+    tempfilename = os.path.join(dir, "FileLists.cmake.temp")
+    with open(tempfilename, "w") as f:
+        f.write("set(sources")
+        f.write("\n    ")
+        f.write("\n    ".join(source_files) + ")\n")
+        f.write("\n")
+        f.write("set(test_sources")
+        f.write("\n    ")
+        f.write("\n    ".join(test_files) + ")\n")
 
-    subprocess.run(["cmake-format", "-i", outfilename])
+    subprocess.run(["cmake-format", "-i", tempfilename], shell=True)
+
+    if filecmp.cmp(outfilename, tempfilename, shallow=False):
+        os.remove(tempfilename)
+    else:
+        os.remove(outfilename)
+        os.rename(tempfilename, outfilename)
+        print("Updated file list for", dir)
 
 
 def watch_subdir(observer, event_handler, subdir):
@@ -60,6 +70,7 @@ def add_watch(observer, path):
         def __init__(self, dir):
             print(f"Created a watcher for {dir}")
             self.dir = dir
+            self.timer = None
 
         def on_created(self, event):
             if is_source_file(event.src_path):
@@ -69,18 +80,16 @@ def add_watch(observer, path):
             if event.is_directory or is_source_file(event.src_path):
                 self._handle_event(event)
 
-        def on_modified(self, event):
-            if event.is_directory or is_source_file(event.src_path):
-                self._handle_event(event)
-
         def on_moved(self, event):
             if is_source_file(event.src_path) or is_source_file(event.dest_path):
                 self._handle_event(event)
 
         def _handle_event(self, event):
             print(event)
-            gen_filelist(self.dir)
-            print("Updated file list for", self.dir)
+            if self.timer:
+                self.timer.cancel()
+            self.timer = threading.Timer(10.0, gen_filelist, args=[self.dir])
+            self.timer.start()
 
     event_handler = FileWatcher(path)
     watch_subdir(observer, event_handler, "src")
@@ -89,30 +98,34 @@ def add_watch(observer, path):
     return event_handler
 
 
+def find_project_dirs(root_dir):
+    for root, dirs, files in os.walk(root_dir):
+        if "CMakeLists.txt" in files:
+            yield root
+
+
 if __name__ == "__main__":
     watch_mode = len(sys.argv) >= 2 and sys.argv[1] == "watch"
-    watch_root = os.getcwd()
+    root_dir = os.getcwd()
     if watch_mode and len(sys.argv) >= 3:
-        watch_root = sys.argv[2]
-        if not os.path.isdir(watch_root):
-            print(f"{watch_root} is not a directory")
+        root_dir = sys.argv[2]
+        if not os.path.isdir(root_dir):
+            print(f"{root_dir} is not a directory")
             sys.exit(1)
 
     if watch_mode:
         from watchdog.observers import Observer
         observer = Observer()
+        for dir in find_project_dirs(root_dir):
+            add_watch(observer, dir)
 
-    for root, dirs, files in os.walk(watch_root):
-        if "CMakeLists.txt" in files:
-            if watch_mode:
-                add_watch(observer, root)
-            else:
-               gen_filelist(root)
-
-    observer.start()
-    try:
-        while True:
-            time.sleep(1000)
-    finally:
-        observer.stop()
-        observer.join()
+        observer.start()
+        try:
+            while True:
+                time.sleep(1000)
+        finally:
+            observer.stop()
+            observer.join()
+    else:
+        for dir in find_project_dirs(root_dir):
+            gen_filelist(dir)
