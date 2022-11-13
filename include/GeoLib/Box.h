@@ -3,7 +3,9 @@
 #include "ForwardDeclare.h"
 #include "Vector.h"
 
+#include <algorithm>
 #include <concepts>
+#include <limits>
 #include <type_traits>
 
 namespace Geo
@@ -13,8 +15,8 @@ struct Box
 {
     using Point = Vector<T, N, PointTag>;
 
-    Point min;
-    Point max;
+    Point min{std::numeric_limits<T>::max()};
+    Point max{std::numeric_limits<T>::lowest()};
 
     constexpr bool Contains(Point point) const noexcept
     {
@@ -24,6 +26,16 @@ struct Box
     constexpr bool Contains(const Box& box) const noexcept
     {
         return box.min.x >= min.x && box.min.y >= min.y && box.max.x <= max.x && box.max.y <= max.y;
+    }
+
+    constexpr void Add(Point point) noexcept
+    {
+        min.x = std::min(min.x, point.x);
+        min.y = std::min(min.y, point.y);
+        min.z = std::min(min.z, point.z);
+        max.x = std::max(max.x, point.x);
+        max.y = std::max(max.y, point.y);
+        max.z = std::max(max.z, point.z);
     }
 };
 
