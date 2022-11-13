@@ -1,10 +1,11 @@
 
 #pragma once
 
-#include "GeoLib/Vector.h"
 #include "MemoryAllocator.h"
-#include "Teide/Surface.h"
 #include "Vulkan.h"
+
+#include "GeoLib/Vector.h"
+#include "Teide/Surface.h"
 
 #include <array>
 #include <optional>

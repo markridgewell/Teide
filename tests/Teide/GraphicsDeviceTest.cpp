@@ -1,14 +1,15 @@
 
 #include "Teide/GraphicsDevice.h"
 
+#include "TestData.h"
+#include "TestUtils.h"
+
 #include "ShaderCompiler/ShaderCompiler.h"
 #include "Teide/Buffer.h"
 #include "Teide/Mesh.h"
 #include "Teide/Shader.h"
 #include "Teide/Texture.h"
 #include "Teide/TextureData.h"
-#include "TestData.h"
-#include "TestUtils.h"
 
 #include <SDL.h>
 #include <gmock/gmock.h>

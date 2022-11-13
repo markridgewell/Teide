@@ -3,6 +3,7 @@
 
 #include "Application.h"
 #include "Resources.h"
+
 #include "Teide/Buffer.h"
 
 #include <assimp/Importer.hpp>

@@ -1,8 +1,9 @@
 
 #pragma once
 
-#include "Teide/Buffer.h"
 #include "Vulkan.h"
+
+#include "Teide/Buffer.h"
 
 namespace Teide
 {

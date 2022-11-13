@@ -4,10 +4,11 @@
 #include "CommandBuffer.h"
 #include "MemoryAllocator.h"
 #include "Scheduler.h"
+#include "Vulkan.h"
+
 #include "Teide/GraphicsDevice.h"
 #include "Teide/Renderer.h"
 #include "Teide/Surface.h"
-#include "Vulkan.h"
 
 #include <compare>
 #include <map>

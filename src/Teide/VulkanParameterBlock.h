@@ -1,8 +1,9 @@
 
 #pragma once
 
-#include "Teide/ParameterBlock.h"
 #include "Vulkan.h"
+
+#include "Teide/ParameterBlock.h"
 
 #include <memory>
 #include <optional>

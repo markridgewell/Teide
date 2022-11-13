@@ -1,8 +1,9 @@
 
 #pragma once
 
-#include "Teide/ForwardDeclare.h"
 #include "Vulkan.h"
+
+#include "Teide/ForwardDeclare.h"
 
 namespace Teide
 {

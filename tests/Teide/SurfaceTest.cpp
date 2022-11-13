@@ -1,7 +1,8 @@
 
+#include "TestData.h"
+
 #include "ShaderCompiler/ShaderCompiler.h"
 #include "Teide/GraphicsDevice.h"
-#include "TestData.h"
 
 #include <SDL.h>
 #include <gmock/gmock.h>

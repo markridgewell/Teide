@@ -2,8 +2,6 @@
 #include "VulkanGraphicsDevice.h"
 
 #include "CommandBuffer.h"
-#include "Teide/ShaderData.h"
-#include "Teide/TextureData.h"
 #include "VulkanBuffer.h"
 #include "VulkanMesh.h"
 #include "VulkanParameterBlock.h"
@@ -13,6 +11,9 @@
 #include "VulkanShaderEnvironment.h"
 #include "VulkanSurface.h"
 #include "VulkanTexture.h"
+
+#include "Teide/ShaderData.h"
+#include "Teide/TextureData.h"
 
 #include <SDL.h>
 #include <SDL_vulkan.h>

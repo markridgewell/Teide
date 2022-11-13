@@ -1,8 +1,9 @@
 
 #include "VulkanTexture.h"
 
-#include "Teide/TextureData.h"
 #include "Vulkan.h"
+
+#include "Teide/TextureData.h"
 
 namespace Teide
 {

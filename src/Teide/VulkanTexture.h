@@ -1,10 +1,11 @@
 
 #pragma once
 
-#include "GeoLib/Vector.h"
 #include "MemoryAllocator.h"
-#include "Teide/Texture.h"
 #include "Vulkan.h"
+
+#include "GeoLib/Vector.h"
+#include "Teide/Texture.h"
 
 namespace Teide
 {

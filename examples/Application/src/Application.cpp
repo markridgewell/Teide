@@ -1,10 +1,11 @@
 
 #include "Application.h"
 
-#include "GeoLib/Matrix.h"
-#include "GeoLib/Vector.h"
 #include "Loaders.h"
 #include "Resources.h"
+
+#include "GeoLib/Matrix.h"
+#include "GeoLib/Vector.h"
 #include "ShaderCompiler/ShaderCompiler.h"
 #include "Teide/Buffer.h"
 #include "Teide/Definitions.h"

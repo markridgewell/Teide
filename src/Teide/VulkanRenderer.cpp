@@ -1,8 +1,6 @@
 
 #include "VulkanRenderer.h"
 
-#include "Teide/Renderer.h"
-#include "Teide/TextureData.h"
 #include "Vulkan.h"
 #include "VulkanBuffer.h"
 #include "VulkanGraphicsDevice.h"
@@ -12,6 +10,9 @@
 #include "VulkanShader.h"
 #include "VulkanShaderEnvironment.h"
 #include "VulkanTexture.h"
+
+#include "Teide/Renderer.h"
+#include "Teide/TextureData.h"
 
 #include <spdlog/spdlog.h>
 #include <vulkan/vulkan.hpp>

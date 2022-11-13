@@ -1,9 +1,10 @@
 
 #pragma once
 
+#include "Vulkan.h"
+
 #include "Teide/Shader.h"
 #include "Teide/ShaderEnvironment.h"
-#include "Vulkan.h"
 
 namespace Teide
 {

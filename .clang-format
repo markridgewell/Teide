@@ -48,8 +48,10 @@ DisableFormat:   false
 ExperimentalAutoDetectBinPacking: false
 IncludeBlocks : Regroup
 IncludeCategories:
-  - Regex:           '".*"'
+  - Regex:           '"[^/]*"'
     Priority:        1
+  - Regex:           '".*/.*"'
+    Priority:        10
   - Regex:           '<.*\..*>'
     Priority:        20
   - Regex:           '<[^.]*>'
