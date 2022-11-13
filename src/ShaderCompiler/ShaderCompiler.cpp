@@ -26,12 +26,12 @@ static constexpr bool IsDebugBuild = false;
 #ifdef __GNUC__ // GCC 4.8+, Clang, Intel and other compilers compatible with GCC (-std=c++0x or above)
 [[noreturn]] inline __attribute__((always_inline)) void Unreachable()
 {
-	__builtin_unreachable();
+    __builtin_unreachable();
 }
 #elif defined(_MSC_VER) // MSVC
 [[noreturn]] __forceinline void Unreachable()
 {
-	__assume(false);
+    __assume(false);
 }
 #endif
 
@@ -161,286 +161,286 @@ mat4 mul(mat4 m1, mat4 m2) {
 
 struct StaticInit
 {
-	StaticInit() { glslang::InitializeProcess(); }
-	~StaticInit() { glslang::FinalizeProcess(); }
+    StaticInit() { glslang::InitializeProcess(); }
+    ~StaticInit() { glslang::FinalizeProcess(); }
 } s_staticInit;
 
 std::unique_ptr<glslang::TShader> CompileStage(std::string_view shaderSource, EShLanguage stage, glslang::EShSource source)
 {
-	auto shader = std::make_unique<glslang::TShader>(stage);
-	const auto inputStrings = std::array{data(ShaderCommon), data(shaderSource)};
-	const auto inputStringLengths = std::array{static_cast<int>(size(ShaderCommon)), static_cast<int>(size(shaderSource))};
-	shader->setStringsWithLengths(data(inputStrings), data(inputStringLengths), static_cast<int>(size(inputStringLengths)));
-	shader->setEnvInput(source, stage, glslang::EShClientVulkan, 450);
-	shader->setEnvClient(glslang::EShClientVulkan, glslang::EShTargetVulkan_1_0);
-	shader->setEnvTarget(glslang::EShTargetSpv, glslang::EShTargetSpv_1_0);
+    auto shader = std::make_unique<glslang::TShader>(stage);
+    const auto inputStrings = std::array{data(ShaderCommon), data(shaderSource)};
+    const auto inputStringLengths = std::array{static_cast<int>(size(ShaderCommon)), static_cast<int>(size(shaderSource))};
+    shader->setStringsWithLengths(data(inputStrings), data(inputStringLengths), static_cast<int>(size(inputStringLengths)));
+    shader->setEnvInput(source, stage, glslang::EShClientVulkan, 450);
+    shader->setEnvClient(glslang::EShClientVulkan, glslang::EShTargetVulkan_1_0);
+    shader->setEnvTarget(glslang::EShTargetSpv, glslang::EShTargetSpv_1_0);
 
-	if (!shader->parse(&DefaultTBuiltInResource, 110, false, EShMsgDefault))
-	{
-		throw CompileError(shader->getInfoLog());
-	}
-	return shader;
+    if (!shader->parse(&DefaultTBuiltInResource, 110, false, EShMsgDefault))
+    {
+        throw CompileError(shader->getInfoLog());
+    }
+    return shader;
 };
 
 ParameterBlockDesc& GetPblockLayout(ShaderData& data, int set)
 {
-	switch (set)
-	{
-		case 0:
-			return data.environment.scenePblock;
-		case 1:
-			return data.environment.viewPblock;
-		case 2:
-			return data.materialPblock;
-		case 3:
-			return data.objectPblock;
-	}
-	Unreachable();
+    switch (set)
+    {
+        case 0:
+            return data.environment.scenePblock;
+        case 1:
+            return data.environment.viewPblock;
+        case 2:
+            return data.materialPblock;
+        case 3:
+            return data.objectPblock;
+    }
+    Unreachable();
 }
 
 ShaderStageFlags GetShaderStageFlags(EShLanguageMask lang)
 {
-	ShaderStageFlags ret{};
-	if (lang & EShLangVertexMask)
-	{
-		ret |= ShaderStageFlags::Vertex;
-	}
-	if (lang & EShLangTessControlMask)
-	{
-		// ret |= vk::ShaderStageFlagBits::eTessellationControl;
-	}
-	if (lang & EShLangTessEvaluationMask)
-	{
-		// ret |= vk::ShaderStageFlagBits::eTessellationEvaluation;
-	}
-	if (lang & EShLangGeometryMask)
-	{
-		// ret |= vk::ShaderStageFlagBits::eGeometry;
-	}
-	if (lang & EShLangFragmentMask)
-	{
-		ret |= ShaderStageFlags::Pixel;
-	}
-	if (lang & EShLangComputeMask)
-	{
-		// ret |= vk::ShaderStageFlagBits::eCompute;
-	}
-	if (lang & EShLangRayGenMask)
-	{
-		// ret |= vk::ShaderStageFlagBits::eRaygenKHR;
-	}
-	if (lang & EShLangIntersectMask)
-	{
-		// ret |= vk::ShaderStageFlagBits::eIntersectionKHR;
-	}
-	if (lang & EShLangAnyHitMask)
-	{
-		// ret |= vk::ShaderStageFlagBits::eAnyHitKHR;
-	}
-	if (lang & EShLangClosestHitMask)
-	{
-		// ret |= vk::ShaderStageFlagBits::eClosestHitKHR;
-	}
-	if (lang & EShLangMissMask)
-	{
-		// ret |= vk::ShaderStageFlagBits::eMissKHR;
-	}
-	if (lang & EShLangCallableMask)
-	{
-		// ret |= vk::ShaderStageFlagBits::eCallableKHR;
-	}
-	return ret;
+    ShaderStageFlags ret{};
+    if (lang & EShLangVertexMask)
+    {
+        ret |= ShaderStageFlags::Vertex;
+    }
+    if (lang & EShLangTessControlMask)
+    {
+        // ret |= vk::ShaderStageFlagBits::eTessellationControl;
+    }
+    if (lang & EShLangTessEvaluationMask)
+    {
+        // ret |= vk::ShaderStageFlagBits::eTessellationEvaluation;
+    }
+    if (lang & EShLangGeometryMask)
+    {
+        // ret |= vk::ShaderStageFlagBits::eGeometry;
+    }
+    if (lang & EShLangFragmentMask)
+    {
+        ret |= ShaderStageFlags::Pixel;
+    }
+    if (lang & EShLangComputeMask)
+    {
+        // ret |= vk::ShaderStageFlagBits::eCompute;
+    }
+    if (lang & EShLangRayGenMask)
+    {
+        // ret |= vk::ShaderStageFlagBits::eRaygenKHR;
+    }
+    if (lang & EShLangIntersectMask)
+    {
+        // ret |= vk::ShaderStageFlagBits::eIntersectionKHR;
+    }
+    if (lang & EShLangAnyHitMask)
+    {
+        // ret |= vk::ShaderStageFlagBits::eAnyHitKHR;
+    }
+    if (lang & EShLangClosestHitMask)
+    {
+        // ret |= vk::ShaderStageFlagBits::eClosestHitKHR;
+    }
+    if (lang & EShLangMissMask)
+    {
+        // ret |= vk::ShaderStageFlagBits::eMissKHR;
+    }
+    if (lang & EShLangCallableMask)
+    {
+        // ret |= vk::ShaderStageFlagBits::eCallableKHR;
+    }
+    return ret;
 }
 
 void ReflectUniforms(ParameterBlockDesc& pblock, const glslang::TObjectReflection& uniformBlock)
 {
-	pblock.uniformsStages = GetShaderStageFlags(uniformBlock.stages);
+    pblock.uniformsStages = GetShaderStageFlags(uniformBlock.stages);
 
-	if constexpr (IsDebugBuild)
-	{
-		assert(uniformBlock.getType());
-		assert(uniformBlock.getType()->isStruct());
+    if constexpr (IsDebugBuild)
+    {
+        assert(uniformBlock.getType());
+        assert(uniformBlock.getType()->isStruct());
 
-		for ([[maybe_unused]] const auto& u : *uniformBlock.getType()->getStruct())
-		{
-			assert(
-			    std::ranges::find(pblock.parameters, std::string_view{u.type->getFieldName()}, &ShaderVariable::name)
-			    != pblock.parameters.end());
-		}
-	}
+        for ([[maybe_unused]] const auto& u : *uniformBlock.getType()->getStruct())
+        {
+            assert(
+                std::ranges::find(pblock.parameters, std::string_view{u.type->getFieldName()}, &ShaderVariable::name)
+                != pblock.parameters.end());
+        }
+    }
 };
 
 void Compile(ShaderData& data, std::string_view vertexSource, std::string_view pixelSource, glslang::EShSource source)
 {
-	auto vertexShader = CompileStage(vertexSource, EShLangVertex, source);
-	auto pixelShader = CompileStage(pixelSource, EShLangFragment, source);
+    auto vertexShader = CompileStage(vertexSource, EShLangVertex, source);
+    auto pixelShader = CompileStage(pixelSource, EShLangFragment, source);
 
-	auto program = glslang::TProgram();
-	program.addShader(vertexShader.get());
-	program.addShader(pixelShader.get());
+    auto program = glslang::TProgram();
+    program.addShader(vertexShader.get());
+    program.addShader(pixelShader.get());
 
-	if (!program.link(EShMsgDefault))
-	{
-		throw CompileError(program.getInfoLog());
-	}
+    if (!program.link(EShMsgDefault))
+    {
+        throw CompileError(program.getInfoLog());
+    }
 
-	spv::SpvBuildLogger logger;
-	glslang::SpvOptions spvOptions;
-	spvOptions.generateDebugInfo = IsDebugBuild;
-	spvOptions.stripDebugInfo = !IsDebugBuild;
-	spvOptions.disableOptimizer = false;
-	spvOptions.optimizeSize = true;
-	spvOptions.disassemble = false;
-	spvOptions.validate = true;
+    spv::SpvBuildLogger logger;
+    glslang::SpvOptions spvOptions;
+    spvOptions.generateDebugInfo = IsDebugBuild;
+    spvOptions.stripDebugInfo = !IsDebugBuild;
+    spvOptions.disableOptimizer = false;
+    spvOptions.optimizeSize = true;
+    spvOptions.disassemble = false;
+    spvOptions.validate = true;
 
-	glslang::GlslangToSpv(*program.getIntermediate(EShLangVertex), data.vertexShader.spirv, &logger, &spvOptions);
-	glslang::GlslangToSpv(*program.getIntermediate(EShLangFragment), data.pixelShader.spirv, &logger, &spvOptions);
+    glslang::GlslangToSpv(*program.getIntermediate(EShLangVertex), data.vertexShader.spirv, &logger, &spvOptions);
+    glslang::GlslangToSpv(*program.getIntermediate(EShLangFragment), data.pixelShader.spirv, &logger, &spvOptions);
 
-	program.buildReflection(EShReflectionAllBlockVariables | EShReflectionSeparateBuffers | EShReflectionAllIOVariables);
+    program.buildReflection(EShReflectionAllBlockVariables | EShReflectionSeparateBuffers | EShReflectionAllIOVariables);
 
-	for (int i = 0; i < program.getNumUniformBlocks(); i++)
-	{
-		const auto& uniformBlock = program.getUniformBlock(i);
-		if (uniformBlock.getType()->getQualifier().isPushConstant())
-		{
-			ReflectUniforms(GetPblockLayout(data, 3), uniformBlock);
-		}
-		else
-		{
-			const auto set = uniformBlock.getType()->getQualifier().layoutSet;
-			ReflectUniforms(GetPblockLayout(data, set), uniformBlock);
-		}
-	}
+    for (int i = 0; i < program.getNumUniformBlocks(); i++)
+    {
+        const auto& uniformBlock = program.getUniformBlock(i);
+        if (uniformBlock.getType()->getQualifier().isPushConstant())
+        {
+            ReflectUniforms(GetPblockLayout(data, 3), uniformBlock);
+        }
+        else
+        {
+            const auto set = uniformBlock.getType()->getQualifier().layoutSet;
+            ReflectUniforms(GetPblockLayout(data, set), uniformBlock);
+        }
+    }
 }
 
 glslang::EShSource GetEShSource(ShaderLanguage language)
 {
-	switch (language)
-	{
-		case ShaderLanguage::Glsl:
-			return glslang::EShSourceGlsl;
-		case ShaderLanguage::Hlsl:
-			return glslang::EShSourceHlsl;
-	}
-	Unreachable();
+    switch (language)
+    {
+        case ShaderLanguage::Glsl:
+            return glslang::EShSourceGlsl;
+        case ShaderLanguage::Hlsl:
+            return glslang::EShSourceHlsl;
+    }
+    Unreachable();
 }
 
 void BuildUniformBuffer(std::string& source, const ParameterBlockDesc& pblock, int set)
 {
-	if (std::ranges::count_if(pblock.parameters, [](const auto& v) { return !IsResourceType(v.type.baseType); }) == 0)
-	{
-		// No uniforms in pblock
-		return;
-	}
+    if (std::ranges::count_if(pblock.parameters, [](const auto& v) { return !IsResourceType(v.type.baseType); }) == 0)
+    {
+        // No uniforms in pblock
+        return;
+    }
 
-	auto out = std::back_inserter(source);
+    auto out = std::back_inserter(source);
 
-	if (BuildParameterBlockLayout(pblock, set).isPushConstant)
-	{
-		// Build push constants
-		fmt::format_to(out, "layout(push_constant) uniform {}Uniforms {{\n", PblockNames[set]);
-	}
-	else
-	{
-		// Build uniform block
-		fmt::format_to(out, "layout(set = {}, binding = 0) uniform {}Uniforms {{\n", set, PblockNames[set]);
-	}
+    if (BuildParameterBlockLayout(pblock, set).isPushConstant)
+    {
+        // Build push constants
+        fmt::format_to(out, "layout(push_constant) uniform {}Uniforms {{\n", PblockNames[set]);
+    }
+    else
+    {
+        // Build uniform block
+        fmt::format_to(out, "layout(set = {}, binding = 0) uniform {}Uniforms {{\n", set, PblockNames[set]);
+    }
 
-	for (const auto& variable : pblock.parameters)
-	{
-		if (IsResourceType(variable.type.baseType))
-		{
-			continue;
-		}
+    for (const auto& variable : pblock.parameters)
+    {
+        if (IsResourceType(variable.type.baseType))
+        {
+            continue;
+        }
 
-		std::string typeStr = ToString(variable.type);
-		fmt::format_to(out, "    {} {};\n", typeStr, variable.name);
-	}
-	fmt::format_to(out, "}} {};\n\n", PblockNamesLower[set]);
+        std::string typeStr = ToString(variable.type);
+        fmt::format_to(out, "    {} {};\n", typeStr, variable.name);
+    }
+    fmt::format_to(out, "}} {};\n\n", PblockNamesLower[set]);
 }
 
 void BuildResourceBindings(std::string& source, const ParameterBlockDesc& pblock, int set)
 {
-	if (std::ranges::count_if(pblock.parameters, [](const auto& v) { return IsResourceType(v.type.baseType); }) == 0)
-	{
-		// No resources in pblock
-		return;
-	}
+    if (std::ranges::count_if(pblock.parameters, [](const auto& v) { return IsResourceType(v.type.baseType); }) == 0)
+    {
+        // No resources in pblock
+        return;
+    }
 
-	auto out = std::back_inserter(source);
+    auto out = std::back_inserter(source);
 
-	usize slot = 1;
-	for (const auto& parameter : pblock.parameters)
-	{
-		if (IsResourceType(parameter.type.baseType))
-		{
-			fmt::format_to(
-			    out, "layout(set = {}, binding = {}) uniform {} {};\n", set, slot, ToString(parameter.type), parameter.name);
-			slot++;
-		}
-	}
+    usize slot = 1;
+    for (const auto& parameter : pblock.parameters)
+    {
+        if (IsResourceType(parameter.type.baseType))
+        {
+            fmt::format_to(
+                out, "layout(set = {}, binding = {}) uniform {} {};\n", set, slot, ToString(parameter.type), parameter.name);
+            slot++;
+        }
+    }
 
-	source += '\n';
+    source += '\n';
 }
 
 void BuildBindings(std::string& source, const ParameterBlockDesc& pblock, int set)
 {
-	BuildUniformBuffer(source, pblock, set);
-	BuildResourceBindings(source, pblock, set);
+    BuildUniformBuffer(source, pblock, set);
+    BuildResourceBindings(source, pblock, set);
 }
 
 void BuildVaryings(std::string& source, ShaderStageData& data, const ShaderStageDefinition& sourceStage)
 {
-	auto out = std::back_inserter(source);
+    auto out = std::back_inserter(source);
 
-	for (usize i = 0; i < sourceStage.inputs.size(); i++)
-	{
-		const auto& input = sourceStage.inputs[i];
+    for (usize i = 0; i < sourceStage.inputs.size(); i++)
+    {
+        const auto& input = sourceStage.inputs[i];
 
-		if (input.name.starts_with("gl_"))
-			continue;
+        if (input.name.starts_with("gl_"))
+            continue;
 
-		data.inputs.push_back(input);
-		fmt::format_to(out, "layout(location = {}) in {} {};\n", i, ToString(input.type), input.name);
-	}
+        data.inputs.push_back(input);
+        fmt::format_to(out, "layout(location = {}) in {} {};\n", i, ToString(input.type), input.name);
+    }
 
-	for (usize i = 0; i < sourceStage.outputs.size(); i++)
-	{
-		const auto& output = sourceStage.outputs[i];
+    for (usize i = 0; i < sourceStage.outputs.size(); i++)
+    {
+        const auto& output = sourceStage.outputs[i];
 
-		if (output.name.starts_with("gl_"))
-			continue;
+        if (output.name.starts_with("gl_"))
+            continue;
 
-		data.outputs.push_back(output);
-		fmt::format_to(out, "layout(location = {}) out {} {};\n", i, ToString(output.type), output.name);
-	}
+        data.outputs.push_back(output);
+        fmt::format_to(out, "layout(location = {}) out {} {};\n", i, ToString(output.type), output.name);
+    }
 
-	source += '\n';
+    source += '\n';
 }
 
 } // namespace
 
 ShaderData CompileShader(const ShaderSourceData& sourceData)
 {
-	ShaderData data;
-	data.environment = sourceData.environment;
-	data.materialPblock = sourceData.materialPblock;
-	data.objectPblock = sourceData.objectPblock;
+    ShaderData data;
+    data.environment = sourceData.environment;
+    data.materialPblock = sourceData.materialPblock;
+    data.objectPblock = sourceData.objectPblock;
 
-	std::string parameters = "";
-	BuildBindings(parameters, sourceData.environment.scenePblock, 0);
-	BuildBindings(parameters, sourceData.environment.viewPblock, 1);
-	BuildBindings(parameters, sourceData.materialPblock, 2);
-	BuildBindings(parameters, sourceData.objectPblock, 3);
+    std::string parameters = "";
+    BuildBindings(parameters, sourceData.environment.scenePblock, 0);
+    BuildBindings(parameters, sourceData.environment.viewPblock, 1);
+    BuildBindings(parameters, sourceData.materialPblock, 2);
+    BuildBindings(parameters, sourceData.objectPblock, 3);
 
-	std::string vertexShader = parameters;
-	BuildVaryings(vertexShader, data.vertexShader, sourceData.vertexShader);
-	vertexShader += sourceData.vertexShader.source;
+    std::string vertexShader = parameters;
+    BuildVaryings(vertexShader, data.vertexShader, sourceData.vertexShader);
+    vertexShader += sourceData.vertexShader.source;
 
-	std::string pixelShader = parameters;
-	BuildVaryings(pixelShader, data.pixelShader, sourceData.pixelShader);
-	pixelShader += sourceData.pixelShader.source;
+    std::string pixelShader = parameters;
+    BuildVaryings(pixelShader, data.pixelShader, sourceData.pixelShader);
+    pixelShader += sourceData.pixelShader.source;
 
-	Compile(data, vertexShader, pixelShader, GetEShSource(sourceData.language));
-	return data;
+    Compile(data, vertexShader, pixelShader, GetEShSource(sourceData.language));
+    return data;
 }

@@ -13,9 +13,9 @@ namespace Teide
 
 struct VulkanParameterBlockLayout : public ParameterBlockLayout
 {
-	vk::UniqueDescriptorSetLayout setLayout;
-	std::optional<vk::PushConstantRange> pushConstantRange;
-	vk::ShaderStageFlags uniformsStages;
+    vk::UniqueDescriptorSetLayout setLayout;
+    std::optional<vk::PushConstantRange> pushConstantRange;
+    vk::ShaderStageFlags uniformsStages;
 };
 
 using VulkanParameterBlockLayoutPtr = std::shared_ptr<const VulkanParameterBlockLayout>;
@@ -23,25 +23,25 @@ using VulkanParameterBlockLayoutPtr = std::shared_ptr<const VulkanParameterBlock
 template <>
 struct VulkanImpl<ParameterBlockLayout>
 {
-	using type = VulkanParameterBlockLayout;
+    using type = VulkanParameterBlockLayout;
 };
 
 struct VulkanParameterBlock : public ParameterBlock
 {
-	BufferPtr uniformBuffer;
-	vk::UniqueDescriptorSet descriptorSet;
-	std::vector<byte> pushConstantData;
+    BufferPtr uniformBuffer;
+    vk::UniqueDescriptorSet descriptorSet;
+    std::vector<byte> pushConstantData;
 
-	explicit VulkanParameterBlock(const VulkanParameterBlockLayout& layout);
+    explicit VulkanParameterBlock(const VulkanParameterBlockLayout& layout);
 
-	usize GetUniformBufferSize() const override;
-	usize GetPushConstantSize() const override;
+    usize GetUniformBufferSize() const override;
+    usize GetPushConstantSize() const override;
 };
 
 template <>
 struct VulkanImpl<ParameterBlock>
 {
-	using type = VulkanParameterBlock;
+    using type = VulkanParameterBlock;
 };
 
 } // namespace Teide

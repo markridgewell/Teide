@@ -8,20 +8,20 @@ namespace Teide
 
 VulkanParameterBlock::VulkanParameterBlock(const VulkanParameterBlockLayout& layout)
 {
-	if (layout.pushConstantRange.has_value())
-	{
-		pushConstantData.resize(layout.pushConstantRange->size - layout.pushConstantRange->offset);
-	}
+    if (layout.pushConstantRange.has_value())
+    {
+        pushConstantData.resize(layout.pushConstantRange->size - layout.pushConstantRange->offset);
+    }
 }
 
 usize VulkanParameterBlock::GetUniformBufferSize() const
 {
-	return uniformBuffer ? uniformBuffer->GetSize() : 0;
+    return uniformBuffer ? uniformBuffer->GetSize() : 0;
 }
 
 usize VulkanParameterBlock::GetPushConstantSize() const
 {
-	return pushConstantData.size();
+    return pushConstantData.size();
 }
 
 } // namespace Teide

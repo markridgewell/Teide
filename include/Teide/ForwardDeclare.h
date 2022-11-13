@@ -35,8 +35,8 @@ using ParameterBlockPtr = std::shared_ptr<const ParameterBlock>;
 
 enum class ResourceLifetime
 {
-	Permanent,
-	Transient
+    Permanent,
+    Transient
 };
 
 } // namespace Teide

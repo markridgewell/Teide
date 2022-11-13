@@ -11,18 +11,18 @@ class MemoryAllocator;
 
 struct VulkanBuffer : public Buffer
 {
-	vk::DeviceSize size = 0;
-	vk::UniqueBuffer buffer;
-	std::span<byte> mappedData;
+    vk::DeviceSize size = 0;
+    vk::UniqueBuffer buffer;
+    std::span<byte> mappedData;
 
-	usize GetSize() const override { return size; }
-	BytesView GetData() const override { return mappedData; }
+    usize GetSize() const override { return size; }
+    BytesView GetData() const override { return mappedData; }
 };
 
 template <>
 struct VulkanImpl<Buffer>
 {
-	using type = VulkanBuffer;
+    using type = VulkanBuffer;
 };
 
 VulkanBuffer CreateBufferUninitialized(

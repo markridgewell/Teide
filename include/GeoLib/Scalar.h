@@ -7,24 +7,24 @@
 namespace Geo
 {
 template <class T>
-	requires std::floating_point<T>
+    requires std::floating_point<T>
 constexpr bool Compare(T a, T b, T maxRelDiff) noexcept
 {
-	return std::abs(a - b) <= maxRelDiff;
+    return std::abs(a - b) <= maxRelDiff;
 }
 
 template <class T>
-	requires std::floating_point<T>
+    requires std::floating_point<T>
 constexpr T Lerp(T a, T b, T t) noexcept
 {
-	return a + t * (b - a);
+    return a + t * (b - a);
 }
 
 template <class T>
-	requires std::floating_point<T>
+    requires std::floating_point<T>
 constexpr T Midpoint(T a, T b) noexcept
 {
-	return T{0.5} * (a + b);
+    return T{0.5} * (a + b);
 }
 
 template <class T>

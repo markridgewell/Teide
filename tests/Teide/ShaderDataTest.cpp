@@ -9,7 +9,7 @@ using Type = ShaderVariableType::BaseType;
 
 TEST(ShaderDataTest, UniformOffsetFloat)
 {
-	const ParameterBlockDesc input = {
+    const ParameterBlockDesc input = {
         .parameters = {
             {"pad0", Type::Float},
             {"test", Type::Float},
@@ -17,17 +17,17 @@ TEST(ShaderDataTest, UniformOffsetFloat)
         },
     };
 
-	const auto result = BuildParameterBlockLayout(input, 0);
-	EXPECT_THAT(result.uniformsSize, Eq(12));
-	ASSERT_THAT(result.uniformDescs.size(), Eq(3));
-	EXPECT_THAT(result.uniformDescs[0].offset, Eq(0));
-	EXPECT_THAT(result.uniformDescs[1].offset, Eq(4));
-	EXPECT_THAT(result.uniformDescs[2].offset, Eq(8));
+    const auto result = BuildParameterBlockLayout(input, 0);
+    EXPECT_THAT(result.uniformsSize, Eq(12));
+    ASSERT_THAT(result.uniformDescs.size(), Eq(3));
+    EXPECT_THAT(result.uniformDescs[0].offset, Eq(0));
+    EXPECT_THAT(result.uniformDescs[1].offset, Eq(4));
+    EXPECT_THAT(result.uniformDescs[2].offset, Eq(8));
 }
 
 TEST(ShaderDataTest, UniformOffsetFloat2)
 {
-	const ParameterBlockDesc input = {
+    const ParameterBlockDesc input = {
         .parameters = {
             {"pad0", Type::Float},
             {"test", Type::Vector2},
@@ -35,10 +35,10 @@ TEST(ShaderDataTest, UniformOffsetFloat2)
         },
     };
 
-	const auto result = BuildParameterBlockLayout(input, 0);
-	EXPECT_THAT(result.uniformsSize, Eq(20));
-	ASSERT_THAT(result.uniformDescs.size(), Eq(3));
-	EXPECT_THAT(result.uniformDescs[0].offset, Eq(0));
-	EXPECT_THAT(result.uniformDescs[1].offset, Eq(8));
-	EXPECT_THAT(result.uniformDescs[2].offset, Eq(16));
+    const auto result = BuildParameterBlockLayout(input, 0);
+    EXPECT_THAT(result.uniformsSize, Eq(20));
+    ASSERT_THAT(result.uniformDescs.size(), Eq(3));
+    EXPECT_THAT(result.uniformDescs[0].offset, Eq(0));
+    EXPECT_THAT(result.uniformDescs[1].offset, Eq(8));
+    EXPECT_THAT(result.uniformDescs[2].offset, Eq(16));
 }
