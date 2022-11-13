@@ -76,7 +76,7 @@ VulkanRenderer::~VulkanRenderer()
 	}
 }
 
-std::uint32_t VulkanRenderer::GetFrameNumber() const
+uint32 VulkanRenderer::GetFrameNumber() const
 {
 	return m_frameNumber;
 }
@@ -374,7 +374,7 @@ void VulkanRenderer::BuildCommandBuffer(
 	if (!renderList.objects.empty())
 	{
 		std::vector<vk::DescriptorSet> descriptorSets;
-		std::uint32_t first = 0;
+		uint32 first = 0;
 
 		if (const auto set = GetDescriptorSet(GetSceneParameterBlock().get()))
 		{

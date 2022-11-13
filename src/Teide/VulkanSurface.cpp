@@ -180,7 +180,7 @@ namespace
 
 VulkanSurface::VulkanSurface(
     SDL_Window* window, vk::UniqueSurfaceKHR surface, vk::Device device, vk::PhysicalDevice physicalDevice,
-    std::vector<std::uint32_t> queueFamilyIndices, vk::CommandPool commandPool, vk::Queue queue, bool multisampled) :
+    std::vector<uint32> queueFamilyIndices, vk::CommandPool commandPool, vk::Queue queue, bool multisampled) :
     m_device{device},
     m_physicalDevice{physicalDevice},
     m_queueFamilyIndices{std::move(queueFamilyIndices)},
@@ -197,7 +197,7 @@ VulkanSurface::VulkanSurface(
 		const auto deviceLimits = physicalDevice.getProperties().limits;
 		const auto supportedSampleCounts
 		    = deviceLimits.framebufferColorSampleCounts & deviceLimits.framebufferDepthSampleCounts;
-		m_msaaSampleCount = std::bit_floor(static_cast<std::uint32_t>(supportedSampleCounts));
+		m_msaaSampleCount = std::bit_floor(static_cast<uint32>(supportedSampleCounts));
 	}
 
 	CreateSwapchainAndImages();
@@ -388,7 +388,7 @@ void VulkanSurface::CreateSwapchainAndImages()
 	};
 	m_transitionToPresentSrc.clear();
 	m_transitionToPresentSrc = m_device.allocateCommandBuffersUnique(cmdBufferAllocInfo);
-	for (std::uint32_t i = 0; i < size32(m_swapchainImages); i++)
+	for (uint32 i = 0; i < size32(m_swapchainImages); i++)
 	{
 		const auto cmdBuffer = *m_transitionToPresentSrc[i];
 		cmdBuffer.begin(vk::CommandBufferBeginInfo{});

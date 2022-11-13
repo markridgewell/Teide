@@ -123,7 +123,7 @@ struct FramebufferLayout
 {
 	std::optional<Format> colorFormat;
 	std::optional<Format> depthStencilFormat;
-	std::uint32_t sampleCount = 1;
+	uint32 sampleCount = 1;
 
 	auto operator<=>(const FramebufferLayout&) const = default;
 };

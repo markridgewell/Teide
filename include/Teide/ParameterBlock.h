@@ -12,7 +12,7 @@ namespace Teide
 
 struct ShaderParameters
 {
-	std::vector<std::byte> uniformData;
+	std::vector<byte> uniformData;
 	std::vector<const Texture*> textures;
 };
 
@@ -34,8 +34,8 @@ class ParameterBlock
 public:
 	virtual ~ParameterBlock() = default;
 
-	virtual std::size_t GetUniformBufferSize() const = 0;
-	virtual std::size_t GetPushConstantSize() const = 0;
+	virtual usize GetUniformBufferSize() const = 0;
+	virtual usize GetPushConstantSize() const = 0;
 };
 
 } // namespace Teide

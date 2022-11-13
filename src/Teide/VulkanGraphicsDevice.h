@@ -27,7 +27,7 @@ using VulkanParameterBlockLayoutPtr = std::shared_ptr<const VulkanParameterBlock
 class VulkanGraphicsDevice : public GraphicsDevice
 {
 public:
-	explicit VulkanGraphicsDevice(SDL_Window* window = nullptr, std::uint32_t numThreads = std::thread::hardware_concurrency());
+	explicit VulkanGraphicsDevice(SDL_Window* window = nullptr, uint32 numThreads = std::thread::hardware_concurrency());
 
 	~VulkanGraphicsDevice();
 
@@ -61,8 +61,8 @@ public:
 	TexturePtr CreateRenderableTexture(const TextureData& data, const char* name);
 	TexturePtr CreateRenderableTexture(const TextureData& data, const char* name, CommandBuffer& cmdBuffer);
 	MeshPtr CreateMesh(const MeshData& data, const char* name, CommandBuffer& cmdBuffer);
-	ParameterBlockPtr CreateParameterBlock(
-	    const ParameterBlockData& data, const char* name, CommandBuffer& cmdBuffer, std::uint32_t threadIndex);
+	ParameterBlockPtr
+	CreateParameterBlock(const ParameterBlockData& data, const char* name, CommandBuffer& cmdBuffer, uint32 threadIndex);
 	ParameterBlockPtr CreateParameterBlock(
 	    const ParameterBlockData& data, const char* name, CommandBuffer& cmdBuffer, vk::DescriptorPool descriptorPool);
 

@@ -67,7 +67,7 @@ SizeAndAlignment GetSizeAndAlignment(ShaderVariableType type)
 {
 	if (type.arraySize != 0 && type.baseType == ShaderVariableType::BaseType::Vector3)
 	{
-		const std::uint32_t arraySize = sizeof(float) * 3 * type.arraySize;
+		const uint32 arraySize = sizeof(float) * 3 * type.arraySize;
 		return {.size = arraySize, .alignment = arraySize};
 	}
 	const auto [size, alignment] = GetSizeAndAlignment(type.baseType);

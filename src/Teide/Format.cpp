@@ -6,7 +6,7 @@
 namespace Teide
 {
 
-enum TypeSizes : std::uint32_t
+enum TypeSizes : uint32
 {
 	FloatSize = 4,
 	HalfSize = 2,
@@ -18,9 +18,9 @@ enum TypeSizes : std::uint32_t
 	UbyteSize = 1,
 };
 
-std::uint32_t GetFormatElementSize(Format format)
+uint32 GetFormatElementSize(Format format)
 {
-	static constexpr StaticMap<Format, std::uint32_t, FormatCount> map = {
+	static constexpr StaticMap<Format, uint32, FormatCount> map = {
 	    {Format::Unknown, 0},
 
 	    {Format::Byte1, ByteSize * 1},

@@ -35,11 +35,11 @@ struct VulkanShader : VulkanShaderBase, public Shader
 		return static_pointer_cast<const ParameterBlockLayout>(objectPblockLayout);
 	}
 
-	std::uint32_t GetAttributeLocation(std::string_view attributeName) const
+	uint32 GetAttributeLocation(std::string_view attributeName) const
 	{
 		const auto pos = std::ranges::find(vertexShaderInputs, attributeName, &ShaderVariable::name);
 		assert(pos != vertexShaderInputs.end());
-		return static_cast<std::uint32_t>(std::ranges::distance(vertexShaderInputs.begin(), pos));
+		return static_cast<uint32>(std::ranges::distance(vertexShaderInputs.begin(), pos));
 	}
 };
 

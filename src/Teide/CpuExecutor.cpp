@@ -6,7 +6,7 @@ using namespace std::chrono_literals;
 namespace Teide
 {
 
-CpuExecutor::CpuExecutor(std::uint32_t numThreads) : m_executor(numThreads)
+CpuExecutor::CpuExecutor(uint32 numThreads) : m_executor(numThreads)
 {
 	m_schedulerThread = std::jthread([this, stop_token = m_schedulerStopSource.get_token()] {
 		constexpr auto timeout = 2ms;

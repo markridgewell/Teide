@@ -369,7 +369,7 @@ void BuildResourceBindings(std::string& source, const ParameterBlockDesc& pblock
 
 	auto out = std::back_inserter(source);
 
-	std::size_t slot = 1;
+	usize slot = 1;
 	for (const auto& parameter : pblock.parameters)
 	{
 		if (IsResourceType(parameter.type.baseType))
@@ -393,7 +393,7 @@ void BuildVaryings(std::string& source, ShaderStageData& data, const ShaderStage
 {
 	auto out = std::back_inserter(source);
 
-	for (std::size_t i = 0; i < sourceStage.inputs.size(); i++)
+	for (usize i = 0; i < sourceStage.inputs.size(); i++)
 	{
 		const auto& input = sourceStage.inputs[i];
 
@@ -404,7 +404,7 @@ void BuildVaryings(std::string& source, ShaderStageData& data, const ShaderStage
 		fmt::format_to(out, "layout(location = {}) in {} {};\n", i, ToString(input.type), input.name);
 	}
 
-	for (std::size_t i = 0; i < sourceStage.outputs.size(); i++)
+	for (usize i = 0; i < sourceStage.outputs.size(); i++)
 	{
 		const auto& output = sourceStage.outputs[i];
 

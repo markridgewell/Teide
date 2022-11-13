@@ -1,7 +1,8 @@
 
 #pragma once
 
-#include <cstdint>
+#include "Teide/BasicTypes.h"
+
 #include <string>
 #include <vector>
 
@@ -44,10 +45,10 @@ struct ShaderVariableType
 		Texture2DShadow,
 	};
 
-	ShaderVariableType(BaseType baseType, std::uint32_t arraySize = 0) : baseType{baseType}, arraySize{arraySize} {}
+	ShaderVariableType(BaseType baseType, uint32 arraySize = 0) : baseType{baseType}, arraySize{arraySize} {}
 
 	BaseType baseType;
-	std::uint32_t arraySize = 0;
+	uint32 arraySize = 0;
 
 	auto operator<=>(const ShaderVariableType&) const = default;
 };
@@ -78,7 +79,7 @@ struct ShaderStageData
 {
 	std::vector<ShaderVariable> inputs;
 	std::vector<ShaderVariable> outputs;
-	std::vector<std::uint32_t> spirv;
+	std::vector<uint32> spirv;
 };
 
 struct ShaderData
@@ -96,8 +97,8 @@ bool IsResourceType(ShaderVariableType::BaseType type);
 
 struct SizeAndAlignment
 {
-	std::uint32_t size = 0;
-	std::uint32_t alignment = 0;
+	uint32 size = 0;
+	uint32 alignment = 0;
 };
 
 SizeAndAlignment GetSizeAndAlignment(ShaderVariableType::BaseType type);
@@ -110,14 +111,14 @@ struct UniformDesc
 {
 	std::string name;
 	ShaderVariableType type;
-	std::uint32_t offset = 0;
+	uint32 offset = 0;
 };
 
 struct ParameterBlockLayoutData
 {
-	std::uint32_t uniformsSize = 0;
+	uint32 uniformsSize = 0;
 	std::vector<UniformDesc> uniformDescs;
-	std::uint32_t textureCount = 0;
+	uint32 textureCount = 0;
 	bool isPushConstant = false;
 	ShaderStageFlags uniformsStages = {};
 };

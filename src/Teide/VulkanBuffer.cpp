@@ -28,7 +28,7 @@ VulkanBuffer CreateBufferUninitialized(
 	ret.buffer = device.createBufferUnique(createInfo, s_allocator);
 	const auto allocation = allocator.Allocate(device.getBufferMemoryRequirements(ret.buffer.get()), memoryFlags);
 	device.bindBufferMemory(ret.buffer.get(), allocation.memory, allocation.offset);
-	ret.mappedData = {static_cast<std::byte*>(allocation.mappedData), size};
+	ret.mappedData = {static_cast<byte*>(allocation.mappedData), size};
 
 	return ret;
 }

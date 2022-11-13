@@ -23,8 +23,8 @@ struct VulkanTextureData
 	vk::UniqueSampler sampler;
 	Geo::Size2i size;
 	Format format;
-	std::uint32_t mipLevelCount = 1;
-	std::uint32_t sampleCount = 1;
+	uint32 mipLevelCount = 1;
+	uint32 sampleCount = 1;
 };
 
 struct VulkanTexture : public Texture, VulkanTextureData
@@ -33,8 +33,8 @@ struct VulkanTexture : public Texture, VulkanTextureData
 
 	Geo::Size2i GetSize() const override { return size; }
 	Format GetFormat() const override { return format; }
-	std::uint32_t GetMipLevelCount() const override { return mipLevelCount; }
-	std::uint32_t GetSampleCount() const override { return sampleCount; }
+	uint32 GetMipLevelCount() const override { return mipLevelCount; }
+	uint32 GetSampleCount() const override { return sampleCount; }
 
 	void GenerateMipmaps(TextureState& state, vk::CommandBuffer cmdBuffer);
 

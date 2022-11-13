@@ -2,10 +2,9 @@
 #pragma once
 
 #include "GeoLib/Vector.h"
+#include "Teide/BasicTypes.h"
 #include "Teide/Format.h"
 
-#include <cstddef>
-#include <cstdint>
 #include <optional>
 #include <vector>
 
@@ -60,12 +59,12 @@ struct TextureData
 {
 	Geo::Size2i size;
 	Format format;
-	std::uint32_t mipLevelCount = 1;
-	std::uint32_t sampleCount = 1;
+	uint32 mipLevelCount = 1;
+	uint32 sampleCount = 1;
 	SamplerState samplerState;
-	std::vector<std::byte> pixels;
+	std::vector<byte> pixels;
 };
 
-std::size_t GetByteSize(const TextureData& data);
+usize GetByteSize(const TextureData& data);
 
 } // namespace Teide

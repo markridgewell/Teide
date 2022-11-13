@@ -403,7 +403,7 @@ namespace
 		}
 
 		std::vector<vk::VertexInputBindingDescription> vertexInputBindings(vertexLayout.bufferBindings.size());
-		for (std::uint32_t i = 0; i < vertexInputBindings.size(); i++)
+		for (uint32 i = 0; i < vertexInputBindings.size(); i++)
 		{
 			vertexInputBindings[i] = {
 			    .binding = i,
@@ -413,7 +413,7 @@ namespace
 		}
 
 		std::vector<vk::VertexInputAttributeDescription> vertexInputAttributes(vertexLayout.attributes.size());
-		for (std::uint32_t i = 0; i < vertexInputAttributes.size(); i++)
+		for (uint32 i = 0; i < vertexInputAttributes.size(); i++)
 		{
 			const auto& attribute = vertexLayout.attributes[i];
 
@@ -540,8 +540,7 @@ GraphicsDevicePtr CreateGraphicsDevice(SDL_Window* window)
 	return std::make_unique<VulkanGraphicsDevice>(window);
 }
 
-VulkanGraphicsDevice::VulkanGraphicsDevice(SDL_Window* window, std::uint32_t numThreads) :
-    m_workerDescriptorPools(numThreads)
+VulkanGraphicsDevice::VulkanGraphicsDevice(SDL_Window* window, uint32 numThreads) : m_workerDescriptorPools(numThreads)
 {
 	m_instance = CreateInstance(m_loader, window);
 
@@ -799,7 +798,7 @@ MeshPtr VulkanGraphicsDevice::CreateMesh(const MeshData& data, const char* name,
 		mesh.indexBuffer = std::make_shared<VulkanBuffer>(CreateBufferWithData(
 		    data.indexData, BufferUsage::Index, data.lifetime, m_device.get(), m_allocator.value(), cmdBuffer));
 		SetDebugName(mesh.indexBuffer->buffer, "{}:ibuffer", name);
-		mesh.indexCount = static_cast<std::uint32_t>(data.indexData.size()) / sizeof(std::uint16_t);
+		mesh.indexCount = static_cast<uint32>(data.indexData.size()) / sizeof(uint16);
 	}
 
 	return std::make_shared<VulkanMesh>(std::move(mesh));
@@ -928,7 +927,7 @@ VulkanParameterBlockLayoutPtr VulkanGraphicsDevice::CreateParameterBlockLayout(c
 		}
 	}
 
-	for (std::uint32_t i = 0; i < layout.textureCount; i++)
+	for (uint32 i = 0; i < layout.textureCount; i++)
 	{
 		bindings.push_back({
 		    .binding = i + 1,
@@ -1002,7 +1001,7 @@ ParameterBlockPtr VulkanGraphicsDevice::CreateParameterBlock(const ParameterBloc
 }
 
 ParameterBlockPtr VulkanGraphicsDevice::CreateParameterBlock(
-    const ParameterBlockData& data, const char* name, CommandBuffer& cmdBuffer, std::uint32_t threadIndex)
+    const ParameterBlockData& data, const char* name, CommandBuffer& cmdBuffer, uint32 threadIndex)
 {
 	return CreateParameterBlock(data, name, cmdBuffer, m_workerDescriptorPools[threadIndex].get());
 }

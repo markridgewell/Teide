@@ -1,6 +1,7 @@
 
 #pragma once
 
+#include "Teide/BasicTypes.h"
 #include "Teide/Task.h"
 
 #include <function2/function2.hpp>
@@ -53,7 +54,7 @@ using TaskForCallable = Task<std::invoke_result_t<F, Args...>>;
 class CpuExecutor
 {
 public:
-	explicit CpuExecutor(std::uint32_t numThreads);
+	explicit CpuExecutor(uint32 numThreads);
 	~CpuExecutor();
 
 	CpuExecutor(const CpuExecutor&) = delete;
@@ -98,7 +99,7 @@ public:
 		return future;
 	}
 
-	std::uint32_t GetThreadIndex() const { return m_executor.this_worker_id(); }
+	uint32 GetThreadIndex() const { return m_executor.this_worker_id(); }
 
 	void WaitForTasks();
 

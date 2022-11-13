@@ -1,11 +1,11 @@
 
 #pragma once
 
+#include "Teide/BasicTypes.h"
 #include "Teide/Format.h"
 #include "Teide/ForwardDeclare.h"
 #include "Teide/PipelineData.h"
 
-#include <cstdint>
 #include <string>
 #include <vector>
 
@@ -33,8 +33,8 @@ enum class PrimitiveTopology
 
 struct VertexBufferBinding
 {
-	std::uint32_t binding = 0;
-	std::uint32_t stride = 0;
+	uint32 binding = 0;
+	uint32 stride = 0;
 	VertexClass vertexClass = VertexClass::PerVertex;
 };
 
@@ -42,9 +42,9 @@ struct VertexAttribute
 {
 	std::string name;
 	Format format = Format::Float4;
-	std::uint32_t bufferIndex = 0;
-	std::uint32_t offset = 0;
-	std::uint32_t instanceDataStepRate = 0;
+	uint32 bufferIndex = 0;
+	uint32 offset = 0;
+	uint32 instanceDataStepRate = 0;
 };
 
 struct VertexLayout

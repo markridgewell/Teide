@@ -38,7 +38,7 @@ public:
 	Geo::Size2i GetExtent() const override { return m_surfaceExtent; }
 	Format GetColorFormat() const override { return m_colorFormat; }
 	Format GetDepthFormat() const override { return m_depthFormat; }
-	std::uint32_t GetSampleCount() const override { return m_msaaSampleCount; }
+	uint32 GetSampleCount() const override { return m_msaaSampleCount; }
 
 	void OnResize() override;
 
@@ -69,7 +69,7 @@ private:
 	std::vector<vk::Image> m_swapchainImages;
 	std::vector<vk::UniqueImageView> m_swapchainImageViews;
 	std::vector<vk::UniqueCommandBuffer> m_transitionToPresentSrc;
-	std::uint32_t m_msaaSampleCount = 1;
+	uint32 m_msaaSampleCount = 1;
 	Format m_colorFormat;
 	vk::UniqueImage m_colorImage;
 	MemoryAllocation m_colorMemory;

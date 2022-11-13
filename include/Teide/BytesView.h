@@ -1,6 +1,8 @@
 
 #pragma once
 
+#include "Teide/BasicTypes.h"
+
 #include <span>
 #include <type_traits>
 #include <vector>
@@ -24,7 +26,7 @@ concept TrivialObject
 
 class BytesView
 {
-	using span_type = std::span<const std::byte>;
+	using span_type = std::span<const byte>;
 
 public:
 	using element_type = span_type::element_type;
@@ -44,7 +46,7 @@ public:
 	BytesView& operator=(const BytesView&) = default;
 	BytesView& operator=(BytesView&&) = default;
 
-	BytesView(std::span<const std::byte> bytes = {}) : m_span{bytes} {}
+	BytesView(std::span<const byte> bytes = {}) : m_span{bytes} {}
 
 	template <TrivialSpan T>
 	BytesView(const T& data) : m_span{std::as_bytes(std::span(data))}
@@ -68,7 +70,7 @@ private:
 
 inline auto ToBytes(BytesView view)
 {
-	return std::vector<std::byte>(view.begin(), view.end());
+	return std::vector<byte>(view.begin(), view.end());
 }
 
 } // namespace Teide

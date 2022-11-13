@@ -6,6 +6,7 @@ set(sources
     include/GeoLib/Scalar.h
     include/GeoLib/Vector.h
     include/ShaderCompiler/ShaderCompiler.h
+    include/Teide/BasicTypes.h
     include/Teide/Buffer.h
     include/Teide/BytesView.h
     include/Teide/Definitions.h

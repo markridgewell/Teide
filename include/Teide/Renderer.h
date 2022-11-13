@@ -3,6 +3,7 @@
 
 #include "GeoLib/Box.h"
 #include "GeoLib/Vector.h"
+#include "Teide/BasicTypes.h"
 #include "Teide/BytesView.h"
 #include "Teide/ForwardDeclare.h"
 #include "Teide/ParameterBlock.h"
@@ -12,7 +13,6 @@
 
 #include <array>
 #include <compare>
-#include <cstdint>
 #include <deque>
 #include <mutex>
 #include <optional>
@@ -46,7 +46,7 @@ struct RenderList
 
 	std::optional<Color> clearColorValue;
 	std::optional<float> clearDepthValue;
-	std::optional<std::uint32_t> clearStencilValue;
+	std::optional<uint32> clearStencilValue;
 
 	ShaderParameters viewParameters;
 
@@ -82,7 +82,7 @@ public:
 	Renderer& operator=(const Renderer&) = delete;
 	Renderer& operator=(Renderer&&) = delete;
 
-	virtual std::uint32_t GetFrameNumber() const = 0;
+	virtual uint32 GetFrameNumber() const = 0;
 	virtual void BeginFrame(ShaderParameters sceneParameters) = 0;
 	virtual void EndFrame() = 0;
 

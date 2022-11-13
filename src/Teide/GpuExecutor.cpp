@@ -82,16 +82,16 @@ GpuExecutor::~GpuExecutor()
 	}
 }
 
-std::uint32_t GpuExecutor::AddCommandBufferSlot()
+uint32 GpuExecutor::AddCommandBufferSlot()
 {
 	const auto lock = std::scoped_lock(m_readyCommandBuffersMutex);
 
 	m_readyCommandBuffers.emplace_back();
 	m_completionHandlers.emplace_back();
-	return static_cast<std::uint32_t>(m_readyCommandBuffers.size() - 1);
+	return static_cast<uint32>(m_readyCommandBuffers.size() - 1);
 }
 
-void GpuExecutor::SubmitCommandBuffer(std::uint32_t index, vk::CommandBuffer commandBuffer, OnCompleteFunction func)
+void GpuExecutor::SubmitCommandBuffer(uint32 index, vk::CommandBuffer commandBuffer, OnCompleteFunction func)
 {
 	const auto getFence = [this] {
 		if (m_unusedSubmitFences.empty())

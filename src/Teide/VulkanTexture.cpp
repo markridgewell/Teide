@@ -30,9 +30,9 @@ void VulkanTexture::GenerateMipmaps(TextureState& state, vk::CommandBuffer cmdBu
 
 	const auto origin = vk::Offset3D{0, 0, 0};
 	auto prevMipSize = vk::Offset3D{
-	    static_cast<std::int32_t>(size.x),
-	    static_cast<std::int32_t>(size.y),
-	    static_cast<std::int32_t>(1),
+	    static_cast<int32>(size.x),
+	    static_cast<int32>(size.y),
+	    static_cast<int32>(1),
 	};
 
 	// Iterate all mip levels starting at 1

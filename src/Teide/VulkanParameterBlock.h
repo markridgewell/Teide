@@ -30,12 +30,12 @@ struct VulkanParameterBlock : public ParameterBlock
 {
 	BufferPtr uniformBuffer;
 	vk::UniqueDescriptorSet descriptorSet;
-	std::vector<std::byte> pushConstantData;
+	std::vector<byte> pushConstantData;
 
 	explicit VulkanParameterBlock(const VulkanParameterBlockLayout& layout);
 
-	std::size_t GetUniformBufferSize() const override;
-	std::size_t GetPushConstantSize() const override;
+	usize GetUniformBufferSize() const override;
+	usize GetPushConstantSize() const override;
 };
 
 template <>

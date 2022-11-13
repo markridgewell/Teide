@@ -129,7 +129,7 @@ void CopyBufferToImage(
     vk::CommandBuffer cmdBuffer, vk::Buffer source, vk::Image destination, Format imageFormat, vk::Extent3D imageExtent);
 void CopyImageToBuffer(
     vk::CommandBuffer cmdBuffer, vk::Image source, vk::Buffer destination, Format imageFormat, vk::Extent3D imageExtent,
-    std::uint32_t numMipLevels);
+    uint32 numMipLevels);
 
 vk::UniqueRenderPass CreateRenderPass(vk::Device device, const FramebufferLayout& layout);
 vk::UniqueRenderPass CreateRenderPass(vk::Device device, const FramebufferLayout& layout, const RenderPassInfo& renderPassInfo);
@@ -156,7 +156,7 @@ vk::VertexInputRate ToVulkan(VertexClass);
 Format FromVulkan(vk::Format format);
 
 template <class Rep, class Period>
-constexpr std::uint64_t Timeout(std::chrono::duration<Rep, Period> duration)
+constexpr uint64 Timeout(std::chrono::duration<Rep, Period> duration)
 {
 	return std::chrono::nanoseconds(duration).count();
 }

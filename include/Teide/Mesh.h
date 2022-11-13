@@ -1,9 +1,9 @@
 
 #pragma once
 
+#include "Teide/BasicTypes.h"
 #include "Teide/ForwardDeclare.h"
 
-#include <cstddef>
 #include <vector>
 
 namespace Teide
@@ -12,9 +12,9 @@ namespace Teide
 struct MeshData
 {
 	ResourceLifetime lifetime = ResourceLifetime::Permanent;
-	std::vector<std::byte> vertexData;
-	std::vector<std::byte> indexData;
-	std::uint32_t vertexCount = 0;
+	std::vector<byte> vertexData;
+	std::vector<byte> indexData;
+	uint32 vertexCount = 0;
 };
 
 class Mesh
@@ -24,8 +24,8 @@ public:
 
 	virtual BufferPtr GetVertexBuffer() const = 0;
 	virtual BufferPtr GetIndexBuffer() const = 0;
-	virtual std::uint32_t GetVertexCount() const = 0;
-	virtual std::uint32_t GetIndexCount() const = 0;
+	virtual uint32 GetVertexCount() const = 0;
+	virtual uint32 GetIndexCount() const = 0;
 };
 
 } // namespace Teide

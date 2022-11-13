@@ -1,6 +1,8 @@
 
 #pragma once
 
+#include "Teide/BasicTypes.h"
+
 #include <function2/function2.hpp>
 #include <vulkan/vulkan.hpp>
 
@@ -27,8 +29,8 @@ public:
 	GpuExecutor& operator=(const GpuExecutor&) = delete;
 	GpuExecutor& operator=(GpuExecutor&&) = delete;
 
-	std::uint32_t AddCommandBufferSlot();
-	void SubmitCommandBuffer(std::uint32_t index, vk::CommandBuffer commandBuffer, OnCompleteFunction func = nullptr);
+	uint32 AddCommandBufferSlot();
+	void SubmitCommandBuffer(uint32 index, vk::CommandBuffer commandBuffer, OnCompleteFunction func = nullptr);
 
 private:
 	vk::Device m_device;
@@ -39,7 +41,7 @@ private:
 	std::vector<vk::CommandBuffer> m_readyCommandBuffers;
 	std::vector<OnCompleteFunction> m_completionHandlers;
 	std::queue<vk::UniqueFence> m_unusedSubmitFences;
-	std::size_t m_numSubmittedCommandBuffers = 0;
+	usize m_numSubmittedCommandBuffers = 0;
 
 	struct InFlightSubmit
 	{

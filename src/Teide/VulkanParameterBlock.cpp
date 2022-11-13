@@ -14,12 +14,12 @@ VulkanParameterBlock::VulkanParameterBlock(const VulkanParameterBlockLayout& lay
 	}
 }
 
-std::size_t VulkanParameterBlock::GetUniformBufferSize() const
+usize VulkanParameterBlock::GetUniformBufferSize() const
 {
 	return uniformBuffer ? uniformBuffer->GetSize() : 0;
 }
 
-std::size_t VulkanParameterBlock::GetPushConstantSize() const
+usize VulkanParameterBlock::GetPushConstantSize() const
 {
 	return pushConstantData.size();
 }

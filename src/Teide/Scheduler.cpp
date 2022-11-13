@@ -8,14 +8,14 @@ namespace Teide
 
 namespace
 {
-	void SetCommandBufferDebugName(vk::UniqueCommandBuffer& commandBuffer, std::uint32_t threadIndex, std::uint32_t cbIndex)
+	void SetCommandBufferDebugName(vk::UniqueCommandBuffer& commandBuffer, uint32 threadIndex, uint32 cbIndex)
 	{
 		SetDebugName(commandBuffer, "RenderThread{}:CommandBuffer{}", threadIndex, cbIndex);
 	}
 
 } // namespace
 
-Scheduler::Scheduler(std::uint32_t numThreads, vk::Device device, vk::Queue queue, std::uint32_t queueFamily) :
+Scheduler::Scheduler(uint32 numThreads, vk::Device device, vk::Queue queue, uint32 queueFamily) :
     m_cpuExecutor(numThreads), m_gpuExecutor(device, queue), m_device{device}
 {
 	std::ranges::generate(m_frameResources, [=] { return CreateThreadResources(device, queueFamily, numThreads); });
@@ -38,7 +38,7 @@ void Scheduler::ThreadResources::Reset(vk::Device device)
 	numUsedCommandBuffers = 0;
 
 	// Resetting also resets the command buffers' debug names
-	for (std::uint32_t i = 0; i < commandBuffers.size(); i++)
+	for (uint32 i = 0; i < commandBuffers.size(); i++)
 	{
 		commandBuffers[i].Reset();
 		SetCommandBufferDebugName(commandBuffers[i].Get(), threadIndex, i);
@@ -54,12 +54,12 @@ CommandBuffer& Scheduler::GetCommandBuffer(uint32_t threadIndex)
 		const vk::CommandBufferAllocateInfo allocateInfo = {
 		    .commandPool = threadResources.commandPool.get(),
 		    .level = vk::CommandBufferLevel::ePrimary,
-		    .commandBufferCount = std::max(1u, static_cast<std::uint32_t>(threadResources.commandBuffers.size())),
+		    .commandBufferCount = std::max(1u, static_cast<uint32>(threadResources.commandBuffers.size())),
 		};
 
 		auto newCommandBuffers = m_device.allocateCommandBuffersUnique(allocateInfo);
-		const auto numCBs = static_cast<std::uint32_t>(threadResources.commandBuffers.size());
-		for (std::uint32_t i = 0; i < newCommandBuffers.size(); i++)
+		const auto numCBs = static_cast<uint32>(threadResources.commandBuffers.size());
+		for (uint32 i = 0; i < newCommandBuffers.size(); i++)
 		{
 			SetCommandBufferDebugName(newCommandBuffers[i], threadIndex, i + numCBs);
 			threadResources.commandBuffers.push_back(CommandBuffer(std::move(newCommandBuffers[i])));

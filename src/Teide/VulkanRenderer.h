@@ -2,6 +2,7 @@
 #pragma once
 
 #include "CommandBuffer.h"
+#include "Teide/BasicTypes.h"
 #include "Teide/BytesView.h"
 #include "Teide/ForwardDeclare.h"
 #include "Teide/Pipeline.h"
@@ -11,7 +12,6 @@
 #include "VulkanSurface.h"
 
 #include <array>
-#include <cstdint>
 #include <deque>
 #include <mutex>
 
@@ -27,7 +27,7 @@ public:
 
 	~VulkanRenderer();
 
-	std::uint32_t GetFrameNumber() const override;
+	uint32 GetFrameNumber() const override;
 	void BeginFrame(ShaderParameters sceneParameters) override;
 	void EndFrame() override;
 
@@ -44,7 +44,7 @@ private:
 	}
 
 	const ParameterBlockPtr& GetSceneParameterBlock() const { return m_frameResources[m_frameNumber].sceneParameters; }
-	const ParameterBlockPtr& AddViewParameterBlock(std::uint32_t threadIndex, ParameterBlockPtr p)
+	const ParameterBlockPtr& AddViewParameterBlock(uint32 threadIndex, ParameterBlockPtr p)
 	{
 		return m_frameResources[m_frameNumber].threadResources[threadIndex].viewParameters.emplace_back(std::move(p));
 	}

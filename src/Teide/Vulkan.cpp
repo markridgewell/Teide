@@ -87,7 +87,7 @@ namespace
 		using MessageSeverity = vk::DebugUtilsMessageSeverityFlagBitsEXT;
 
 		// Filter unwanted messages
-		constexpr std::int32_t UnwantedMessages[] = {
+		constexpr int32 UnwantedMessages[] = {
 		    0,           // Loader Message
 		    767975156,   // UNASSIGNED-BestPractices-vkCreateInstance-specialuse-extension
 		    -2111305990, // UNASSIGNED-BestPractices-vkCreateInstance-specialuse-extension-debugging
@@ -422,13 +422,13 @@ void CopyBufferToImage(vk::CommandBuffer cmdBuffer, vk::Buffer source, vk::Image
 
 void CopyImageToBuffer(
     vk::CommandBuffer cmdBuffer, vk::Image source, vk::Buffer destination, Format imageFormat, vk::Extent3D imageExtent,
-    std::uint32_t numMipLevels)
+    uint32 numMipLevels)
 {
 	const auto aspectMask = GetImageAspect(imageFormat);
 	const auto pixelSize = GetFormatElementSize(imageFormat);
 
 	// Copy each mip level with no gaps in between
-	std::uint32_t offset = 0;
+	uint32 offset = 0;
 	vk::Extent3D mipExtent = imageExtent;
 	for (auto i = 0u; i < numMipLevels; i++)
 	{

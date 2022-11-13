@@ -13,7 +13,7 @@ namespace Teide
 class Scheduler
 {
 public:
-	Scheduler(std::uint32_t numThreads, vk::Device device, vk::Queue queue, std::uint32_t queueFamily);
+	Scheduler(uint32 numThreads, vk::Device device, vk::Queue queue, uint32 queueFamily);
 
 	void NextFrame();
 
@@ -32,32 +32,32 @@ public:
 	template <std::invocable<CommandBuffer&> F>
 	auto ScheduleGpu(F&& f) -> TaskForCallable<F, CommandBuffer&>
 	{
-		const std::uint32_t sequenceIndex = m_gpuExecutor.AddCommandBufferSlot();
+		const uint32 sequenceIndex = m_gpuExecutor.AddCommandBufferSlot();
 
 		using FRet = std::invoke_result_t<F, CommandBuffer&>;
 
 		auto promise = std::make_shared<Promise<FRet>>();
 		auto future = promise->get_future();
 
-		m_cpuExecutor.LaunchTask([this, sequenceIndex, f = std::forward<F>(f),
-		                          promise = std::move(promise)](std::uint32_t taskIndex) mutable {
-			CommandBuffer& commandBuffer = GetCommandBuffer(taskIndex);
+		m_cpuExecutor.LaunchTask(
+		    [this, sequenceIndex, f = std::forward<F>(f), promise = std::move(promise)](uint32 taskIndex) mutable {
+			    CommandBuffer& commandBuffer = GetCommandBuffer(taskIndex);
 
-			if constexpr (std::is_void_v<FRet>)
-			{
-				std::forward<F>(f)(commandBuffer); // call the callback
-				auto callback = [promise = std::move(promise)]() mutable { promise->set_value(); };
-				m_gpuExecutor.SubmitCommandBuffer(sequenceIndex, commandBuffer, std::move(callback));
-			}
-			else
-			{
-				FRet ret = std::forward<F>(f)(commandBuffer); // call the callback
-				auto callback = [promise = std::move(promise), ret = std::move(ret)]() mutable {
-					promise->set_value(std::make_optional(std::move(ret)));
-				};
-				m_gpuExecutor.SubmitCommandBuffer(sequenceIndex, commandBuffer, std::move(callback));
-			}
-		});
+			    if constexpr (std::is_void_v<FRet>)
+			    {
+				    std::forward<F>(f)(commandBuffer); // call the callback
+				    auto callback = [promise = std::move(promise)]() mutable { promise->set_value(); };
+				    m_gpuExecutor.SubmitCommandBuffer(sequenceIndex, commandBuffer, std::move(callback));
+			    }
+			    else
+			    {
+				    FRet ret = std::forward<F>(f)(commandBuffer); // call the callback
+				    auto callback = [promise = std::move(promise), ret = std::move(ret)]() mutable {
+					    promise->set_value(std::make_optional(std::move(ret)));
+				    };
+				    m_gpuExecutor.SubmitCommandBuffer(sequenceIndex, commandBuffer, std::move(callback));
+			    }
+		    });
 
 		return future;
 	}
@@ -76,8 +76,8 @@ public:
 
 	void WaitForTasks() { m_cpuExecutor.WaitForTasks(); }
 
-	std::uint32_t GetThreadCount() const { return static_cast<std::uint32_t>(m_frameResources.front().size()); }
-	std::uint32_t GetThreadIndex() const { return m_cpuExecutor.GetThreadIndex(); }
+	uint32 GetThreadCount() const { return static_cast<uint32>(m_frameResources.front().size()); }
+	uint32 GetThreadIndex() const { return m_cpuExecutor.GetThreadIndex(); }
 
 	CommandBuffer& GetCommandBuffer(uint32_t threadIndex);
 
@@ -88,8 +88,8 @@ private:
 	{
 		vk::UniqueCommandPool commandPool;
 		std::deque<CommandBuffer> commandBuffers;
-		std::uint32_t numUsedCommandBuffers = 0;
-		std::uint32_t threadIndex = 0;
+		uint32 numUsedCommandBuffers = 0;
+		uint32 threadIndex = 0;
 
 		void Reset(vk::Device device);
 	};
@@ -100,7 +100,7 @@ private:
 	GpuExecutor m_gpuExecutor;
 
 	vk::Device m_device;
-	std::uint32_t m_frameNumber = 0;
+	uint32 m_frameNumber = 0;
 
 	std::array<std::vector<ThreadResources>, MaxFramesInFlight> m_frameResources;
 };

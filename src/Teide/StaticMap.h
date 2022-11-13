@@ -1,11 +1,15 @@
 
+#include "Teide/BasicTypes.h"
+
 #include <algorithm>
 #include <array>
-#include <cstddef>
 #include <stdexcept>
 #include <utility>
 
-template <typename K, typename V, std::size_t N>
+namespace Teide
+{
+
+template <typename K, typename V, usize N>
 class StaticMap
 {
 public:
@@ -15,7 +19,7 @@ public:
 		{
 			throw std::invalid_argument("args must have exactly N elements");
 		}
-		std::size_t i = 0;
+		usize i = 0;
 		for (const auto& elem : args)
 		{
 			m_data[i] = elem;
@@ -46,3 +50,5 @@ public:
 private:
 	std::array<std::pair<K, V>, N> m_data;
 };
+
+} // namespace Teide

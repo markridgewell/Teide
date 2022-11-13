@@ -1,13 +1,12 @@
 
 #pragma once
 
-#include <cstddef>
-#include <cstdint>
+#include "Teide/BasicTypes.h"
 
 namespace Teide
 {
 
-enum class Format : std::uint16_t
+enum class Format : uint16
 {
 	Unknown,
 
@@ -64,9 +63,9 @@ enum class Format : std::uint16_t
 	Depth32Stencil8,
 	Stencil8,
 };
-constexpr std::size_t FormatCount = 49;
+constexpr usize FormatCount = 49;
 
-std::uint32_t GetFormatElementSize(Format format);
+uint32 GetFormatElementSize(Format format);
 bool HasDepthComponent(Format format);
 bool HasStencilComponent(Format format);
 bool HasDepthOrStencilComponent(Format format);
