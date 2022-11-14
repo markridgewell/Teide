@@ -19,7 +19,6 @@
 
 #include <SDL.h>
 #include <spdlog/spdlog.h>
-#include <stb_image.h>
 
 #include <algorithm>
 #include <optional>
@@ -58,13 +57,6 @@ constexpr Teide::FramebufferLayout ShadowFramebufferLayout = {
     .sampleCount = 1,
 };
 
-constexpr auto ShaderLang = ShaderLanguage::Glsl;
-
-std::vector<std::byte> CopyBytes(Teide::BytesView src)
-{
-    return std::vector<std::byte>(src.begin(), src.end());
-}
-
 Teide::RenderStates MakeRenderStates(float depthBiasConstant = 0.0f, float depthBiasSlope = 0.0f)
 {
     return {
@@ -92,13 +84,11 @@ Application::Application(SDL_Window* window, const char* imageFilename, const ch
     m_device{Teide::CreateGraphicsDevice(window)},
     m_surface{m_device->CreateSurface(window, UseMSAA)},
     m_shaderEnvironment{m_device->CreateShaderEnvironment(ShaderEnv, "ShaderEnv")},
-    m_shader{m_device->CreateShader(CompileShader(ModelShader), "ModelShader")},
     m_renderer{m_device->CreateRenderer(m_shaderEnvironment)}
 {
     CreateMesh(modelFilename);
-    LoadTexture(imageFilename);
+    CreateMaterial(imageFilename);
     CreatePipelines();
-    CreateParameterBlocks();
 
     spdlog::info("Vulkan initialised successfully");
 }
@@ -117,15 +107,16 @@ void Application::OnRender()
 
     const auto shadowMVP = shadowCamProj * shadowCamView * modelMatrix;
 
+    const auto bbox = m_mesh->GetBoundingBox();
     const std::array<Geo::Point3, 8> bboxCorners = {
-        shadowMVP * Geo::Point3(m_meshBounds.min.x, m_meshBounds.min.y, m_meshBounds.min.z),
-        shadowMVP * Geo::Point3(m_meshBounds.min.x, m_meshBounds.min.y, m_meshBounds.max.z),
-        shadowMVP * Geo::Point3(m_meshBounds.min.x, m_meshBounds.max.y, m_meshBounds.min.z),
-        shadowMVP * Geo::Point3(m_meshBounds.min.x, m_meshBounds.max.y, m_meshBounds.max.z),
-        shadowMVP * Geo::Point3(m_meshBounds.max.x, m_meshBounds.min.y, m_meshBounds.min.z),
-        shadowMVP * Geo::Point3(m_meshBounds.max.x, m_meshBounds.min.y, m_meshBounds.max.z),
-        shadowMVP * Geo::Point3(m_meshBounds.max.x, m_meshBounds.max.y, m_meshBounds.min.z),
-        shadowMVP * Geo::Point3(m_meshBounds.max.x, m_meshBounds.max.y, m_meshBounds.max.z),
+        shadowMVP * Geo::Point3(bbox.min.x, bbox.min.y, bbox.min.z),
+        shadowMVP * Geo::Point3(bbox.min.x, bbox.min.y, bbox.max.z),
+        shadowMVP * Geo::Point3(bbox.min.x, bbox.max.y, bbox.min.z),
+        shadowMVP * Geo::Point3(bbox.min.x, bbox.max.y, bbox.max.z),
+        shadowMVP * Geo::Point3(bbox.max.x, bbox.min.y, bbox.min.z),
+        shadowMVP * Geo::Point3(bbox.max.x, bbox.min.y, bbox.max.z),
+        shadowMVP * Geo::Point3(bbox.max.x, bbox.max.y, bbox.min.z),
+        shadowMVP * Geo::Point3(bbox.max.x, bbox.max.y, bbox.max.z),
     };
 
     const auto [minX, maxX] = std::ranges::minmax(std::views::transform(bboxCorners, &Geo::Point3::x));
@@ -175,7 +166,7 @@ void Application::OnRender()
             .objects = {{
                 .mesh = m_mesh,
                 .pipeline = m_shadowMapPipeline,
-                .materialParameters = m_materialParams,
+                .materialParameters = m_material.params,
                 .objectParameters = {.uniformData = Teide::ToBytes(objectUniforms)},
             }},
         };
@@ -225,7 +216,7 @@ void Application::OnRender()
         };
         const Teide::ShaderParameters viewParams = {
             .uniformData = Teide::ToBytes(viewUniforms),
-            .textures = {shadowMap.get()},
+            .textures = {shadowMap},
         };
 
         Teide::RenderList renderList = {
@@ -236,7 +227,7 @@ void Application::OnRender()
             .objects = {{
                 .mesh = m_mesh,
                 .pipeline = m_pipeline,
-                .materialParameters = m_materialParams,
+                .materialParameters = m_material.params,
                 .objectParameters = {.uniformData = Teide::ToBytes(objectUniforms)},
             }},
         };
@@ -340,90 +331,37 @@ void Application::CreateMesh(const char* filename)
         const auto meshData = Teide::MeshData{
             .vertexData = CopyBytes(QuadVertices),
             .indexData = CopyBytes(QuadIndices),
+            .aabb = {{-0.5f, -0.5f, 0.0f}, {0.5f, 0.5f, 0.0f}},
         };
 
         m_mesh = m_device->CreateMesh(meshData, "Quad");
-        m_meshBounds = {{-0.5f, -0.5f, 0.0f}, {0.5f, 0.5f, 0.0f}};
     }
     else
     {
-        const auto [meshData, aabb] = LoadMesh(filename);
+        const auto meshData = LoadMesh(filename);
         m_mesh = m_device->CreateMesh(meshData, filename);
-        m_meshBounds = aabb;
     }
 }
 
-void Application::CreateParameterBlocks()
+void Application::CreateMaterial(const char* imageFilename)
 {
+    m_material.shader = m_device->CreateShader(CompileShader(ModelShader), "ModelShader");
+
+    const auto texture = m_device->CreateTexture(LoadTexture(imageFilename), imageFilename);
+
     const Teide::ParameterBlockData materialData = {
-		    .layout = m_shader->GetMaterialPblockLayout(),
+		    .layout = m_material.shader->GetMaterialPblockLayout(),
 		    .parameters = {
-		        .textures = {m_texture.get()},
+	            .textures = {texture},
 		    },
 		};
-    m_materialParams = m_device->CreateParameterBlock(materialData, "Material");
-}
-
-void Application::LoadTexture(const char* filename)
-{
-    if (filename == nullptr)
-    {
-        // Create default checkerboard texture
-        constexpr auto c0 = std::uint32_t{0xffffffff};
-        constexpr auto c1 = std::uint32_t{0xffff00ff};
-        constexpr auto pixels = std::array{
-            c0, c1, c0, c1, c0, c1, c0, c1, //
-            c1, c0, c1, c0, c1, c0, c1, c0, //
-            c0, c1, c0, c1, c0, c1, c0, c1, //
-            c1, c0, c1, c0, c1, c0, c1, c0, //
-            c0, c1, c0, c1, c0, c1, c0, c1, //
-            c1, c0, c1, c0, c1, c0, c1, c0, //
-            c0, c1, c0, c1, c0, c1, c0, c1, //
-            c1, c0, c1, c0, c1, c0, c1, c0,
-        };
-        const Teide::TextureData data = {
-            .size = {8, 8},
-            .format = Teide::Format::Byte4Srgb,
-            .mipLevelCount = static_cast<uint32_t>(std::floor(std::log2(8))) + 1,
-            .samplerState = {.magFilter = Teide::Filter::Nearest, .minFilter = Teide::Filter::Nearest},
-            .pixels = CopyBytes(pixels),
-        };
-
-        m_texture = m_device->CreateTexture(data, "DefaultTexture");
-        return;
-    }
-
-    struct StbiDeleter
-    {
-        void operator()(stbi_uc* p) { stbi_image_free(p); }
-    };
-    using StbiPtr = std::unique_ptr<stbi_uc, StbiDeleter>;
-
-    // Load image
-    int width{}, height{}, channels{};
-    const auto pixels = StbiPtr(stbi_load(filename, &width, &height, &channels, STBI_rgb_alpha));
-    if (!pixels)
-    {
-        throw ApplicationError(fmt::format("Error loading texture '{}'", filename));
-    }
-
-    const auto imageSize = static_cast<std::size_t>(width) * height * 4;
-
-    const Teide::TextureData data = {
-        .size = {static_cast<uint32_t>(width), static_cast<uint32_t>(height)},
-        .format = Teide::Format::Byte4Srgb,
-        .mipLevelCount = static_cast<uint32_t>(std::floor(std::log2(std::max(width, height)))) + 1,
-        .samplerState = {.magFilter = Teide::Filter::Linear, .minFilter = Teide::Filter::Linear},
-        .pixels = CopyBytes(std::span(pixels.get(), imageSize)),
-    };
-
-    m_texture = m_device->CreateTexture(data, filename);
+    m_material.params = m_device->CreateParameterBlock(materialData, "Material");
 }
 
 void Application::CreatePipelines()
 {
     m_pipeline = m_device->CreatePipeline({
-		    .shader = m_shader,
+		    .shader = m_material.shader,
 		    .vertexLayout = VertexLayoutDesc,
 		    .renderStates = MakeRenderStates(),
 		    .framebufferLayout = {
@@ -440,7 +378,7 @@ void Application::CreatePipelines()
     float depthBiasSlope = 2.75f;
 
     m_shadowMapPipeline = m_device->CreatePipeline({
-        .shader = m_shader,
+        .shader = m_material.shader,
         .vertexLayout = VertexLayoutDesc,
         .renderStates = MakeRenderStates(depthBiasConstant, depthBiasSlope),
         .framebufferLayout = ShadowFramebufferLayout,

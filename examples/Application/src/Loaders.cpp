@@ -11,8 +11,9 @@
 #include <assimp/postprocess.h>
 #include <assimp/scene.h>
 #include <fmt/format.h>
+#include <stb_image.h>
 
-MeshWithBounds LoadMesh(const char* filename)
+Teide::MeshData LoadMesh(const char* filename)
 {
     Assimp::Importer importer;
 
@@ -37,8 +38,8 @@ MeshWithBounds LoadMesh(const char* filename)
 
     const aiMesh& mesh = **scene->mMeshes;
 
-    MeshWithBounds ret;
-    ret.mesh.vertexData.reserve(mesh.mNumVertices * sizeof(Vertex));
+    Teide::MeshData ret;
+    ret.vertexData.reserve(mesh.mNumVertices * sizeof(Vertex));
 
     for (unsigned int i = 0; i < mesh.mNumVertices; i++)
     {
@@ -53,12 +54,12 @@ MeshWithBounds LoadMesh(const char* filename)
             .normal = {norm.x, norm.y, norm.z},
             .color = {color.r, color.g, color.b},
         };
-        Teide::AppendBytes(ret.mesh.vertexData, vertex);
+        Teide::AppendBytes(ret.vertexData, vertex);
 
         ret.aabb.Add(vertex.position);
     }
 
-    ret.mesh.indexData.reserve(static_cast<std::size_t>(mesh.mNumFaces) * 3 * sizeof(std::uint16_t));
+    ret.indexData.reserve(static_cast<std::size_t>(mesh.mNumFaces) * 3 * sizeof(std::uint16_t));
 
     for (unsigned int i = 0; i < mesh.mNumFaces; i++)
     {
@@ -70,9 +71,60 @@ MeshWithBounds LoadMesh(const char* filename)
             {
                 throw ApplicationError("Too many vertices for 16-bit indices");
             }
-            Teide::AppendBytes(ret.mesh.indexData, static_cast<uint16_t>(face.mIndices[j]));
+            Teide::AppendBytes(ret.indexData, static_cast<uint16_t>(face.mIndices[j]));
         }
     }
 
     return ret;
+}
+
+Teide::TextureData LoadTexture(const char* filename)
+{
+    if (filename == nullptr)
+    {
+        // Create default checkerboard texture
+        constexpr auto c0 = std::uint32_t{0xffffffff};
+        constexpr auto c1 = std::uint32_t{0xffff00ff};
+        constexpr auto pixels = std::array{
+            c0, c1, c0, c1, c0, c1, c0, c1, //
+            c1, c0, c1, c0, c1, c0, c1, c0, //
+            c0, c1, c0, c1, c0, c1, c0, c1, //
+            c1, c0, c1, c0, c1, c0, c1, c0, //
+            c0, c1, c0, c1, c0, c1, c0, c1, //
+            c1, c0, c1, c0, c1, c0, c1, c0, //
+            c0, c1, c0, c1, c0, c1, c0, c1, //
+            c1, c0, c1, c0, c1, c0, c1, c0,
+        };
+        return {
+            .size = {8, 8},
+            .format = Teide::Format::Byte4Srgb,
+            .mipLevelCount = static_cast<uint32_t>(std::floor(std::log2(8))) + 1,
+            .samplerState = {.magFilter = Teide::Filter::Nearest, .minFilter = Teide::Filter::Nearest},
+            .pixels = CopyBytes(pixels),
+        };
+    }
+
+    struct StbiDeleter
+    {
+        void operator()(stbi_uc* p) { stbi_image_free(p); }
+    };
+    using StbiPtr = std::unique_ptr<stbi_uc, StbiDeleter>;
+
+    // Load image
+    int width{}, height{}, channels{};
+    const auto pixels = StbiPtr(stbi_load(filename, &width, &height, &channels, STBI_rgb_alpha));
+    if (!pixels)
+    {
+        throw ApplicationError(fmt::format("Error loading texture '{}'", filename));
+    }
+
+    const auto imageSize = static_cast<std::size_t>(width) * height * 4;
+
+    return {
+        .size = {static_cast<uint32_t>(width), static_cast<uint32_t>(height)},
+        .format = Teide::Format::Byte4Srgb,
+        .mipLevelCount = static_cast<uint32_t>(std::floor(std::log2(std::max(width, height)))) + 1,
+        .samplerState = {.magFilter = Teide::Filter::Linear, .minFilter = Teide::Filter::Linear},
+        .pixels = CopyBytes(std::span(pixels.get(), imageSize)),
+    };
 }

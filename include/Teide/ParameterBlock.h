@@ -13,7 +13,7 @@ namespace Teide
 struct ShaderParameters
 {
     std::vector<byte> uniformData;
-    std::vector<const Texture*> textures;
+    std::vector<TexturePtr> textures;
 };
 
 class ParameterBlockLayout

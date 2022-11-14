@@ -7,6 +7,7 @@
 #include "Teide/ShaderData.h"
 
 #include <array>
+#include <vector>
 
 using Type = Teide::ShaderVariableType::BaseType;
 
@@ -157,3 +158,8 @@ const Teide::VertexLayout VertexLayoutDesc = {
            .offset = offsetof(Vertex, color),
        }},
 };
+
+inline std::vector<std::byte> CopyBytes(Teide::BytesView src)
+{
+    return std::vector<std::byte>(src.begin(), src.end());
+}

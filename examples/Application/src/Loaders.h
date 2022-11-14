@@ -7,10 +7,5 @@
 
 #include <string_view>
 
-struct MeshWithBounds
-{
-    Teide::MeshData mesh;
-    Geo::Box3 aabb;
-};
-
-MeshWithBounds LoadMesh(const char* filename);
+Teide::MeshData LoadMesh(const char* filename);
+Teide::TextureData LoadTexture(const char* filename);

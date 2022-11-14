@@ -802,6 +802,8 @@ MeshPtr VulkanGraphicsDevice::CreateMesh(const MeshData& data, const char* name,
         mesh.indexCount = static_cast<uint32>(data.indexData.size()) / sizeof(uint16);
     }
 
+    mesh.aabb = data.aabb;
+
     return std::make_shared<VulkanMesh>(std::move(mesh));
 }
 
@@ -816,88 +818,76 @@ PipelinePtr VulkanGraphicsDevice::CreatePipeline(const PipelineData& data)
 
 vk::UniqueDescriptorSet VulkanGraphicsDevice::CreateDescriptorSet(
     vk::DescriptorPool pool, vk::DescriptorSetLayout layout, const Buffer* uniformBuffer,
-    std::span<const Texture* const> textures, const char* name)
-{
-    return std::move(CreateDescriptorSets(pool, layout, 1, uniformBuffer, textures, name).front());
-}
-
-std::vector<vk::UniqueDescriptorSet> VulkanGraphicsDevice::CreateDescriptorSets(
-    vk::DescriptorPool pool, vk::DescriptorSetLayout layout, size_t numSets, const Buffer* uniformBuffer,
-    std::span<const Texture* const> textures, const char* name)
+    std::span<const TexturePtr> textures, const char* name)
 {
     // TODO support multiple textures in descriptor sets
     assert(textures.size() <= 1 && "Multiple textures not yet supported!");
 
-    const auto layouts = std::vector<vk::DescriptorSetLayout>(numSets, layout);
     const vk::DescriptorSetAllocateInfo allocInfo = {
         .descriptorPool = pool,
-        .descriptorSetCount = size32(layouts),
-        .pSetLayouts = data(layouts),
+        .descriptorSetCount = 1,
+        .pSetLayouts = &layout,
     };
 
-    auto descriptorSets = m_device->allocateDescriptorSetsUnique(allocInfo);
+    auto descriptorSet = std::move(m_device->allocateDescriptorSetsUnique(allocInfo).front());
+    SetDebugName(descriptorSet, name);
 
-    for (size_t i = 0; i < layouts.size(); i++)
+    const auto numUniformBuffers = uniformBuffer ? 1 : 0;
+
+    std::vector<vk::WriteDescriptorSet> descriptorWrites;
+    descriptorWrites.reserve(numUniformBuffers + textures.size());
+
+    if (uniformBuffer)
     {
-        SetDebugName(descriptorSets[i], name);
+        const auto& uniformBufferImpl = GetImpl(*uniformBuffer);
+        const vk::DescriptorBufferInfo bufferInfo = {
+            .buffer = uniformBufferImpl.buffer.get(),
+            .offset = 0,
+            .range = uniformBufferImpl.size,
+        };
 
-        const auto numUniformBuffers = uniformBuffer ? 1 : 0;
-
-        std::vector<vk::WriteDescriptorSet> descriptorWrites;
-        descriptorWrites.reserve(numUniformBuffers + textures.size());
-
-        if (uniformBuffer)
+        if (uniformBufferImpl.size > 0)
         {
-            const auto& uniformBufferImpl = GetImpl(*uniformBuffer);
-            const vk::DescriptorBufferInfo bufferInfo = {
-                .buffer = uniformBufferImpl.buffer.get(),
-                .offset = 0,
-                .range = uniformBufferImpl.size,
-            };
-
-            if (uniformBufferImpl.size > 0)
-            {
-                descriptorWrites.push_back({
-                    .dstSet = descriptorSets[i].get(),
-                    .dstBinding = 0,
-                    .dstArrayElement = 0,
-                    .descriptorCount = 1,
-                    .descriptorType = vk::DescriptorType::eUniformBuffer,
-                    .pBufferInfo = &bufferInfo,
-                });
-            }
-        }
-
-        std::vector<vk::DescriptorImageInfo> imageInfos;
-        imageInfos.reserve(textures.size());
-        for (const auto& texture : textures)
-        {
-            if (!texture)
-                continue;
-
-            const auto& textureImpl = GetImpl(*texture);
-
-            imageInfos.push_back({
-                .sampler = textureImpl.sampler.get(),
-                .imageView = textureImpl.imageView.get(),
-                .imageLayout = HasDepthOrStencilComponent(textureImpl.format) ? vk::ImageLayout::eDepthStencilReadOnlyOptimal
-                                                                              : vk::ImageLayout::eShaderReadOnlyOptimal,
-            });
-
             descriptorWrites.push_back({
-                .dstSet = descriptorSets[i].get(),
-                .dstBinding = 1,
+                .dstSet = descriptorSet.get(),
+                .dstBinding = 0,
                 .dstArrayElement = 0,
                 .descriptorCount = 1,
-                .descriptorType = vk::DescriptorType::eCombinedImageSampler,
-                .pImageInfo = &imageInfos.back(),
+                .descriptorType = vk::DescriptorType::eUniformBuffer,
+                .pBufferInfo = &bufferInfo,
             });
         }
-
-        m_device->updateDescriptorSets(descriptorWrites, {});
     }
 
-    return descriptorSets;
+    std::vector<vk::DescriptorImageInfo> imageInfos;
+    imageInfos.reserve(textures.size());
+    for (const auto& texture : textures)
+    {
+        if (!texture)
+            continue;
+
+        const auto& textureImpl = GetImpl(*texture);
+
+        imageInfos.push_back({
+            .sampler = textureImpl.sampler.get(),
+            .imageView = textureImpl.imageView.get(),
+            .imageLayout = HasDepthOrStencilComponent(textureImpl.format) ? vk::ImageLayout::eDepthStencilReadOnlyOptimal
+                                                                          : vk::ImageLayout::eShaderReadOnlyOptimal,
+        });
+
+        descriptorWrites.push_back({
+            .dstSet = descriptorSet.get(),
+            .dstBinding = 1,
+            .dstArrayElement = 0,
+            .descriptorCount = 1,
+            .descriptorType = vk::DescriptorType::eCombinedImageSampler,
+            .pImageInfo = &imageInfos.back(),
+        });
+    }
+
+    m_device->updateDescriptorSets(descriptorWrites, {});
+
+    return descriptorSet;
 }
 
 VulkanParameterBlockLayoutPtr VulkanGraphicsDevice::CreateParameterBlockLayout(const ParameterBlockDesc& desc, int set)
@@ -1027,6 +1017,7 @@ ParameterBlockPtr VulkanGraphicsDevice::CreateParameterBlock(
     const auto descriptorSetName = DebugFormat("{}DescriptorSet", name);
 
     VulkanParameterBlock ret{layout};
+    ret.textures = data.parameters.textures;
     if (setLayout)
     {
         if (!isPushConstant && !data.parameters.uniformData.empty())

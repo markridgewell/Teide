@@ -92,11 +92,7 @@ private:
 
     vk::UniqueDescriptorSet CreateDescriptorSet(
         vk::DescriptorPool pool, vk::DescriptorSetLayout layout, const Buffer* uniformBuffer,
-        std::span<const Texture* const> textures, const char* name);
-
-    std::vector<vk::UniqueDescriptorSet> CreateDescriptorSets(
-        vk::DescriptorPool pool, vk::DescriptorSetLayout layout, size_t numSets, const Buffer* uniformBuffer,
-        std::span<const Texture* const> textures, const char* name);
+        std::span<const TexturePtr> textures, const char* name);
 
     VulkanParameterBlockLayoutPtr CreateParameterBlockLayout(const ParameterBlockDesc& desc, int set);
 

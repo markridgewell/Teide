@@ -11,11 +11,16 @@
 
 #include <SDL.h>
 
-#include <chrono>
 #include <exception>
 #include <string>
 
 using namespace Geo::Literals;
+
+struct Material
+{
+    Teide::ShaderPtr shader;
+    Teide::ParameterBlockPtr params;
+};
 
 class ApplicationError : public std::exception
 {
@@ -45,26 +50,19 @@ public:
 
 private:
     void CreateMesh(const char* filename);
-    void CreateParameterBlocks();
-    void LoadTexture(const char* filename);
+    void CreateMaterial(const char* imageFilename);
     void CreatePipelines();
 
     SDL_Window* m_window;
-
-    std::chrono::high_resolution_clock::time_point m_startTime = std::chrono::high_resolution_clock::now();
 
     Teide::GraphicsDevicePtr m_device;
     Teide::SurfacePtr m_surface;
     Teide::ShaderEnvironmentPtr m_shaderEnvironment;
 
     // Object setup
-    Teide::ShaderPtr m_shader;
-    Teide::PipelinePtr m_pipeline;
-    Geo::Box3 m_meshBounds;
     Teide::MeshPtr m_mesh;
-    Teide::TexturePtr m_texture;
-
-    Teide::ParameterBlockPtr m_materialParams;
+    Material m_material;
+    Teide::PipelinePtr m_pipeline;
 
     // Lights
     Geo::Angle m_lightYaw = 45.0_deg;

@@ -30,6 +30,7 @@ struct VulkanImpl<ParameterBlockLayout>
 struct VulkanParameterBlock : public ParameterBlock
 {
     BufferPtr uniformBuffer;
+    std::vector<TexturePtr> textures;
     vk::UniqueDescriptorSet descriptorSet;
     std::vector<byte> pushConstantData;
 
