@@ -113,11 +113,17 @@ namespace
         for (size_t i = 0; i < images.size(); i++)
         {
             const vk::ImageViewCreateInfo createInfo = {
-		    .image = images[i],
-		    .viewType = vk::ImageViewType::e2D,
-		    .format = swapchainFormat,
-		    .subresourceRange
-		    = {.aspectMask = vk::ImageAspectFlagBits::eColor, .baseMipLevel = 0, .levelCount = 1, .baseArrayLayer = 0, .layerCount = 1,},};
+                .image = images[i],
+                .viewType = vk::ImageViewType::e2D,
+                .format = swapchainFormat,
+                .subresourceRange = {
+                    .aspectMask = vk::ImageAspectFlagBits::eColor,
+                    .baseMipLevel = 0,
+                    .levelCount = 1,
+                    .baseArrayLayer = 0,
+                    .layerCount = 1,
+                },
+            };
 
             imageViews[i] = device.createImageViewUnique(createInfo, s_allocator);
             SetDebugName(imageViews[i], "SwapchainImageView[{}]", i);
@@ -243,22 +249,22 @@ std::optional<SurfaceImage> VulkanSurface::AcquireNextImage(vk::Fence fence)
     m_imagesInFlight[imageIndex] = fence;
 
     const SurfaceImage ret = {
-	    .surface = m_surface.get(),
-	    .swapchain = m_swapchain.get(),
-	    .imageIndex = imageIndex,
-	    .imageAvailable = semaphore,
-	    .image = m_swapchainImages[imageIndex],
-	    .framebuffer = {
-	        .framebuffer = m_swapchainFramebuffers[imageIndex].get(),
-			.layout = {
-				.colorFormat = m_colorFormat,
-				.depthStencilFormat = m_depthFormat,
-				.sampleCount = m_msaaSampleCount,
-			},
-	        .size = m_surfaceExtent,
-	    },
-	    .prePresentCommandBuffer = m_transitionToPresentSrc[imageIndex].get(),
-	};
+        .surface = m_surface.get(),
+        .swapchain = m_swapchain.get(),
+        .imageIndex = imageIndex,
+        .imageAvailable = semaphore,
+        .image = m_swapchainImages[imageIndex],
+        .framebuffer = {
+            .framebuffer = m_swapchainFramebuffers[imageIndex].get(),
+            .layout = {
+                .colorFormat = m_colorFormat,
+                .depthStencilFormat = m_depthFormat,
+                .sampleCount = m_msaaSampleCount,
+            },
+            .size = m_surfaceExtent,
+        },
+        .prePresentCommandBuffer = m_transitionToPresentSrc[imageIndex].get(),
+    };
 
     return ret;
 }
@@ -294,17 +300,17 @@ void VulkanSurface::CreateColorBuffer(vk::Format format)
 
     // Create image view
     const vk::ImageViewCreateInfo viewInfo = {
-		.image = m_colorImage.get(),
-		.viewType = vk::ImageViewType::e2D,
-		.format = imageInfo.format,
-		.subresourceRange = {
-			.aspectMask = vk::ImageAspectFlagBits::eColor,
-			.baseMipLevel = 0,
-			.levelCount = 1,
-			.baseArrayLayer = 0,
-			.layerCount = 1,
-		},
-	};
+        .image = m_colorImage.get(),
+        .viewType = vk::ImageViewType::e2D,
+        .format = imageInfo.format,
+        .subresourceRange = {
+            .aspectMask = vk::ImageAspectFlagBits::eColor,
+            .baseMipLevel = 0,
+            .levelCount = 1,
+            .baseArrayLayer = 0,
+            .layerCount = 1,
+        },
+    };
     m_colorImageView = m_device.createImageViewUnique(viewInfo, s_allocator);
     SetDebugName(m_colorImageView, "ColorImageView");
 }
@@ -337,17 +343,17 @@ void VulkanSurface::CreateDepthBuffer()
 
     // Create image view
     const vk::ImageViewCreateInfo viewInfo = {
-		.image = m_depthImage.get(),
-		.viewType = vk::ImageViewType::e2D,
-		.format = imageInfo.format,
-		.subresourceRange = {
-			.aspectMask = vk::ImageAspectFlagBits::eDepth,
-			.baseMipLevel = 0,
-			.levelCount = 1,
-			.baseArrayLayer = 0,
-			.layerCount = 1,
-		},
-	};
+        .image = m_depthImage.get(),
+        .viewType = vk::ImageViewType::e2D,
+        .format = imageInfo.format,
+        .subresourceRange = {
+            .aspectMask = vk::ImageAspectFlagBits::eDepth,
+            .baseMipLevel = 0,
+            .levelCount = 1,
+            .baseArrayLayer = 0,
+            .layerCount = 1,
+        },
+    };
     m_depthImageView = m_device.createImageViewUnique(viewInfo, s_allocator);
     SetDebugName(m_depthImageView, "DepthImageView");
 }

@@ -280,17 +280,17 @@ namespace
 
         // Create image view
         const vk::ImageViewCreateInfo viewInfo = {
-		.image = image.get(),
-		.viewType = vk::ImageViewType::e2D,
-		.format = imageInfo.format,
-		.subresourceRange = {
-			.aspectMask =  GetImageAspect(data.format),
-			.baseMipLevel = 0,
-			.levelCount = data.mipLevelCount,
-			.baseArrayLayer = 0,
-			.layerCount = 1,
-		},
-	};
+        .image = image.get(),
+        .viewType = vk::ImageViewType::e2D,
+        .format = imageInfo.format,
+        .subresourceRange = {
+            .aspectMask =  GetImageAspect(data.format),
+            .baseMipLevel = 0,
+            .levelCount = data.mipLevelCount,
+            .baseArrayLayer = 0,
+            .layerCount = 1,
+        },
+    };
         auto imageView = device.createImageViewUnique(viewInfo, s_allocator);
 
         const auto& ss = data.samplerState;

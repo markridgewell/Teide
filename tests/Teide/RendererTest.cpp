@@ -27,16 +27,16 @@ protected:
     RenderTargetInfo CreateRenderTargetInfo(Geo::Size2i size)
     {
         return {
-			.size = size,
-			.framebufferLayout = {
-				.colorFormat = Format::Byte4Srgb,
-				.depthStencilFormat = std::nullopt,
-				.sampleCount=1,
-			},
-			.samplerState = {},
-			.captureColor = true,
-			.captureDepthStencil = false,
-		};
+            .size = size,
+            .framebufferLayout = {
+                .colorFormat = Format::Byte4Srgb,
+                .depthStencilFormat = std::nullopt,
+                .sampleCount=1,
+            },
+            .samplerState = {},
+            .captureColor = true,
+            .captureDepthStencil = false,
+        };
     }
 
     GraphicsDevicePtr m_device;

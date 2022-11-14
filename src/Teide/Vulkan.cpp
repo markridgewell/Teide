@@ -346,21 +346,21 @@ void TransitionImageLayout(
     const auto accessMasks = GetTransitionAccessMasks(oldLayout, newLayout);
 
     const vk::ImageMemoryBarrier barrier = {
-	    .srcAccessMask = accessMasks.source,
-	    .dstAccessMask = accessMasks.destination,
-	    .oldLayout = oldLayout,
-	    .newLayout = newLayout,
-	    .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-	    .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-	    .image = image,
-	    .subresourceRange = {
-	        .aspectMask = GetImageAspect(format),
-	        .baseMipLevel = 0,
-	        .levelCount = mipLevelCount,
-	        .baseArrayLayer = 0,
-	        .layerCount = 1,
-	    },
-	};
+        .srcAccessMask = accessMasks.source,
+        .dstAccessMask = accessMasks.destination,
+        .oldLayout = oldLayout,
+        .newLayout = newLayout,
+        .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+        .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+        .image = image,
+        .subresourceRange = {
+            .aspectMask = GetImageAspect(format),
+            .baseMipLevel = 0,
+            .levelCount = mipLevelCount,
+            .baseArrayLayer = 0,
+            .layerCount = 1,
+        },
+    };
 
     cmdBuffer.pipelineBarrier(srcStageMask, dstStageMask, {}, {}, {}, barrier);
 }
@@ -404,19 +404,19 @@ vk::ImageAspectFlags GetImageAspect(Format format)
 void CopyBufferToImage(vk::CommandBuffer cmdBuffer, vk::Buffer source, vk::Image destination, Format imageFormat, vk::Extent3D imageExtent)
 {
     const auto copyRegion = vk::BufferImageCopy
-	{
-		.bufferOffset = 0,
-		.bufferRowLength = 0,
-		.bufferImageHeight = 0,
-		.imageSubresource = {
-			.aspectMask = GetImageAspect(imageFormat),
-			.mipLevel = 0,
-			.baseArrayLayer = 0,
-			.layerCount = 1,
-		},
-		.imageOffset = {0,0,0},
-		.imageExtent = imageExtent,
-	};
+    {
+        .bufferOffset = 0,
+        .bufferRowLength = 0,
+        .bufferImageHeight = 0,
+        .imageSubresource = {
+            .aspectMask = GetImageAspect(imageFormat),
+            .mipLevel = 0,
+            .baseArrayLayer = 0,
+            .layerCount = 1,
+        },
+        .imageOffset = {0,0,0},
+        .imageExtent = imageExtent,
+    };
     cmdBuffer.copyBufferToImage(source, destination, vk::ImageLayout::eTransferDstOptimal, copyRegion);
 }
 
@@ -433,19 +433,19 @@ void CopyImageToBuffer(
     for (auto i = 0u; i < numMipLevels; i++)
     {
         const auto copyRegion = vk::BufferImageCopy
-		{
-			.bufferOffset = offset,
-			.bufferRowLength = 0,
-			.bufferImageHeight = 0,
-			.imageSubresource = {
-				.aspectMask = aspectMask,
-				.mipLevel = i,
-				.baseArrayLayer = 0,
-				.layerCount = 1,
-			},
-			.imageOffset = {0,0,0},
-			.imageExtent = mipExtent,
-		};
+        {
+            .bufferOffset = offset,
+            .bufferRowLength = 0,
+            .bufferImageHeight = 0,
+            .imageSubresource = {
+                .aspectMask = aspectMask,
+                .mipLevel = i,
+                .baseArrayLayer = 0,
+                .layerCount = 1,
+            },
+            .imageOffset = {0,0,0},
+            .imageExtent = mipExtent,
+        };
         cmdBuffer.copyImageToBuffer(source, vk::ImageLayout::eTransferSrcOptimal, destination, copyRegion);
 
         offset += mipExtent.width * mipExtent.height * mipExtent.depth * pixelSize;

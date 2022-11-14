@@ -55,21 +55,21 @@ void VulkanTexture::GenerateMipmaps(TextureState& state, vk::CommandBuffer cmdBu
 
         // Blit previous mip to current mip
         const vk::ImageBlit blit = {
-		    .srcSubresource = {
-		        .aspectMask = vk::ImageAspectFlagBits::eColor,
-		        .mipLevel = i - 1,
-		        .baseArrayLayer = 0,
-		        .layerCount = 1,
-		    },
-		    .srcOffsets = {{origin, prevMipSize}},
-		    .dstSubresource = {
-		        .aspectMask = vk::ImageAspectFlagBits::eColor,
-		        .mipLevel = i,
-		        .baseArrayLayer = 0,
-		        .layerCount = 1,
-		    },
-		    .dstOffsets = {{origin, currMipSize}},
-		};
+            .srcSubresource = {
+                .aspectMask = vk::ImageAspectFlagBits::eColor,
+                .mipLevel = i - 1,
+                .baseArrayLayer = 0,
+                .layerCount = 1,
+            },
+            .srcOffsets = {{origin, prevMipSize}},
+            .dstSubresource = {
+                .aspectMask = vk::ImageAspectFlagBits::eColor,
+                .mipLevel = i,
+                .baseArrayLayer = 0,
+                .layerCount = 1,
+            },
+            .dstOffsets = {{origin, currMipSize}},
+        };
 
         cmdBuffer.blitImage(
             image.get(), vk::ImageLayout::eTransferSrcOptimal, image.get(), vk::ImageLayout::eTransferDstOptimal, blit,

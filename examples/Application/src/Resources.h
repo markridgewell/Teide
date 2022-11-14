@@ -12,7 +12,7 @@
 using Type = Teide::ShaderVariableType::BaseType;
 
 const Teide::ShaderEnvironmentData ShaderEnv = {
-	.scenePblock = {
+    .scenePblock = {
         .parameters = {
             {"lightDir", Type::Vector3},
             {"lightColor", Type::Vector3},

@@ -99,18 +99,18 @@ TEST(GraphicsDeviceTest, CreatePipeline)
     const auto shaderData = CompileShader(SimpleShader);
 
     const PipelineData pipelineData = {
-	    .shader = device->CreateShader(shaderData, "Shader"),
-	    .vertexLayout = {
-	        .topology = PrimitiveTopology::TriangleList,
-	        .bufferBindings = {{.stride = 0}},
-	        .attributes = {{.name = "inPosition", .format = Format::Float3, .bufferIndex = 0, .offset = 0}},
-	    },
-	    .framebufferLayout = {
-			.colorFormat = Format::Byte4Srgb,
-			.depthStencilFormat = Format::Depth16,
-			.sampleCount = 2,
-	    },
-	};
+        .shader = device->CreateShader(shaderData, "Shader"),
+        .vertexLayout = {
+            .topology = PrimitiveTopology::TriangleList,
+            .bufferBindings = {{.stride = 0}},
+            .attributes = {{.name = "inPosition", .format = Format::Float3, .bufferIndex = 0, .offset = 0}},
+        },
+        .framebufferLayout = {
+            .colorFormat = Format::Byte4Srgb,
+            .depthStencilFormat = Format::Depth16,
+            .sampleCount = 2,
+        },
+    };
 
     const auto pipeline = device->CreatePipeline(pipelineData);
     EXPECT_THAT(pipeline.get(), NotNull());
@@ -122,12 +122,12 @@ TEST(GraphicsDeviceTest, CreateParameterBlockWithUniforms)
     const auto shaderData = CompileShader(ShaderWithMaterialParams);
     const auto shader = device->CreateShader(shaderData, "Shader");
     const ParameterBlockData pblockData = {
-	    .layout = shader->GetMaterialPblockLayout(),
-	    .parameters = {
-	        .uniformData = std::vector<std::byte>(16u, std::byte{}),
-	        .textures = {},
-	    },
-	};
+        .layout = shader->GetMaterialPblockLayout(),
+        .parameters = {
+            .uniformData = std::vector<std::byte>(16u, std::byte{}),
+            .textures = {},
+        },
+    };
     const auto pblock = device->CreateParameterBlock(pblockData, "ParameterBlock");
     ASSERT_THAT(pblock.get(), NotNull());
     EXPECT_THAT(pblock->GetUniformBufferSize(), Eq(16u));
@@ -140,12 +140,12 @@ TEST(GraphicsDeviceTest, CreateParameterBlockWithPushConstants)
     const auto shaderData = CompileShader(ShaderWithObjectParams);
     const auto shader = device->CreateShader(shaderData, "Shader");
     const ParameterBlockData pblockData = {
-	    .layout = shader->GetObjectPblockLayout(),
-	    .parameters = {
-	        .uniformData = std::vector<std::byte>(64u, std::byte{}),
-	        .textures = {},
-	    },
-	};
+        .layout = shader->GetObjectPblockLayout(),
+        .parameters = {
+            .uniformData = std::vector<std::byte>(64u, std::byte{}),
+            .textures = {},
+        },
+    };
     const auto pblock = device->CreateParameterBlock(pblockData, "ParameterBlock");
     ASSERT_THAT(pblock.get(), NotNull());
     EXPECT_THAT(pblock->GetUniformBufferSize(), Eq(0u));
