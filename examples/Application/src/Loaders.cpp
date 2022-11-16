@@ -39,6 +39,7 @@ Teide::MeshData LoadMesh(const char* filename)
     const aiMesh& mesh = **scene->mMeshes;
 
     Teide::MeshData ret;
+    ret.vertexLayout = VertexLayoutDesc;
     ret.vertexData.reserve(mesh.mNumVertices * sizeof(Vertex));
 
     for (unsigned int i = 0; i < mesh.mNumVertices; i++)

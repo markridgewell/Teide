@@ -59,7 +59,7 @@ TEST(SurfaceTest, CreatePipelineForSurface)
         .depthStencilFormat = surface->GetDepthFormat(),
         .sampleCount = surface->GetSampleCount(),
     };
-    const auto pipeline = device->CreatePipeline({shader, vertexLayout, renderStates, framebufferLayout});
+    const auto pipeline = device->CreatePipeline({shader, vertexLayout, renderStates, {{framebufferLayout}}});
     EXPECT_THAT(pipeline.get(), NotNull());
 }
 
@@ -74,7 +74,7 @@ TEST(SurfaceTest, RenderToSurface)
 
     renderer->BeginFrame({});
     const RenderList renderList = {
-        .clearColorValue = Color{1.0f, 0.0f, 0.0f, 1.0f},
+        .clearState = {.colorValue = Color{1.0f, 0.0f, 0.0f, 1.0f}},
     };
     renderer->RenderToSurface(*surface, renderList);
     renderer->EndFrame();
@@ -106,7 +106,7 @@ TEST(SurfaceTest, RenderToSurfaceTwice)
 
     renderer->BeginFrame({});
     const RenderList renderListWithClear = {
-        .clearColorValue = Color{1.0f, 0.0f, 0.0f, 1.0f},
+        .clearState = {.colorValue = Color{1.0f, 0.0f, 0.0f, 1.0f}},
     };
     const auto renderListWithoutClear = RenderList{};
     renderer->RenderToSurface(*surface, renderListWithClear);

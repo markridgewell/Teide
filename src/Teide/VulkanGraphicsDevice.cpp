@@ -289,8 +289,8 @@ namespace
             .levelCount = data.mipLevelCount,
             .baseArrayLayer = 0,
             .layerCount = 1,
-        },
-    };
+            },
+        };
         auto imageView = device.createImageViewUnique(viewInfo, s_allocator);
 
         const auto& ss = data.samplerState;
@@ -389,16 +389,17 @@ namespace
     }
 
     vk::UniquePipeline CreateGraphicsPipeline(
-        const VulkanShader& shader, const PipelineData& pipelineData, vk::RenderPass renderPass, vk::Device device)
+        const VulkanShader& shader, const VertexLayout& vertexLayout, const RenderStates& renderStates,
+        const RenderPassDesc& renderPass, VulkanGraphicsDevice& device)
     {
         const auto vertexShader = shader.vertexShader.get();
         const auto pixelShader = shader.pixelShader.get();
-        const auto& renderStates = pipelineData.renderStates;
-        const auto& vertexLayout = pipelineData.vertexLayout;
+
+        const auto renderPassLayout = device.CreateRenderPassLayout(renderPass.framebufferLayout);
 
         std::vector<vk::PipelineShaderStageCreateInfo> shaderStages;
         shaderStages.push_back({.stage = vk::ShaderStageFlagBits::eVertex, .module = vertexShader, .pName = "main"});
-        if (pipelineData.framebufferLayout.colorFormat.has_value())
+        if (renderPass.framebufferLayout.colorFormat.has_value())
         {
             shaderStages.push_back({.stage = vk::ShaderStageFlagBits::eFragment, .module = pixelShader, .pName = "main"});
         }
@@ -433,6 +434,11 @@ namespace
             .pVertexAttributeDescriptions = data(vertexInputAttributes),
         };
 
+        const float depthBiasConstant
+            = renderPass.renderOverrides.depthBiasConstant.value_or(renderStates.rasterState.depthBiasConstant);
+        const float depthBiasSlope
+            = renderPass.renderOverrides.depthBiasSlope.value_or(renderStates.rasterState.depthBiasSlope);
+
         const auto& rasterState = renderStates.rasterState;
         const vk::PipelineRasterizationStateCreateInfo rasterizationState = {
             .depthClampEnable = false,
@@ -440,10 +446,10 @@ namespace
             .polygonMode = ToVulkan(rasterState.fillMode),
             .cullMode = ToVulkan(rasterState.cullMode),
             .frontFace = vk::FrontFace::eCounterClockwise,
-            .depthBiasEnable = rasterState.depthBiasConstant != 0.0f || rasterState.depthBiasSlope != 0.0f,
-            .depthBiasConstantFactor = rasterState.depthBiasConstant,
+            .depthBiasEnable = depthBiasConstant != 0.0f || depthBiasSlope != 0.0f,
+            .depthBiasConstantFactor = depthBiasConstant,
             .depthBiasClamp = 0.0f,
-            .depthBiasSlopeFactor = rasterState.depthBiasSlope,
+            .depthBiasSlopeFactor = depthBiasSlope,
             .lineWidth = rasterState.lineWidth,
         };
 
@@ -469,7 +475,7 @@ namespace
         };
 
         const vk::PipelineMultisampleStateCreateInfo multisampleState = {
-            .rasterizationSamples = vk::SampleCountFlagBits{pipelineData.framebufferLayout.sampleCount},
+            .rasterizationSamples = vk::SampleCountFlagBits{renderPass.framebufferLayout.sampleCount},
             .sampleShadingEnable = false,
             .minSampleShading = 1.0f,
             .pSampleMask = nullptr,
@@ -506,11 +512,11 @@ namespace
             .pColorBlendState = pixelShader ? &colorBlendState : nullptr,
             .pDynamicState = &dynamicState,
             .layout = shader.pipelineLayout.get(),
-            .renderPass = renderPass,
+            .renderPass = renderPassLayout,
             .subpass = 0,
         };
 
-        auto result = device.createGraphicsPipelineUnique(nullptr, createInfo, s_allocator);
+        auto result = device.GetVulkanDevice().createGraphicsPipelineUnique(nullptr, createInfo, s_allocator);
         if (result.result != vk::Result::eSuccess)
         {
             throw VulkanError("Couldn't create graphics pipeline");
@@ -789,6 +795,8 @@ MeshPtr VulkanGraphicsDevice::CreateMesh(const MeshData& data, const char* name,
 {
     VulkanMesh mesh;
 
+    mesh.vertexLayout = data.vertexLayout;
+
     mesh.vertexBuffer = std::make_shared<VulkanBuffer>(CreateBufferWithData(
         data.vertexData, BufferUsage::Vertex, data.lifetime, m_device.get(), m_allocator.value(), cmdBuffer));
     SetDebugName(mesh.vertexBuffer->buffer, "{}:vbuffer", name);
@@ -811,9 +819,15 @@ PipelinePtr VulkanGraphicsDevice::CreatePipeline(const PipelineData& data)
 {
     const auto& shaderImpl = GetImpl(*data.shader);
 
-    return std::make_shared<const VulkanPipeline>(
-        shaderImpl,
-        CreateGraphicsPipeline(shaderImpl, data, CreateRenderPassLayout(data.framebufferLayout), m_device.get()));
+    const auto pipeline = std::make_shared<VulkanPipeline>(shaderImpl);
+
+    for (const auto& renderPass : data.renderPasses)
+    {
+        pipeline->pipelines.push_back(
+            {.renderPass = renderPass,
+             .pipeline = CreateGraphicsPipeline(shaderImpl, data.vertexLayout, data.renderStates, renderPass, *this)});
+    }
+    return pipeline;
 }
 
 vk::UniqueDescriptorSet VulkanGraphicsDevice::CreateDescriptorSet(
@@ -938,14 +952,14 @@ vk::RenderPass VulkanGraphicsDevice::CreateRenderPassLayout(const FramebufferLay
     return CreateRenderPass(framebufferLayout, {});
 }
 
-vk::RenderPass VulkanGraphicsDevice::CreateRenderPass(const FramebufferLayout& framebufferLayout, const RenderList& renderList)
+vk::RenderPass VulkanGraphicsDevice::CreateRenderPass(const FramebufferLayout& framebufferLayout, const ClearState& clearState)
 {
     const RenderPassInfo renderPassInfo = {
-        .colorLoadOp = renderList.clearColorValue ? vk::AttachmentLoadOp::eClear : vk::AttachmentLoadOp::eDontCare,
+        .colorLoadOp = clearState.colorValue ? vk::AttachmentLoadOp::eClear : vk::AttachmentLoadOp::eDontCare,
         .colorStoreOp = vk::AttachmentStoreOp::eStore,
-        .depthLoadOp = renderList.clearDepthValue ? vk::AttachmentLoadOp::eClear : vk::AttachmentLoadOp::eDontCare,
+        .depthLoadOp = clearState.depthValue ? vk::AttachmentLoadOp::eClear : vk::AttachmentLoadOp::eDontCare,
         .depthStoreOp = vk::AttachmentStoreOp::eStore,
-        .stencilLoadOp = renderList.clearStencilValue ? vk::AttachmentLoadOp::eClear : vk::AttachmentLoadOp::eDontCare,
+        .stencilLoadOp = clearState.stencilValue ? vk::AttachmentLoadOp::eClear : vk::AttachmentLoadOp::eDontCare,
         .stencilStoreOp = vk::AttachmentStoreOp::eStore,
     };
 

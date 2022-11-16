@@ -1,6 +1,7 @@
 
 #pragma once
 
+#include "Teide/MeshData.h"
 #include "Teide/TextureData.h"
 
 #include <bitset>
@@ -105,8 +106,6 @@ struct RasterState
     CullMode cullMode = CullMode::Anticlockwise;
     float depthBiasConstant = 0.0f;
     float depthBiasSlope = 0.0f;
-    bool multisampleEnable = false;
-    bool antialiasedLineEnable = false;
     float lineWidth = 1.0f;
 };
 
@@ -126,6 +125,30 @@ struct FramebufferLayout
     uint32 sampleCount = 1;
 
     auto operator<=>(const FramebufferLayout&) const = default;
+};
+
+struct RenderOverrides
+{
+    std::optional<float> depthBiasConstant;
+    std::optional<float> depthBiasSlope;
+
+    auto operator<=>(const RenderOverrides&) const = default;
+};
+
+struct RenderPassDesc
+{
+    FramebufferLayout framebufferLayout;
+    RenderOverrides renderOverrides;
+
+    auto operator<=>(const RenderPassDesc&) const = default;
+};
+
+struct PipelineData
+{
+    ShaderPtr shader;
+    VertexLayout vertexLayout;
+    RenderStates renderStates;
+    std::vector<RenderPassDesc> renderPasses;
 };
 
 } // namespace Teide

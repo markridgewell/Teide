@@ -57,6 +57,14 @@ constexpr Teide::FramebufferLayout ShadowFramebufferLayout = {
     .sampleCount = 1,
 };
 
+constexpr Teide::RenderOverrides ShadowRenderOverrides = {
+    // Depth bias (and slope) are used to avoid shadowing artifacts
+    // Constant depth bias factor (always applied)
+    .depthBiasConstant = 1.25f,
+    // Slope depth bias factor, applied depending on polygon's slope
+    .depthBiasSlope = 2.75f,
+};
+
 Teide::RenderStates MakeRenderStates(float depthBiasConstant = 0.0f, float depthBiasSlope = 0.0f)
 {
     return {
@@ -161,11 +169,12 @@ void Application::OnRender()
 
         Teide::RenderList renderList = {
             .name = "ShadowPass",
-            .clearDepthValue = 1.0f,
+            .clearState = {.depthValue = 1.0f},
             .viewParameters = viewParams,
+            .renderOverrides = ShadowRenderOverrides,
             .objects = {{
                 .mesh = m_mesh,
-                .pipeline = m_shadowMapPipeline,
+                .pipeline = m_pipeline,
                 .materialParameters = m_material.params,
                 .objectParameters = {.uniformData = Teide::ToBytes(objectUniforms)},
             }},
@@ -174,20 +183,20 @@ void Application::OnRender()
         constexpr uint32_t shadowMapSize = 2048;
 
         const Teide::RenderTargetInfo shadowRenderTarget = {
-                .size = {shadowMapSize, shadowMapSize},
-                .framebufferLayout = ShadowFramebufferLayout,
-                .samplerState = {
-                    .magFilter = Teide::Filter::Linear,
-                    .minFilter = Teide::Filter::Linear,
-                    .mipmapMode = Teide::MipmapMode::Nearest,
-                    .addressModeU = Teide::SamplerAddressMode::Repeat,
-                    .addressModeV = Teide::SamplerAddressMode::Repeat,
-                    .addressModeW = Teide::SamplerAddressMode::Repeat,
-                    .maxAnisotropy = 8.0f,
-                    .compareOp = Teide::CompareOp::Less,
-                },
-                .captureDepthStencil = true,
-            };
+            .size = {shadowMapSize, shadowMapSize},
+            .framebufferLayout = ShadowFramebufferLayout,
+            .samplerState = {
+                .magFilter = Teide::Filter::Linear,
+                .minFilter = Teide::Filter::Linear,
+                .mipmapMode = Teide::MipmapMode::Nearest,
+                .addressModeU = Teide::SamplerAddressMode::Repeat,
+                .addressModeV = Teide::SamplerAddressMode::Repeat,
+                .addressModeW = Teide::SamplerAddressMode::Repeat,
+                .maxAnisotropy = 8.0f,
+                .compareOp = Teide::CompareOp::Less,
+            },
+            .captureDepthStencil = true,
+        };
 
         const auto shadowResult = m_renderer->RenderToTexture(shadowRenderTarget, std::move(renderList));
         shadowMap = shadowResult.depthStencilTexture;
@@ -221,8 +230,10 @@ void Application::OnRender()
 
         Teide::RenderList renderList = {
             .name = "MainPass",
-            .clearColorValue = Teide::Color{0.0f, 0.0f, 0.0f, 1.0f},
-            .clearDepthValue = 1.0f,
+            .clearState = {
+                .colorValue = Teide::Color{0.0f, 0.0f, 0.0f, 1.0f},
+                .depthValue = 1.0f,
+            },
             .viewParameters = viewParams,
             .objects = {{
                 .mesh = m_mesh,
@@ -329,6 +340,7 @@ void Application::CreateMesh(const char* filename)
     if (filename == nullptr)
     {
         const auto meshData = Teide::MeshData{
+            .vertexLayout = VertexLayoutDesc,
             .vertexData = CopyBytes(QuadVertices),
             .indexData = CopyBytes(QuadIndices),
             .aabb = {{-0.5f, -0.5f, 0.0f}, {0.5f, 0.5f, 0.0f}},
@@ -350,37 +362,32 @@ void Application::CreateMaterial(const char* imageFilename)
     const auto texture = m_device->CreateTexture(LoadTexture(imageFilename), imageFilename);
 
     const Teide::ParameterBlockData materialData = {
-            .layout = m_material.shader->GetMaterialPblockLayout(),
-            .parameters = {
-                .textures = {texture},
-            },
-        };
+        .layout = m_material.shader->GetMaterialPblockLayout(),
+        .parameters = {
+            .textures = {texture},
+        },
+    };
     m_material.params = m_device->CreateParameterBlock(materialData, "Material");
 }
 
 void Application::CreatePipelines()
 {
     m_pipeline = m_device->CreatePipeline({
-            .shader = m_material.shader,
-            .vertexLayout = VertexLayoutDesc,
-            .renderStates = MakeRenderStates(),
-            .framebufferLayout = {
-                .colorFormat = m_surface->GetColorFormat(),
-                .depthStencilFormat = m_surface->GetDepthFormat(),
-                .sampleCount = m_surface->GetSampleCount(),
-            },
-        });
-
-    // Depth bias (and slope) are used to avoid shadowing artifacts
-    // Constant depth bias factor (always applied)
-    float depthBiasConstant = 1.25f;
-    // Slope depth bias factor, applied depending on polygon's slope
-    float depthBiasSlope = 2.75f;
-
-    m_shadowMapPipeline = m_device->CreatePipeline({
         .shader = m_material.shader,
-        .vertexLayout = VertexLayoutDesc,
-        .renderStates = MakeRenderStates(depthBiasConstant, depthBiasSlope),
-        .framebufferLayout = ShadowFramebufferLayout,
+        .vertexLayout = m_mesh->GetVertexLayout(),
+        .renderStates = MakeRenderStates(),
+        .renderPasses = {
+            {
+                .framebufferLayout = {
+                    .colorFormat = m_surface->GetColorFormat(),
+                    .depthStencilFormat = m_surface->GetDepthFormat(),
+                    .sampleCount = m_surface->GetSampleCount(),
+                },
+            },
+            {
+                .framebufferLayout = ShadowFramebufferLayout,
+                .renderOverrides = ShadowRenderOverrides,
+            }
+        },
     });
 }

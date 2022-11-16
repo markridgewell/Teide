@@ -14,6 +14,7 @@ set(sources
     include/Teide/ForwardDeclare.h
     include/Teide/GraphicsDevice.h
     include/Teide/Mesh.h
+    include/Teide/MeshData.h
     include/Teide/ParameterBlock.h
     include/Teide/Pipeline.h
     include/Teide/PipelineData.h

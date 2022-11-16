@@ -105,11 +105,13 @@ TEST(GraphicsDeviceTest, CreatePipeline)
             .bufferBindings = {{.stride = 0}},
             .attributes = {{.name = "inPosition", .format = Format::Float3, .bufferIndex = 0, .offset = 0}},
         },
-        .framebufferLayout = {
-            .colorFormat = Format::Byte4Srgb,
-            .depthStencilFormat = Format::Depth16,
-            .sampleCount = 2,
-        },
+        .renderPasses = {{
+            .framebufferLayout = {
+                .colorFormat = Format::Byte4Srgb,
+                .depthStencilFormat = Format::Depth16,
+                .sampleCount = 2,
+            },
+        }},
     };
 
     const auto pipeline = device->CreatePipeline(pipelineData);

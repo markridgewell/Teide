@@ -48,7 +48,7 @@ TEST_F(RendererTest, RenderNothing)
     const auto renderTarget = CreateRenderTargetInfo({2, 2});
 
     const RenderList renderList = {
-        .clearColorValue = Color{1.0f, 0.0f, 0.0f, 1.0f},
+        .clearState = {.colorValue = Color{1.0f, 0.0f, 0.0f, 1.0f}},
     };
 
     const auto texture = m_renderer->RenderToTexture(renderTarget, renderList).colorTexture;
@@ -81,11 +81,11 @@ TEST_F(RendererTest, RenderFullscreenTri)
     const auto pipeline = m_device->CreatePipeline({
         .shader = shader,
         .vertexLayout = vertexLayout,
-        .framebufferLayout = renderTarget.framebufferLayout,
+        .renderPasses = {{.framebufferLayout = renderTarget.framebufferLayout}},
     });
 
     const RenderList renderList = {
-        .clearColorValue = Color{1.0f, 0.0f, 0.0f, 1.0f},
+        .clearState = {.colorValue = Color{1.0f, 0.0f, 0.0f, 1.0f}},
         .objects = {RenderObject{.mesh = mesh, .pipeline = pipeline}},
     };
 

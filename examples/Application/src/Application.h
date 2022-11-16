@@ -67,7 +67,6 @@ private:
     // Lights
     Geo::Angle m_lightYaw = 45.0_deg;
     Geo::Angle m_lightPitch = -45.0_deg;
-    Teide::PipelinePtr m_shadowMapPipeline;
     Geo::Matrix4 m_shadowMatrix;
 
     // Camera

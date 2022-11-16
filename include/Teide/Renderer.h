@@ -40,18 +40,21 @@ struct RenderObject
 
 using Color = std::array<float, 4>;
 
+struct ClearState
+{
+    std::optional<Color> colorValue;
+    std::optional<float> depthValue;
+    std::optional<uint32> stencilValue;
+};
+
 struct RenderList
 {
     std::string name;
-
-    std::optional<Color> clearColorValue;
-    std::optional<float> clearDepthValue;
-    std::optional<uint32> clearStencilValue;
-
+    ClearState clearState;
     ShaderParameters viewParameters;
-
     ViewportRegion viewportRegion;
     std::optional<Geo::Box2i> scissor;
+    RenderOverrides renderOverrides;
 
     std::vector<RenderObject> objects;
 };

@@ -228,11 +228,16 @@ RenderToTextureResult VulkanRenderer::RenderToTexture(const RenderTargetInfo& re
             addAttachment(depthStencil, depthStencilTextureState);
         }
 
-        const auto renderPass = m_device.CreateRenderPass(renderTarget.framebufferLayout, renderList);
+        const RenderPassDesc renderPassDesc = {
+            .framebufferLayout = renderTarget.framebufferLayout,
+            .renderOverrides = renderList.renderOverrides,
+        };
+
+        const auto renderPass = m_device.CreateRenderPass(renderTarget.framebufferLayout, renderList.clearState);
         const auto framebuffer
             = m_device.CreateFramebuffer(renderPass, renderTarget.framebufferLayout, renderTarget.size, attachments);
 
-        BuildCommandBuffer(commandBuffer, renderList, renderPass, framebuffer);
+        BuildCommandBuffer(commandBuffer, renderList, renderPass, renderPassDesc, framebuffer);
 
         if (color && renderTarget.captureColor)
         {
@@ -262,9 +267,14 @@ void VulkanRenderer::RenderToSurface(Surface& surface, RenderList renderList)
         m_device.GetScheduler().Schedule([=, this, renderList = std::move(renderList)](uint32_t taskIndex) {
             CommandBuffer& commandBuffer = m_device.GetScheduler().GetCommandBuffer(taskIndex);
 
-            const auto renderPass = m_device.CreateRenderPass(framebuffer.layout, renderList);
+            const RenderPassDesc renderPassDesc = {
+                .framebufferLayout = framebuffer.layout,
+                .renderOverrides = renderList.renderOverrides,
+            };
 
-            BuildCommandBuffer(commandBuffer, renderList, renderPass, framebuffer);
+            const auto renderPass = m_device.CreateRenderPass(framebuffer.layout, renderList.clearState);
+
+            BuildCommandBuffer(commandBuffer, renderList, renderPass, renderPassDesc, framebuffer);
 
             commandBuffer.Get()->end();
 
@@ -321,7 +331,8 @@ Task<TextureData> VulkanRenderer::CopyTextureData(TexturePtr texture)
 }
 
 void VulkanRenderer::BuildCommandBuffer(
-    CommandBuffer& commandBufferWrapper, const RenderList& renderList, vk::RenderPass renderPass, const Framebuffer& framebuffer)
+    CommandBuffer& commandBufferWrapper, const RenderList& renderList, vk::RenderPass renderPass,
+    const RenderPassDesc& renderPassDesc, const Framebuffer& framebuffer)
 {
     using std::data;
 
@@ -330,9 +341,9 @@ void VulkanRenderer::BuildCommandBuffer(
     auto clearValues = std::vector<vk::ClearValue>();
     if (framebuffer.layout.colorFormat.has_value())
     {
-        if (renderList.clearColorValue.has_value())
+        if (renderList.clearState.colorValue.has_value())
         {
-            clearValues.push_back(vk::ClearColorValue{*renderList.clearColorValue});
+            clearValues.push_back(vk::ClearColorValue{*renderList.clearState.colorValue});
         }
         else
         {
@@ -342,7 +353,9 @@ void VulkanRenderer::BuildCommandBuffer(
     if (framebuffer.layout.depthStencilFormat.has_value())
     {
         clearValues.push_back(vk::ClearDepthStencilValue{
-            renderList.clearDepthValue.value_or(1.0f), renderList.clearStencilValue.value_or(0)});
+            .depth = renderList.clearState.depthValue.value_or(1.0f),
+            .stencil = renderList.clearState.stencilValue.value_or(0),
+        });
     };
 
     const vk::RenderPassBeginInfo renderPassBegin = {
@@ -411,7 +424,7 @@ void VulkanRenderer::BuildCommandBuffer(
                     GetDescriptorSet(obj.materialParameters.get()), {});
             }
 
-            commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, pipeline.pipeline.get());
+            commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, pipeline.GetPipeline(renderPassDesc));
 
             const auto& meshImpl = m_device.GetImpl(*obj.mesh);
             commandBuffer.bindVertexBuffers(0, meshImpl.vertexBuffer->buffer.get(), vk::DeviceSize{0});

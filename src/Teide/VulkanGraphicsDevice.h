@@ -68,7 +68,7 @@ public:
         const ParameterBlockData& data, const char* name, CommandBuffer& cmdBuffer, vk::DescriptorPool descriptorPool);
 
     vk::RenderPass CreateRenderPassLayout(const FramebufferLayout& framebufferLayout);
-    vk::RenderPass CreateRenderPass(const FramebufferLayout& framebufferLayout, const RenderList& renderList);
+    vk::RenderPass CreateRenderPass(const FramebufferLayout& framebufferLayout, const ClearState& clearState);
     Framebuffer CreateFramebuffer(
         vk::RenderPass renderPass, const FramebufferLayout& layout, Geo::Size2i size, std::vector<vk::ImageView> attachments);
 
