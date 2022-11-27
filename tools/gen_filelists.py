@@ -6,6 +6,7 @@ import time
 import threading
 import filecmp
 
+pause_updating = False
 
 def is_source_file(filename):
     return os.path.splitext(filename)[1] in [".h", ".cpp", ".natvis"]
@@ -63,12 +64,49 @@ def watch_subdir(observer, event_handler, subdir):
         observer.schedule(event_handler, subpath, recursive=True)
 
 
-def add_watch(observer, path):
+def add_git_watch(observer, path):
+    from watchdog.events import FileSystemEventHandler
+
+    class GitWatcher(FileSystemEventHandler):
+        def __init__(self, dir):
+            print(f"Created a git watcher for {dir}")
+            self.dir = dir
+
+        def on_created(self, event):
+            if os.path.basename(event.src_path) == "index.lock":
+                self._lockfile_created()
+
+        def on_deleted(self, event):
+            if os.path.basename(event.src_path) == "index.lock":
+                self._lockfile_deleted()
+
+        def on_moved(self, event):
+            if os.path.basename(event.src_path) == "index.lock":
+                self._lockfile_deleted()
+            if os.path.basename(event.dest_path) == "index.lock":
+                self._lockfile_created()
+
+        def _lockfile_created(self):
+            print("Lockfile created")
+            global pause_updating
+            pause_updating = True
+
+        def _lockfile_deleted(self):
+            print("Lockfile deleted")
+            global pause_updating
+            pause_updating = False
+
+    event_handler = GitWatcher(path)
+    watch_subdir(observer, event_handler, ".git")
+    return event_handler
+
+
+def add_project_watch(observer, path):
     from watchdog.events import FileSystemEventHandler
 
     class FileWatcher(FileSystemEventHandler):
         def __init__(self, dir):
-            print(f"Created a watcher for {dir}")
+            print(f"Created a project watcher for {dir}")
             self.dir = dir
             self.timer = None
 
@@ -86,9 +124,13 @@ def add_watch(observer, path):
 
         def _handle_event(self, event):
             print(event)
+            global pause_updating
+            if pause_updating:
+                print("(ignored)")
+                return
             if self.timer:
                 self.timer.cancel()
-            self.timer = threading.Timer(10.0, gen_filelist, args=[self.dir])
+            self.timer = threading.Timer(1.0, gen_filelist, args=[self.dir])
             self.timer.start()
 
     event_handler = FileWatcher(path)
@@ -116,16 +158,22 @@ if __name__ == "__main__":
     if watch_mode:
         from watchdog.observers import Observer
         observer = Observer()
+        add_git_watch(observer, root_dir)
         for dir in find_project_dirs(root_dir):
-            add_watch(observer, dir)
+            add_project_watch(observer, dir)
 
         observer.start()
         try:
             while True:
                 time.sleep(1000)
+        except KeyboardInterrupt:
+            pass
         finally:
             observer.stop()
-            observer.join()
+            try:
+                observer.join()
+            except KeyboardInterrupt:
+                pass
     else:
         for dir in find_project_dirs(root_dir):
             gen_filelist(dir)
