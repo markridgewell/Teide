@@ -9,8 +9,7 @@ td_add_application(
          SDL2::SDL2main
          fmt::fmt
          spdlog::spdlog
-         assimp::assimp
-         Taskflow::Taskflow)
+         assimp::assimp)
 target_include_directories(Application PRIVATE ${STB_INCLUDE_DIRS})
 
 # Visual Studio debugging environment, from preset

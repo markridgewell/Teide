@@ -101,7 +101,7 @@ Teide::TextureData LoadTexture(const char* filename)
             .format = Teide::Format::Byte4Srgb,
             .mipLevelCount = static_cast<uint32_t>(std::floor(std::log2(8))) + 1,
             .samplerState = {.magFilter = Teide::Filter::Nearest, .minFilter = Teide::Filter::Nearest},
-            .pixels = CopyBytes(pixels),
+            .pixels = Teide::ToBytes(pixels),
         };
     }
 
@@ -126,6 +126,6 @@ Teide::TextureData LoadTexture(const char* filename)
         .format = Teide::Format::Byte4Srgb,
         .mipLevelCount = static_cast<uint32_t>(std::floor(std::log2(std::max(width, height)))) + 1,
         .samplerState = {.magFilter = Teide::Filter::Linear, .minFilter = Teide::Filter::Linear},
-        .pixels = CopyBytes(std::span(pixels.get(), imageSize)),
+        .pixels = Teide::ToBytes(std::span(pixels.get(), imageSize)),
     };
 }

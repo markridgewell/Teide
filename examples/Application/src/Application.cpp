@@ -341,8 +341,8 @@ void Application::CreateMesh(const char* filename)
     {
         const auto meshData = Teide::MeshData{
             .vertexLayout = VertexLayoutDesc,
-            .vertexData = CopyBytes(QuadVertices),
-            .indexData = CopyBytes(QuadIndices),
+            .vertexData = Teide::ToBytes(QuadVertices),
+            .indexData = Teide::ToBytes(QuadIndices),
             .aabb = {{-0.5f, -0.5f, 0.0f}, {0.5f, 0.5f, 0.0f}},
         };
 
