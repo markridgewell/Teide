@@ -58,6 +58,24 @@ function(td_add_application target_name)
     target_link_libraries(${target_name} PRIVATE ${ARG_DEPS})
 endfunction()
 
+function(td_add_console_application target_name)
+    set(multiValueArgs SOURCES DEPS)
+    cmake_parse_arguments(
+        "ARG"
+        "${local_options}"
+        "${oneValueArgs}"
+        "${multiValueArgs}"
+        ${ARGN})
+
+    set(source_dir "${CMAKE_CURRENT_SOURCE_DIR}/src")
+
+    add_executable(${target_name} ${ARG_SOURCES})
+    source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${ARG_SOURCES})
+    target_compile_features(${target_name} PRIVATE ${cxx_standard})
+    target_include_directories(${target_name} PRIVATE ${source_dir})
+    target_link_libraries(${target_name} PRIVATE ${ARG_DEPS})
+endfunction()
+
 function(td_add_test target_name)
     set(multiValueArgs SOURCES DEPS)
     cmake_parse_arguments(

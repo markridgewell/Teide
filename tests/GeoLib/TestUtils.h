@@ -13,17 +13,6 @@
 
 namespace Geo
 {
-template <class T, int N, class Tag>
-std::ostream& operator<<(std::ostream& os, const Vector<T, N, Tag>& v)
-{
-    os << '(';
-    for (int i = 0; i < N - 1; i++)
-    {
-        os << v[i] << ", ";
-    }
-    return os << v[N - 1] << ')';
-}
-
 template <class T, int M, int N>
 std::ostream& operator<<(std::ostream& os, const Matrix<T, M, N>& m)
 {

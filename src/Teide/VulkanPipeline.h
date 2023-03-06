@@ -14,11 +14,7 @@ namespace Teide
 
 struct VulkanPipeline : public Pipeline
 {
-    explicit VulkanPipeline(const VulkanShader& shader) :
-        materialPblockLayout{shader.materialPblockLayout},
-        objectPblockLayout{shader.objectPblockLayout},
-        layout{shader.pipelineLayout.get()}
-    {}
+    explicit VulkanPipeline(const VulkanShaderPtr& shader) : shader{shader}, layout{shader->pipelineLayout.get()} {}
 
     vk::Pipeline GetPipeline(const RenderPassDesc& renderPass) const
     {
@@ -33,8 +29,7 @@ struct VulkanPipeline : public Pipeline
         vk::UniquePipeline pipeline;
     };
 
-    VulkanParameterBlockLayoutPtr materialPblockLayout;
-    VulkanParameterBlockLayoutPtr objectPblockLayout;
+    VulkanShaderPtr shader;
     vk::PipelineLayout layout;
     std::vector<RenderPassPipeline> pipelines;
 };

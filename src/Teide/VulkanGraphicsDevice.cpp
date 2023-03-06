@@ -817,7 +817,7 @@ MeshPtr VulkanGraphicsDevice::CreateMesh(const MeshData& data, const char* name,
 
 PipelinePtr VulkanGraphicsDevice::CreatePipeline(const PipelineData& data)
 {
-    const auto& shaderImpl = GetImpl(*data.shader);
+    const auto shaderImpl = GetImpl(data.shader);
 
     const auto pipeline = std::make_shared<VulkanPipeline>(shaderImpl);
 
@@ -825,7 +825,7 @@ PipelinePtr VulkanGraphicsDevice::CreatePipeline(const PipelineData& data)
     {
         pipeline->pipelines.push_back(
             {.renderPass = renderPass,
-             .pipeline = CreateGraphicsPipeline(shaderImpl, data.vertexLayout, data.renderStates, renderPass, *this)});
+             .pipeline = CreateGraphicsPipeline(*shaderImpl, data.vertexLayout, data.renderStates, renderPass, *this)});
     }
     return pipeline;
 }

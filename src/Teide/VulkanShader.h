@@ -44,6 +44,8 @@ struct VulkanShader : VulkanShaderBase, public Shader
     }
 };
 
+using VulkanShaderPtr = std::shared_ptr<const VulkanShader>;
+
 template <>
 struct VulkanImpl<Shader>
 {

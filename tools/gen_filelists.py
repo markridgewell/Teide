@@ -49,10 +49,11 @@ def gen_filelist(dir):
 
     subprocess.run(["cmake-format", "-i", tempfilename], shell=True)
 
-    if filecmp.cmp(outfilename, tempfilename, shallow=False):
+    if os.path.exists(outfilename) and filecmp.cmp(outfilename, tempfilename, shallow=False):
         os.remove(tempfilename)
     else:
-        os.remove(outfilename)
+        if os.path.exists(outfilename):
+            os.remove(outfilename)
         os.rename(tempfilename, outfilename)
         print("Updated file list for", dir)
 

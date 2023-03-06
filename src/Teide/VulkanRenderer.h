@@ -2,6 +2,7 @@
 #pragma once
 
 #include "CommandBuffer.h"
+#include "Synchronized.h"
 #include "Vulkan.h"
 #include "VulkanGraphicsDevice.h"
 #include "VulkanSurface.h"
@@ -78,11 +79,8 @@ private:
 
     ShaderEnvironmentPtr m_shaderEnvironment;
 
-    std::mutex m_surfaceCommandBuffersMutex;
-    std::vector<vk::CommandBuffer> m_surfaceCommandBuffers;
-
-    std::mutex m_surfacesToPresentMutex;
-    std::vector<SurfaceImage> m_surfacesToPresent;
+    Synchronized<std::vector<vk::CommandBuffer>> m_surfaceCommandBuffers;
+    Synchronized<std::vector<SurfaceImage>> m_surfacesToPresent;
 
     std::array<FrameResources, MaxFramesInFlight> m_frameResources;
 };

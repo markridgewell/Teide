@@ -15,6 +15,13 @@
         "DEPS": "*"
       }
     },
+    "td_add_console_application": {
+      "pargs": 1,
+      "kwargs": {
+        "SOURCES": "*",
+        "DEPS": "*"
+      }
+    },
     "td_add_test": {
       "pargs": 1,
       "kwargs": {

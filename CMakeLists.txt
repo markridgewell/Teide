@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.19)
 
 include(CMakeParseArguments)
 include(tools/Build.cmake)
+include(tools/Swiftshader.cmake)
 
 project(
     Teide
@@ -54,6 +55,17 @@ target_compile_definitions(Teide PRIVATE ${vulkan_options})
 if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
     include(CTest)
     if(BUILD_TESTING)
+        find_file(RENDERDOC_INCLUDE "renderdoc_app.h")
+        if("${RENDERDOC_INCLUDE}" EQUAL "RENDERDOC_INCLUDE-NOTFOUND")
+            set(RENDERDOC_FOUND FALSE)
+        else()
+            set(RENDERDOC_FOUND TRUE)
+            get_filename_component(RENDERDOC_INCLUDE_DIR ${RENDERDOC_INCLUDE} DIRECTORY)
+            message("RenderDoc include found at ${RENDERDOC_INCLUDE}")
+        endif()
+
+        install_swiftshader()
+
         td_add_test(
             TeideTest
             SOURCES "${test_sources}"
@@ -63,6 +75,8 @@ if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
                  GTest::gtest
                  GTest::gmock)
         target_compile_definitions(TeideTest PRIVATE ${vulkan_options})
+
+        add_subdirectory(examples/RenderTest)
     endif()
 endif()
 

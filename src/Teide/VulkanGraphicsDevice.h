@@ -57,6 +57,12 @@ public:
         return dynamic_cast<const VulkanImpl<std::remove_const_t<T>>::type&>(obj);
     }
 
+    template <class T>
+    auto GetImpl(const std::shared_ptr<T>& ptr)
+    {
+        return std::dynamic_pointer_cast<const VulkanImpl<std::remove_const_t<T>>::type>(ptr);
+    }
+
     BufferPtr CreateBuffer(const BufferData& data, const char* name, CommandBuffer& cmdBuffer);
     TexturePtr CreateTexture(const TextureData& data, const char* name, CommandBuffer& cmdBuffer);
     TexturePtr CreateRenderableTexture(const TextureData& data, const char* name);

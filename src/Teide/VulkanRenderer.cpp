@@ -109,15 +109,17 @@ void VulkanRenderer::BeginFrame(ShaderParameters sceneParameters)
 
 void VulkanRenderer::EndFrame()
 {
-    std::vector<SurfaceImage> images;
+    const auto device = m_device.GetVulkanDevice();
+
+    m_device.GetScheduler().WaitForTasks();
+
+    std::vector<SurfaceImage> images = m_surfacesToPresent.Lock([&](auto& s) { return std::exchange(s, {}); });
+    if (images.empty())
     {
-        const auto lock = std::scoped_lock(m_surfaceCommandBuffersMutex);
-        std::swap(images, m_surfacesToPresent);
+        return;
     }
 
     assert(m_presentQueue && "Can't present without a present queue");
-
-    const auto device = m_device.GetVulkanDevice();
 
     auto swapchains = std::vector<vk::SwapchainKHR>(images.size());
     auto imageIndices = std::vector<uint32_t>(images.size());
@@ -135,17 +137,12 @@ void VulkanRenderer::EndFrame()
     auto signalSemaphores = std::span(&m_renderFinished[m_frameNumber].get(), 1);
     auto fenceToSignal = m_inFlightFences[m_frameNumber].get();
 
-    m_device.GetScheduler().WaitForTasks();
-
     device.resetFences(fenceToSignal);
 
     // Submit the surface command buffer(s)
     {
-        std::vector<vk::CommandBuffer> commandBuffers;
-        {
-            const auto lock = std::scoped_lock(m_surfaceCommandBuffersMutex);
-            std::swap(m_surfaceCommandBuffers, commandBuffers);
-        }
+        std::vector<vk::CommandBuffer> commandBuffers
+            = m_surfaceCommandBuffers.Lock([](auto& c) { return std::exchange(c, {}); });
 
         for (const auto& surfaceImage : images)
         {
@@ -278,8 +275,7 @@ void VulkanRenderer::RenderToSurface(Surface& surface, RenderList renderList)
 
             commandBuffer.Get()->end();
 
-            const auto lock = std::scoped_lock(m_surfaceCommandBuffersMutex);
-            m_surfaceCommandBuffers.push_back(commandBuffer);
+            m_surfaceCommandBuffers.Lock([&commandBuffer](auto& s) { s.push_back(commandBuffer); });
         });
     }
 }
@@ -429,10 +425,10 @@ void VulkanRenderer::BuildCommandBuffer(
             const auto& meshImpl = m_device.GetImpl(*obj.mesh);
             commandBuffer.bindVertexBuffers(0, meshImpl.vertexBuffer->buffer.get(), vk::DeviceSize{0});
 
-            if (pipeline.objectPblockLayout && pipeline.objectPblockLayout->pushConstantRange.has_value())
+            if (pipeline.shader->objectPblockLayout && pipeline.shader->objectPblockLayout->pushConstantRange.has_value())
             {
                 commandBuffer.pushConstants(
-                    pipeline.layout, pipeline.objectPblockLayout->uniformsStages, 0,
+                    pipeline.layout, pipeline.shader->objectPblockLayout->uniformsStages, 0,
                     size32(obj.objectParameters.uniformData), data(obj.objectParameters.uniformData));
             }
 
@@ -453,20 +449,20 @@ void VulkanRenderer::BuildCommandBuffer(
 
 std::optional<SurfaceImage> VulkanRenderer::AddSurfaceToPresent(VulkanSurface& surface)
 {
-    const auto lock = std::scoped_lock(m_surfacesToPresentMutex);
+    return m_surfacesToPresent.Lock([&](auto& surfacesToPresent) -> std::optional<SurfaceImage> {
+        if (const auto it = std::ranges::find(surfacesToPresent, surface.GetVulkanSurface(), &SurfaceImage::surface);
+            it != surfacesToPresent.end())
+        {
+            return *it;
+        }
 
-    if (const auto it = std::ranges::find(m_surfacesToPresent, surface.GetVulkanSurface(), &SurfaceImage::surface);
-        it != m_surfacesToPresent.end())
-    {
-        return *it;
-    }
+        if (const auto result = surface.AcquireNextImage(m_inFlightFences[m_frameNumber].get()))
+        {
+            return surfacesToPresent.emplace_back(*result);
+        }
 
-    if (const auto result = surface.AcquireNextImage(m_inFlightFences[m_frameNumber].get()))
-    {
-        return m_surfacesToPresent.emplace_back(*result);
-    }
-
-    return std::nullopt;
+        return std::nullopt;
+    });
 }
 
 vk::DescriptorSet VulkanRenderer::GetDescriptorSet(const ParameterBlock* parameterBlock) const

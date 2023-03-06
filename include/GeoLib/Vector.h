@@ -6,6 +6,7 @@
 
 #include <cassert>
 #include <cmath>
+#include <ostream>
 
 namespace Geo
 {
@@ -505,6 +506,17 @@ bool Compare(const Geo::Vector<T, N, Tag>& a, const Geo::Vector<T, N, Tag>& b, T
         }
     }
     return true;
+}
+
+template <class T, Extent N, class Tag>
+std::ostream& operator<<(std::ostream& os, const Geo::Vector<T, N, Tag>& v)
+{
+    os << v[0];
+    for (Extent i = 1; i < N; i++)
+    {
+        os << ", " << v[i];
+    }
+    return os;
 }
 
 } // namespace Geo
