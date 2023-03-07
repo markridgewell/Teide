@@ -35,6 +35,6 @@ function(activate_swiftshader target)
             POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E copy_if_different "${swiftshader_library}" $<TARGET_FILE_DIR:${target}>)
     else()
-        message(SEND_ERROR "Swiftshader not found")
+        message(SEND_ERROR "SwiftShader not found")
     endif()
 endfunction()

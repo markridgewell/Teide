@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.19)
 include(CMakeParseArguments)
 include(tools/build/Build.cmake)
 include(tools/build/RenderDoc.cmake)
-include(tools/build/Swiftshader.cmake)
+include(tools/build/SwiftShader.cmake)
 
 project(
     Teide
