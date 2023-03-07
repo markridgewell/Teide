@@ -18,15 +18,16 @@ jobs:
         buildtype: [Debug, Release]
         msvcver: [2019, 2022]
 
-    name: Windows-${{matrix.buildtype}}-VC${{matrix.msvcver}}
+    name: Windows-${{matrix.buildtype}}-VS${{matrix.msvcver}}
     runs-on: windows-${{matrix.msvcver}}
 
     env:
+      job_name: Windows-${{matrix.buildtype}}-VS${{matrix.msvcver}}
       CMAKE_BUILD_TYPE: ${{matrix.buildtype}}
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
       with:
         lfs: true
 
@@ -61,6 +62,13 @@ jobs:
     - name: Build
       run: cmake --build ${{github.workspace}}/build --config ${{matrix.buildtype}}
 
+    - name: Save CMake output log
+      if: failure()
+      uses: actions/upload-artifact@v3
+      with:
+        name: CMakeOutput-${{env.job_name}}
+        path: ${{github.workspace}}/build/CMakeFiles/CMakeOutput.log
+
     - name: Activate SwiftShader
       shell: powershell
       run: |
@@ -71,11 +79,11 @@ jobs:
       working-directory: ${{github.workspace}}/build
       run: python ${{github.workspace}}/tools/coverage.py ci ${{github.workspace}} ${{matrix.buildtype}}
 
-    - name: Upload test log
+    - name: Save test log
       if: failure()
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v3
       with:
-        name: TestLog-Windows-${{matrix.buildtype}}
+        name: TestLog-${{env.job_name}}
         path: build/Testing/Temporary/LastTest.log
 
     - name: Upload coverage report
@@ -88,7 +96,7 @@ jobs:
     - name: Save coverage report
       uses: actions/upload-artifact@v3
       with:
-        name: CoverageReportMSVC${{matrix.msvcver}}${{matrix.buildtype}}
+        name: CoverageReport-${{env.job_name}}
         path: ./coverage.xml
 
   linux:
@@ -97,17 +105,18 @@ jobs:
         buildtype: [Debug, Release]
         preset: [linux]
 
-    name: Build-and-Test-Linux-${{matrix.buildtype}}
+    name: Linux-${{matrix.buildtype}}
     runs-on: ubuntu-latest
 
     env:
+      job_name: Linux-${{matrix.buildtype}}
       CMAKE_BUILD_TYPE: ${{matrix.buildtype}}
       GTEST_FILTER: -SurfaceTest.*
       ASAN_OPTIONS: detect_leaks=0 # Vulkan on Linux appears to leak memory, so disable leak checks
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
       with:
         lfs: true
 
@@ -154,6 +163,13 @@ jobs:
     - name: Build
       run: cmake --build ${{github.workspace}}/build --config ${{matrix.buildtype}}
 
+    - name: Save CMake output log
+      if: failure()
+      uses: actions/upload-artifact@v3
+      with:
+        name: CMakeOutput-${{env.job_name}}
+        path: ${{github.workspace}}/build/CMakeFiles/CMakeOutput.log
+
     - name: Activate SwiftShader
       run: |
         unzip ${{github.workspace}}/swiftshader/*.zip -d ${{github.workspace}}/swiftshader
@@ -162,9 +178,9 @@ jobs:
       run: |
         VK_ICD_FILENAMES=${{github.workspace}}/swiftshader/lib/vk_swiftshader_icd.json ctest --test-dir ${{github.workspace}}/build --verbose -C ${{matrix.buildtype}}
 
-    - name: Upload test log
+    - name: Save test log
       if: failure()
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v3
       with:
-        name: TestLog-Linux-${{matrix.buildtype}}
+        name: TestLog-${{env.job_name}}
         path: Testing/Temporary/LastTest.log
