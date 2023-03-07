@@ -15,7 +15,7 @@ env:
 
 jobs:
   windows:
-    name: Check-Readme-Windows
+    name: Windows
     runs-on: windows-2022
 
     steps:
@@ -40,7 +40,7 @@ jobs:
       run: python ${{github.workspace}}/tools/check_readme.py
 
   linux:
-    name: Check-Readme-Linux
+    name: Linux
     runs-on: ubuntu-latest
 
     steps:

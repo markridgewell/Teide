@@ -18,7 +18,7 @@ jobs:
         buildtype: [Debug, Release]
         msvcver: [2019, 2022]
 
-    name: Build-and-Test-Windows-${{matrix.msvcver}}-${{matrix.buildtype}}
+    name: Windows-${{matrix.buildtype}}-VC${{matrix.msvcver}}
     runs-on: windows-${{matrix.msvcver}}
 
     env:
