@@ -16,7 +16,7 @@ public:
         for (int i = 1; i < m_argc; ++i)
         {
             const std::string_view arg = m_argv[i];
-            if (std::ranges::contains(aliases, arg))
+            if (std::ranges::find(aliases, arg) != aliases.end())
             {
                 return true;
             }
@@ -31,7 +31,7 @@ public:
         for (int i = 1; i < m_argc; ++i)
         {
             const std::string_view arg = m_argv[i];
-            if (std::ranges::contains(aliases, arg))
+            if (std::ranges::find(aliases, arg) != aliases.end())
             {
                 if (i < m_argc - 1)
                 {

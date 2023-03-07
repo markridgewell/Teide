@@ -1,0 +1,19 @@
+set(sources
+    src/GeoLib/Angle.test.cpp
+    src/GeoLib/Matrix.test.cpp
+    src/GeoLib/TestUtils.h
+    src/GeoLib/Vector.test.cpp
+    src/Main.cpp
+    src/ShaderCompiler/ShaderCompilerTest.cpp
+    src/Teide/CpuExecutorTest.cpp
+    src/Teide/GpuExecutorTest.cpp
+    src/Teide/GraphicsDeviceTest.cpp
+    src/Teide/RendererTest.cpp
+    src/Teide/SchedulerTest.cpp
+    src/Teide/ShaderDataTest.cpp
+    src/Teide/SurfaceTest.cpp
+    src/Teide/TestData.h
+    src/Teide/TestUtils.cpp
+    src/Teide/TestUtils.h
+    src/Teide/TextureDataTest.cpp
+    src/Teide/TextureTest.cpp)

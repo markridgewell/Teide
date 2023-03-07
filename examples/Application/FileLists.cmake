@@ -5,5 +5,3 @@ set(sources
     src/Loaders.h
     src/Main.cpp
     src/Resources.h)
-
-set(test_sources)

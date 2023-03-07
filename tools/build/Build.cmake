@@ -22,7 +22,6 @@ function(td_add_library target_name)
 
     add_library(${target_name} ${interface} ${ARG_SOURCES})
     source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${ARG_SOURCES})
-    target_compile_features(${target_name} ${lib_type} ${cxx_standard})
     target_link_libraries(
         ${target_name}
         PUBLIC ${ARG_PUBLIC_DEPS}
@@ -53,7 +52,6 @@ function(td_add_application target_name)
         set_property(TARGET Application PROPERTY VS_DPI_AWARE "PerMonitor")
     endif()
     source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${ARG_SOURCES})
-    target_compile_features(${target_name} PRIVATE ${cxx_standard})
     target_include_directories(${target_name} PRIVATE ${source_dir})
     target_link_libraries(${target_name} PRIVATE ${ARG_DEPS})
 endfunction()
@@ -71,13 +69,12 @@ function(td_add_console_application target_name)
 
     add_executable(${target_name} ${ARG_SOURCES})
     source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${ARG_SOURCES})
-    target_compile_features(${target_name} PRIVATE ${cxx_standard})
     target_include_directories(${target_name} PRIVATE ${source_dir})
     target_link_libraries(${target_name} PRIVATE ${ARG_DEPS})
 endfunction()
 
 function(td_add_test target_name)
-    set(multiValueArgs SOURCES DEPS)
+    set(multiValueArgs SOURCES DEPS TEST_ARGS)
     cmake_parse_arguments(
         "ARG"
         "${options}"
@@ -90,9 +87,8 @@ function(td_add_test target_name)
 
     add_executable(${target_name} ${ARG_SOURCES})
     source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${ARG_SOURCES})
-    target_compile_features(${target_name} PRIVATE ${cxx_standard})
     target_link_libraries(${target_name} PRIVATE ${ARG_DEPS})
     target_include_directories(${target_name} PRIVATE ${source_dir})
     target_include_directories(${target_name} PRIVATE ${test_dir})
-    add_test(NAME ${target_name} COMMAND ${target_name})
+    add_test(NAME ${target_name} COMMAND ${target_name} ${ARG_TEST_ARGS})
 endfunction()

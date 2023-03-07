@@ -5,5 +5,3 @@ set(sources
     src/RenderTest.cpp
     src/RenderTest.h
     src/Tests.cpp)
-
-set(test_sources)

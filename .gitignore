@@ -1,3 +1,3 @@
-build
-CMakeUserPresets.json
-LastCoverageResults.log
+/build
+/CMakeUserPresets.json
+/LastCoverageResults.log

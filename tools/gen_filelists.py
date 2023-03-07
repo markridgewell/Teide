@@ -32,10 +32,6 @@ def gen_filelist(dir):
     add_source_files(source_files, dir, "include")
     source_files.sort()
 
-    test_files = []
-    add_source_files(test_files, dir, "tests")
-    test_files.sort()
-
     outfilename = os.path.join(dir, "FileLists.cmake")
     tempfilename = os.path.join(dir, "FileLists.cmake.temp")
     with open(tempfilename, "w") as f:
@@ -43,9 +39,6 @@ def gen_filelist(dir):
         f.write("\n    ")
         f.write("\n    ".join(source_files) + ")\n")
         f.write("\n")
-        f.write("set(test_sources")
-        f.write("\n    ")
-        f.write("\n    ".join(test_files) + ")\n")
 
     subprocess.run(["cmake-format", "-i", tempfilename], shell=True)
 
@@ -137,14 +130,17 @@ def add_project_watch(observer, path):
     event_handler = FileWatcher(path)
     watch_subdir(observer, event_handler, "src")
     watch_subdir(observer, event_handler, "include")
-    watch_subdir(observer, event_handler, "tests")
     return event_handler
 
 
 def find_project_dirs(root_dir):
-    for root, dirs, files in os.walk(root_dir):
-        if "CMakeLists.txt" in files:
-            yield root
+    if os.path.isfile(os.path.join(root_dir, "CMakeLists.txt")):
+        yield root_dir
+
+    for subdir in ["tests", "examples", "tools", "libs", "extras"]:
+        for root, dirs, files in os.walk(os.path.join(root_dir, subdir)):
+            if "CMakeLists.txt" in files and ("src" in dirs or "include" in dirs):
+                yield root
 
 
 if __name__ == "__main__":

@@ -1,8 +1,9 @@
 cmake_minimum_required(VERSION 3.19)
 
 include(CMakeParseArguments)
-include(tools/Build.cmake)
-include(tools/Swiftshader.cmake)
+include(tools/build/Build.cmake)
+include(tools/build/RenderDoc.cmake)
+include(tools/build/Swiftshader.cmake)
 
 project(
     Teide
@@ -11,6 +12,8 @@ project(
     LANGUAGES CXX)
 
 option(TEIDE_EXAMPLES "Build examples for Teide" OFF)
+
+enable_testing()
 
 find_package(Vulkan REQUIRED)
 find_package(SDL2 CONFIG REQUIRED)
@@ -25,12 +28,8 @@ find_path(STB_INCLUDE_DIRS "stb_c_lexer.h")
 
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
-if(MSVC)
-    # Current Visual Studio versions require /std:c++latest for some C++20 features, which requires cxx_std_23
-    set(cxx_standard cxx_std_23)
-else()
-    set(cxx_standard cxx_std_20)
-endif()
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(vulkan_options VULKAN_HPP_NO_STRUCT_CONSTRUCTORS VULKAN_HPP_DISPATCH_LOADER_DYNAMIC=1)
 
@@ -52,35 +51,14 @@ td_add_library(
 
 target_compile_definitions(Teide PRIVATE ${vulkan_options})
 
-if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
-    include(CTest)
-    if(BUILD_TESTING)
-        find_file(RENDERDOC_INCLUDE "renderdoc_app.h")
-        if("${RENDERDOC_INCLUDE}" EQUAL "RENDERDOC_INCLUDE-NOTFOUND")
-            set(RENDERDOC_FOUND FALSE)
-        else()
-            set(RENDERDOC_FOUND TRUE)
-            get_filename_component(RENDERDOC_INCLUDE_DIR ${RENDERDOC_INCLUDE} DIRECTORY)
-            message("RenderDoc include found at ${RENDERDOC_INCLUDE}")
-        endif()
+if(BUILD_TESTING AND CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
+    install_swiftshader()
+    find_renderdoc()
 
-        install_swiftshader()
-
-        td_add_test(
-            TeideTest
-            SOURCES "${test_sources}"
-            DEPS Teide
-                 SDL2::SDL2
-                 Vulkan::Vulkan
-                 GTest::gtest
-                 GTest::gmock)
-        target_compile_definitions(TeideTest PRIVATE ${vulkan_options})
-
-        add_subdirectory(examples/RenderTest)
-    endif()
+    add_subdirectory(tests)
 endif()
 
 if(TEIDE_EXAMPLES)
-    add_subdirectory(examples/Application)
+    add_subdirectory(examples)
     set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT Application)
 endif()

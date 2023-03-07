@@ -62,23 +62,3 @@ set(sources
     src/Teide/VulkanTexture.cpp
     src/Teide/VulkanTexture.h
     src/Vulkan.natvis)
-
-set(test_sources
-    tests/GeoLib/Angle.test.cpp
-    tests/GeoLib/Matrix.test.cpp
-    tests/GeoLib/TestUtils.h
-    tests/GeoLib/Vector.test.cpp
-    tests/Main.cpp
-    tests/ShaderCompiler/ShaderCompilerTest.cpp
-    tests/Teide/CpuExecutorTest.cpp
-    tests/Teide/GpuExecutorTest.cpp
-    tests/Teide/GraphicsDeviceTest.cpp
-    tests/Teide/RendererTest.cpp
-    tests/Teide/SchedulerTest.cpp
-    tests/Teide/ShaderDataTest.cpp
-    tests/Teide/SurfaceTest.cpp
-    tests/Teide/TestData.h
-    tests/Teide/TestUtils.cpp
-    tests/Teide/TestUtils.h
-    tests/Teide/TextureDataTest.cpp
-    tests/Teide/TextureTest.cpp)
