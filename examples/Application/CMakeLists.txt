@@ -9,8 +9,8 @@ td_add_application(
          SDL2::SDL2main
          fmt::fmt
          spdlog::spdlog
-         assimp::assimp)
-target_include_directories(Application PRIVATE ${STB_INCLUDE_DIRS})
+         assimp::assimp
+         Stb::Stb)
 
 # Visual Studio debugging environment, from preset
 set_property(TARGET Application PROPERTY VS_DEBUGGER_COMMAND ${TEIDE_VS_DEBUGGER_COMMAND})

@@ -1,9 +1,8 @@
 cmake_minimum_required(VERSION 3.19)
 
 include(CMakeParseArguments)
-include(tools/build/Build.cmake)
-include(tools/build/RenderDoc.cmake)
-include(tools/build/SwiftShader.cmake)
+include(tools/cmake/Build.cmake)
+include(tools/cmake/SwiftShader.cmake)
 
 project(
     Teide
@@ -15,6 +14,8 @@ option(TEIDE_EXAMPLES "Build examples for Teide" OFF)
 
 enable_testing()
 
+list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/tools/cmake/modules)
+
 find_package(Vulkan REQUIRED)
 find_package(SDL2 CONFIG REQUIRED)
 find_package(fmt CONFIG REQUIRED)
@@ -24,7 +25,8 @@ find_package(assimp CONFIG REQUIRED)
 find_package(GTest CONFIG REQUIRED)
 find_package(Taskflow CONFIG REQUIRED)
 find_package(function2 CONFIG REQUIRED)
-find_path(STB_INCLUDE_DIRS "stb_c_lexer.h")
+find_package(Stb REQUIRED)
+find_package(RenderDoc)
 
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
@@ -53,7 +55,6 @@ target_compile_definitions(Teide PRIVATE ${vulkan_options})
 
 if(BUILD_TESTING AND CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
     install_swiftshader()
-    find_renderdoc()
 
     add_subdirectory(tests)
 endif()
