@@ -2,7 +2,7 @@ include(FileLists.cmake)
 
 td_add_application(
     Application
-    DPI_AWARE
+    WIN32 DPI_AWARE
     SOURCES "${sources}"
     DEPS Teide
          SDL2::SDL2
