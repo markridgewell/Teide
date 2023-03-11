@@ -8,7 +8,6 @@ on:
   workflow_dispatch:
 
 env:
-  VULKAN_VERSION: 1.2.198.1
   VULKAN_SDK: ./VULKAN_SDK
 
 jobs:
@@ -17,6 +16,7 @@ jobs:
       matrix:
         buildtype: [Debug, Release]
         msvcver: [2019, 2022]
+      fail-fast: false
 
     name: Windows-${{matrix.buildtype}}-VS${{matrix.msvcver}}
     runs-on: windows-${{matrix.msvcver}}
@@ -31,30 +31,13 @@ jobs:
       with:
         lfs: true
 
-    - name: Setup Vulkan SDK
-      uses: humbletim/setup-vulkan-sdk@v1.2.0
-      with:
-        vulkan-query-version: ${{env.VULKAN_VERSION}}
-        vulkan-components: Vulkan-Headers, Vulkan-Loader
-        vulkan-use-cache: true
-
-    - name: Setup vcpkg
-      uses: lukka/run-vcpkg@v10
-      with:
-        vcpkgGitCommitId: '0321a8422e786e4c35f3abbc1f03acbcfae35758'
+    - name: Install dependencies
+      uses: ./.github/actions/install-dependencies
 
     - name: Setup OpenCppCoverage
       run: |
         choco install OpenCppCoverage -y
         echo "C:\Program Files\OpenCppCoverage" >> $env:GITHUB_PATH
-
-    - name: Download SwiftShader binaries
-      uses: robinraju/release-downloader@v1.3
-      with:
-        repository: "google/gfbuild-swiftshader"
-        tag: "github/google/gfbuild-swiftshader/8f075627d16bdd2a8d861e9d81df541f5cf68e2e"
-        fileName: "gfbuild-swiftshader-8f075627d16bdd2a8d861e9d81df541f5cf68e2e-Windows_x64_Release.zip"
-        out-file-path: "swiftshader"
 
     - name: Configure CMake
       run: cmake -B ${{github.workspace}}/build --preset msvc${{matrix.msvcver}}
@@ -68,12 +51,6 @@ jobs:
       with:
         name: CMakeOutput-${{env.job_name}}
         path: ${{github.workspace}}/build/CMakeFiles/CMakeOutput.log
-
-    - name: Activate SwiftShader
-      shell: powershell
-      run: |
-        Expand-Archive ${{github.workspace}}\swiftshader\*.zip -d ${{github.workspace}}\swiftshader
-        Copy-Item ${{github.workspace}}\swiftshader\lib\vulkan-1.dll C:\Windows\System32\
 
     - name: Test
       working-directory: ${{github.workspace}}/build
@@ -120,42 +97,8 @@ jobs:
       with:
         lfs: true
 
-    # This step is only needed as long as assimp depends on irrlicht.
-    # If the dependency is removed, this step can be removed.
-    - name: Install Irrlicht dependencies
-      run: |
-          sudo apt-get update
-          sudo apt install libgl1-mesa-dev libxxf86vm-dev
-
-    - name: Setup Vulkan SDK
-      uses: humbletim/setup-vulkan-sdk@v1.2.0
-      with:
-        vulkan-query-version: ${{env.VULKAN_VERSION}}
-        vulkan-components: Vulkan-Headers, Vulkan-Loader
-        vulkan-use-cache: true
-
-    - name: Install Irrlicht dependencies
-      run: |
-          sudo apt-get update
-          sudo apt install libgl1-mesa-dev libxxf86vm-dev
-
-    - name: Setup vcpkg
-      uses: lukka/run-vcpkg@v10
-      with:
-        vcpkgGitCommitId: '0321a8422e786e4c35f3abbc1f03acbcfae35758'
-
-    - name: Install GCC 11
-      run: |
-          sudo apt-get update
-          sudo apt install gcc-11 g++-11
-
-    - name: Download SwiftShader binaries
-      uses: robinraju/release-downloader@v1.3
-      with:
-        repository: "google/gfbuild-swiftshader"
-        tag: "github/google/gfbuild-swiftshader/8f075627d16bdd2a8d861e9d81df541f5cf68e2e"
-        fileName: "gfbuild-swiftshader-8f075627d16bdd2a8d861e9d81df541f5cf68e2e-Linux_x64_Release.zip"
-        out-file-path: "swiftshader"
+    - name: Install dependencies
+      uses: ./.github/actions/install-dependencies
 
     - name: Configure CMake
       run: cmake -B ${{github.workspace}}/build --preset ${{matrix.preset}} -DCMAKE_CXX_COMPILER=g++-11
@@ -169,10 +112,6 @@ jobs:
       with:
         name: CMakeOutput-${{env.job_name}}
         path: ${{github.workspace}}/build/CMakeFiles/CMakeOutput.log
-
-    - name: Activate SwiftShader
-      run: |
-        unzip ${{github.workspace}}/swiftshader/*.zip -d ${{github.workspace}}/swiftshader
 
     - name: Test
       run: |
