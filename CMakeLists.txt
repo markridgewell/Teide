@@ -29,7 +29,7 @@ find_package(RenderDoc)
 
 if(TEIDE_BUILD_TESTS)
     find_package(GTest CONFIG REQUIRED)
-    find_package(Swiftshader REQUIRED)
+    find_package(SwiftShader REQUIRED)
 endif()
 
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
