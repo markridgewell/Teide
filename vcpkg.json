@@ -4,22 +4,22 @@
   "dependencies": [
     {
       "name": "sdl2",
-      "version>=": "2.0.16",
+      "version>=": "2.24.0",
       "features": [
         "vulkan"
       ]
     },
     {
       "name": "fmt",
-      "version>=": "8.0.1"
+      "version>=": "9.0.0"
     },
     {
       "name": "spdlog",
-      "version>=": "1.9.2"
+      "version>=": "1.10.0"
     },
     {
       "name": "glslang",
-      "version>=": "11.5.0"
+      "version>=": "11.11.0"
     },
     {
       "name": "stb",
@@ -31,16 +31,16 @@
     },
     {
       "name": "gtest",
-      "version>=": "1.11.0"
+      "version>=": "1.12.1"
     },
     {
       "name": "taskflow",
-      "version>=": "3.2.0"
+      "version>=": "3.4.0"
     },
     {
       "name": "function2",
-      "version>=": "4.2.0"
+      "version>=": "4.2.2"
     }
   ],
-  "builtin-baseline": "0321a8422e786e4c35f3abbc1f03acbcfae35758"
+  "builtin-baseline": "716c3524a54f1f50a25d16a4cdd360f5a7fcc150"
 }
