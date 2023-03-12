@@ -88,27 +88,15 @@
   ],
   "buildPresets": [
     {
-      "name": "msvc2019-debug",
-      "configurePreset": "msvc2019",
-      "configuration": "Debug"
+      "name": "msvc2019",
+      "configurePreset": "msvc2019"
     },
     {
-      "name": "msvc2019-release",
-      "configurePreset": "msvc2019",
-      "configuration": "Release"
+      "name": "msvc2022",
+      "configurePreset": "msvc2022"
     },
     {
-      "name": "msvc2022-debug",
-      "configurePreset": "msvc2022",
-      "configuration": "Debug"
-    },
-    {
-      "name": "msvc2022-release",
-      "configurePreset": "msvc2022",
-      "configuration": "Release"
-    },
-    {
-      "name": "mingw-debug",
+      "name": "mingw",
       "configurePreset": "mingw"
     },
     {
@@ -118,27 +106,15 @@
   ],
   "testPresets": [
     {
-      "name": "msvc2019-debug",
-      "configurePreset": "msvc2019",
-      "configuration": "Debug"
+      "name": "msvc2019",
+      "configurePreset": "msvc2019"
     },
     {
-      "name": "msvc2019-release",
-      "configurePreset": "msvc2019",
-      "configuration": "Release"
+      "name": "msvc2022",
+      "configurePreset": "msvc2022"
     },
     {
-      "name": "msvc2022-debug",
-      "configurePreset": "msvc2022",
-      "configuration": "Debug"
-    },
-    {
-      "name": "msvc2022-release",
-      "configurePreset": "msvc2022",
-      "configuration": "Release"
-    },
-    {
-      "name": "mingw-debug",
+      "name": "mingw",
       "configurePreset": "mingw"
     },
     {

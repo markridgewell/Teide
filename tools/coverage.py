@@ -5,15 +5,14 @@ import subprocess
 from itertools import cycle
 
 def usage():
-    print("Usage: coverage <preset> [gtest_filter]")
-    print("       coverage ci <outpath> <configuration> [gtest_filter]")
+    print("Usage: coverage <preset> <configuration> [gtest_filter]")
+    print("       coverage ci <outpath> <preset> <configuration> [gtest_filter]")
     sys.exit(1)
 
 if __name__ == "__main__":
     if len(sys.argv) == 1:
         usage()
 
-    preset = sys.argv[1]
 
     ci_mode = False
     if len(sys.argv) >= 1 and sys.argv[1] == 'ci':
@@ -23,8 +22,10 @@ if __name__ == "__main__":
 
         print("CI mode enabled")
         output_path = sys.argv[2]
-        configuration = sys.argv[3]
         sys.argv[1:] = sys.argv[3:]
+
+    preset = sys.argv[1]
+    configuration = sys.argv[2]
 
     if len(sys.argv) == 3:
         os.environ["GTEST_FILTER"] = sys.argv[2]
@@ -37,10 +38,7 @@ if __name__ == "__main__":
     sources = ['Teide\\src', 'Teide\\include', 'Teide\\examples', 'Teide\\libs']
     sources = [x for y in zip(cycle(['--source']), sources) for x in y]
 
-    if ci_mode:
-        ctest_cmd = ['ctest', '-V', '-C', configuration, '--no-tests=error']
-    else:
-        ctest_cmd = ['ctest', '-V', '--preset', preset]
+    ctest_cmd = ['ctest', '--preset', preset, '--build-config', configuration, '--verbose', '--no-tests=error']
     coverage_cmd = ['OpenCppCoverage', '--export_type', export_type, '--modules', '*.exe'] + sources + ['--cover_children', '--'] + ctest_cmd
 
     print(subprocess.list2cmdline(coverage_cmd))
