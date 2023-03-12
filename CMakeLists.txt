@@ -9,12 +9,10 @@ project(
     DESCRIPTION "Vulkan-based 3D renderer"
     LANGUAGES CXX)
 
-option(TEIDE_EXAMPLES "Build examples for Teide" OFF)
+option(TEIDE_BUILD_EXAMPLES "Build examples for Teide" ON)
+option(TEIDE_BUILD_TESTS "Build tests for Teide" ON)
 
 enable_testing()
-if(BUILD_TESTING AND CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
-    set(TEIDE_TESTS ON)
-endif()
 
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/tools/cmake/modules)
 
@@ -29,7 +27,7 @@ find_package(function2 CONFIG REQUIRED)
 find_package(Stb REQUIRED)
 find_package(RenderDoc)
 
-if(TEIDE_TESTS)
+if(TEIDE_BUILD_TESTS)
     find_package(GTest CONFIG REQUIRED)
     find_package(Swiftshader REQUIRED)
 endif()
@@ -59,11 +57,11 @@ td_add_library(
 
 target_compile_definitions(Teide PRIVATE ${vulkan_options})
 
-if(TEIDE_TESTS)
+if(TEIDE_BUILD_TESTS)
     add_subdirectory(tests)
 endif()
 
-if(TEIDE_EXAMPLES)
+if(TEIDE_BUILD_EXAMPLES)
     add_subdirectory(examples)
     set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT Application)
 endif()
