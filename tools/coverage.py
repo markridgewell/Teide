@@ -38,10 +38,10 @@ if __name__ == "__main__":
     sources = [x for y in zip(cycle(['--source']), sources) for x in y]
 
     if ci_mode:
-        ctest_cmd = ['ctest', '-V', '-C', configuration]
+        ctest_cmd = ['ctest', '-V', '-C', configuration, '--no-tests=error']
     else:
         ctest_cmd = ['ctest', '-V', '--preset', preset]
     coverage_cmd = ['OpenCppCoverage', '--export_type', export_type, '--modules', '*.exe'] + sources + ['--cover_children', '--'] + ctest_cmd
 
     print(subprocess.list2cmdline(coverage_cmd))
-    subprocess.run(coverage_cmd)
+    sys.exit(subprocess.run(coverage_cmd).returncode)
