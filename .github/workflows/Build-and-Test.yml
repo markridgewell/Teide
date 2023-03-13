@@ -80,6 +80,7 @@ jobs:
       matrix:
         buildtype: [Debug, Release]
         preset: [linux]
+      fail-fast: false
 
     name: Linux-${{matrix.buildtype}}
     runs-on: ubuntu-latest
@@ -116,7 +117,7 @@ jobs:
 
     - name: Test
       run: |
-        ctest --preset ${{matrix.buildtype}} --build-config ${{matrix.buildtype}} --verbose --no-tests=error
+        ctest --preset ${{matrix.preset}} --build-config ${{matrix.buildtype}} --verbose --no-tests=error
 
     - name: Save test log
       if: failure()
