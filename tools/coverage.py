@@ -5,8 +5,7 @@ import subprocess
 from itertools import cycle
 
 def usage():
-    print("Usage: coverage <preset> <configuration> [gtest_filter]")
-    print("       coverage ci <outpath> <preset> <configuration> [gtest_filter]")
+    print("Usage: coverage [ci] <preset> <configuration> [gtest_filter]")
     sys.exit(1)
 
 if __name__ == "__main__":
@@ -22,16 +21,16 @@ if __name__ == "__main__":
 
         print("CI mode enabled")
         output_path = sys.argv[2]
-        sys.argv[1:] = sys.argv[3:]
+        del sys.argv[1]
 
     preset = sys.argv[1]
     configuration = sys.argv[2]
 
-    if len(sys.argv) == 3:
-        os.environ["GTEST_FILTER"] = sys.argv[2]
+    if len(sys.argv) == 4:
+        os.environ["GTEST_FILTER"] = sys.argv[3]
 
     if ci_mode:
-        export_type = f'cobertura:{output_path}\coverage.xml'
+        export_type = f'cobertura:coverage.xml'
     else:
         export_type = 'html:build\coverage'
 

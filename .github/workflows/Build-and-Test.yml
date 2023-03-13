@@ -53,7 +53,7 @@ jobs:
         path: ./build/msvc${{matrix.msvcver}}/CMakeFiles/CMakeOutput.log
 
     - name: Test
-      run: python ./tools/coverage.py ci . msvc${{matrix.msvcver}} ${{matrix.buildtype}}
+      run: python ./tools/coverage.py ci msvc${{matrix.msvcver}} ${{matrix.buildtype}}
 
     - name: Save test log
       if: failure()
