@@ -13,7 +13,7 @@ using namespace Teide;
 
 TEST(TextureTest, GenerateMipmaps)
 {
-    auto device = CreateGraphicsDevice();
+    auto device = CreateTestGraphicsDevice();
     const TextureData textureData = {
         .size = {2, 2},
         .format = Format::Byte4Norm,

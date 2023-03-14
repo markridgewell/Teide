@@ -1,4 +1,6 @@
 
+#include "Teide/TestUtils.h"
+
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <spdlog/sinks/ostream_sink.h>
@@ -34,6 +36,15 @@ private:
 
 int main(int argc, char** argv)
 {
+    for (int i = 1; i < argc; i++)
+    {
+        const std::string_view arg = argv[i];
+        if (arg == "-s" || arg == "--sw-render")
+        {
+            SetSoftwareRendering();
+        }
+    }
+
     testing::InitGoogleTest(&argc, argv);
 
     testing::TestEventListeners& listeners = testing::UnitTest::GetInstance()->listeners();

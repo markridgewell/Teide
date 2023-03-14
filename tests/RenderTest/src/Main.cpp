@@ -71,6 +71,7 @@ int main(int argc, char** argv)
 
     auto parser = ArgParser(argc, argv);
 
+    RenderTest::SetSoftwareRendering(parser.GetOption({"-s", "--sw-render"}));
     RenderTest::SetUpdateReferences(parser.GetOption({"-u", "--update-refs"}));
     RenderTest::SetReferenceDir(parser.GetArg<path>({"-r", "--reference-dir"}));
     RenderTest::SetOutputDir(parser.GetArg<path>({"-o", "--output-dir"}, current_path()) / "RenderTestOutput");

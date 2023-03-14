@@ -40,7 +40,7 @@ jobs:
         echo "C:\Program Files\OpenCppCoverage" >> $env:GITHUB_PATH
 
     - name: Configure CMake
-      run: cmake --preset msvc${{matrix.msvcver}}
+      run: cmake --preset msvc${{matrix.msvcver}} -DTEIDE_UNIT_TEST_SW_RENDER=ON
 
     - name: Build
       run: cmake --build --preset msvc${{matrix.msvcver}} --config ${{matrix.buildtype}}
@@ -91,7 +91,6 @@ jobs:
       CMAKE_BUILD_TYPE: ${{matrix.buildtype}}
       GTEST_FILTER: -SurfaceTest.*
       ASAN_OPTIONS: detect_leaks=0 # Vulkan on Linux appears to leak memory, so disable leak checks
-      VK_ICD_FILENAMES: ${{github.workspace}}/swiftshader/lib/vk_swiftshader_icd.json
 
     steps:
     - name: Checkout
@@ -103,7 +102,7 @@ jobs:
       uses: ./.github/actions/install-dependencies
 
     - name: Configure CMake
-      run: cmake --preset ${{matrix.preset}}
+      run: cmake --preset ${{matrix.preset}} -DTEIDE_UNIT_TEST_SW_RENDER=ON
 
     - name: Build
       run: cmake --build --preset ${{matrix.preset}} --config ${{matrix.buildtype}}
@@ -116,8 +115,7 @@ jobs:
         path: ./build/${{matrix.preset}}/CMakeFiles/CMakeOutput.log
 
     - name: Test
-      run: |
-        ctest --preset ${{matrix.preset}} --build-config ${{matrix.buildtype}} --verbose --no-tests=error
+      run: ctest --preset ${{matrix.preset}} --build-config ${{matrix.buildtype}} --verbose --no-tests=error
 
     - name: Save test log
       if: failure()

@@ -1,6 +1,8 @@
 
 #include "Vulkan.h"
 
+#include "VulkanLoader.h"
+
 #include "Teide/Pipeline.h"
 #include "Teide/Renderer.h"
 #include "Teide/StaticMap.h"
@@ -8,8 +10,6 @@
 
 #include <SDL_vulkan.h>
 #include <spdlog/spdlog.h>
-
-VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE;
 
 namespace Teide
 {
@@ -234,10 +234,8 @@ void EnableRequiredVulkanExtension(
     }
 }
 
-vk::UniqueInstance CreateInstance(vk::DynamicLoader& loader, SDL_Window* window)
+vk::UniqueInstance CreateInstance(VulkanLoader& loader, SDL_Window* window)
 {
-    VULKAN_HPP_DEFAULT_DISPATCHER.init(loader.getProcAddress<PFN_vkGetInstanceProcAddr>("vkGetInstanceProcAddr"));
-
     std::vector<const char*> extensions;
     if (window)
     {
@@ -296,7 +294,7 @@ vk::UniqueInstance CreateInstance(vk::DynamicLoader& loader, SDL_Window* window)
         instance = vk::createInstanceUnique(createInfo, s_allocator);
     }
 
-    VULKAN_HPP_DEFAULT_DISPATCHER.init(instance.get());
+    loader.LoadInstanceFunctions(instance.get());
     return instance;
 }
 

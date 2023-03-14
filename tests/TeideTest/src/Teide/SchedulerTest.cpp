@@ -5,6 +5,7 @@
 #include "Teide/TestUtils.h"
 #include "Teide/Vulkan.h"
 #include "Teide/VulkanBuffer.h"
+#include "Teide/VulkanLoader.h"
 
 #include <gmock/gmock.h>
 
@@ -25,6 +26,8 @@ auto AsUint8s(std::span<const std::byte> bytes) -> std::span<const std::uint8_t>
 class SchedulerTest : public testing::Test
 {
 public:
+    SchedulerTest() : m_loader(IsSoftwareRendering()) {}
+
     void SetUp()
     {
         m_instance = CreateInstance(m_loader);
@@ -63,7 +66,7 @@ protected:
     }
 
 private:
-    vk::DynamicLoader m_loader;
+    VulkanLoader m_loader;
     vk::UniqueInstance m_instance;
     vk::PhysicalDevice m_physicalDevice;
     vk::UniqueDevice m_device;

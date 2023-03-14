@@ -6,10 +6,19 @@
 #include "Teide/Renderer.h"
 #include "Teide/Surface.h"
 
+#include <thread>
+
 struct SDL_Window;
 
 namespace Teide
 {
+
+struct GraphicsSettings
+{
+    bool useSoftwareRendering = false;
+    uint32 numThreads = std::thread::hardware_concurrency();
+};
+
 
 class GraphicsDevice
 {
@@ -36,6 +45,6 @@ public:
 
 using GraphicsDevicePtr = std::unique_ptr<GraphicsDevice>;
 
-GraphicsDevicePtr CreateGraphicsDevice(SDL_Window* window = nullptr);
+GraphicsDevicePtr CreateGraphicsDevice(SDL_Window* window = nullptr, const GraphicsSettings& settings = {});
 
 } // namespace Teide

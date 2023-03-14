@@ -3,6 +3,7 @@
 
 #include "CommandBuffer.h"
 #include "VulkanBuffer.h"
+#include "VulkanLoader.h"
 #include "VulkanMesh.h"
 #include "VulkanParameterBlock.h"
 #include "VulkanPipeline.h"
@@ -20,6 +21,9 @@
 #include <spdlog/spdlog.h>
 
 #include <cassert>
+#include <cstdlib>
+#include <filesystem>
+#include <string>
 
 namespace Teide
 {
@@ -82,7 +86,9 @@ namespace
         return indices;
     }
 
-    vk::PhysicalDevice FindPhysicalDevice(vk::Instance instance, vk::SurfaceKHR surface, std::span<const char*> requiredExtensions)
+    vk::PhysicalDevice FindPhysicalDevice(
+        vk::Instance instance, vk::SurfaceKHR surface, const GraphicsSettings& settings,
+        std::span<const char*> requiredExtensions)
     {
         // Look for a discrete GPU
         auto physicalDevices = instance.enumeratePhysicalDevices();
@@ -96,6 +102,18 @@ namespace
             return (a.getProperties().deviceType == vk::PhysicalDeviceType::eDiscreteGpu)
                 > (b.getProperties().deviceType == vk::PhysicalDeviceType::eIntegratedGpu);
         });
+
+        if (settings.useSoftwareRendering)
+        {
+            std::erase_if(physicalDevices, [&](vk::PhysicalDevice device) {
+                return device.getProperties().deviceType != vk::PhysicalDeviceType::eCpu;
+            });
+
+            if (physicalDevices.empty())
+            {
+                throw VulkanError("Software rendering was requested, but no Vulkan software implementation was found.");
+            }
+        }
 
         // Find the first device that supports all the queue families we need
         const auto it = std::ranges::find_if(physicalDevices, [&](vk::PhysicalDevice device) {
@@ -542,12 +560,13 @@ namespace
 
 //---------------------------------------------------------------------------------------------------------------------
 
-GraphicsDevicePtr CreateGraphicsDevice(SDL_Window* window)
+GraphicsDevicePtr CreateGraphicsDevice(SDL_Window* window, const GraphicsSettings& settings)
 {
-    return std::make_unique<VulkanGraphicsDevice>(window);
+    return std::make_unique<VulkanGraphicsDevice>(window, settings);
 }
 
-VulkanGraphicsDevice::VulkanGraphicsDevice(SDL_Window* window, uint32 numThreads) : m_workerDescriptorPools(numThreads)
+VulkanGraphicsDevice::VulkanGraphicsDevice(SDL_Window* window, const GraphicsSettings& settings) :
+    m_loader(settings.useSoftwareRendering), m_settings{settings}, m_workerDescriptorPools(settings.numThreads)
 {
     m_instance = CreateInstance(m_loader, window);
 
@@ -571,7 +590,7 @@ VulkanGraphicsDevice::VulkanGraphicsDevice(SDL_Window* window, uint32 numThreads
     {
         deviceExtensions.push_back("VK_KHR_swapchain");
     }
-    m_physicalDevice = FindPhysicalDevice(m_instance.get(), surface.get(), deviceExtensions);
+    m_physicalDevice = FindPhysicalDevice(m_instance.get(), surface.get(), m_settings, deviceExtensions);
 
     const auto queueFamilies = FindQueueFamilies(m_physicalDevice, surface.get());
     m_graphicsQueueFamily = queueFamilies.graphicsFamily.value();
@@ -587,6 +606,7 @@ VulkanGraphicsDevice::VulkanGraphicsDevice(SDL_Window* window, uint32 numThreads
         queueFamilyIndices.push_back(*m_presentQueueFamily);
     };
     m_device = CreateDevice(m_physicalDevice, queueFamilyIndices, deviceExtensions);
+    m_loader.LoadDeviceFunctions(m_device.get());
     m_graphicsQueue = m_device->getQueue(m_graphicsQueueFamily, 0);
     m_allocator.emplace(m_device.get(), m_physicalDevice);
 
@@ -598,7 +618,7 @@ VulkanGraphicsDevice::VulkanGraphicsDevice(SDL_Window* window, uint32 numThreads
 
     m_pendingWindowSurfaces[window] = std::move(surface);
 
-    m_scheduler.emplace(numThreads, m_device.get(), m_graphicsQueue, m_graphicsQueueFamily);
+    m_scheduler.emplace(m_settings.numThreads, m_device.get(), m_graphicsQueue, m_graphicsQueueFamily);
 
     // TODO: Don't hardcode descriptor pool sizes
     const std::array poolSizes = {

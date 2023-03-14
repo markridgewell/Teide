@@ -19,31 +19,37 @@ using namespace Teide;
 
 namespace
 {
-TEST(GraphicsDeviceTest, CreateBuffer)
+class GraphicsDeviceTest : public testing::Test
 {
-    auto device = CreateGraphicsDevice();
+public:
+    GraphicsDeviceTest() : m_device{CreateTestGraphicsDevice()} {}
+
+protected:
+    GraphicsDevicePtr m_device;
+};
+
+TEST_F(GraphicsDeviceTest, CreateBuffer)
+{
     const auto contents = std::vector<std::byte>{std::byte{1}, std::byte{2}, std::byte{3}, std::byte{4}};
     const BufferData bufferData = {
         .usage = BufferUsage::Vertex,
         .lifetime = ResourceLifetime::Permanent,
         .data = contents,
     };
-    const auto buffer = device->CreateBuffer(bufferData, "Buffer");
+    const auto buffer = m_device->CreateBuffer(bufferData, "Buffer");
     EXPECT_THAT(buffer.get(), NotNull());
     EXPECT_THAT(buffer->GetSize(), Eq(contents.size() * sizeof(contents[0])));
 }
 
-TEST(GraphicsDeviceTest, CreateShader)
+TEST_F(GraphicsDeviceTest, CreateShader)
 {
-    auto device = CreateGraphicsDevice();
     const auto shaderData = CompileShader(SimpleShader);
-    const auto shader = device->CreateShader(shaderData, "Shader");
+    const auto shader = m_device->CreateShader(shaderData, "Shader");
     EXPECT_THAT(shader.get(), NotNull());
 }
 
-TEST(GraphicsDeviceTest, CreateTexture)
+TEST_F(GraphicsDeviceTest, CreateTexture)
 {
-    auto device = CreateGraphicsDevice();
     const TextureData textureData = {
         .size = {2, 2},
         .format = Format::Byte4Srgb,
@@ -51,7 +57,7 @@ TEST(GraphicsDeviceTest, CreateTexture)
         .sampleCount = 1,
         .pixels = HexToBytes("ff 00 00 ff 00 ff 00 ff ff 00 ff ff 00 00 ff ff"),
     };
-    const auto texture = device->CreateTexture(textureData, "Texture");
+    const auto texture = m_device->CreateTexture(textureData, "Texture");
     EXPECT_THAT(texture.get(), NotNull());
     EXPECT_THAT(texture->GetSize(), Eq(Geo::Size2i{2, 2}));
     EXPECT_THAT(texture->GetFormat(), Eq(Format::Byte4Srgb));
@@ -59,14 +65,13 @@ TEST(GraphicsDeviceTest, CreateTexture)
     EXPECT_THAT(texture->GetSampleCount(), Eq(1u));
 }
 
-TEST(GraphicsDeviceTest, CreateMesh)
+TEST_F(GraphicsDeviceTest, CreateMesh)
 {
-    auto device = CreateGraphicsDevice();
     const MeshData meshData = {
         .vertexData = MakeBytes<float>({1, 2, 3, 4, 5, 6}),
         .vertexCount = 3,
     };
-    const auto mesh = device->CreateMesh(meshData, "Mesh");
+    const auto mesh = m_device->CreateMesh(meshData, "Mesh");
     ASSERT_THAT(mesh.get(), NotNull());
     ASSERT_THAT(mesh->GetVertexBuffer(), NotNull());
     EXPECT_THAT(mesh->GetVertexBuffer()->GetSize(), Eq(meshData.vertexData.size()));
@@ -75,15 +80,14 @@ TEST(GraphicsDeviceTest, CreateMesh)
     EXPECT_THAT(mesh->GetIndexCount(), 0);
 }
 
-TEST(GraphicsDeviceTest, CreateMeshWithIndices)
+TEST_F(GraphicsDeviceTest, CreateMeshWithIndices)
 {
-    auto device = CreateGraphicsDevice();
     const MeshData meshData = {
         .vertexData = MakeBytes<float>({1, 2, 3, 4, 5, 6}),
         .indexData = MakeBytes<std::uint16_t>({0, 1, 2}),
         .vertexCount = 3,
     };
-    const auto mesh = device->CreateMesh(meshData, "Mesh");
+    const auto mesh = m_device->CreateMesh(meshData, "Mesh");
     ASSERT_THAT(mesh.get(), NotNull());
     ASSERT_THAT(mesh->GetVertexBuffer(), NotNull());
     EXPECT_THAT(mesh->GetVertexBuffer()->GetSize(), Eq(meshData.vertexData.size()));
@@ -93,13 +97,12 @@ TEST(GraphicsDeviceTest, CreateMeshWithIndices)
     EXPECT_THAT(mesh->GetIndexCount(), 3);
 }
 
-TEST(GraphicsDeviceTest, CreatePipeline)
+TEST_F(GraphicsDeviceTest, CreatePipeline)
 {
-    auto device = CreateGraphicsDevice();
     const auto shaderData = CompileShader(SimpleShader);
 
     const PipelineData pipelineData = {
-        .shader = device->CreateShader(shaderData, "Shader"),
+        .shader = m_device->CreateShader(shaderData, "Shader"),
         .vertexLayout = {
             .topology = PrimitiveTopology::TriangleList,
             .bufferBindings = {{.stride = 0}},
@@ -114,15 +117,14 @@ TEST(GraphicsDeviceTest, CreatePipeline)
         }},
     };
 
-    const auto pipeline = device->CreatePipeline(pipelineData);
+    const auto pipeline = m_device->CreatePipeline(pipelineData);
     EXPECT_THAT(pipeline.get(), NotNull());
 }
 
-TEST(GraphicsDeviceTest, CreateParameterBlockWithUniforms)
+TEST_F(GraphicsDeviceTest, CreateParameterBlockWithUniforms)
 {
-    auto device = CreateGraphicsDevice();
     const auto shaderData = CompileShader(ShaderWithMaterialParams);
-    const auto shader = device->CreateShader(shaderData, "Shader");
+    const auto shader = m_device->CreateShader(shaderData, "Shader");
     const ParameterBlockData pblockData = {
         .layout = shader->GetMaterialPblockLayout(),
         .parameters = {
@@ -130,17 +132,16 @@ TEST(GraphicsDeviceTest, CreateParameterBlockWithUniforms)
             .textures = {},
         },
     };
-    const auto pblock = device->CreateParameterBlock(pblockData, "ParameterBlock");
+    const auto pblock = m_device->CreateParameterBlock(pblockData, "ParameterBlock");
     ASSERT_THAT(pblock.get(), NotNull());
     EXPECT_THAT(pblock->GetUniformBufferSize(), Eq(16u));
     EXPECT_THAT(pblock->GetPushConstantSize(), Eq(0u));
 }
 
-TEST(GraphicsDeviceTest, CreateParameterBlockWithPushConstants)
+TEST_F(GraphicsDeviceTest, CreateParameterBlockWithPushConstants)
 {
-    auto device = CreateGraphicsDevice();
     const auto shaderData = CompileShader(ShaderWithObjectParams);
-    const auto shader = device->CreateShader(shaderData, "Shader");
+    const auto shader = m_device->CreateShader(shaderData, "Shader");
     const ParameterBlockData pblockData = {
         .layout = shader->GetObjectPblockLayout(),
         .parameters = {
@@ -148,7 +149,7 @@ TEST(GraphicsDeviceTest, CreateParameterBlockWithPushConstants)
             .textures = {},
         },
     };
-    const auto pblock = device->CreateParameterBlock(pblockData, "ParameterBlock");
+    const auto pblock = m_device->CreateParameterBlock(pblockData, "ParameterBlock");
     ASSERT_THAT(pblock.get(), NotNull());
     EXPECT_THAT(pblock->GetUniformBufferSize(), Eq(0u));
     EXPECT_THAT(pblock->GetPushConstantSize(), Eq(64u));

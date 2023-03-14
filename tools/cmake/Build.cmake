@@ -3,14 +3,14 @@ set(oneValueArgs)
 
 set(CMAKE_LINK_LIBRARIES_ONLY_TARGETS ON)
 
-macro(_gather_install_files target_name)
-    get_target_property(target_install_files ${target_name} INSTALL_FILES)
+macro(_gather_install_files target)
+    get_target_property(target_install_files ${target} INSTALL_FILES)
     if(target_install_files)
         list(APPEND install_files ${target_install_files})
         list(REMOVE_DUPLICATES install_files)
     endif()
 
-    get_target_property(dependencies ${target_name} LINK_LIBRARIES)
+    get_target_property(dependencies ${target} LINK_LIBRARIES)
     if(dependencies)
         foreach(dependency IN LISTS dependencies)
             _gather_install_files(${dependency})
@@ -18,19 +18,19 @@ macro(_gather_install_files target_name)
     endif()
 endmacro()
 
-function(_copy_install_files target_name)
-    _gather_install_files(${target_name})
+function(_copy_install_files target)
+    _gather_install_files(${target})
     if(install_files)
         add_custom_command(
-            TARGET ${target_name}
+            TARGET ${target}
             POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E copy_if_different ${install_files} $<TARGET_FILE_DIR:${target_name}>
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different ${install_files} $<TARGET_FILE_DIR:${target}>
             COMMAND_EXPAND_LISTS)
     endif()
 
 endfunction()
 
-function(td_add_library target_name)
+function(td_add_library target)
     set(multiValueArgs SOURCES PUBLIC_DEPS PRIVATE_DEPS)
     cmake_parse_arguments(
         "ARG"
@@ -49,22 +49,22 @@ function(td_add_library target_name)
         set(interface "")
     endif()
 
-    add_library(${target_name} ${interface} ${ARG_SOURCES})
+    add_library(${target} ${interface} ${ARG_SOURCES})
     source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${ARG_SOURCES})
     target_link_libraries(
-        ${target_name}
+        ${target}
         PUBLIC ${ARG_PUBLIC_DEPS}
         PRIVATE ${ARG_PRIVATE_DEPS})
 
     if(EXISTS ${source_dir} AND IS_DIRECTORY "${source_dir}")
-        target_include_directories(${target_name} PRIVATE ${source_dir})
+        target_include_directories(${target} PRIVATE ${source_dir})
     endif()
     if(EXISTS ${include_dir} AND IS_DIRECTORY "${include_dir}")
-        target_include_directories(${target_name} ${lib_type} ${include_dir})
+        target_include_directories(${target} ${lib_type} ${include_dir})
     endif()
 endfunction()
 
-function(td_add_application target_name)
+function(td_add_application target)
     set(local_options WIN32 DPI_AWARE)
     set(multiValueArgs SOURCES DEPS)
     cmake_parse_arguments(
@@ -76,21 +76,21 @@ function(td_add_application target_name)
 
     set(source_dir "${CMAKE_CURRENT_SOURCE_DIR}/src")
 
-    add_executable(${target_name} ${ARG_SOURCES})
+    add_executable(${target} ${ARG_SOURCES})
     if(${ARG_WIN32})
-        set_property(TARGET ${target_name} PROPERTY WIN32_EXECUTABLE ON)
+        set_property(TARGET ${target} PROPERTY WIN32_EXECUTABLE ON)
     endif()
     if(${ARG_DPI_AWARE})
-        set_property(TARGET ${target_name} PROPERTY VS_DPI_AWARE "PerMonitor")
+        set_property(TARGET ${target} PROPERTY VS_DPI_AWARE "PerMonitor")
     endif()
     source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${ARG_SOURCES})
-    target_include_directories(${target_name} PRIVATE ${source_dir})
-    target_link_libraries(${target_name} PRIVATE ${ARG_DEPS})
+    target_include_directories(${target} PRIVATE ${source_dir})
+    target_link_libraries(${target} PRIVATE ${ARG_DEPS})
 
-    _copy_install_files(${target_name})
+    _copy_install_files(${target})
 endfunction()
 
-function(td_add_test target_name)
+function(td_add_test target)
     set(multiValueArgs SOURCES DEPS TEST_ARGS)
     cmake_parse_arguments(
         "ARG"
@@ -102,12 +102,14 @@ function(td_add_test target_name)
     set(source_dir "${CMAKE_CURRENT_SOURCE_DIR}/src")
     set(test_dir "${CMAKE_CURRENT_SOURCE_DIR}/tests")
 
-    add_executable(${target_name} ${ARG_SOURCES})
+    add_executable(${target} ${ARG_SOURCES})
     source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${ARG_SOURCES})
-    target_link_libraries(${target_name} PRIVATE ${ARG_DEPS})
-    target_include_directories(${target_name} PRIVATE ${source_dir})
-    target_include_directories(${target_name} PRIVATE ${test_dir})
-    add_test(NAME ${target_name} COMMAND ${target_name} ${ARG_TEST_ARGS})
+    target_link_libraries(${target} PRIVATE ${ARG_DEPS})
+    target_include_directories(${target} PRIVATE ${source_dir})
+    target_include_directories(${target} PRIVATE ${test_dir})
+    add_test(NAME ${target} COMMAND ${target} ${ARG_TEST_ARGS})
+    list(JOIN ARG_TEST_ARGS " " debugger_args)
+    set_property(TARGET ${target} PROPERTY VS_DEBUGGER_COMMAND_ARGUMENTS "${debugger_args}")
 
-    _copy_install_files(${target_name})
+    _copy_install_files(${target})
 endfunction()

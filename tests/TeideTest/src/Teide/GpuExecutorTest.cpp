@@ -1,10 +1,13 @@
 
 #include "Teide/GpuExecutor.h"
 
+#include "TestUtils.h"
+
 #include "Teide/MemoryAllocator.h"
 #include "Teide/TestUtils.h"
 #include "Teide/Vulkan.h"
 #include "Teide/VulkanBuffer.h"
+#include "Teide/VulkanLoader.h"
 
 #include <gmock/gmock.h>
 
@@ -20,6 +23,8 @@ namespace
 class GpuExecutorTest : public testing::Test
 {
 public:
+    GpuExecutorTest() : m_loader(IsSoftwareRendering()) {}
+
     void SetUp()
     {
         m_instance = CreateInstance(m_loader);
@@ -71,11 +76,11 @@ protected:
     }
 
 private:
-    vk::DynamicLoader m_loader;
+    VulkanLoader m_loader;
     vk::UniqueInstance m_instance;
     vk::PhysicalDevice m_physicalDevice;
     vk::UniqueDevice m_device;
-    std::uint32_t m_queueFamilyIndex;
+    std::uint32_t m_queueFamilyIndex = 0;
     vk::Queue m_queue;
     vk::UniqueCommandPool m_commandPool;
     std::unique_ptr<MemoryAllocator> m_allocator;

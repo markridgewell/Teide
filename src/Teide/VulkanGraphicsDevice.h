@@ -5,6 +5,7 @@
 #include "MemoryAllocator.h"
 #include "Scheduler.h"
 #include "Vulkan.h"
+#include "VulkanLoader.h"
 
 #include "Teide/GraphicsDevice.h"
 #include "Teide/Renderer.h"
@@ -28,7 +29,7 @@ using VulkanParameterBlockLayoutPtr = std::shared_ptr<const VulkanParameterBlock
 class VulkanGraphicsDevice : public GraphicsDevice
 {
 public:
-    explicit VulkanGraphicsDevice(SDL_Window* window = nullptr, uint32 numThreads = std::thread::hardware_concurrency());
+    explicit VulkanGraphicsDevice(SDL_Window* window = nullptr, const GraphicsSettings& settings = {});
 
     ~VulkanGraphicsDevice();
 
@@ -102,11 +103,12 @@ private:
 
     VulkanParameterBlockLayoutPtr CreateParameterBlockLayout(const ParameterBlockDesc& desc, int set);
 
-    vk::DynamicLoader m_loader;
+    VulkanLoader m_loader;
     vk::UniqueInstance m_instance;
     vk::UniqueDebugUtilsMessengerEXT m_debugMessenger;
     vk::PhysicalDevice m_physicalDevice;
     vk::UniqueDevice m_device;
+    GraphicsSettings m_settings;
 
     std::mutex m_renderPassCacheMutex;
     std::map<RenderPassDesc, vk::UniqueRenderPass> m_renderPassCache;

@@ -21,7 +21,7 @@ namespace
 class RendererTest : public testing::Test
 {
 public:
-    RendererTest() : m_device{CreateGraphicsDevice()}, m_renderer{m_device->CreateRenderer(nullptr)} {}
+    RendererTest() : m_device{CreateTestGraphicsDevice()}, m_renderer{m_device->CreateRenderer(nullptr)} {}
 
 protected:
     RenderTargetInfo CreateRenderTargetInfo(Geo::Size2i size)

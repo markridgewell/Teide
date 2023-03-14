@@ -11,6 +11,8 @@ project(
 
 option(TEIDE_BUILD_EXAMPLES "Build examples for Teide" ON)
 option(TEIDE_BUILD_TESTS "Build tests for Teide" ON)
+option(TEIDE_UNIT_TEST_SW_RENDER "Enable software rendering for Teide unit tests" OFF)
+option(TEIDE_RENDER_TEST_SW_RENDER "Enable software rendering for Teide render tests" ON)
 
 enable_testing()
 
