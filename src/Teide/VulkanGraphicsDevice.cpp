@@ -582,7 +582,7 @@ VulkanGraphicsDevice::VulkanGraphicsDevice(SDL_Window* window, const GraphicsSet
     }
     else
     {
-        spdlog::info("No window provided (headless mode");
+        spdlog::info("No window provided (headless mode)");
     }
 
     std::vector<const char*> deviceExtensions;

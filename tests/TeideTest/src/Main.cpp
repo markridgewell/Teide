@@ -43,6 +43,11 @@ int main(int argc, char** argv)
         {
             SetSoftwareRendering();
         }
+        else if (arg == "-v" || arg == "--verbse")
+        {
+            spdlog::set_level(spdlog::level::debug);
+            spdlog::debug("Verbose logging enabled");
+        }
     }
 
     testing::InitGoogleTest(&argc, argv);

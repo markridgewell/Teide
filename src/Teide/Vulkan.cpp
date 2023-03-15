@@ -91,10 +91,13 @@ namespace
             0,           // Loader Message
             767975156,   // UNASSIGNED-BestPractices-vkCreateInstance-specialuse-extension
             -2111305990, // UNASSIGNED-BestPractices-vkCreateInstance-specialuse-extension-debugging
+            -671457468,  // UNASSIGNED-khronos-validation-createinstance-status-message
+            -1993852625, // UNASSIGNED-BestPractices-NonSuccess-Result
         };
         if (std::ranges::find(UnwantedMessages, pCallbackData->messageIdNumber) != std::end(UnwantedMessages))
         {
-            return VK_FALSE;
+            // Don't hide unwanted messages, just force them to only be visible at highest verbosity level
+            messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT;
         }
 
         const char* prefix = "";

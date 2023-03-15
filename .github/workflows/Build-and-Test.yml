@@ -40,7 +40,7 @@ jobs:
         echo "C:\Program Files\OpenCppCoverage" >> $env:GITHUB_PATH
 
     - name: Configure CMake
-      run: cmake --preset msvc${{matrix.msvcver}} -DTEIDE_UNIT_TEST_SW_RENDER=ON
+      run: cmake --preset msvc${{matrix.msvcver}} -DTEIDE_TEST_VERBOSE=ON -DTEIDE_UNIT_TEST_SW_RENDER=ON
 
     - name: Build
       run: cmake --build --preset msvc${{matrix.msvcver}} --config ${{matrix.buildtype}}
@@ -102,7 +102,7 @@ jobs:
       uses: ./.github/actions/install-dependencies
 
     - name: Configure CMake
-      run: cmake --preset ${{matrix.preset}} -DTEIDE_UNIT_TEST_SW_RENDER=ON
+      run: cmake --preset ${{matrix.preset}} -DTEIDE_TEST_VERBOSE=ON -DTEIDE_UNIT_TEST_SW_RENDER=ON
 
     - name: Build
       run: cmake --build --preset ${{matrix.preset}} --config ${{matrix.buildtype}}

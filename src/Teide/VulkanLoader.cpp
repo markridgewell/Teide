@@ -40,66 +40,70 @@ namespace
         return swiftshaderConfigPath;
     }
 
-} // namespace
-
-vk::DynamicLoader CreateLoader(bool enableSoftwareRendering)
-{
-    // The VK_ICD_FILENAMES environment variable must be set *before* loading the Vulkan library.
-    // Doing so in a base class ensures this happens before the DynamicLoader is created.
-    static bool s_softwareRenderingEnabled = false;
-    if (enableSoftwareRendering && !s_softwareRenderingEnabled)
+    vk::DynamicLoader CreateLoader(bool enableSoftwareRendering)
     {
-        spdlog::info("Enabling software rendering");
-        static auto s_envVar = "VK_ICD_FILENAMES=" + FindSwiftShaderConfig().string();
-        if (putenv(s_envVar.data()) == 0)
+        // The VK_ICD_FILENAMES environment variable must be set *before* loading the Vulkan library.
+        // Doing so in a base class ensures this happens before the DynamicLoader is created.
+        static bool s_softwareRenderingEnabled = false;
+        if (enableSoftwareRendering && !s_softwareRenderingEnabled)
         {
-            spdlog::info("Setting environment variable {}", s_envVar);
-        }
-        s_softwareRenderingEnabled = true;
-
-        { // Attempt to load SwiftShader through the system-provided Vulkan loader using the environment variable
-            vk::DynamicLoader loader;
-            const auto vkGetInstanceProcAddr
-                = loader.getProcAddress<PFN_vkGetInstanceProcAddr>("vkGetInstanceProcAddr");
-            const auto vkCreateInstance = PFN_vkCreateInstance(vkGetInstanceProcAddr(NULL, "vkCreateInstance"));
-            VkInstance instance;
-            VkInstanceCreateInfo createInfo = {.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO};
-            if (vkCreateInstance(&createInfo, nullptr, &instance) == VK_SUCCESS)
+            spdlog::info("Enabling software rendering");
+            static auto s_envVar = "VK_ICD_FILENAMES=" + FindSwiftShaderConfig().string();
+            if (putenv(s_envVar.data()) == 0)
             {
-                return loader;
+                spdlog::debug("Setting environment variable {}", s_envVar);
+            }
+            s_softwareRenderingEnabled = true;
+
+            { // Attempt to load SwiftShader through the system-provided Vulkan loader using the environment variable
+                vk::DynamicLoader loader;
+                const auto vkGetInstanceProcAddr
+                    = loader.getProcAddress<PFN_vkGetInstanceProcAddr>("vkGetInstanceProcAddr");
+                const auto vkCreateInstance = PFN_vkCreateInstance(vkGetInstanceProcAddr(NULL, "vkCreateInstance"));
+                VkInstance instance;
+                VkInstanceCreateInfo createInfo = {.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO};
+                if (vkCreateInstance(&createInfo, nullptr, &instance) == VK_SUCCESS)
+                {
+                    return loader;
+                }
+            }
+
+            { // That failed, so just load SwiftShader directly (debugging and validation extensions will be disabled)
+                spdlog::warn("Error creating Vulkan instance from loader, falling back to SwiftShader library");
+#ifdef _WIN32
+                return vk::DynamicLoader("vk_swiftshader.dll");
+#else
+                return vk::DynamicLoader("libvk_swiftshader.so");
+#endif
             }
         }
-
-        { // That failed, so just load SwiftShader directly (debugging and validation extensions will be disabled)
-            spdlog::warn("Error creating Vulkan instance from loader, falling back to SwiftShader library");
-#ifdef _WIN32
-            return vk::DynamicLoader("vk_swiftshader.dll");
-#else
-            return vk::DynamicLoader("libvk_swiftshader.so");
-#endif
-        }
-    }
-    else if (!enableSoftwareRendering && s_softwareRenderingEnabled)
-    {
-        spdlog::info("Disabling software rendering");
-        static char s_envVar[] = "VK_ICD_FILENAMES=";
-        if (putenv(s_envVar) == 0)
+        else if (!enableSoftwareRendering && s_softwareRenderingEnabled)
         {
-            spdlog::info("Setting environment variable {}", s_envVar);
+            spdlog::info("Disabling software rendering");
+            static char s_envVar[] = "VK_ICD_FILENAMES=";
+            if (putenv(s_envVar) == 0)
+            {
+                spdlog::debug("Setting environment variable {}", s_envVar);
+            }
+            s_softwareRenderingEnabled = true;
         }
-        s_softwareRenderingEnabled = true;
-    }
 
-    return vk::DynamicLoader{};
-}
+        return vk::DynamicLoader{};
+    }
+} // namespace
+
 
 VulkanLoader::VulkanLoader(bool enableSoftwareRendering) : m_loader{CreateLoader(enableSoftwareRendering)}
 {
 #ifdef _WIN32
-    const HINSTANCE library = LoadLibraryA("vulkan-1.dll");
     char filename[MAX_PATH];
-    GetModuleFileNameA(library, filename, sizeof(filename));
-    spdlog::info("Loaded {}", filename);
+    GetModuleFileName(GetModuleHandle("vulkan-1.dll"), filename, sizeof(filename));
+    spdlog::debug("Vulkan loaded at {}", filename);
+    if (enableSoftwareRendering)
+    {
+        GetModuleFileName(GetModuleHandle("vk_swiftshader.dll"), filename, sizeof(filename));
+        spdlog::debug("SwiftShader loaded at {}", filename);
+    }
 #endif
 
     VULKAN_HPP_DEFAULT_DISPATCHER.init(m_loader.getProcAddress<PFN_vkGetInstanceProcAddr>("vkGetInstanceProcAddr"));

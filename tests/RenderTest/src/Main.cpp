@@ -1,6 +1,8 @@
 
 #include "RenderTest.h"
 
+#include <spdlog/spdlog.h>
+
 #include <algorithm>
 #include <filesystem>
 #include <initializer_list>
@@ -75,6 +77,12 @@ int main(int argc, char** argv)
     RenderTest::SetUpdateReferences(parser.GetOption({"-u", "--update-refs"}));
     RenderTest::SetReferenceDir(parser.GetArg<path>({"-r", "--reference-dir"}));
     RenderTest::SetOutputDir(parser.GetArg<path>({"-o", "--output-dir"}, current_path()) / "RenderTestOutput");
+
+    if (parser.GetOption({"-v", "--verbose"}))
+    {
+        spdlog::set_level(spdlog::level::debug);
+        spdlog::debug("Verbose logging enabled");
+    }
 
     if (parser.HasErrors())
     {
