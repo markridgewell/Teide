@@ -8,13 +8,7 @@
 namespace Teide
 {
 
-class VulkanLoaderBase
-{
-public:
-    explicit VulkanLoaderBase(bool enableSoftwareRendering);
-};
-
-class VulkanLoader : VulkanLoaderBase
+class VulkanLoader
 {
 public:
     explicit VulkanLoader(bool enableSoftwareRendering);

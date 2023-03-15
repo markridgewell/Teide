@@ -42,7 +42,7 @@ namespace
 
 } // namespace
 
-VulkanLoaderBase::VulkanLoaderBase(bool enableSoftwareRendering)
+vk::DynamicLoader CreateLoader(bool enableSoftwareRendering)
 {
     // The VK_ICD_FILENAMES environment variable must be set *before* loading the Vulkan library.
     // Doing so in a base class ensures this happens before the DynamicLoader is created.
@@ -56,6 +56,28 @@ VulkanLoaderBase::VulkanLoaderBase(bool enableSoftwareRendering)
             spdlog::info("Setting environment variable {}", s_envVar);
         }
         s_softwareRenderingEnabled = true;
+
+        { // Attempt to load SwiftShader through the system-provided Vulkan loader using the environment variable
+            vk::DynamicLoader loader;
+            const auto vkGetInstanceProcAddr
+                = loader.getProcAddress<PFN_vkGetInstanceProcAddr>("vkGetInstanceProcAddr");
+            const auto vkCreateInstance = PFN_vkCreateInstance(vkGetInstanceProcAddr(NULL, "vkCreateInstance"));
+            VkInstance instance;
+            VkInstanceCreateInfo createInfo = {.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO};
+            if (vkCreateInstance(&createInfo, nullptr, &instance) == VK_SUCCESS)
+            {
+                return loader;
+            }
+        }
+
+        { // That failed, so just load SwiftShader directly (debugging and validation extensions will be disabled)
+            spdlog::warn("Error creating Vulkan instance from loader, falling back to SwiftShader library");
+#ifdef _WIN32
+            return vk::DynamicLoader("vk_swiftshader.dll");
+#else
+            return vk::DynamicLoader("libvk_swiftshader.so");
+#endif
+        }
     }
     else if (!enableSoftwareRendering && s_softwareRenderingEnabled)
     {
@@ -67,9 +89,11 @@ VulkanLoaderBase::VulkanLoaderBase(bool enableSoftwareRendering)
         }
         s_softwareRenderingEnabled = true;
     }
+
+    return vk::DynamicLoader{};
 }
 
-VulkanLoader::VulkanLoader(bool enableSoftwareRendering) : VulkanLoaderBase(enableSoftwareRendering)
+VulkanLoader::VulkanLoader(bool enableSoftwareRendering) : m_loader{CreateLoader(enableSoftwareRendering)}
 {
 #ifdef _WIN32
     const HINSTANCE library = LoadLibraryA("vulkan-1.dll");
