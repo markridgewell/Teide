@@ -10,6 +10,11 @@
 #include <filesystem>
 #include <string>
 
+#ifdef _WIN32
+#    define WIN32_LEAN_AND_MEAN
+#    include <windows.h>
+#endif
+
 
 VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE;
 
@@ -44,19 +49,21 @@ VulkanLoaderBase::VulkanLoaderBase(bool enableSoftwareRendering)
     static bool s_softwareRenderingEnabled = false;
     if (enableSoftwareRendering && !s_softwareRenderingEnabled)
     {
+        spdlog::info("Enabling software rendering");
         static auto s_envVar = "VK_ICD_FILENAMES=" + FindSwiftShaderConfig().string();
-        if (putenv(s_envVar.data()))
+        if (putenv(s_envVar.data()) == 0)
         {
-            spdlog::debug("Setting environment variable {}", s_envVar);
+            spdlog::info("Setting environment variable {}", s_envVar);
         }
         s_softwareRenderingEnabled = true;
     }
     else if (!enableSoftwareRendering && s_softwareRenderingEnabled)
     {
+        spdlog::info("Disabling software rendering");
         static char s_envVar[] = "VK_ICD_FILENAMES=";
-        if (putenv(s_envVar))
+        if (putenv(s_envVar) == 0)
         {
-            spdlog::debug("Setting environment variable {}", s_envVar);
+            spdlog::info("Setting environment variable {}", s_envVar);
         }
         s_softwareRenderingEnabled = true;
     }
@@ -64,6 +71,13 @@ VulkanLoaderBase::VulkanLoaderBase(bool enableSoftwareRendering)
 
 VulkanLoader::VulkanLoader(bool enableSoftwareRendering) : VulkanLoaderBase(enableSoftwareRendering)
 {
+#ifdef _WIN32
+    const HINSTANCE library = LoadLibraryA("vulkan-1.dll");
+    char filename[MAX_PATH];
+    GetModuleFileNameA(library, filename, sizeof(filename));
+    spdlog::info("Loaded {}", filename);
+#endif
+
     VULKAN_HPP_DEFAULT_DISPATCHER.init(m_loader.getProcAddress<PFN_vkGetInstanceProcAddr>("vkGetInstanceProcAddr"));
 }
 
