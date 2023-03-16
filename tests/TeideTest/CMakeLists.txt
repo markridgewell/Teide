@@ -1,12 +1,12 @@
 include(FileLists.cmake)
 
 if(TEIDE_TEST_VERBOSE)
-    set(extra_args "${extra_args} --verbose")
+    list(APPEND extra_args --verbose)
 endif()
 
 if(TEIDE_UNIT_TEST_SW_RENDER)
-    set(extra_deps SwiftShader::SwiftShader)
-    set(extra_args "${extra_args} --sw-render")
+    list(APPEND extra_deps SwiftShader::SwiftShader)
+    list(APPEND extra_args --sw-render)
 endif()
 
 td_add_test(

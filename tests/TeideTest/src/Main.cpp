@@ -9,13 +9,15 @@
 class LogSuppressor : public testing::EmptyTestEventListener
 {
 public:
-    LogSuppressor()
+    LogSuppressor() {}
+
+    void OnTestStart(const testing::TestInfo&) override
     {
+        m_output.clear();
+        m_logger = spdlog::default_logger();
         spdlog::set_default_logger(
             std::make_shared<spdlog::logger>("test", std::make_shared<spdlog::sinks::ostream_sink_mt>(m_output)));
     }
-
-    void OnTestStart(const testing::TestInfo&) override { m_output.clear(); }
 
     // Called after a failed assertion or a SUCCEED() invocation.
     void OnTestPartResult(const testing::TestPartResult& result) override
@@ -30,7 +32,10 @@ public:
         }
     }
 
+    void OnTestEnd(const testing::TestInfo&) override { spdlog::set_default_logger(m_logger); }
+
 private:
+    std::shared_ptr<spdlog::logger> m_logger;
     std::stringstream m_output;
 };
 
@@ -43,7 +48,7 @@ int main(int argc, char** argv)
         {
             SetSoftwareRendering();
         }
-        else if (arg == "-v" || arg == "--verbse")
+        else if (arg == "-v" || arg == "--verbose")
         {
             spdlog::set_level(spdlog::level::debug);
             spdlog::debug("Verbose logging enabled");
@@ -52,8 +57,11 @@ int main(int argc, char** argv)
 
     testing::InitGoogleTest(&argc, argv);
 
-    testing::TestEventListeners& listeners = testing::UnitTest::GetInstance()->listeners();
-    listeners.Append(new LogSuppressor);
+    if (spdlog::get_level() > spdlog::level::debug)
+    {
+        testing::TestEventListeners& listeners = testing::UnitTest::GetInstance()->listeners();
+        listeners.Append(new LogSuppressor);
+    }
 
     return RUN_ALL_TESTS();
 }

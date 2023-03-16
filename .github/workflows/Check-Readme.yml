@@ -19,7 +19,6 @@ jobs:
         os: [windows-latest, ubuntu-latest]
       fail-fast: false
 
-    name: ${{runner.os}}
     runs-on: ${{matrix.os}}
 
     steps:
