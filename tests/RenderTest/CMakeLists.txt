@@ -5,7 +5,7 @@ if(TEIDE_TEST_VERBOSE)
 endif()
 
 if(TEIDE_RENDER_TEST_SW_RENDER)
-    set(extra_deps SwiftShader::SwiftShader)
+    list(APPEND extra_deps SwiftShader::SwiftShader)
     list(APPEND extra_args --sw-render)
 endif()
 
