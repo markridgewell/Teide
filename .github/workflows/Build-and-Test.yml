@@ -55,12 +55,19 @@ jobs:
     - name: Test
       run: python ./tools/coverage.py ci msvc${{matrix.msvcver}} ${{matrix.buildtype}}
 
+    - name: Save render test output
+      if: steps.test.outcome == 'failure'
+      uses: actions/upload-artifact@v3
+      with:
+        name: RenderTestOutput-${{env.job_name}}
+        path: RenderTestOutput
+
     - name: Save test log
-      if: failure()
+      if: steps.test.outcome == 'failure'
       uses: actions/upload-artifact@v3
       with:
         name: TestLog-${{env.job_name}}
-        path: build/Testing/Temporary/LastTest.log
+        path: build/msvc${{matrix.msvcver}}/Testing/Temporary/LastTest.log
 
     - name: Upload coverage report
       uses: codecov/codecov-action@v3
@@ -115,11 +122,19 @@ jobs:
         path: ./build/${{matrix.preset}}/CMakeFiles/CMakeOutput.log
 
     - name: Test
+      id: test
       run: ctest --preset ${{matrix.preset}} --build-config ${{matrix.buildtype}} --verbose --no-tests=error
 
+    - name: Save render test output
+      if: steps.test.outcome == 'failure'
+      uses: actions/upload-artifact@v3
+      with:
+        name: RenderTestOutput-${{env.job_name}}
+        path: RenderTestOutput
+
     - name: Save test log
-      if: failure()
+      if: steps.test.outcome == 'failure'
       uses: actions/upload-artifact@v3
       with:
         name: TestLog-${{env.job_name}}
-        path: Testing/Temporary/LastTest.log
+        path: build/msvc${{matrix.msvcver}}/Testing/Temporary/LastTest.log
