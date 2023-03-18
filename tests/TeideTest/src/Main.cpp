@@ -46,7 +46,7 @@ int main(int argc, char** argv)
         const std::string_view arg = argv[i];
         if (arg == "-s" || arg == "--sw-render")
         {
-            SetSoftwareRendering();
+            Teide::EnableSoftwareRendering();
         }
         else if (arg == "-v" || arg == "--verbose")
         {

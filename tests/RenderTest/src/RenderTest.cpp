@@ -194,11 +194,6 @@ constexpr Teide::RenderTargetInfo RenderTarget = {
 
 } // namespace
 
-void RenderTest::SetSoftwareRendering(bool set)
-{
-    s_softwareRendering = set;
-}
-
 void RenderTest::SetUpdateReferences(bool set)
 {
     s_updateReferences = set;
@@ -221,7 +216,7 @@ RenderTest::RenderTest() : RenderTest(DefaultShaderEnv)
 {}
 
 RenderTest::RenderTest(Teide::ShaderEnvironmentData shaderEnv) :
-    m_device{Teide::CreateGraphicsDevice(nullptr, {.useSoftwareRendering = s_softwareRendering})},
+    m_device{Teide::CreateGraphicsDevice()},
     m_shaderEnv{m_device->CreateShaderEnvironment(shaderEnv, "ShaderEnv")},
     m_renderer{m_device->CreateRenderer(m_shaderEnv)}
 {}
@@ -359,7 +354,6 @@ void RenderTest::CompareImageToReference(const Teide::TextureData& image, const 
     }
 }
 
-bool RenderTest::s_softwareRendering = false;
 bool RenderTest::s_updateReferences = false;
 std::filesystem::path RenderTest::s_referenceDir;
 std::filesystem::path RenderTest::s_outputDir;

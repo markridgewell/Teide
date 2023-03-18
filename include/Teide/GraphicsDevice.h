@@ -13,12 +13,12 @@ struct SDL_Window;
 namespace Teide
 {
 
+void EnableSoftwareRendering();
+
 struct GraphicsSettings
 {
-    bool useSoftwareRendering = false;
     uint32 numThreads = std::thread::hardware_concurrency();
 };
-
 
 class GraphicsDevice
 {

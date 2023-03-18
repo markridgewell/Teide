@@ -6,6 +6,7 @@
 #include <SDL2/SDL_filesystem.h>
 #include <spdlog/spdlog.h>
 
+#include <atomic>
 #include <cstdlib>
 #include <filesystem>
 #include <string>
@@ -40,38 +41,9 @@ namespace
         return swiftshaderConfigPath;
     }
 
-    static bool s_envVarSet = false;
-
-    void SetEnvVar()
-    {
-        if (!s_envVarSet)
-        {
-            static auto s_envVar = "VK_ICD_FILENAMES=" + FindSwiftShaderConfig().string();
-            if (putenv(s_envVar.data()) == 0)
-            {
-                spdlog::debug("Setting environment variable {}", s_envVar);
-                s_envVarSet = true;
-            }
-        }
-    }
-
-    void UnsetEnvVar()
-    {
-        if (s_envVarSet)
-        {
-            static char s_envVar[] = "VK_ICD_FILENAMES=";
-            if (putenv(s_envVar) == 0)
-            {
-                spdlog::debug("Setting environment variable {}", s_envVar);
-                s_envVarSet = false;
-            }
-        }
-    }
-
     std::string GetSoftwareVulkanLibraryName()
     {
         // Attempt to load the system-provided Vulkan loader with the env var set
-        SetEnvVar();
         vk::DynamicLoader loader;
         const auto vkGetInstanceProcAddr = loader.getProcAddress<PFN_vkGetInstanceProcAddr>("vkGetInstanceProcAddr");
         const auto vkCreateInstance = PFN_vkCreateInstance(vkGetInstanceProcAddr(NULL, "vkCreateInstance"));
@@ -92,37 +64,40 @@ namespace
 #endif
     }
 
-    vk::DynamicLoader CreateLoader(bool enableSoftwareRendering)
-    {
-        // The VK_ICD_FILENAMES environment variable must be set *before* loading the Vulkan library.
-        // Doing so in a base class ensures this happens before the DynamicLoader is created.
-        if (enableSoftwareRendering)
-        {
-            spdlog::info("Enabling software rendering");
-            static std::string s_libraryName = GetSoftwareVulkanLibraryName();
-
-            if (s_libraryName.empty())
-            {
-                SetEnvVar();
-            }
-
-            // Load either the system Vulkan library (with the VK_ICD_FILENAMES env var set)
-            // or the Swiftshader library
-            return vk::DynamicLoader(s_libraryName);
-        }
-        else
-        {
-            spdlog::info("Disabling software rendering");
-            UnsetEnvVar();
-
-            // Load the system Vulkan library
-            return vk::DynamicLoader{};
-        }
-    }
 } // namespace
 
+static std::atomic_bool s_softwareRenderingEnabled = false;
+static std::string s_vulkanLibraryName;
 
-VulkanLoader::VulkanLoader(bool enableSoftwareRendering) : m_loader{CreateLoader(enableSoftwareRendering)}
+bool IsSoftwareRenderingEnabled()
+{
+    return s_softwareRenderingEnabled;
+}
+
+void EnableSoftwareRendering()
+{
+    if (!s_softwareRenderingEnabled.exchange(true))
+    {
+        spdlog::info("Enabling software rendering");
+
+        // The VK_ICD_FILENAMES environment variable must be set loading the Vulkan library.
+        const auto icdConfig = FindSwiftShaderConfig().string();
+        if (SDL_setenv("VK_ICD_FILENAMES", icdConfig.c_str(), true) == 0)
+        {
+            spdlog::debug("Setting environment variable {}={}", "VK_ICD_FILENAMES", icdConfig);
+        }
+
+        // The SDL_VULKAN_PATH environment variable must be set before creating any SDL_Windows
+        // with the SDL_WINDOW_VULKAN flag set.
+        s_vulkanLibraryName = GetSoftwareVulkanLibraryName();
+        if (!s_vulkanLibraryName.empty() && SDL_setenv("SDL_VULKAN_LIBRARY", s_vulkanLibraryName.c_str(), true) == 0)
+        {
+            spdlog::debug("Setting environment variable {}={}", "SDL_VULKAN_LIBRARY", s_vulkanLibraryName);
+        }
+    }
+}
+
+VulkanLoader::VulkanLoader() : m_loader(s_vulkanLibraryName)
 {
 #ifdef _WIN32
     {
@@ -134,7 +109,7 @@ VulkanLoader::VulkanLoader(bool enableSoftwareRendering) : m_loader{CreateLoader
             GetModuleFileName(vulkanLib, filename, sizeof(filename));
             spdlog::debug("Vulkan loaded at {}", filename);
         }
-        if (enableSoftwareRendering && swiftshaderLib)
+        if (s_softwareRenderingEnabled && swiftshaderLib)
         {
             GetModuleFileName(swiftshaderLib, filename, sizeof(filename));
             spdlog::debug("SwiftShader loaded at {}", filename);

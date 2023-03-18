@@ -73,7 +73,6 @@ protected:
 private:
     void CompareImageToReference(const Teide::TextureData& image, const testing::TestInfo& testInfo);
 
-    static bool s_softwareRendering;
     static bool s_updateReferences;
     static std::filesystem::path s_referenceDir;
     static std::filesystem::path s_outputDir;

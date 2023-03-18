@@ -3,21 +3,9 @@
 
 #include <charconv>
 
-static bool s_softwareRendering = false;
-
-bool IsSoftwareRendering()
-{
-    return s_softwareRendering;
-}
-
-void SetSoftwareRendering()
-{
-    s_softwareRendering = true;
-}
-
 Teide::GraphicsDevicePtr CreateTestGraphicsDevice()
 {
-    return Teide::CreateGraphicsDevice(nullptr, {.useSoftwareRendering = IsSoftwareRendering()});
+    return Teide::CreateGraphicsDevice();
 }
 
 std::optional<std::uint32_t> GetTransferQueueIndex(vk::PhysicalDevice physicalDevice)

@@ -11,7 +11,7 @@ namespace Teide
 class VulkanLoader
 {
 public:
-    explicit VulkanLoader(bool enableSoftwareRendering);
+    VulkanLoader();
 
     void LoadInstanceFunctions(vk::Instance instance);
     void LoadDeviceFunctions(vk::Device device);
@@ -19,5 +19,7 @@ public:
 private:
     vk::DynamicLoader m_loader;
 };
+
+bool IsSoftwareRenderingEnabled();
 
 } // namespace Teide

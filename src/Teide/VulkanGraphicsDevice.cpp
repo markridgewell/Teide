@@ -86,9 +86,7 @@ namespace
         return indices;
     }
 
-    vk::PhysicalDevice FindPhysicalDevice(
-        vk::Instance instance, vk::SurfaceKHR surface, const GraphicsSettings& settings,
-        std::span<const char*> requiredExtensions)
+    vk::PhysicalDevice FindPhysicalDevice(vk::Instance instance, vk::SurfaceKHR surface, std::span<const char*> requiredExtensions)
     {
         // Look for a discrete GPU
         auto physicalDevices = instance.enumeratePhysicalDevices();
@@ -103,7 +101,7 @@ namespace
                 > (b.getProperties().deviceType == vk::PhysicalDeviceType::eIntegratedGpu);
         });
 
-        if (settings.useSoftwareRendering)
+        if (IsSoftwareRenderingEnabled())
         {
             std::erase_if(physicalDevices, [&](vk::PhysicalDevice device) {
                 return device.getProperties().deviceType != vk::PhysicalDeviceType::eCpu;
@@ -566,7 +564,7 @@ GraphicsDevicePtr CreateGraphicsDevice(SDL_Window* window, const GraphicsSetting
 }
 
 VulkanGraphicsDevice::VulkanGraphicsDevice(SDL_Window* window, const GraphicsSettings& settings) :
-    m_loader(settings.useSoftwareRendering), m_settings{settings}, m_workerDescriptorPools(settings.numThreads)
+    m_settings{settings}, m_workerDescriptorPools(settings.numThreads)
 {
     m_instance = CreateInstance(m_loader, window);
 
@@ -590,7 +588,7 @@ VulkanGraphicsDevice::VulkanGraphicsDevice(SDL_Window* window, const GraphicsSet
     {
         deviceExtensions.push_back("VK_KHR_swapchain");
     }
-    m_physicalDevice = FindPhysicalDevice(m_instance.get(), surface.get(), m_settings, deviceExtensions);
+    m_physicalDevice = FindPhysicalDevice(m_instance.get(), surface.get(), deviceExtensions);
 
     const auto queueFamilies = FindQueueFamilies(m_physicalDevice, surface.get());
     m_graphicsQueueFamily = queueFamilies.graphicsFamily.value();

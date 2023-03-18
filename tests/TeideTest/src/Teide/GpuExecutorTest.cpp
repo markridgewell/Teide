@@ -23,8 +23,6 @@ namespace
 class GpuExecutorTest : public testing::Test
 {
 public:
-    GpuExecutorTest() : m_loader(IsSoftwareRendering()) {}
-
     void SetUp()
     {
         m_instance = CreateInstance(m_loader);

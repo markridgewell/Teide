@@ -9,9 +9,6 @@
 #include <string_view>
 #include <vector>
 
-void SetSoftwareRendering();
-bool IsSoftwareRendering();
-
 Teide::GraphicsDevicePtr CreateTestGraphicsDevice();
 
 std::optional<std::uint32_t> GetTransferQueueIndex(vk::PhysicalDevice physicalDevice);
