@@ -1,0 +1,21 @@
+<?xml version="1.0"?>
+<suppressions>
+  <suppress>
+    <id>*</id>
+    <fileName>build/*</fileName>
+  </suppress>
+  <suppress>
+    <id>*</id>
+    <fileName>*/vcpkg_installed/*</fileName>
+  </suppress>
+  <suppress>
+    <id>*</id>
+    <fileName>*/VulkanSDK/*</fileName>
+  </suppress>
+  <suppress>
+    <id>missingIncludeSystem</id>
+  </suppress>
+  <suppress>
+    <id>unmatchedSuppression</id>
+  </suppress>
+</suppressions>

@@ -4,13 +4,39 @@ on: [push]
 
 jobs:
   cppcheck:
-    name: CppCheck
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ['Windows', 'Linux']
+        include:
+          - os: 'Windows'
+            runner: 'windows-2022'
+            preset: 'msvc2022'
+            pkg: 'choco install --ignorepackageexitcodes'
+          - os: 'Linux'
+            runner: 'ubuntu-20.04'
+            preset: 'linux'
+            pkg: 'sudo apt-get install'
 
-      - name: cppcheck
-        uses: deep5050/cppcheck-action@v3.0
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN}}
-          other_options: --library=googletest
+    name: CppCheck-${{matrix.os}}
+    runs-on: ${{matrix.runner}}
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+
+    - name: Install dependencies
+      uses: ./.github/actions/install-dependencies
+
+    - name: Install CppCheck
+      run: ${{matrix.pkg}} cppcheck
+
+    - name: Refresh environment
+      if: matrix.os == 'Windows'
+      run: refreshenv
+
+    - name: Configure CMake
+      run: cmake --preset ${{matrix.preset}}
+
+    - name: Run CppCheck
+      run: python tools/cppcheck.py --build-dir=build/${{matrix.preset}} --show-code
