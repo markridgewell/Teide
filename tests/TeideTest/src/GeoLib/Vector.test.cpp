@@ -654,7 +654,7 @@ TEST(VectorTest, MidpointPoint4)
 
 } // namespace
 
-#ifdef _MSC_VER
+#if defined(_MSC_VER) && !defined(__clang__)
 namespace Geo
 {
 // Explicit instantiations to ensure correct code coverage

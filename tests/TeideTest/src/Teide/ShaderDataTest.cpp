@@ -18,11 +18,11 @@ TEST(ShaderDataTest, UniformOffsetFloat)
     };
 
     const auto result = BuildParameterBlockLayout(input, 0);
-    EXPECT_THAT(result.uniformsSize, Eq(12));
-    ASSERT_THAT(result.uniformDescs.size(), Eq(3));
-    EXPECT_THAT(result.uniformDescs[0].offset, Eq(0));
-    EXPECT_THAT(result.uniformDescs[1].offset, Eq(4));
-    EXPECT_THAT(result.uniformDescs[2].offset, Eq(8));
+    EXPECT_THAT(result.uniformsSize, Eq(12u));
+    ASSERT_THAT(result.uniformDescs.size(), Eq(3u));
+    EXPECT_THAT(result.uniformDescs[0].offset, Eq(0u));
+    EXPECT_THAT(result.uniformDescs[1].offset, Eq(4u));
+    EXPECT_THAT(result.uniformDescs[2].offset, Eq(8u));
 }
 
 TEST(ShaderDataTest, UniformOffsetFloat2)
@@ -36,9 +36,9 @@ TEST(ShaderDataTest, UniformOffsetFloat2)
     };
 
     const auto result = BuildParameterBlockLayout(input, 0);
-    EXPECT_THAT(result.uniformsSize, Eq(20));
-    ASSERT_THAT(result.uniformDescs.size(), Eq(3));
-    EXPECT_THAT(result.uniformDescs[0].offset, Eq(0));
-    EXPECT_THAT(result.uniformDescs[1].offset, Eq(8));
-    EXPECT_THAT(result.uniformDescs[2].offset, Eq(16));
+    EXPECT_THAT(result.uniformsSize, Eq(20u));
+    ASSERT_THAT(result.uniformDescs.size(), Eq(3u));
+    EXPECT_THAT(result.uniformDescs[0].offset, Eq(0u));
+    EXPECT_THAT(result.uniformDescs[1].offset, Eq(8u));
+    EXPECT_THAT(result.uniformDescs[2].offset, Eq(16u));
 }

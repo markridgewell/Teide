@@ -45,6 +45,11 @@ private:
 
     struct InFlightSubmit
     {
+        InFlightSubmit() = default;
+        InFlightSubmit(vk::UniqueFence f, std::vector<OnCompleteFunction> c) :
+            fence{std::move(f)}, callbacks{std::move(c)}
+        {}
+
         vk::UniqueFence fence;
         std::vector<OnCompleteFunction> callbacks;
     };

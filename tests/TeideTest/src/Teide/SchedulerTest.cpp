@@ -78,7 +78,7 @@ private:
 TEST_F(SchedulerTest, ScheduleNoArguments)
 {
     auto scheduler = CreateScheduler();
-    const auto task = scheduler.Schedule([this]() { return 42; });
+    const auto task = scheduler.Schedule([]() { return 42; });
 
     ASSERT_THAT(task.valid(), IsTrue());
     task.wait();

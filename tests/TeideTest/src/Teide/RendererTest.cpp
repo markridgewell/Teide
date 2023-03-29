@@ -57,8 +57,8 @@ TEST_F(RendererTest, RenderNothing)
 
     EXPECT_THAT(outputData.size, Eq(Geo::Size2i{2, 2}));
     EXPECT_THAT(outputData.format, Eq(Format::Byte4Srgb));
-    EXPECT_THAT(outputData.mipLevelCount, Eq(1));
-    EXPECT_THAT(outputData.sampleCount, Eq(1));
+    EXPECT_THAT(outputData.mipLevelCount, Eq(1u));
+    EXPECT_THAT(outputData.sampleCount, Eq(1u));
 
     const auto expectedPixels = HexToBytes("ff 00 00 ff ff 00 00 ff ff 00 00 ff ff 00 00 ff");
     EXPECT_THAT(outputData.pixels, ContainerEq(expectedPixels));
@@ -95,8 +95,8 @@ TEST_F(RendererTest, RenderFullscreenTri)
 
     EXPECT_THAT(outputData.size, Eq(Geo::Size2i{2, 2}));
     EXPECT_THAT(outputData.format, Eq(Format::Byte4Srgb));
-    EXPECT_THAT(outputData.mipLevelCount, Eq(1));
-    EXPECT_THAT(outputData.sampleCount, Eq(1));
+    EXPECT_THAT(outputData.mipLevelCount, Eq(1u));
+    EXPECT_THAT(outputData.sampleCount, Eq(1u));
 
     const auto expectedPixels = HexToBytes("ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff");
     EXPECT_THAT(outputData.pixels, ContainerEq(expectedPixels));

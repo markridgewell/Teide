@@ -48,19 +48,22 @@ TEST(SurfaceTest, CreatePipelineForSurface)
     auto device = CreateGraphicsDevice(window.get());
     auto surface = device->CreateSurface(window.get(), true);
     const auto shaderData = CompileShader(SimpleShader);
-    const auto shader = device->CreateShader(shaderData, "Shader");
     const VertexLayout vertexLayout = {
         .topology = PrimitiveTopology::TriangleList,
         .bufferBindings = {{.stride = 0}},
         .attributes = {{.name = "inPosition", .format = Format::Float3, .bufferIndex = 0, .offset = 0}},
     };
-    const auto renderStates = RenderStates{};
     const FramebufferLayout framebufferLayout = {
         .colorFormat = surface->GetColorFormat(),
         .depthStencilFormat = surface->GetDepthFormat(),
         .sampleCount = surface->GetSampleCount(),
     };
-    const auto pipeline = device->CreatePipeline({shader, vertexLayout, renderStates, {{framebufferLayout}}});
+    const auto pipeline = device->CreatePipeline({
+        .shader = device->CreateShader(shaderData, "Shader"),
+        .vertexLayout = vertexLayout,
+        .renderStates = {},
+        .renderPasses = {{.framebufferLayout = framebufferLayout}},
+    });
     EXPECT_THAT(pipeline.get(), NotNull());
 }
 

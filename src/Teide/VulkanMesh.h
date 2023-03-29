@@ -25,7 +25,7 @@ struct VulkanMesh : public Mesh
     BufferPtr GetIndexBuffer() const override { return indexBuffer; }
     uint32 GetVertexCount() const override { return vertexCount; }
     uint32 GetIndexCount() const override { return indexCount; }
-    Geo::Box3 GetBoundingBox() const { return aabb; }
+    Geo::Box3 GetBoundingBox() const override { return aabb; }
 };
 
 template <>

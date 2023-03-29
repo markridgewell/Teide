@@ -50,7 +50,7 @@ struct ShaderVariableType
     BaseType baseType;
     uint32 arraySize = 0;
 
-    auto operator<=>(const ShaderVariableType&) const = default;
+    bool operator==(const ShaderVariableType&) const = default;
 };
 
 struct ShaderVariable
@@ -58,7 +58,7 @@ struct ShaderVariable
     std::string name;
     ShaderVariableType type;
 
-    auto operator<=>(const ShaderVariable&) const = default;
+    bool operator==(const ShaderVariable&) const = default;
 };
 
 struct ParameterBlockDesc
@@ -66,13 +66,15 @@ struct ParameterBlockDesc
     std::vector<ShaderVariable> parameters;
     ShaderStageFlags uniformsStages = {};
 
-    auto operator<=>(const ParameterBlockDesc&) const = default;
+    bool operator==(const ParameterBlockDesc&) const = default;
 };
 
 struct ShaderEnvironmentData
 {
     ParameterBlockDesc scenePblock;
     ParameterBlockDesc viewPblock;
+
+    bool operator==(const ShaderEnvironmentData&) const = default;
 };
 
 struct ShaderStageData
@@ -80,6 +82,8 @@ struct ShaderStageData
     std::vector<ShaderVariable> inputs;
     std::vector<ShaderVariable> outputs;
     std::vector<uint32> spirv;
+
+    bool operator==(const ShaderStageData&) const = default;
 };
 
 struct ShaderData
@@ -90,7 +94,7 @@ struct ShaderData
     ShaderStageData vertexShader;
     ShaderStageData pixelShader;
 
-    auto operator<=>(const ShaderData&) const = default;
+    bool operator==(const ShaderData&) const = default;
 };
 
 bool IsResourceType(ShaderVariableType::BaseType type);

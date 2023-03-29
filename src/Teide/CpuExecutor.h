@@ -44,7 +44,7 @@ namespace detail
 } // namespace detail
 
 template <class T = void>
-using Promise = detail::PromiseHelper<T>::type;
+using Promise = typename detail::PromiseHelper<T>::type;
 
 template <class F, class... Args>
     requires std::invocable<F, Args...>
@@ -105,7 +105,7 @@ public:
 
 private:
     template <class Ret, class Arg>
-    using UnaryFunction = detail::UnaryFunctionHelper<Ret, Arg>::type;
+    using UnaryFunction = typename detail::UnaryFunctionHelper<Ret, Arg>::type;
 
     template <class F, class... Args>
         requires std::invocable<F, Args...>
@@ -132,11 +132,16 @@ private:
         UnaryFunction<OutT, InT> callback;
         Promise<OutT> promise;
 
-        OutT InvokeCallback() requires std::is_void_v<InT> { return callback(); }
+        OutT InvokeCallback()
+            requires std::is_void_v<InT>
+        {
+            return callback();
+        }
 
         OutT InvokeCallback() { return callback(future.get().value()); }
 
-        void ExecuteTask() requires std::is_void_v<OutT>
+        void ExecuteTask()
+            requires std::is_void_v<OutT>
         {
             InvokeCallback();
             promise.set_value();

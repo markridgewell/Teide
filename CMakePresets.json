@@ -40,14 +40,6 @@
       "generator": "Visual Studio 17 2022"
     },
     {
-      "name": "msvc2019-clang",
-      "inherits": "_msvc-common",
-      "displayName": "Visual Studio 2019 (Clang)",
-      "generator": "Visual Studio 16 2019",
-      "toolset": "ClangCL",
-      "architecture": "x64"
-    },
-    {
       "name": "msvc2022-clang",
       "inherits": "_msvc-common",
       "displayName": "Visual Studio 2022 (Clang)",
@@ -96,6 +88,10 @@
       "configurePreset": "msvc2022"
     },
     {
+      "name": "msvc2022-clang",
+      "configurePreset": "msvc2022-clang"
+    },
+    {
       "name": "mingw",
       "configurePreset": "mingw"
     },
@@ -112,6 +108,10 @@
     {
       "name": "msvc2022",
       "configurePreset": "msvc2022"
+    },
+    {
+      "name": "msvc2022-clang",
+      "configurePreset": "msvc2022-clang"
     },
     {
       "name": "mingw",

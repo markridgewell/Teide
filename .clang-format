@@ -1,4 +1,10 @@
 ---
+Language: Json
+IndentWidth: 2
+TabWidth: 2
+UseTab: Never
+---
+Language: Cpp
 AccessModifierOffset: -4
 AlignAfterOpenBracket: AlwaysBreak
 AlignConsecutiveAssignments: false

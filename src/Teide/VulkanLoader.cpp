@@ -11,7 +11,7 @@
 #include <filesystem>
 #include <string>
 
-#ifdef _WIN32
+#if defined(_WIN32) && defined(_DEBUG)
 #    define WIN32_LEAN_AND_MEAN
 #    include <windows.h>
 #endif
@@ -24,10 +24,6 @@ namespace Teide
 
 namespace
 {
-#ifdef _WIN32
-    constexpr auto putenv = _putenv;
-#endif
-
     std::filesystem::path FindSwiftShaderConfig()
     {
         const auto basePath = SDL_GetBasePath();
@@ -99,7 +95,7 @@ void EnableSoftwareRendering()
 
 VulkanLoader::VulkanLoader() : m_loader(s_vulkanLibraryName)
 {
-#ifdef _WIN32
+#if defined(_WIN32) && defined(_DEBUG)
     {
         char filename[MAX_PATH];
         const auto vulkanLib = GetModuleHandle("vulkan-1.dll");

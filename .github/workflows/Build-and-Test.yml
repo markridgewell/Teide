@@ -13,16 +13,23 @@ env:
 jobs:
   windows:
     strategy:
+      fail-fast: false
       matrix:
         buildtype: [Debug, Release]
-        msvcver: [2019, 2022]
-      fail-fast: false
+        preset: [msvc2019, msvc2022, msvc2022-clang]
+        include:
+        - preset: msvc2019
+          runner: windows-2019
+        - preset: msvc2022
+          runner: windows-2022
+        - preset: msvc2022-clang
+          runner: windows-2022
 
-    name: Windows-${{matrix.buildtype}}-VS${{matrix.msvcver}}
-    runs-on: windows-${{matrix.msvcver}}
+    name: Windows-${{matrix.buildtype}}-${{matrix.preset}}
+    runs-on: ${{matrix.runner}}
 
     env:
-      job_name: Windows-${{matrix.buildtype}}-VS${{matrix.msvcver}}
+      job_name: Windows-${{matrix.buildtype}}-${{matrix.preset}}
       CMAKE_BUILD_TYPE: ${{matrix.buildtype}}
 
     steps:
@@ -40,20 +47,20 @@ jobs:
         echo "C:\Program Files\OpenCppCoverage" >> $env:GITHUB_PATH
 
     - name: Configure CMake
-      run: cmake --preset msvc${{matrix.msvcver}} -DTEIDE_TEST_VERBOSE=ON -DTEIDE_UNIT_TEST_SW_RENDER=ON
+      run: cmake --preset ${{matrix.preset}} -DTEIDE_TEST_VERBOSE=ON -DTEIDE_UNIT_TEST_SW_RENDER=ON
 
     - name: Build
-      run: cmake --build --preset msvc${{matrix.msvcver}} --config ${{matrix.buildtype}}
+      run: cmake --build --preset ${{matrix.preset}} --config ${{matrix.buildtype}}
 
     - name: Save CMake output log
       if: failure()
       uses: actions/upload-artifact@v3
       with:
         name: CMakeOutput-${{env.job_name}}
-        path: ./build/msvc${{matrix.msvcver}}/CMakeFiles/CMakeOutput.log
+        path: ./build/${{matrix.preset}}/CMakeFiles/CMakeOutput.log
 
     - name: Test
-      run: python ./tools/coverage.py ci msvc${{matrix.msvcver}} ${{matrix.buildtype}}
+      run: python ./tools/coverage.py ci ${{matrix.preset}} ${{matrix.buildtype}}
 
     - name: Save render test output
       if: steps.test.outcome == 'failure'
@@ -67,7 +74,7 @@ jobs:
       uses: actions/upload-artifact@v3
       with:
         name: TestLog-${{env.job_name}}
-        path: build/msvc${{matrix.msvcver}}/Testing/Temporary/LastTest.log
+        path: build/${{matrix.preset}}/Testing/Temporary/LastTest.log
 
     - name: Upload coverage report
       uses: codecov/codecov-action@v3
@@ -137,4 +144,4 @@ jobs:
       uses: actions/upload-artifact@v3
       with:
         name: TestLog-${{env.job_name}}
-        path: build/msvc${{matrix.msvcver}}/Testing/Temporary/LastTest.log
+        path: build/${{matrix.preset}}/Testing/Temporary/LastTest.log

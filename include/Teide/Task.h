@@ -23,6 +23,6 @@ namespace detail
 } // namespace detail
 
 template <class T = void>
-using Task = detail::TaskHelper<T>::type;
+using Task = typename detail::TaskHelper<T>::type;
 
 } // namespace Teide

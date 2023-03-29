@@ -74,12 +74,6 @@ const ShaderSourceData TestShader = {
     },
 };
 
-constexpr auto EmptyVertexShader = R"--(
-void main() {
-    gl_Position = vec4(0.0);
-}
-)--";
-
 TEST(ShaderCompilerTest, CompileSimple)
 {
     const auto result = CompileShader(TestShader);

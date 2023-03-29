@@ -15,7 +15,7 @@ TEST(TextureTest, GetByteSize)
         .sampleCount = 1,
         .samplerState = {},
     };
-    EXPECT_THAT(GetByteSize(textureData), Eq(16));
+    EXPECT_THAT(GetByteSize(textureData), Eq(16u));
 }
 
 TEST(TextureTest, GetByteSizeWithMipmaps)
@@ -27,13 +27,13 @@ TEST(TextureTest, GetByteSizeWithMipmaps)
         .sampleCount = 1,
         .samplerState = {},
     };
-    EXPECT_THAT(GetByteSize(textureData), Eq(20));
+    EXPECT_THAT(GetByteSize(textureData), Eq(20u));
 }
 
 TEST(TextureTest, GetFormatElementSize)
 {
-    EXPECT_THAT(GetFormatElementSize(Format::Byte1), Eq(1));
-    EXPECT_THAT(GetFormatElementSize(Format::Byte2), Eq(2));
-    EXPECT_THAT(GetFormatElementSize(Format::Byte4), Eq(4));
-    EXPECT_THAT(GetFormatElementSize(Format::Unknown), Eq(0));
+    EXPECT_THAT(GetFormatElementSize(Format::Byte1), Eq(1u));
+    EXPECT_THAT(GetFormatElementSize(Format::Byte2), Eq(2u));
+    EXPECT_THAT(GetFormatElementSize(Format::Byte4), Eq(4u));
+    EXPECT_THAT(GetFormatElementSize(Format::Unknown), Eq(0u));
 }
