@@ -16,8 +16,10 @@ namespace Teide
 
 namespace
 {
+#ifdef _DEBUG
     constexpr bool BreakOnVulkanWarning = false;
     constexpr bool BreakOnVulkanError = true;
+#endif
 
     const vk::Optional<const vk::AllocationCallbacks> s_allocator = nullptr;
 

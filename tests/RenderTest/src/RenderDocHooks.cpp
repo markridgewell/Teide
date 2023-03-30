@@ -19,14 +19,14 @@ RenderDoc::RenderDoc()
     if (HMODULE mod = GetModuleHandleA("renderdoc.dll"))
     {
         pRENDERDOC_GetAPI RENDERDOC_GetAPI = (pRENDERDOC_GetAPI)GetProcAddress(mod, "RENDERDOC_GetAPI");
-        int ret = RENDERDOC_GetAPI(eRENDERDOC_API_Version_1_1_2, (void**)&rdoc_api);
+        [[maybe_unused]] int ret = RENDERDOC_GetAPI(eRENDERDOC_API_Version_1_1_2, (void**)&rdoc_api);
         assert(ret == 1);
     }
 #    elif defined(__linux__)
     if (void* mod = dlopen("librenderdoc.so", RTLD_NOW | RTLD_NOLOAD))
     {
         pRENDERDOC_GetAPI RENDERDOC_GetAPI = (pRENDERDOC_GetAPI)dlsym(mod, "RENDERDOC_GetAPI");
-        int ret = RENDERDOC_GetAPI(eRENDERDOC_API_Version_1_1_2, (void**)&rdoc_api);
+        [[maybe_unused]] int ret = RENDERDOC_GetAPI(eRENDERDOC_API_Version_1_1_2, (void**)&rdoc_api);
         assert(ret == 1);
     }
 #    endif
