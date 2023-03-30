@@ -16,7 +16,7 @@ namespace Teide
 
 namespace
 {
-#ifdef _DEBUG
+#ifndef NDEBUG
     constexpr bool BreakOnVulkanWarning = false;
     constexpr bool BreakOnVulkanError = true;
 #endif
