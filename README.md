@@ -27,10 +27,9 @@ Building
 
 (msvc2019 is also supported)
 
-To build, either build the sln file in Visual Studio, or run one of the following commands:
+To build, either build the sln file in Visual Studio, or build using CMake like this:
 
-    $ cmake --build --preset msvc2022-debug
-    $ cmake --build --preset msvc2022-release
+    $ cmake --build --preset msvc2022 --config Debug
 
 **Linux**: To generate makefiles, run the command:
 
