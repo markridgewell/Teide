@@ -93,11 +93,23 @@ bool Compare(Geo::AngleT<T> a, Geo::AngleT<T> b, T epsilon)
 
 inline namespace Literals
 {
-    consteval Angled operator"" _radd(long double x) { return Angled::Radians(static_cast<double>(x)); }
-    consteval Angled operator"" _degd(long double x) { return Angled::Degrees(static_cast<double>(x)); }
+    consteval Angled operator"" _radd(long double x)
+    {
+        return Angled::Radians(static_cast<double>(x));
+    }
+    consteval Angled operator"" _degd(long double x)
+    {
+        return Angled::Degrees(static_cast<double>(x));
+    }
 
-    consteval Angle operator"" _rad(long double x) { return Angle::Radians(static_cast<float>(x)); }
-    consteval Angle operator"" _deg(long double x) { return Angle::Degrees(static_cast<float>(x)); }
+    consteval Angle operator"" _rad(long double x)
+    {
+        return Angle::Radians(static_cast<float>(x));
+    }
+    consteval Angle operator"" _deg(long double x)
+    {
+        return Angle::Degrees(static_cast<float>(x));
+    }
 
 } // namespace Literals
 

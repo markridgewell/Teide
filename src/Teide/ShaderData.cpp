@@ -18,7 +18,10 @@ namespace Teide
 
 namespace
 {
-    constexpr auto RoundUp(std::integral auto a, std::integral auto b) { return ((a - 1) / b + 1) * b; }
+    constexpr auto RoundUp(std::integral auto a, std::integral auto b)
+    {
+        return ((a - 1) / b + 1) * b;
+    }
 } // namespace
 
 bool IsResourceType(ShaderVariableType::BaseType type)

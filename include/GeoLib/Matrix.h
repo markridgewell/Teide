@@ -135,7 +135,8 @@ struct Matrix<T, 4, N>
     static Matrix Zero() noexcept { return {{}, {}, {}, {}}; }
     static Matrix Identity() noexcept { return Matrix{}; }
 
-    static Matrix<T, 4, 4> RotationX(AngleT<T> angle) noexcept requires(N == 4)
+    static Matrix<T, 4, 4> RotationX(AngleT<T> angle) noexcept
+        requires(N == 4)
     {
         return {
             {1, 0, 0, 0},
@@ -145,7 +146,8 @@ struct Matrix<T, 4, N>
         };
     }
 
-    static Matrix<T, 4, 4> RotationY(AngleT<T> angle) noexcept requires(N == 4)
+    static Matrix<T, 4, 4> RotationY(AngleT<T> angle) noexcept
+        requires(N == 4)
     {
         return {
             {Cos(angle), 0, Sin(angle), 0},
@@ -155,7 +157,8 @@ struct Matrix<T, 4, N>
         };
     }
 
-    static Matrix<T, 4, 4> RotationZ(AngleT<T> angle) noexcept requires(N == 4)
+    static Matrix<T, 4, 4> RotationZ(AngleT<T> angle) noexcept
+        requires(N == 4)
     {
         return {
             {Cos(angle), -Sin(angle), 0, 0},
@@ -165,7 +168,8 @@ struct Matrix<T, 4, N>
         };
     }
 
-private : static constexpr decltype(&Matrix::x) members[] = {&Matrix::x, &Matrix::y, &Matrix::z, &Matrix::w};
+private:
+    static constexpr decltype(&Matrix::x) members[] = {&Matrix::x, &Matrix::y, &Matrix::z, &Matrix::w};
 };
 
 using Matrix2 = Matrix<float, 2, 2>;
