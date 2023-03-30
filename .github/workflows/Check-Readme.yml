@@ -17,6 +17,11 @@ jobs:
     strategy:
       matrix:
         os: [windows-latest, ubuntu-latest]
+        include:
+        - os: windows-latest
+          preset: msvc2022
+        - os: ubuntu-latest
+          preset: linux
 
     runs-on: ${{matrix.os}}
 
@@ -28,6 +33,8 @@ jobs:
 
     - name: Install dependencies
       uses: ./.github/actions/install-dependencies
+      preset:
+        ${{matrix.preset}}
 
     - name: Check readme
       run: python ${{github.workspace}}/tools/check_readme.py

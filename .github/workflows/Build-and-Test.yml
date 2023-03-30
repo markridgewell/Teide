@@ -40,6 +40,8 @@ jobs:
 
     - name: Install dependencies
       uses: ./.github/actions/install-dependencies
+      with:
+        preset: ${{matrix.preset}}
 
     - name: Setup OpenCppCoverage
       run: |
@@ -114,6 +116,8 @@ jobs:
 
     - name: Install dependencies
       uses: ./.github/actions/install-dependencies
+      with:
+        preset: ${{matrix.preset}}
 
     - name: Configure CMake
       run: cmake --preset ${{matrix.preset}} -DTEIDE_TEST_VERBOSE=ON -DTEIDE_UNIT_TEST_SW_RENDER=ON
