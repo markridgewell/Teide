@@ -14,7 +14,7 @@ jobs:
             preset: 'msvc2022'
             pkg: 'choco install --ignorepackageexitcodes'
           - os: 'Linux'
-            runner: 'ubuntu-20.04'
+            runner: 'ubuntu-latest'
             preset: 'linux'
             pkg: 'sudo apt-get install'
 
