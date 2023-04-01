@@ -53,7 +53,7 @@ private:
         uint32_t id;
     };
 
-    MemoryBlock& FindMemoryBlock(uint32_t memoryType, vk::DeviceSize availableSize, vk::DeviceSize alignment);
+    MemoryBlock& FindMemoryBlock(uint32_t memoryType, vk::MemoryRequirements requirements);
 
     std::mutex m_mutex;
     vk::Device m_device;

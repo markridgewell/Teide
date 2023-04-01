@@ -182,7 +182,7 @@ std::unique_ptr<glslang::TShader> CompileStage(std::string_view shaderSource, ES
     return shader;
 };
 
-ParameterBlockDesc& GetPblockLayout(ShaderData& data, int set)
+ParameterBlockDesc& GetPblockLayout(ShaderData& data, unsigned int set)
 {
     switch (set)
     {

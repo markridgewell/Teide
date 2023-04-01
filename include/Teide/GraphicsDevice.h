@@ -45,6 +45,13 @@ public:
 
 using GraphicsDevicePtr = std::unique_ptr<GraphicsDevice>;
 
-GraphicsDevicePtr CreateGraphicsDevice(SDL_Window* window = nullptr, const GraphicsSettings& settings = {});
+struct DeviceAndSurface
+{
+    GraphicsDevicePtr device;
+    SurfacePtr surface;
+};
+
+DeviceAndSurface CreateDeviceAndSurface(SDL_Window* window, bool multisampled = false, const GraphicsSettings& settings = {});
+GraphicsDevicePtr CreateHeadlessDevice(const GraphicsSettings& settings = {});
 
 } // namespace Teide

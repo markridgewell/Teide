@@ -40,7 +40,8 @@ public:
     static constexpr float CameraZoomSpeed = 0.002f;
     static constexpr float CameraMoveSpeed = 0.001f;
 
-    explicit Application(SDL_Window* window, const char* imageFilename, const char* modelFilename);
+    Application(SDL_Window* window, const char* imageFilename, const char* modelFilename);
+    Application(SDL_Window* window, Teide::DeviceAndSurface deviceAndSurface, const char* imageFilename, const char* modelFilename);
 
     void OnRender();
     void OnResize();

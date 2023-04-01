@@ -31,29 +31,28 @@ public:
         m_instance = CreateInstance(m_loader);
         ASSERT_TRUE(m_instance);
         m_physicalDevice = FindPhysicalDevice(m_instance.get());
-        ASSERT_TRUE(m_physicalDevice);
-        auto transferQueue = GetTransferQueueIndex(m_physicalDevice);
-        ASSERT_TRUE(transferQueue.has_value());
-        m_queueFamilyIndex = transferQueue.value();
-        const auto queueFamilies = std::array{m_queueFamilyIndex};
-        m_device = CreateDevice(m_physicalDevice, queueFamilies);
+        ASSERT_TRUE(m_physicalDevice.physicalDevice);
+        m_device = CreateDevice(m_loader, m_physicalDevice);
         ASSERT_TRUE(m_device);
-        m_queue = m_device->getQueue(m_queueFamilyIndex, 0);
+        m_queue = m_device->getQueue(m_physicalDevice.queueFamilies.transferFamily, 0);
         ASSERT_TRUE(m_queue);
-        m_commandPool = m_device->createCommandPoolUnique({.queueFamilyIndex = m_queueFamilyIndex});
+        m_commandPool
+            = m_device->createCommandPoolUnique({.queueFamilyIndex = m_physicalDevice.queueFamilies.transferFamily});
         ASSERT_TRUE(m_commandPool);
 
-        m_allocator = std::make_unique<MemoryAllocator>(m_device.get(), m_physicalDevice);
+        m_allocator = std::make_unique<MemoryAllocator>(m_device.get(), m_physicalDevice.physicalDevice);
     }
 
 protected:
     vk::Instance GetInstance() const { return m_instance.get(); }
-    vk::PhysicalDevice GetPhysicalDevice() const { return m_physicalDevice; }
+    vk::PhysicalDevice GetPhysicalDevice() const { return m_physicalDevice.physicalDevice; }
     vk::Device GetDevice() const { return m_device.get(); }
-    std::uint32_t GetQueueFamilyIndex() const { return m_queueFamilyIndex; }
     vk::Queue GetQueue() const { return m_queue; }
 
-    Scheduler CreateScheduler() { return Scheduler(2, GetDevice(), GetQueue(), GetQueueFamilyIndex()); }
+    Scheduler CreateScheduler()
+    {
+        return Scheduler(2, GetDevice(), GetQueue(), m_physicalDevice.queueFamilies.transferFamily);
+    }
 
     VulkanBuffer CreateHostVisibleBuffer(vk::DeviceSize size)
     {
@@ -66,9 +65,8 @@ protected:
 private:
     VulkanLoader m_loader;
     vk::UniqueInstance m_instance;
-    vk::PhysicalDevice m_physicalDevice;
+    PhysicalDevice m_physicalDevice;
     vk::UniqueDevice m_device;
-    std::uint32_t m_queueFamilyIndex;
     vk::Queue m_queue;
     vk::UniqueCommandPool m_commandPool;
     std::unique_ptr<MemoryAllocator> m_allocator;

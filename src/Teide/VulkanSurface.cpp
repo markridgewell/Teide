@@ -77,12 +77,7 @@ namespace
             imageCount = std::min(imageCount, surfaceCapabilities.maxImageCount);
         }
 
-        std::vector<uint32_t> queueFamiliesCopy;
-        std::ranges::copy(queueFamilyIndices, std::back_inserter(queueFamiliesCopy));
-        std::ranges::sort(queueFamiliesCopy);
-        const auto uniqueQueueFamilies = std::ranges::unique(queueFamiliesCopy);
-        assert(!uniqueQueueFamilies.empty());
-        const auto sharingMode = uniqueQueueFamilies.size() == 1 ? vk::SharingMode::eExclusive : vk::SharingMode::eConcurrent;
+        const auto sharingMode = queueFamilyIndices.size() == 1 ? vk::SharingMode::eExclusive : vk::SharingMode::eConcurrent;
 
         const vk::SwapchainCreateInfoKHR createInfo = {
             .surface = surface,
@@ -93,8 +88,8 @@ namespace
             .imageArrayLayers = 1,
             .imageUsage = vk::ImageUsageFlagBits::eColorAttachment,
             .imageSharingMode = sharingMode,
-            .queueFamilyIndexCount = size32(uniqueQueueFamilies),
-            .pQueueFamilyIndices = data(uniqueQueueFamilies),
+            .queueFamilyIndexCount = size32(queueFamilyIndices),
+            .pQueueFamilyIndices = data(queueFamilyIndices),
             .preTransform = surfaceCapabilities.currentTransform,
             .compositeAlpha = vk::CompositeAlphaFlagBitsKHR::eOpaque,
             .presentMode = mode,

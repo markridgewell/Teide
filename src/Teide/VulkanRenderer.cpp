@@ -41,18 +41,16 @@ namespace
 
 } // namespace
 
-VulkanRenderer::VulkanRenderer(
-    VulkanGraphicsDevice& device, uint32_t graphicsFamilyIndex, std::optional<uint32_t> presentFamilyIndex,
-    ShaderEnvironmentPtr shaderEnvironment) :
+VulkanRenderer::VulkanRenderer(VulkanGraphicsDevice& device, const QueueFamilies& queueFamilies, ShaderEnvironmentPtr shaderEnvironment) :
     m_device{device},
-    m_graphicsQueue{device.GetVulkanDevice().getQueue(graphicsFamilyIndex, 0)},
+    m_graphicsQueue{device.GetVulkanDevice().getQueue(queueFamilies.graphicsFamily, 0)},
     m_shaderEnvironment{std::move(shaderEnvironment)}
 {
     const auto vkdevice = device.GetVulkanDevice();
 
-    if (presentFamilyIndex)
+    if (queueFamilies.presentFamily)
     {
-        m_presentQueue = vkdevice.getQueue(*presentFamilyIndex, 0);
+        m_presentQueue = vkdevice.getQueue(*queueFamilies.presentFamily, 0);
     }
 
     std::ranges::generate(m_renderFinished, [=] { return CreateSemaphore(vkdevice); });

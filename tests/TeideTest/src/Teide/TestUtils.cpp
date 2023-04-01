@@ -5,7 +5,7 @@
 
 Teide::GraphicsDevicePtr CreateTestGraphicsDevice()
 {
-    return Teide::CreateGraphicsDevice();
+    return Teide::CreateHeadlessDevice();
 }
 
 std::optional<std::uint32_t> GetTransferQueueIndex(vk::PhysicalDevice physicalDevice)
@@ -22,7 +22,7 @@ std::optional<std::uint32_t> GetTransferQueueIndex(vk::PhysicalDevice physicalDe
     return std::nullopt;
 }
 
-vk::PhysicalDevice FindPhysicalDevice(vk::Instance instance)
+Teide::PhysicalDevice FindPhysicalDevice(vk::Instance instance)
 {
     // Look for a discrete GPU
     auto physicalDevices = instance.enumeratePhysicalDevices();
@@ -47,7 +47,13 @@ vk::PhysicalDevice FindPhysicalDevice(vk::Instance instance)
         return {};
     }
 
-    return *it;
+    const uint32_t transferQueueIndex = GetTransferQueueIndex(*it).value();
+
+    return {
+        .physicalDevice = *it,
+        .queueFamilies = {.transferFamily = transferQueueIndex},
+        .queueFamilyIndices = {transferQueueIndex},
+    };
 }
 
 std::vector<std::byte> HexToBytes(std::string_view hexString)

@@ -46,48 +46,74 @@ namespace
         return vk::UniqueSurfaceKHR(surfaceTmp, deleter);
     }
 
-    struct QueueFamilyIndices
+    template <class F>
+    std::optional<uint32> FindQueueFamily(std::span<const vk::QueueFamilyProperties> queueFamilies, const F& predicate)
     {
-        std::optional<uint32_t> graphicsFamily;
-        std::optional<uint32_t> presentFamily;
-
-        bool IsComplete(bool needPresent) const
-        {
-            return graphicsFamily.has_value() && (!needPresent || presentFamily.has_value());
-        }
-    };
-
-    QueueFamilyIndices FindQueueFamilies(vk::PhysicalDevice physicalDevice, vk::SurfaceKHR surface)
-    {
-        QueueFamilyIndices indices;
-
-        const auto queueFamilies = physicalDevice.getQueueFamilyProperties();
         int i = 0;
         for (const auto& queueFamily : queueFamilies)
         {
-            if (queueFamily.queueFlags & vk::QueueFlagBits::eGraphics)
+            if (predicate(i, queueFamily))
             {
-                indices.graphicsFamily = i;
+                return i;
             }
-
-            if (surface && physicalDevice.getSurfaceSupportKHR(i, surface))
-            {
-                indices.presentFamily = i;
-            }
-
-            if (indices.IsComplete(surface))
-            {
-                break;
-            }
-
             i++;
         }
-
-        return indices;
+        return std::nullopt;
     }
 
-    vk::PhysicalDevice FindPhysicalDevice(vk::Instance instance, vk::SurfaceKHR surface, std::span<const char*> requiredExtensions)
+    std::optional<QueueFamilies> FindQueueFamilies(vk::PhysicalDevice physicalDevice, vk::SurfaceKHR surface)
     {
+        const auto queueFamilies = physicalDevice.getQueueFamilyProperties();
+
+        QueueFamilies ret;
+
+        if (const auto index = FindQueueFamily(queueFamilies, [](int, const vk::QueueFamilyProperties& qf) {
+                return (qf.queueFlags & vk::QueueFlagBits::eGraphics) != vk::QueueFlagBits{};
+            }))
+        {
+            ret.graphicsFamily = *index;
+        }
+        else
+        {
+            return std::nullopt;
+        }
+
+        if (const auto index = FindQueueFamily(queueFamilies, [](int, const vk::QueueFamilyProperties& qf) {
+                return (qf.queueFlags & vk::QueueFlagBits::eTransfer) != vk::QueueFlagBits{};
+            }))
+        {
+            ret.transferFamily = *index;
+        }
+        else
+        {
+            return std::nullopt;
+        }
+
+        if (surface)
+        {
+            if (const auto index = FindQueueFamily(queueFamilies, [&](int i, const vk::QueueFamilyProperties&) {
+                    return physicalDevice.getSurfaceSupportKHR(i, surface);
+                }))
+            {
+                ret.presentFamily = *index;
+            }
+            else
+            {
+                return std::nullopt;
+            }
+        }
+
+        return ret;
+    }
+
+    PhysicalDevice FindPhysicalDevice(vk::Instance instance, vk::SurfaceKHR surface)
+    {
+        PhysicalDevice ret;
+        if (surface)
+        {
+            ret.requiredExtensions.push_back("VK_KHR_swapchain");
+        }
+
         // Look for a discrete GPU
         auto physicalDevices = instance.enumeratePhysicalDevices();
         if (physicalDevices.empty())
@@ -117,7 +143,7 @@ namespace
         const auto it = std::ranges::find_if(physicalDevices, [&](vk::PhysicalDevice device) {
             // Check that all required extensions are supported
             const auto supportedExtensions = device.enumerateDeviceExtensionProperties();
-            const bool supportsAllExtensions = std::ranges::all_of(requiredExtensions, [&](std::string_view extensionName) {
+            const bool supportsAllExtensions = std::ranges::all_of(ret.requiredExtensions, [&](std::string_view extensionName) {
                 return std::ranges::count(supportedExtensions, extensionName, &vk::ExtensionProperties::extensionName) > 0;
             });
 
@@ -147,17 +173,27 @@ namespace
             }
 
             // Check that all required queue families are supported
-            const auto indices = FindQueueFamilies(device, surface);
-            return indices.IsComplete(surface);
+            return FindQueueFamilies(device, surface).has_value();
         });
         if (it == physicalDevices.end())
         {
             throw VulkanError("No suitable GPU found!");
         }
 
-        vk::PhysicalDevice physicalDevice = *it;
-        spdlog::info("Selected physical device: {}", physicalDevice.getProperties().deviceName);
-        return physicalDevice;
+        ret.physicalDevice = *it;
+        ret.queueFamilies = FindQueueFamilies(ret.physicalDevice, surface).value();
+
+        ret.queueFamilyIndices = {ret.queueFamilies.graphicsFamily, ret.queueFamilies.transferFamily};
+        if (ret.queueFamilies.presentFamily)
+        {
+            ret.queueFamilyIndices.push_back(*ret.queueFamilies.presentFamily);
+        }
+        std::ranges::sort(ret.queueFamilyIndices);
+        ret.queueFamilyIndices.erase(
+            std::unique(ret.queueFamilyIndices.begin(), ret.queueFamilyIndices.end()), ret.queueFamilyIndices.end());
+
+        spdlog::info("Selected physical device: {}", ret.physicalDevice.getProperties().deviceName);
+        return ret;
     }
 
     void SetBufferData(VulkanBuffer& buffer, BytesView data)
@@ -368,14 +404,15 @@ namespace
         };
         std::erase(setLayouts, vk::DescriptorSetLayout{});
 
-        const bool hasPushConstants = shader.objectPblockLayout->pushConstantRange.has_value();
-
-        const vk::PipelineLayoutCreateInfo createInfo = {
+        vk::PipelineLayoutCreateInfo createInfo = {
             .setLayoutCount = size32(setLayouts),
             .pSetLayouts = data(setLayouts),
-            .pushConstantRangeCount = hasPushConstants ? 1u : 0u,
-            .pPushConstantRanges = hasPushConstants ? &shader.objectPblockLayout->pushConstantRange.value() : nullptr,
         };
+        if (shader.objectPblockLayout->pushConstantRange.has_value())
+        {
+            createInfo.pushConstantRangeCount = 1;
+            createInfo.pPushConstantRanges = &shader.objectPblockLayout->pushConstantRange.value();
+        }
 
         return device.createPipelineLayoutUnique(createInfo, s_allocator);
     }
@@ -558,65 +595,55 @@ namespace
 
 //---------------------------------------------------------------------------------------------------------------------
 
-GraphicsDevicePtr CreateGraphicsDevice(SDL_Window* window, const GraphicsSettings& settings)
+DeviceAndSurface CreateDeviceAndSurface(SDL_Window* window, bool multisampled, const GraphicsSettings& settings)
 {
-    return std::make_unique<VulkanGraphicsDevice>(window, settings);
-}
+    VulkanLoader loader;
+    vk::UniqueInstance instance = CreateInstance(loader, window);
 
-VulkanGraphicsDevice::VulkanGraphicsDevice(SDL_Window* window, const GraphicsSettings& settings) :
-    m_settings{settings}, m_workerDescriptorPools(settings.numThreads)
-{
-    m_instance = CreateInstance(m_loader, window);
-
-    if constexpr (IsDebugBuild)
-    {
-        m_debugMessenger = m_instance->createDebugUtilsMessengerEXTUnique(GetDebugCreateInfo(), s_allocator);
-    }
-
-    vk::UniqueSurfaceKHR surface;
+    vk::UniqueSurfaceKHR vksurface;
     if (window)
     {
-        surface = CreateVulkanSurface(window, m_instance.get());
+        vksurface = CreateVulkanSurface(window, instance.get());
     }
     else
     {
         spdlog::info("No window provided (headless mode)");
     }
 
-    std::vector<const char*> deviceExtensions;
-    if (window)
+    auto device
+        = std::make_unique<VulkanGraphicsDevice>(std::move(loader), std::move(instance), std::move(vksurface), settings);
+    auto surface = device->CreateSurface(window, multisampled);
+
+    return {std::move(device), std::move(surface)};
+}
+
+GraphicsDevicePtr CreateHeadlessDevice(const GraphicsSettings& settings)
+{
+    VulkanLoader loader;
+    vk::UniqueInstance instance = CreateInstance(loader);
+
+    return std::make_unique<VulkanGraphicsDevice>(std::move(loader), std::move(instance), vk::UniqueSurfaceKHR{}, settings);
+}
+
+VulkanGraphicsDevice::VulkanGraphicsDevice(
+    VulkanLoader loader, vk::UniqueInstance instance, vk::UniqueSurfaceKHR surface, const GraphicsSettings& settings) :
+    m_loader{std::move(loader)},
+    m_instance{std::move(instance)},
+    m_physicalDevice{FindPhysicalDevice(m_instance.get(), surface.get())},
+    m_device{CreateDevice(loader, m_physicalDevice)},
+    m_settings{settings},
+    m_graphicsQueue{m_device->getQueue(m_physicalDevice.queueFamilies.graphicsFamily, 0)},
+    m_workerDescriptorPools(settings.numThreads),
+    m_setupCommandPool{CreateCommandPool(m_physicalDevice.queueFamilies.graphicsFamily, m_device.get(), "SetupCommandPool")},
+    m_surfaceCommandPool{
+        CreateCommandPool(m_physicalDevice.queueFamilies.graphicsFamily, m_device.get(), "SurfaceCommandPool")},
+    m_allocator(m_device.get(), m_physicalDevice.physicalDevice),
+    m_scheduler(m_settings.numThreads, m_device.get(), m_graphicsQueue, m_physicalDevice.queueFamilies.graphicsFamily)
+{
+    if constexpr (IsDebugBuild)
     {
-        deviceExtensions.push_back("VK_KHR_swapchain");
+        m_debugMessenger = m_instance->createDebugUtilsMessengerEXTUnique(GetDebugCreateInfo(), s_allocator);
     }
-    m_physicalDevice = FindPhysicalDevice(m_instance.get(), surface.get(), deviceExtensions);
-
-    const auto queueFamilies = FindQueueFamilies(m_physicalDevice, surface.get());
-    m_graphicsQueueFamily = queueFamilies.graphicsFamily.value();
-    m_presentQueueFamily = queueFamilies.presentFamily;
-    if (window)
-    {
-        assert(m_presentQueueFamily.has_value());
-    }
-    std::vector<uint32_t> queueFamilyIndices;
-    queueFamilyIndices.push_back(m_graphicsQueueFamily);
-    if (m_presentQueueFamily)
-    {
-        queueFamilyIndices.push_back(*m_presentQueueFamily);
-    };
-    m_device = CreateDevice(m_physicalDevice, queueFamilyIndices, deviceExtensions);
-    m_loader.LoadDeviceFunctions(m_device.get());
-    m_graphicsQueue = m_device->getQueue(m_graphicsQueueFamily, 0);
-    m_allocator.emplace(m_device.get(), m_physicalDevice);
-
-    m_setupCommandPool = CreateCommandPool(m_graphicsQueueFamily, m_device.get());
-    SetDebugName(m_setupCommandPool, "SetupCommandPool");
-
-    m_surfaceCommandPool = CreateCommandPool(m_graphicsQueueFamily, m_device.get());
-    SetDebugName(m_surfaceCommandPool, "SurfaceCommandPool");
-
-    m_pendingWindowSurfaces[window] = std::move(surface);
-
-    m_scheduler.emplace(m_settings.numThreads, m_device.get(), m_graphicsQueue, m_graphicsQueueFamily);
 
     // TODO: Don't hardcode descriptor pool sizes
     const std::array poolSizes = {
@@ -656,40 +683,25 @@ VulkanGraphicsDevice::~VulkanGraphicsDevice()
 
 SurfacePtr VulkanGraphicsDevice::CreateSurface(SDL_Window* window, bool multisampled)
 {
-    vk::UniqueSurfaceKHR surface;
-    const auto it = m_pendingWindowSurfaces.find(window);
-    if (it != m_pendingWindowSurfaces.end())
-    {
-        surface = std::move(it->second);
-        m_pendingWindowSurfaces.erase(window);
-    }
-    else
-    {
-        spdlog::info("Creating a new surface for a window");
-        surface = CreateVulkanSurface(window, m_instance.get());
-    }
+    spdlog::info("Creating a new surface for a window");
 
-    if (!m_presentQueueFamily.has_value())
-    {
-        const auto queueFamilies = FindQueueFamilies(m_physicalDevice, surface.get());
-        m_presentQueueFamily = queueFamilies.presentFamily;
-        assert(m_presentQueueFamily && "GraphicsDevice cannot create a surface for this window");
-    }
+    vk::UniqueSurfaceKHR surface = CreateVulkanSurface(window, m_instance.get());
+
+    assert(m_physicalDevice.queueFamilies.presentFamily.has_value());
 
     return std::make_unique<VulkanSurface>(
-        window, std::move(surface), m_device.get(), m_physicalDevice,
-        std::vector<uint32_t>{m_graphicsQueueFamily, *m_presentQueueFamily}, m_surfaceCommandPool.get(),
-        m_graphicsQueue, multisampled);
+        window, std::move(surface), m_device.get(), m_physicalDevice.physicalDevice,
+        m_physicalDevice.queueFamilyIndices, m_surfaceCommandPool.get(), m_graphicsQueue, multisampled);
 }
 
 RendererPtr VulkanGraphicsDevice::CreateRenderer(ShaderEnvironmentPtr shaderEnvironment)
 {
-    return std::make_unique<VulkanRenderer>(*this, m_graphicsQueueFamily, m_presentQueueFamily, std::move(shaderEnvironment));
+    return std::make_unique<VulkanRenderer>(*this, m_physicalDevice.queueFamilies, std::move(shaderEnvironment));
 }
 
 BufferPtr VulkanGraphicsDevice::CreateBuffer(const BufferData& data, const char* name)
 {
-    auto task = m_scheduler->ScheduleGpu([=, this](CommandBuffer& cmdBuffer) { //
+    auto task = m_scheduler.ScheduleGpu([=, this](CommandBuffer& cmdBuffer) { //
         return CreateBuffer(data, name, cmdBuffer);
     });
     return task.get().value();
@@ -697,7 +709,7 @@ BufferPtr VulkanGraphicsDevice::CreateBuffer(const BufferData& data, const char*
 
 BufferPtr VulkanGraphicsDevice::CreateBuffer(const BufferData& data, const char* name, CommandBuffer& cmdBuffer)
 {
-    auto ret = CreateBufferWithData(data.data, data.usage, data.lifetime, m_device.get(), *m_allocator, cmdBuffer);
+    auto ret = CreateBufferWithData(data.data, data.usage, data.lifetime, m_device.get(), m_allocator, cmdBuffer);
     SetDebugName(ret.buffer, name);
     return std::make_shared<const VulkanBuffer>(std::move(ret));
 }
@@ -745,7 +757,7 @@ ShaderPtr VulkanGraphicsDevice::CreateShader(const ShaderData& data, const char*
 
 TexturePtr VulkanGraphicsDevice::CreateTexture(const TextureData& data, const char* name)
 {
-    auto task = m_scheduler->ScheduleGpu([=, this](CommandBuffer& cmdBuffer) { //
+    auto task = m_scheduler.ScheduleGpu([=, this](CommandBuffer& cmdBuffer) { //
         return CreateTexture(data, name, cmdBuffer);
     });
     return task.get().value();
@@ -755,7 +767,7 @@ TexturePtr VulkanGraphicsDevice::CreateTexture(const TextureData& data, const ch
 {
     const auto usage = vk::ImageUsageFlagBits::eSampled;
 
-    auto [texture, state] = CreateTextureImpl(data, m_device.get(), m_allocator.value(), usage, cmdBuffer, name);
+    auto [texture, state] = CreateTextureImpl(data, m_device.get(), m_allocator, usage, cmdBuffer, name);
 
     if (data.mipLevelCount > 1)
     {
@@ -773,7 +785,7 @@ TexturePtr VulkanGraphicsDevice::CreateTexture(const TextureData& data, const ch
 
 TexturePtr VulkanGraphicsDevice::CreateRenderableTexture(const TextureData& data, const char* name)
 {
-    auto task = m_scheduler->ScheduleGpu([=, this](CommandBuffer& cmdBuffer) { //
+    auto task = m_scheduler.ScheduleGpu([=, this](CommandBuffer& cmdBuffer) { //
         return CreateRenderableTexture(data, name, cmdBuffer);
     });
     return task.get().value();
@@ -787,7 +799,7 @@ TexturePtr VulkanGraphicsDevice::CreateRenderableTexture(const TextureData& data
 
     const auto usage = renderUsage | vk::ImageUsageFlagBits::eSampled;
 
-    auto [texture, state] = CreateTextureImpl(data, m_device.get(), m_allocator.value(), usage, cmdBuffer, name);
+    auto [texture, state] = CreateTextureImpl(data, m_device.get(), m_allocator, usage, cmdBuffer, name);
 
     if (isColorTarget)
     {
@@ -803,7 +815,7 @@ TexturePtr VulkanGraphicsDevice::CreateRenderableTexture(const TextureData& data
 
 MeshPtr VulkanGraphicsDevice::CreateMesh(const MeshData& data, const char* name)
 {
-    auto task = m_scheduler->ScheduleGpu([data, name, this](CommandBuffer& cmdBuffer) { //
+    auto task = m_scheduler.ScheduleGpu([data, name, this](CommandBuffer& cmdBuffer) { //
         return CreateMesh(data, name, cmdBuffer);
     });
     return task.get().value();
@@ -815,15 +827,15 @@ MeshPtr VulkanGraphicsDevice::CreateMesh(const MeshData& data, const char* name,
 
     mesh.vertexLayout = data.vertexLayout;
 
-    mesh.vertexBuffer = std::make_shared<VulkanBuffer>(CreateBufferWithData(
-        data.vertexData, BufferUsage::Vertex, data.lifetime, m_device.get(), m_allocator.value(), cmdBuffer));
+    mesh.vertexBuffer = std::make_shared<VulkanBuffer>(
+        CreateBufferWithData(data.vertexData, BufferUsage::Vertex, data.lifetime, m_device.get(), m_allocator, cmdBuffer));
     SetDebugName(mesh.vertexBuffer->buffer, "{}:vbuffer", name);
     mesh.vertexCount = data.vertexCount;
 
     if (!data.indexData.empty())
     {
         mesh.indexBuffer = std::make_shared<VulkanBuffer>(CreateBufferWithData(
-            data.indexData, BufferUsage::Index, data.lifetime, m_device.get(), m_allocator.value(), cmdBuffer));
+            data.indexData, BufferUsage::Index, data.lifetime, m_device.get(), m_allocator, cmdBuffer));
         SetDebugName(mesh.indexBuffer->buffer, "{}:ibuffer", name);
         mesh.indexCount = static_cast<uint32>(data.indexData.size()) / sizeof(uint16);
     }
@@ -1017,7 +1029,7 @@ Framebuffer VulkanGraphicsDevice::CreateFramebuffer(
 
 ParameterBlockPtr VulkanGraphicsDevice::CreateParameterBlock(const ParameterBlockData& data, const char* name)
 {
-    auto task = m_scheduler->ScheduleGpu([=, this](CommandBuffer& cmdBuffer) {
+    auto task = m_scheduler.ScheduleGpu([=, this](CommandBuffer& cmdBuffer) {
         return CreateParameterBlock(data, name, cmdBuffer, m_mainDescriptorPool.get());
     });
     return task.get().value();

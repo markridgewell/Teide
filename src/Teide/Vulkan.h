@@ -23,6 +23,22 @@ class VulkanLoader;
 enum class PrimitiveTopology;
 enum class VertexClass;
 
+struct QueueFamilies
+{
+    uint32 graphicsFamily;
+    uint32 transferFamily;
+    std::optional<uint32> presentFamily;
+};
+
+struct PhysicalDevice
+{
+    vk::PhysicalDevice physicalDevice;
+    std::vector<const char*> requiredExtensions;
+
+    QueueFamilies queueFamilies;
+    std::vector<uint32> queueFamilyIndices;
+};
+
 struct RenderPassInfo
 {
     vk::AttachmentLoadOp colorLoadOp = vk::AttachmentLoadOp::eDontCare;
@@ -51,9 +67,7 @@ void EnableRequiredVulkanExtension(
 vk::DebugUtilsMessengerCreateInfoEXT GetDebugCreateInfo();
 
 vk::UniqueInstance CreateInstance(VulkanLoader& loader, SDL_Window* window = nullptr);
-
-vk::UniqueDevice CreateDevice(
-    vk::PhysicalDevice physicalDevice, std::span<const uint32_t> queueFamilyIndices, std::span<const char*> extensions = {});
+vk::UniqueDevice CreateDevice(VulkanLoader& loader, const PhysicalDevice& physicalDevice);
 
 template <class T>
 inline uint32_t size32(const T& cont)
@@ -68,7 +82,7 @@ void TransitionImageLayout(
 
 vk::UniqueSemaphore CreateSemaphore(vk::Device device);
 vk::UniqueFence CreateFence(vk::Device device, vk::FenceCreateFlags flags = {});
-vk::UniqueCommandPool CreateCommandPool(uint32_t queueFamilyIndex, vk::Device device);
+vk::UniqueCommandPool CreateCommandPool(uint32_t queueFamilyIndex, vk::Device device, const char* debugName = "");
 
 inline auto GetHandle()
 {

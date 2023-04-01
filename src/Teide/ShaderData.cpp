@@ -53,7 +53,6 @@ SizeAndAlignment GetSizeAndAlignment(ShaderVariableType::BaseType type)
         case Vector2:
             return {.size = sizeof(float) * 2, .alignment = sizeof(float) * 2};
         case Vector3:
-            return {.size = sizeof(float) * 4, .alignment = sizeof(float) * 4};
         case Vector4:
             return {.size = sizeof(float) * 4, .alignment = sizeof(float) * 4};
         case Matrix4:

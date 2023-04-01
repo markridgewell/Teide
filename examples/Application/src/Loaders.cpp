@@ -81,7 +81,33 @@ Teide::MeshData LoadMesh(const char* filename)
 
 Teide::TextureData LoadTexture(const char* filename)
 {
-    if (filename == nullptr)
+    if (filename)
+    {
+        struct StbiDeleter
+        {
+            void operator()(stbi_uc* p) { stbi_image_free(p); }
+        };
+        using StbiPtr = std::unique_ptr<stbi_uc, StbiDeleter>;
+
+        // Load image
+        int width{}, height{}, channels{};
+        const auto pixels = StbiPtr(stbi_load(filename, &width, &height, &channels, STBI_rgb_alpha));
+        if (!pixels)
+        {
+            throw ApplicationError(fmt::format("Error loading texture '{}'", filename));
+        }
+
+        const auto imageSize = static_cast<std::size_t>(width) * height * 4;
+
+        return {
+            .size = {static_cast<uint32_t>(width), static_cast<uint32_t>(height)},
+            .format = Teide::Format::Byte4Srgb,
+            .mipLevelCount = static_cast<uint32_t>(std::floor(std::log2(std::max(width, height)))) + 1,
+            .samplerState = {.magFilter = Teide::Filter::Linear, .minFilter = Teide::Filter::Linear},
+            .pixels = Teide::ToBytes(std::span(pixels.get(), imageSize)),
+        };
+    }
+    else
     {
         // Create default checkerboard texture
         constexpr auto c0 = std::uint32_t{0xffffffff};
@@ -104,28 +130,4 @@ Teide::TextureData LoadTexture(const char* filename)
             .pixels = Teide::ToBytes(pixels),
         };
     }
-
-    struct StbiDeleter
-    {
-        void operator()(stbi_uc* p) { stbi_image_free(p); }
-    };
-    using StbiPtr = std::unique_ptr<stbi_uc, StbiDeleter>;
-
-    // Load image
-    int width{}, height{}, channels{};
-    const auto pixels = StbiPtr(stbi_load(filename, &width, &height, &channels, STBI_rgb_alpha));
-    if (!pixels)
-    {
-        throw ApplicationError(fmt::format("Error loading texture '{}'", filename));
-    }
-
-    const auto imageSize = static_cast<std::size_t>(width) * height * 4;
-
-    return {
-        .size = {static_cast<uint32_t>(width), static_cast<uint32_t>(height)},
-        .format = Teide::Format::Byte4Srgb,
-        .mipLevelCount = static_cast<uint32_t>(std::floor(std::log2(std::max(width, height)))) + 1,
-        .samplerState = {.magFilter = Teide::Filter::Linear, .minFilter = Teide::Filter::Linear},
-        .pixels = Teide::ToBytes(std::span(pixels.get(), imageSize)),
-    };
 }

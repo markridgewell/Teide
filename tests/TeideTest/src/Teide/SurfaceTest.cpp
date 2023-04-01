@@ -25,8 +25,7 @@ TEST(SurfaceTest, CreateSurface)
     const auto window = UniqueSDLWindow(SDL_CreateWindow("Test", 0, 0, 800, 600, SDL_WINDOW_VULKAN | SDL_WINDOW_HIDDEN));
     ASSERT_THAT(window, NotNull()) << SDL_GetError();
 
-    auto device = CreateGraphicsDevice(window.get());
-    auto surface = device->CreateSurface(window.get(), false);
+    auto [device, surface] = CreateDeviceAndSurface(window.get(), false);
     EXPECT_THAT(surface->GetExtent(), Eq(Geo::Size2i{800, 600}));
 }
 
@@ -35,8 +34,7 @@ TEST(SurfaceTest, CreateSurfaceMultisampled)
     auto window = UniqueSDLWindow(SDL_CreateWindow("Test", 0, 0, 800, 600, SDL_WINDOW_VULKAN | SDL_WINDOW_HIDDEN));
     ASSERT_THAT(window, NotNull()) << SDL_GetError();
 
-    auto device = CreateGraphicsDevice(window.get());
-    auto surface = device->CreateSurface(window.get(), true);
+    auto [device, surface] = CreateDeviceAndSurface(window.get(), true);
     EXPECT_THAT(surface->GetExtent(), Eq(Geo::Size2i{800, 600}));
 }
 
@@ -45,8 +43,7 @@ TEST(SurfaceTest, CreatePipelineForSurface)
     const auto window = UniqueSDLWindow(SDL_CreateWindow("Test", 0, 0, 800, 600, SDL_WINDOW_VULKAN | SDL_WINDOW_HIDDEN));
     ASSERT_THAT(window, NotNull()) << SDL_GetError();
 
-    auto device = CreateGraphicsDevice(window.get());
-    auto surface = device->CreateSurface(window.get(), true);
+    auto [device, surface] = CreateDeviceAndSurface(window.get(), true);
     const auto shaderData = CompileShader(SimpleShader);
     const VertexLayout vertexLayout = {
         .topology = PrimitiveTopology::TriangleList,
@@ -72,8 +69,7 @@ TEST(SurfaceTest, RenderToSurface)
     auto window = UniqueSDLWindow(SDL_CreateWindow("Test", 0, 0, 800, 600, SDL_WINDOW_VULKAN | SDL_WINDOW_HIDDEN));
     ASSERT_THAT(window, NotNull()) << SDL_GetError();
 
-    auto device = CreateGraphicsDevice(window.get());
-    auto surface = device->CreateSurface(window.get(), true);
+    auto [device, surface] = CreateDeviceAndSurface(window.get(), true);
     auto renderer = device->CreateRenderer(nullptr);
 
     renderer->BeginFrame({});
@@ -89,8 +85,7 @@ TEST(SurfaceTest, RenderToSurfaceWithoutClear)
     auto window = UniqueSDLWindow(SDL_CreateWindow("Test", 0, 0, 800, 600, SDL_WINDOW_VULKAN | SDL_WINDOW_HIDDEN));
     ASSERT_THAT(window, NotNull()) << SDL_GetError();
 
-    auto device = CreateGraphicsDevice(window.get());
-    auto surface = device->CreateSurface(window.get(), true);
+    auto [device, surface] = CreateDeviceAndSurface(window.get(), true);
     auto renderer = device->CreateRenderer(nullptr);
 
     renderer->BeginFrame({});
@@ -104,8 +99,7 @@ TEST(SurfaceTest, RenderToSurfaceTwice)
     auto window = UniqueSDLWindow(SDL_CreateWindow("Test", 0, 0, 800, 600, SDL_WINDOW_VULKAN | SDL_WINDOW_HIDDEN));
     ASSERT_THAT(window, NotNull()) << SDL_GetError();
 
-    auto device = CreateGraphicsDevice(window.get());
-    auto surface = device->CreateSurface(window.get(), true);
+    auto [device, surface] = CreateDeviceAndSurface(window.get(), true);
     auto renderer = device->CreateRenderer(nullptr);
 
     renderer->BeginFrame({});

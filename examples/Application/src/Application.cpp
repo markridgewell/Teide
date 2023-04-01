@@ -88,9 +88,14 @@ Teide::RenderStates MakeRenderStates(float depthBiasConstant = 0.0f, float depth
 } // namespace
 
 Application::Application(SDL_Window* window, const char* imageFilename, const char* modelFilename) :
+    Application(window, Teide::CreateDeviceAndSurface(window, UseMSAA), imageFilename, modelFilename)
+{}
+
+Application::Application(
+    SDL_Window* window, Teide::DeviceAndSurface deviceAndSurface, const char* imageFilename, const char* modelFilename) :
     m_window{window},
-    m_device{Teide::CreateGraphicsDevice(window)},
-    m_surface{m_device->CreateSurface(window, UseMSAA)},
+    m_device{std::move(deviceAndSurface.device)},
+    m_surface{std::move(deviceAndSurface.surface)},
     m_shaderEnvironment{m_device->CreateShaderEnvironment(ShaderEnv, "ShaderEnv")},
     m_renderer{m_device->CreateRenderer(m_shaderEnvironment)}
 {

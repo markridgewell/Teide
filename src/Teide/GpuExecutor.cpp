@@ -65,7 +65,7 @@ GpuExecutor::GpuExecutor(vk::Device device, vk::Queue queue) : m_device{device},
     });
 }
 
-GpuExecutor::~GpuExecutor()
+GpuExecutor::~GpuExecutor() noexcept
 {
     m_schedulerStopSource.request_stop();
 

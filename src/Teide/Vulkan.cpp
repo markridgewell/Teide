@@ -162,11 +162,7 @@ namespace
                 return Access::eColorAttachmentRead | Access::eColorAttachmentWrite;
 
             case eDepthStencilAttachmentOptimal:
-                return Access::eDepthStencilAttachmentRead | Access::eDepthStencilAttachmentWrite;
-
             case eDepthAttachmentOptimal:
-                return Access::eDepthStencilAttachmentRead | Access::eDepthStencilAttachmentWrite;
-
             case eStencilAttachmentOptimal:
                 return Access::eDepthStencilAttachmentRead | Access::eDepthStencilAttachmentWrite;
 
@@ -303,13 +299,12 @@ vk::UniqueInstance CreateInstance(VulkanLoader& loader, SDL_Window* window)
     return instance;
 }
 
-vk::UniqueDevice
-CreateDevice(vk::PhysicalDevice physicalDevice, std::span<const uint32_t> queueFamilyIndices, std::span<const char*> extensions)
+vk::UniqueDevice CreateDevice(VulkanLoader& loader, const PhysicalDevice& physicalDevice)
 {
     // Make a list of create infos for each unique queue we wish to create
     const float queuePriority = 1.0f;
     std::vector<vk::DeviceQueueCreateInfo> queueCreateInfos;
-    for (const uint32_t index : queueFamilyIndices)
+    for (const uint32_t index : physicalDevice.queueFamilyIndices)
     {
         if (std::ranges::count(queueCreateInfos, index, &vk::DeviceQueueCreateInfo::queueFamilyIndex) == 0)
         {
@@ -321,8 +316,8 @@ CreateDevice(vk::PhysicalDevice physicalDevice, std::span<const uint32_t> queueF
         .samplerAnisotropy = true,
     };
 
-    const auto availableLayers = physicalDevice.enumerateDeviceLayerProperties();
-    const auto availableExtensions = physicalDevice.enumerateDeviceExtensionProperties();
+    const auto availableLayers = physicalDevice.physicalDevice.enumerateDeviceLayerProperties();
+    const auto availableExtensions = physicalDevice.physicalDevice.enumerateDeviceExtensionProperties();
 
     std::vector<const char*> layers;
     if constexpr (IsDebugBuild)
@@ -335,11 +330,13 @@ CreateDevice(vk::PhysicalDevice physicalDevice, std::span<const uint32_t> queueF
            .pQueueCreateInfos = data(queueCreateInfos),
            .enabledLayerCount = size32(layers),
            .ppEnabledLayerNames = data(layers),
-           .enabledExtensionCount = size32(extensions),
-           .ppEnabledExtensionNames = data(extensions),
+           .enabledExtensionCount = size32(physicalDevice.requiredExtensions),
+           .ppEnabledExtensionNames = data(physicalDevice.requiredExtensions),
            .pEnabledFeatures = &deviceFeatures};
 
-    return physicalDevice.createDeviceUnique(deviceCreateInfo, s_allocator);
+    auto ret = physicalDevice.physicalDevice.createDeviceUnique(deviceCreateInfo, s_allocator);
+    loader.LoadDeviceFunctions(ret.get());
+    return ret;
 }
 
 void TransitionImageLayout(
@@ -378,13 +375,15 @@ vk::UniqueFence CreateFence(vk::Device device, vk::FenceCreateFlags flags)
     return device.createFenceUnique(vk::FenceCreateInfo{.flags = flags}, s_allocator);
 }
 
-vk::UniqueCommandPool CreateCommandPool(uint32_t queueFamilyIndex, vk::Device device)
+vk::UniqueCommandPool CreateCommandPool(uint32_t queueFamilyIndex, vk::Device device, const char* debugName)
 {
     const vk::CommandPoolCreateInfo createInfo = {
         .queueFamilyIndex = queueFamilyIndex,
     };
 
-    return device.createCommandPoolUnique(createInfo, s_allocator);
+    auto ret = device.createCommandPoolUnique(createInfo, s_allocator);
+    SetDebugName(ret, debugName);
+    return ret;
 }
 
 vk::ImageAspectFlags GetImageAspect(Format format)

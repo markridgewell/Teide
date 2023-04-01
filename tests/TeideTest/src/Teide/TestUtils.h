@@ -1,5 +1,6 @@
 
 #include "Teide/GraphicsDevice.h"
+#include "Teide/Vulkan.h"
 
 #include <vulkan/vulkan.hpp>
 
@@ -12,6 +13,6 @@
 Teide::GraphicsDevicePtr CreateTestGraphicsDevice();
 
 std::optional<std::uint32_t> GetTransferQueueIndex(vk::PhysicalDevice physicalDevice);
-vk::PhysicalDevice FindPhysicalDevice(vk::Instance instance);
+Teide::PhysicalDevice FindPhysicalDevice(vk::Instance instance);
 
 std::vector<std::byte> HexToBytes(std::string_view hexString);

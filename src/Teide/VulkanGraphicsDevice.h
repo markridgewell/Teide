@@ -7,6 +7,7 @@
 #include "Vulkan.h"
 #include "VulkanLoader.h"
 
+#include "Teide/BasicTypes.h"
 #include "Teide/GraphicsDevice.h"
 #include "Teide/Renderer.h"
 #include "Teide/Surface.h"
@@ -29,7 +30,9 @@ using VulkanParameterBlockLayoutPtr = std::shared_ptr<const VulkanParameterBlock
 class VulkanGraphicsDevice : public GraphicsDevice
 {
 public:
-    explicit VulkanGraphicsDevice(SDL_Window* window = nullptr, const GraphicsSettings& settings = {});
+    explicit VulkanGraphicsDevice(
+        VulkanLoader loader, vk::UniqueInstance instance, vk::UniqueSurfaceKHR surface,
+        const GraphicsSettings& settings = {});
 
     ~VulkanGraphicsDevice();
 
@@ -45,12 +48,12 @@ public:
     PipelinePtr CreatePipeline(const PipelineData& data) override;
     ParameterBlockPtr CreateParameterBlock(const ParameterBlockData& data, const char* name) override;
 
-    const vk::PhysicalDeviceProperties GetProperties() const { return m_physicalDevice.getProperties(); }
+    const vk::PhysicalDeviceProperties GetProperties() const { return m_physicalDevice.physicalDevice.getProperties(); }
 
     // Internal
     vk::Device GetVulkanDevice() { return m_device.get(); }
-    MemoryAllocator& GetMemoryAllocator() { return m_allocator.value(); }
-    Scheduler& GetScheduler() { return m_scheduler.value(); }
+    MemoryAllocator& GetMemoryAllocator() { return m_allocator; }
+    Scheduler& GetScheduler() { return m_scheduler; }
 
     template <class T>
     auto& GetImpl(T& obj)
@@ -106,7 +109,7 @@ private:
     VulkanLoader m_loader;
     vk::UniqueInstance m_instance;
     vk::UniqueDebugUtilsMessengerEXT m_debugMessenger;
-    vk::PhysicalDevice m_physicalDevice;
+    PhysicalDevice m_physicalDevice;
     vk::UniqueDevice m_device;
     GraphicsSettings m_settings;
 
@@ -116,19 +119,15 @@ private:
     std::mutex m_framebufferCacheMutex;
     std::map<FramebufferDesc, vk::UniqueFramebuffer> m_framebufferCache;
 
-    uint32_t m_graphicsQueueFamily;
-    std::optional<uint32_t> m_presentQueueFamily;
     vk::Queue m_graphicsQueue;
     vk::UniqueDescriptorPool m_mainDescriptorPool;
     std::vector<vk::UniqueDescriptorPool> m_workerDescriptorPools;
     vk::UniqueCommandPool m_setupCommandPool;
     vk::UniqueCommandPool m_surfaceCommandPool;
 
-    std::optional<MemoryAllocator> m_allocator;
+    MemoryAllocator m_allocator;
 
-    std::optional<Scheduler> m_scheduler;
-
-    std::unordered_map<SDL_Window*, vk::UniqueSurfaceKHR> m_pendingWindowSurfaces;
+    Scheduler m_scheduler;
 };
 
 } // namespace Teide

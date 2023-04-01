@@ -22,7 +22,7 @@ public:
     using OnCompleteFunction = fu2::unique_function<void()>;
 
     GpuExecutor(vk::Device device, vk::Queue queue);
-    ~GpuExecutor();
+    ~GpuExecutor() noexcept;
 
     GpuExecutor(const GpuExecutor&) = delete;
     GpuExecutor(GpuExecutor&&) = delete;

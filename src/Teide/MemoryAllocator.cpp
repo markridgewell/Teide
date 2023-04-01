@@ -37,7 +37,7 @@ MemoryAllocation MemoryAllocator::Allocate(const vk::MemoryRequirements& require
 
     const uint32_t memoryType = FindMemoryType(m_physicalDevice, requirements.memoryTypeBits, flags);
 
-    MemoryBlock& block = FindMemoryBlock(memoryType, requirements.size, requirements.alignment);
+    MemoryBlock& block = FindMemoryBlock(memoryType, requirements);
     const auto offset = (((block.consumedSize - 1) / requirements.alignment) + 1) * requirements.alignment;
     if (offset + requirements.size > block.capacity)
     {
@@ -65,18 +65,17 @@ void MemoryAllocator::DeallocateAll()
     }
 }
 
-MemoryAllocator::MemoryBlock&
-MemoryAllocator::FindMemoryBlock(uint32_t memoryType, vk::DeviceSize availableSize, vk::DeviceSize alignment)
+MemoryAllocator::MemoryBlock& MemoryAllocator::FindMemoryBlock(uint32_t memoryType, vk::MemoryRequirements requirements)
 {
-    const auto it = std::ranges::find_if(m_memoryBlocks, [=](const MemoryBlock& block) {
+    const auto it = std::ranges::find_if(m_memoryBlocks, [&](const MemoryBlock& block) {
         if (block.memoryType != memoryType)
         {
             return false;
         }
 
         // Check if the block has enough space for the allocation
-        const auto offset = (((block.consumedSize - 1) / alignment) + 1) * alignment;
-        return offset + availableSize <= block.capacity;
+        const auto offset = (((block.consumedSize - 1) / requirements.alignment) + 1) * requirements.alignment;
+        return offset + requirements.size <= block.capacity;
     });
 
     if (it == m_memoryBlocks.end())
@@ -84,7 +83,7 @@ MemoryAllocator::FindMemoryBlock(uint32_t memoryType, vk::DeviceSize availableSi
         // No compatible memory block found; create a new one
 
         // Make sure the new block has at least enough space for the allocation
-        const auto newBlockSize = std::max(MemoryBlockSize, availableSize);
+        const auto newBlockSize = std::max(MemoryBlockSize, requirements.size);
 
         const vk::MemoryAllocateInfo allocInfo = {
             .allocationSize = newBlockSize,
