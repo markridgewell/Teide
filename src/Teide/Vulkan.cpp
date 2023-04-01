@@ -105,7 +105,7 @@ namespace
         const char* prefix = "";
         switch (MessageType(messageType))
         {
-            case MessageType::eGeneral:
+            default:
                 prefix = "";
                 break;
             case MessageType::eValidation:
