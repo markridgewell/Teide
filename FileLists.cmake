@@ -28,6 +28,7 @@ set(sources
     include/Teide/TextureData.h
     src/GeoLib.natvis
     src/ShaderCompiler/ShaderCompiler.cpp
+    src/Teide.natvis
     src/Teide/CommandBuffer.cpp
     src/Teide/CommandBuffer.h
     src/Teide/CpuExecutor.cpp
