@@ -364,7 +364,8 @@ void Application::CreateMaterial(const char* imageFilename)
 {
     m_material.shader = m_device->CreateShader(CompileShader(ModelShader), "ModelShader");
 
-    const auto texture = m_device->CreateTexture(LoadTexture(imageFilename), imageFilename);
+    const auto textureName = imageFilename ? imageFilename : "DefaultTexture";
+    const auto texture = m_device->CreateTexture(LoadTexture(imageFilename), textureName);
 
     const Teide::ParameterBlockData materialData = {
         .layout = m_material.shader->GetMaterialPblockLayout(),

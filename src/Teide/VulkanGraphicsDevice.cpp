@@ -371,9 +371,12 @@ namespace
             .sampleCount = data.sampleCount,
         };
 
-        SetDebugName(ret.image, debugName);
-        SetDebugName(ret.imageView, "{}:View", debugName);
-        SetDebugName(ret.sampler, "{}:Sampler", debugName);
+        if (debugName)
+        {
+            SetDebugName(ret.image, debugName);
+            SetDebugName(ret.imageView, "{}:View", debugName);
+            SetDebugName(ret.sampler, "{}:Sampler", debugName);
+        }
 
         return {std::move(ret), initialState};
     }
@@ -748,9 +751,12 @@ ShaderPtr VulkanGraphicsDevice::CreateShader(const ShaderData& data, const char*
 
     shader.pipelineLayout = CreateGraphicsPipelineLayout(m_device.get(), shader);
 
-    SetDebugName(shader.vertexShader, "{}:Vertex", name);
-    SetDebugName(shader.pixelShader, "{}:Pixel", name);
-    SetDebugName(shader.pipelineLayout, "{}:PipelineLayout", name);
+    if (name)
+    {
+        SetDebugName(shader.vertexShader, "{}:Vertex", name);
+        SetDebugName(shader.pixelShader, "{}:Pixel", name);
+        SetDebugName(shader.pipelineLayout, "{}:PipelineLayout", name);
+    }
 
     return std::make_shared<const VulkanShader>(std::move(shader));
 }
@@ -760,7 +766,9 @@ TexturePtr VulkanGraphicsDevice::CreateTexture(const TextureData& data, const ch
     auto task = m_scheduler.ScheduleGpu([=, this](CommandBuffer& cmdBuffer) { //
         return CreateTexture(data, name, cmdBuffer);
     });
-    return task.get().value();
+    task.wait();
+    auto result = task.get();
+    return result.value();
 }
 
 TexturePtr VulkanGraphicsDevice::CreateTexture(const TextureData& data, const char* name, CommandBuffer& cmdBuffer)
@@ -829,14 +837,20 @@ MeshPtr VulkanGraphicsDevice::CreateMesh(const MeshData& data, const char* name,
 
     mesh.vertexBuffer = std::make_shared<VulkanBuffer>(
         CreateBufferWithData(data.vertexData, BufferUsage::Vertex, data.lifetime, m_device.get(), m_allocator, cmdBuffer));
-    SetDebugName(mesh.vertexBuffer->buffer, "{}:vbuffer", name);
+    if (name)
+    {
+        SetDebugName(mesh.vertexBuffer->buffer, "{}:vbuffer", name);
+    }
     mesh.vertexCount = data.vertexCount;
 
     if (!data.indexData.empty())
     {
         mesh.indexBuffer = std::make_shared<VulkanBuffer>(CreateBufferWithData(
             data.indexData, BufferUsage::Index, data.lifetime, m_device.get(), m_allocator, cmdBuffer));
-        SetDebugName(mesh.indexBuffer->buffer, "{}:ibuffer", name);
+        if (name)
+        {
+            SetDebugName(mesh.indexBuffer->buffer, "{}:ibuffer", name);
+        }
         mesh.indexCount = static_cast<uint32>(data.indexData.size()) / sizeof(uint16);
     }
 

@@ -5,8 +5,16 @@ using namespace std::chrono_literals;
 
 namespace Teide
 {
+class WorkerInterface : public ::tf::WorkerInterface
+{
+    void scheduler_prologue(tf::Worker& worker [[maybe_unused]]) override {}
+    void scheduler_epilogue(tf::Worker& worker [[maybe_unused]], std::exception_ptr ptr [[maybe_unused]]) override
+    {
+        assert(ptr == nullptr);
+    }
+};
 
-CpuExecutor::CpuExecutor(uint32 numThreads) : m_executor(numThreads)
+CpuExecutor::CpuExecutor(uint32 numThreads) : m_executor(numThreads, std::make_shared<WorkerInterface>())
 {
     m_schedulerThread = std::jthread([this, stop_token = m_schedulerStopSource.get_token()] {
         constexpr auto timeout = 2ms;

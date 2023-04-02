@@ -41,10 +41,30 @@ TEST_F(GraphicsDeviceTest, CreateBuffer)
     EXPECT_THAT(buffer->GetSize(), Eq(contents.size() * sizeof(contents[0])));
 }
 
+TEST_F(GraphicsDeviceTest, CreateBufferWithNullName)
+{
+    const auto contents = std::vector<std::byte>{std::byte{1}, std::byte{2}, std::byte{3}, std::byte{4}};
+    const BufferData bufferData = {
+        .usage = BufferUsage::Vertex,
+        .lifetime = ResourceLifetime::Permanent,
+        .data = contents,
+    };
+    const auto buffer = m_device->CreateBuffer(bufferData, nullptr);
+    EXPECT_THAT(buffer.get(), NotNull());
+    EXPECT_THAT(buffer->GetSize(), Eq(contents.size() * sizeof(contents[0])));
+}
+
 TEST_F(GraphicsDeviceTest, CreateShader)
 {
     const auto shaderData = CompileShader(SimpleShader);
     const auto shader = m_device->CreateShader(shaderData, "Shader");
+    EXPECT_THAT(shader.get(), NotNull());
+}
+
+TEST_F(GraphicsDeviceTest, CreateShaderWithNullName)
+{
+    const auto shaderData = CompileShader(SimpleShader);
+    const auto shader = m_device->CreateShader(shaderData, nullptr);
     EXPECT_THAT(shader.get(), NotNull());
 }
 
@@ -65,6 +85,23 @@ TEST_F(GraphicsDeviceTest, CreateTexture)
     EXPECT_THAT(texture->GetSampleCount(), Eq(1u));
 }
 
+TEST_F(GraphicsDeviceTest, CreateTextureWithNullName)
+{
+    const TextureData textureData = {
+        .size = {2, 2},
+        .format = Format::Byte4Srgb,
+        .mipLevelCount = 1,
+        .sampleCount = 1,
+        .pixels = HexToBytes("ff 00 00 ff 00 ff 00 ff ff 00 ff ff 00 00 ff ff"),
+    };
+    const auto texture = m_device->CreateTexture(textureData, nullptr);
+    EXPECT_THAT(texture.get(), NotNull());
+    EXPECT_THAT(texture->GetSize(), Eq(Geo::Size2i{2, 2}));
+    EXPECT_THAT(texture->GetFormat(), Eq(Format::Byte4Srgb));
+    EXPECT_THAT(texture->GetMipLevelCount(), Eq(1u));
+    EXPECT_THAT(texture->GetSampleCount(), Eq(1u));
+}
+
 TEST_F(GraphicsDeviceTest, CreateMesh)
 {
     const MeshData meshData = {
@@ -72,6 +109,21 @@ TEST_F(GraphicsDeviceTest, CreateMesh)
         .vertexCount = 3,
     };
     const auto mesh = m_device->CreateMesh(meshData, "Mesh");
+    ASSERT_THAT(mesh.get(), NotNull());
+    ASSERT_THAT(mesh->GetVertexBuffer(), NotNull());
+    EXPECT_THAT(mesh->GetVertexBuffer()->GetSize(), Eq(meshData.vertexData.size()));
+    EXPECT_THAT(mesh->GetVertexCount(), 3);
+    EXPECT_THAT(mesh->GetIndexBuffer(), IsNull());
+    EXPECT_THAT(mesh->GetIndexCount(), 0);
+}
+
+TEST_F(GraphicsDeviceTest, CreateMeshWithNullName)
+{
+    const MeshData meshData = {
+        .vertexData = MakeBytes<float>({1, 2, 3, 4, 5, 6}),
+        .vertexCount = 3,
+    };
+    const auto mesh = m_device->CreateMesh(meshData, nullptr);
     ASSERT_THAT(mesh.get(), NotNull());
     ASSERT_THAT(mesh->GetVertexBuffer(), NotNull());
     EXPECT_THAT(mesh->GetVertexBuffer()->GetSize(), Eq(meshData.vertexData.size()));
