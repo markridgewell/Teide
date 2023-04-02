@@ -33,6 +33,7 @@ struct QueueFamilies
 struct PhysicalDevice
 {
     vk::PhysicalDevice physicalDevice;
+    vk::PhysicalDeviceProperties properties;
     std::vector<const char*> requiredExtensions;
 
     QueueFamilies queueFamilies;

@@ -23,6 +23,7 @@
 #include <cassert>
 #include <cstdlib>
 #include <filesystem>
+#include <ranges>
 #include <string>
 
 namespace Teide
@@ -106,31 +107,92 @@ namespace
         return ret;
     }
 
-    PhysicalDevice FindPhysicalDevice(vk::Instance instance, vk::SurfaceKHR surface)
+    bool IsDeviceSuitable(const PhysicalDevice& device, vk::SurfaceKHR surface)
     {
-        PhysicalDevice ret;
+        // Check that all required extensions are supported
+        const auto supportedExtensions = device.physicalDevice.enumerateDeviceExtensionProperties();
+        const bool supportsAllExtensions = std::ranges::all_of(device.requiredExtensions, [&](std::string_view extensionName) {
+            return std::ranges::count(supportedExtensions, extensionName, &vk::ExtensionProperties::extensionName) > 0;
+        });
+
+        if (!supportsAllExtensions)
+        {
+            return false;
+        }
+
+        // Check all required features are supported
+        const auto supportedFeatures = device.physicalDevice.getFeatures();
+        if (!supportedFeatures.samplerAnisotropy)
+        {
+            return false;
+        }
+
         if (surface)
         {
-            ret.requiredExtensions.push_back("VK_KHR_swapchain");
+            // Check for adequate swap chain support
+            if (device.physicalDevice.getSurfaceFormatsKHR(surface).empty())
+            {
+                return false;
+            }
+            if (device.physicalDevice.getSurfacePresentModesKHR(surface).empty())
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    PhysicalDevice FindPhysicalDevice(vk::Instance instance, vk::SurfaceKHR surface)
+    {
+        const auto makePhysicalDevice = [surface](vk::PhysicalDevice pd) -> std::vector<PhysicalDevice> {
+            auto queueFamilies = FindQueueFamilies(pd, surface);
+            if (!queueFamilies.has_value())
+            {
+                return {};
+            }
+
+            const PhysicalDevice physicalDevice = {
+                .physicalDevice = pd,
+                .properties = pd.getProperties(),
+                .queueFamilies = *queueFamilies,
+            };
+            if (!IsDeviceSuitable(physicalDevice, surface))
+            {
+                return {};
+            }
+
+            return {physicalDevice};
+        };
+
+        std::vector<const char*> requiredExtensions;
+        if (surface)
+        {
+            requiredExtensions.push_back("VK_KHR_swapchain");
         }
 
         // Look for a discrete GPU
-        auto physicalDevices = instance.enumeratePhysicalDevices();
+        std::vector<PhysicalDevice> physicalDevices;
+        std::ranges::copy(
+            instance.enumeratePhysicalDevices()             //
+                | std::views::transform(makePhysicalDevice) //
+                | std::views::join,
+            std::back_inserter(physicalDevices));
         if (physicalDevices.empty())
         {
-            throw VulkanError("No GPU found!");
+            throw VulkanError("No suitable GPU found!");
         }
 
         // Prefer discrete GPUs to integrated GPUs
-        std::ranges::sort(physicalDevices, [](vk::PhysicalDevice a, vk::PhysicalDevice b) {
-            return (a.getProperties().deviceType == vk::PhysicalDeviceType::eDiscreteGpu)
-                > (b.getProperties().deviceType == vk::PhysicalDeviceType::eIntegratedGpu);
+        std::ranges::sort(physicalDevices, [](const PhysicalDevice& a, const PhysicalDevice& b) {
+            return (a.properties.deviceType == vk::PhysicalDeviceType::eDiscreteGpu)
+                > (b.properties.deviceType == vk::PhysicalDeviceType::eIntegratedGpu);
         });
 
         if (IsSoftwareRenderingEnabled())
         {
-            std::erase_if(physicalDevices, [&](vk::PhysicalDevice device) {
-                return device.getProperties().deviceType != vk::PhysicalDeviceType::eCpu;
+            std::erase_if(physicalDevices, [&](const PhysicalDevice& device) {
+                return device.properties.deviceType != vk::PhysicalDeviceType::eCpu;
             });
 
             if (physicalDevices.empty())
@@ -139,49 +201,8 @@ namespace
             }
         }
 
-        // Find the first device that supports all the queue families we need
-        const auto it = std::ranges::find_if(physicalDevices, [&](vk::PhysicalDevice device) {
-            // Check that all required extensions are supported
-            const auto supportedExtensions = device.enumerateDeviceExtensionProperties();
-            const bool supportsAllExtensions = std::ranges::all_of(ret.requiredExtensions, [&](std::string_view extensionName) {
-                return std::ranges::count(supportedExtensions, extensionName, &vk::ExtensionProperties::extensionName) > 0;
-            });
-
-            if (!supportsAllExtensions)
-            {
-                return false;
-            }
-
-            // Check all required features are supported
-            const auto supportedFeatures = device.getFeatures();
-            if (!supportedFeatures.samplerAnisotropy)
-            {
-                return false;
-            }
-
-            if (surface)
-            {
-                // Check for adequate swap chain support
-                if (device.getSurfaceFormatsKHR(surface).empty())
-                {
-                    return false;
-                }
-                if (device.getSurfacePresentModesKHR(surface).empty())
-                {
-                    return false;
-                }
-            }
-
-            // Check that all required queue families are supported
-            return FindQueueFamilies(device, surface).has_value();
-        });
-        if (it == physicalDevices.end())
-        {
-            throw VulkanError("No suitable GPU found!");
-        }
-
-        ret.physicalDevice = *it;
-        ret.queueFamilies = FindQueueFamilies(ret.physicalDevice, surface).value();
+        auto ret = physicalDevices.front();
+        ret.requiredExtensions = std::move(requiredExtensions);
 
         ret.queueFamilyIndices = {ret.queueFamilies.graphicsFamily, ret.queueFamilies.transferFamily};
         if (ret.queueFamilies.presentFamily)
