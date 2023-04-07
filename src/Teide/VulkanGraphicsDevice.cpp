@@ -432,10 +432,10 @@ namespace
             .setLayoutCount = size32(setLayouts),
             .pSetLayouts = data(setLayouts),
         };
-        if (shader.objectPblockLayout->pushConstantRange.has_value())
+        if (const auto pushConstantRange = shader.objectPblockLayout->pushConstantRange)
         {
             createInfo.pushConstantRangeCount = 1;
-            createInfo.pPushConstantRanges = &shader.objectPblockLayout->pushConstantRange.value();
+            createInfo.pPushConstantRanges = &*pushConstantRange;
         }
 
         return device.createPipelineLayoutUnique(createInfo, s_allocator);
@@ -728,7 +728,7 @@ BufferPtr VulkanGraphicsDevice::CreateBuffer(const BufferData& data, const char*
     auto task = m_scheduler.ScheduleGpu([=, this](CommandBuffer& cmdBuffer) { //
         return CreateBuffer(data, name, cmdBuffer);
     });
-    return task.get().value();
+    return task.get().value_or(nullptr);
 }
 
 BufferPtr VulkanGraphicsDevice::CreateBuffer(const BufferData& data, const char* name, CommandBuffer& cmdBuffer)
@@ -787,9 +787,7 @@ TexturePtr VulkanGraphicsDevice::CreateTexture(const TextureData& data, const ch
     auto task = m_scheduler.ScheduleGpu([=, this](CommandBuffer& cmdBuffer) { //
         return CreateTexture(data, name, cmdBuffer);
     });
-    task.wait();
-    auto result = task.get();
-    return result.value();
+    return task.get().value_or(nullptr);
 }
 
 TexturePtr VulkanGraphicsDevice::CreateTexture(const TextureData& data, const char* name, CommandBuffer& cmdBuffer)
@@ -817,7 +815,7 @@ TexturePtr VulkanGraphicsDevice::CreateRenderableTexture(const TextureData& data
     auto task = m_scheduler.ScheduleGpu([=, this](CommandBuffer& cmdBuffer) { //
         return CreateRenderableTexture(data, name, cmdBuffer);
     });
-    return task.get().value();
+    return task.get().value_or(nullptr);
 }
 
 TexturePtr VulkanGraphicsDevice::CreateRenderableTexture(const TextureData& data, const char* name, CommandBuffer& cmdBuffer)
@@ -847,7 +845,7 @@ MeshPtr VulkanGraphicsDevice::CreateMesh(const MeshData& data, const char* name)
     auto task = m_scheduler.ScheduleGpu([data, name, this](CommandBuffer& cmdBuffer) { //
         return CreateMesh(data, name, cmdBuffer);
     });
-    return task.get().value();
+    return task.get().value_or(nullptr);
 }
 
 MeshPtr VulkanGraphicsDevice::CreateMesh(const MeshData& data, const char* name, CommandBuffer& cmdBuffer)
@@ -1067,7 +1065,7 @@ ParameterBlockPtr VulkanGraphicsDevice::CreateParameterBlock(const ParameterBloc
     auto task = m_scheduler.ScheduleGpu([=, this](CommandBuffer& cmdBuffer) {
         return CreateParameterBlock(data, name, cmdBuffer, m_mainDescriptorPool.get());
     });
-    return task.get().value();
+    return task.get().value_or(nullptr);
 }
 
 ParameterBlockPtr VulkanGraphicsDevice::CreateParameterBlock(

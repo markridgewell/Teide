@@ -58,7 +58,7 @@ struct SamplerState
 struct TextureData
 {
     Geo::Size2i size;
-    Format format;
+    Format format = Format::Unknown;
     uint32 mipLevelCount = 1;
     uint32 sampleCount = 1;
     SamplerState samplerState;

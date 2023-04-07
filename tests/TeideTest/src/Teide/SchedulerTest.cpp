@@ -120,7 +120,7 @@ TEST_F(SchedulerTest, ScheduleChain)
 
     scheduler.WaitForTasks();
 
-    const auto result = task3.get().value();
+    const auto result = task3.get().value_or(-1);
     EXPECT_THAT(result, Eq(24));
     EXPECT_THAT(interm, ElementsAre(42, 21, 84));
 }

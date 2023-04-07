@@ -11,7 +11,8 @@
 #include "Teide/Texture.h"
 #include "Teide/TextureData.h"
 
-#include <gmock/gmock.h>
+#include <gmock/gmock-matchers.h>
+#include <gtest/gtest.h>
 
 using namespace testing;
 using namespace Teide;
@@ -53,7 +54,9 @@ TEST_F(RendererTest, RenderNothing)
 
     const auto texture = m_renderer->RenderToTexture(renderTarget, renderList).colorTexture;
 
-    const TextureData outputData = m_renderer->CopyTextureData(texture).get().value();
+    const auto result = m_renderer->CopyTextureData(texture).get();
+    ASSERT_THAT(result, Ne(std::nullopt));
+    const TextureData& outputData = result.value();
 
     EXPECT_THAT(outputData.size, Eq(Geo::Size2i{2, 2}));
     EXPECT_THAT(outputData.format, Eq(Format::Byte4Srgb));
@@ -91,7 +94,9 @@ TEST_F(RendererTest, RenderFullscreenTri)
 
     const auto texture = m_renderer->RenderToTexture(renderTarget, renderList).colorTexture;
 
-    const TextureData outputData = m_renderer->CopyTextureData(texture).get().value();
+    const auto result = m_renderer->CopyTextureData(texture).get();
+    ASSERT_TRUE(result.has_value());
+    const TextureData outputData = result.value();
 
     EXPECT_THAT(outputData.size, Eq(Geo::Size2i{2, 2}));
     EXPECT_THAT(outputData.format, Eq(Format::Byte4Srgb));

@@ -18,7 +18,9 @@ namespace
 
 static void WritePng(const std::filesystem::path& path, Geo::Size2i size, Teide::BytesView pixels)
 {
-    stbi_write_png(path.string().c_str(), size.x, size.y, 4, pixels.data(), size.x * 4);
+    stbi_write_png(
+        path.string().c_str(), static_cast<int>(size.x), static_cast<int>(size.y), 4, pixels.data(),
+        static_cast<int>(size.x * 4));
 }
 
 struct ReadPngResult
@@ -235,7 +237,9 @@ void RenderTest::RunTest(const SceneUniforms& sceneUniforms, Teide::RenderList r
 
     const auto output = m_renderer->RenderToTexture(RenderTarget, std::move(renderList)).colorTexture;
 
-    const Teide::TextureData outputData = m_renderer->CopyTextureData(output).get().value();
+    const auto result = m_renderer->CopyTextureData(output).get();
+    ASSERT_TRUE(result.has_value());
+    const Teide::TextureData& outputData = result.value();
 
     m_renderer->EndFrame();
     m_renderDoc.EndFrameCapture();

@@ -30,10 +30,10 @@ namespace
     vk::Viewport MakeViewport(Geo::Size2i size, const ViewportRegion& region = {})
     {
         return {
-            .x = region.left * size.x,
-            .y = region.top * size.y,
-            .width = region.right * size.x,
-            .height = region.bottom * size.y,
+            .x = region.left * static_cast<float>(size.x),
+            .y = region.top * static_cast<float>(size.y),
+            .width = region.right * static_cast<float>(size.x),
+            .height = region.bottom * static_cast<float>(size.y),
             .minDepth = 0.0f,
             .maxDepth = 1.0f,
         };
