@@ -14,6 +14,7 @@ option(TEIDE_BUILD_TESTS "Build tests for Teide" ON)
 option(TEIDE_TEST_VERBOSE "Enable verbose logging for Teide tests" OFF)
 option(TEIDE_UNIT_TEST_SW_RENDER "Enable software rendering for Teide unit tests" OFF)
 option(TEIDE_RENDER_TEST_SW_RENDER "Enable software rendering for Teide render tests" ON)
+option(TEIDE_CLANG_TIDY "Enable static analysis with clang-tidy" OFF)
 
 enable_testing()
 
@@ -40,9 +41,6 @@ set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-set(vulkan_options VULKAN_HPP_NO_STRUCT_CONSTRUCTORS VULKAN_HPP_DISPATCH_LOADER_DYNAMIC=1
-                   VULKAN_HPP_NO_SPACESHIP_OPERATOR)
-
 include(FileLists.cmake)
 td_add_library(
     Teide
@@ -59,8 +57,6 @@ td_add_library(
         glslang::glslang
         glslang::OGLCompiler)
 
-target_compile_definitions(Teide PRIVATE ${vulkan_options})
-
 if(TEIDE_BUILD_TESTS)
     add_subdirectory(tests)
 endif()
@@ -68,4 +64,9 @@ endif()
 if(TEIDE_BUILD_EXAMPLES)
     add_subdirectory(examples)
     set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT Application)
+endif()
+
+if(TEIDE_CLANG_TIDY)
+    include(tools/cmake/ClangTidy.cmake)
+    td_add_clang_tidy()
 endif()

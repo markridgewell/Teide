@@ -1,13 +1,14 @@
 
 #pragma once
 
+#include "VulkanConfig.h"
+
 #include "GeoLib/Vector.h"
 #include "Teide/Definitions.h"
 #include "Teide/PipelineData.h"
 #include "Teide/TextureData.h"
 
 #include <fmt/core.h>
-#include <vulkan/vulkan.hpp>
 
 #include <chrono>
 #include <span>
@@ -81,8 +82,6 @@ void TransitionImageLayout(
     vk::CommandBuffer cmdBuffer, vk::Image image, Format format, uint32_t mipLevelCount, vk::ImageLayout oldLayout,
     vk::ImageLayout newLayout, vk::PipelineStageFlags srcStageMask, vk::PipelineStageFlags dstStageMask);
 
-vk::UniqueSemaphore CreateSemaphore(vk::Device device);
-vk::UniqueFence CreateFence(vk::Device device, vk::FenceCreateFlags flags = {});
 vk::UniqueCommandPool CreateCommandPool(uint32_t queueFamilyIndex, vk::Device device, const char* debugName = "");
 
 inline auto GetHandle()

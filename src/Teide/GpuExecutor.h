@@ -2,9 +2,9 @@
 #pragma once
 
 #include "Teide/BasicTypes.h"
+#include "Teide/VulkanConfig.h"
 
 #include <function2/function2.hpp>
-#include <vulkan/vulkan.hpp>
 
 #include <future>
 #include <mutex>

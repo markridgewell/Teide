@@ -2,8 +2,6 @@
 #include "Teide/GraphicsDevice.h"
 #include "Teide/Vulkan.h"
 
-#include <vulkan/vulkan.hpp>
-
 #include <cstddef>
 #include <cstdint>
 #include <optional>

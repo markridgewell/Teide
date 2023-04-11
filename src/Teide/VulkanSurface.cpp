@@ -191,7 +191,7 @@ VulkanSurface::VulkanSurface(
     m_surface{std::move(surface)},
     m_swapchainAllocator(device, physicalDevice)
 {
-    std::ranges::generate(m_imageAvailable, [=] { return CreateSemaphore(device); });
+    std::ranges::generate(m_imageAvailable, [=] { return device.createSemaphoreUnique({}, s_allocator); });
 
     if (multisampled)
     {

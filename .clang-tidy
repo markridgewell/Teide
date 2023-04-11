@@ -6,3 +6,5 @@ Checks: >-
   -bugprone-unchecked-optional-access,
   clang-analyzer-*,
   -clang-analyzer-cplusplus.NewDeleteLeaks
+
+HeaderFilterRegex: .*

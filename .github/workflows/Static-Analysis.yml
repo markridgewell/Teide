@@ -2,6 +2,9 @@
 name: Static-Analysis
 on: [push]
 
+env:
+  clang_tidy_version: 16
+
 jobs:
   cppcheck:
     strategy:
@@ -42,3 +45,29 @@ jobs:
 
     - name: Run CppCheck
       run: python tools/cppcheck.py --build-dir=build/${{matrix.preset}} --show-code
+
+  clang-tidy:
+    name: ClangTidy
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+
+    - name: Install dependencies
+      uses: ./.github/actions/install-dependencies
+      with:
+        preset: linux
+
+    - name: Install clang-tidy ${{env.clang_tidy_version}}
+      run: |
+        wget https://apt.llvm.org/llvm.sh
+        chmod +x llvm.sh
+        sudo ./llvm.sh ${{env.clang_tidy_version}}
+        sudo apt-get -y clang-tidy-${{env.clang_tidy_version}}
+
+    - name: Configure CMake
+      run: cmake --preset linux -DTEIDE_CLANG_TIDY=ON
+
+    - name: Run clang-tidy
+      run: cmake --preset linux --target ClangTidy

@@ -96,7 +96,7 @@ void GpuExecutor::SubmitCommandBuffer(uint32 index, vk::CommandBuffer commandBuf
     const auto getFence = [this] {
         if (m_unusedSubmitFences.empty())
         {
-            return CreateFence(m_device);
+            return m_device.createFenceUnique({});
         }
 
         auto nextFence = std::move(m_unusedSubmitFences.front());

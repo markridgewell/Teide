@@ -365,16 +365,6 @@ void TransitionImageLayout(
     cmdBuffer.pipelineBarrier(srcStageMask, dstStageMask, {}, {}, {}, barrier);
 }
 
-vk::UniqueSemaphore CreateSemaphore(vk::Device device)
-{
-    return device.createSemaphoreUnique(vk::SemaphoreCreateInfo{}, s_allocator);
-}
-
-vk::UniqueFence CreateFence(vk::Device device, vk::FenceCreateFlags flags)
-{
-    return device.createFenceUnique(vk::FenceCreateInfo{.flags = flags}, s_allocator);
-}
-
 vk::UniqueCommandPool CreateCommandPool(uint32_t queueFamilyIndex, vk::Device device, const char* debugName)
 {
     const vk::CommandPoolCreateInfo createInfo = {

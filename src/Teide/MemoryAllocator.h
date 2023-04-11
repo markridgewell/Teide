@@ -1,7 +1,7 @@
 
 #pragma once
 
-#include <vulkan/vulkan.hpp>
+#include "Teide/VulkanConfig.h"
 
 #include <memory>
 #include <mutex>

@@ -15,7 +15,6 @@
 #include "Teide/TextureData.h"
 
 #include <spdlog/spdlog.h>
-#include <vulkan/vulkan.hpp>
 
 #include <algorithm>
 #include <array>
@@ -53,8 +52,10 @@ VulkanRenderer::VulkanRenderer(VulkanGraphicsDevice& device, const QueueFamilies
         m_presentQueue = vkdevice.getQueue(*queueFamilies.presentFamily, 0);
     }
 
-    std::ranges::generate(m_renderFinished, [=] { return CreateSemaphore(vkdevice); });
-    std::ranges::generate(m_inFlightFences, [=] { return CreateFence(vkdevice, vk::FenceCreateFlagBits::eSignaled); });
+    std::ranges::generate(m_renderFinished, [=] { return vkdevice.createSemaphoreUnique({}, s_allocator); });
+    std::ranges::generate(m_inFlightFences, [=] {
+        return vkdevice.createFenceUnique({.flags = vk::FenceCreateFlagBits::eSignaled}, s_allocator);
+    });
 
     const auto numThreads = device.GetScheduler().GetThreadCount();
     std::ranges::generate(
