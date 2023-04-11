@@ -66,6 +66,7 @@ jobs:
         sudo add-apt-repository "deb http://apt.llvm.org/${UBUNTU_CODENAME}/ llvm-toolchain-${UBUNTU_CODENAME}-${{env.clang_tidy_version}} main"
         sudo apt-get update
         sudo apt-get install -y clang-tidy-${{env.clang_tidy_version}}
+        sudo ln -sf `which clang-tidy-16` /usr/bin/clang-tidy
 
     - name: Configure CMake
       run: cmake --preset linux -DTEIDE_CLANG_TIDY=ON
