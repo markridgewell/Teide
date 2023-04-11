@@ -105,14 +105,15 @@ namespace
         const char* prefix = "";
         switch (MessageType(messageType))
         {
-            default:
-                prefix = "";
-                break;
             case MessageType::eValidation:
                 prefix = "[validation] ";
                 break;
+
             case MessageType::ePerformance:
                 prefix = "[performance] ";
+                break;
+
+            default:
                 break;
         }
 

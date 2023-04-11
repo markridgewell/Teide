@@ -23,6 +23,7 @@
 #include <cassert>
 #include <cstdlib>
 #include <filesystem>
+#include <optional>
 #include <ranges>
 #include <string>
 
@@ -145,7 +146,7 @@ namespace
 
     PhysicalDevice FindPhysicalDevice(vk::Instance instance, vk::SurfaceKHR surface)
     {
-        const auto makePhysicalDevice = [surface](vk::PhysicalDevice pd) -> std::vector<PhysicalDevice> {
+        const auto makePhysicalDevice = [surface](vk::PhysicalDevice pd) -> std::optional<PhysicalDevice> {
             auto queueFamilies = FindQueueFamilies(pd, surface);
             if (!queueFamilies.has_value())
             {
@@ -173,11 +174,13 @@ namespace
 
         // Look for a discrete GPU
         std::vector<PhysicalDevice> physicalDevices;
-        std::ranges::copy(
-            instance.enumeratePhysicalDevices()             //
-                | std::views::transform(makePhysicalDevice) //
-                | std::views::join,
-            std::back_inserter(physicalDevices));
+        for (const auto& device : instance.enumeratePhysicalDevices())
+        {
+            if (auto physicalDevice = makePhysicalDevice(device))
+            {
+                physicalDevices.push_back(std::move(*physicalDevice));
+            }
+        }
         if (physicalDevices.empty())
         {
             throw VulkanError("No suitable GPU found!");

@@ -10,7 +10,7 @@
 namespace Teide
 {
 
-constexpr vk::DeviceSize MemoryBlockSize = 64 * 1024 * 1024;
+constexpr vk::DeviceSize MemoryBlockSize = 64ull * 1024ull * 1024ull;
 
 struct MemoryAllocation
 {
