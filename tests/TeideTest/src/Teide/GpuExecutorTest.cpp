@@ -23,7 +23,7 @@ namespace
 class GpuExecutorTest : public testing::Test
 {
 public:
-    void SetUp()
+    void SetUp() override
     {
         m_instance = CreateInstance(m_loader);
         ASSERT_TRUE(m_instance);
@@ -95,9 +95,8 @@ TEST_F(GpuExecutorTest, OneCommandBuffer)
     future.wait();
     EXPECT_THAT(future.wait_for(0s), Eq(std::future_status::ready));
 
-    const auto resultSpan = std::span(reinterpret_cast<std::uint8_t*>(buffer.mappedData.data()), buffer.size);
-    const auto result = std::vector(resultSpan.begin(), resultSpan.end());
-    const auto expected = std::vector<std::uint8_t>{1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
+    const auto result = std::vector(buffer.mappedData.begin(), buffer.mappedData.end());
+    const auto expected = HexToBytes("01 01 01 01 01 01 01 01 01 01 01 01");
     EXPECT_THAT(result, Eq(expected));
 }
 
@@ -124,9 +123,8 @@ TEST_F(GpuExecutorTest, TwoCommandBuffers)
     EXPECT_THAT(future2.wait_for(0s), Eq(std::future_status::ready));
     future1.wait(); // just in case
 
-    const auto resultSpan = std::span(reinterpret_cast<std::uint8_t*>(buffer.mappedData.data()), buffer.size);
-    const auto result = std::vector(resultSpan.begin(), resultSpan.end());
-    const auto expected = std::vector<std::uint8_t>{1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2};
+    const auto result = std::vector(buffer.mappedData.begin(), buffer.mappedData.end());
+    const auto expected = HexToBytes("01 01 01 01 02 02 02 02 02 02 02 02");
     EXPECT_THAT(result, Eq(expected));
 }
 
@@ -153,9 +151,8 @@ TEST_F(GpuExecutorTest, TwoCommandBuffersOutOfOrder)
     EXPECT_THAT(future2.wait_for(0s), Eq(std::future_status::ready));
     future1.wait(); // just in case
 
-    const auto resultSpan = std::span(reinterpret_cast<std::uint8_t*>(buffer.mappedData.data()), buffer.size);
-    const auto result = std::vector(resultSpan.begin(), resultSpan.end());
-    const auto expected = std::vector<std::uint8_t>{1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2};
+    const auto result = std::vector(buffer.mappedData.begin(), buffer.mappedData.end());
+    const auto expected = HexToBytes("01 01 01 01 02 02 02 02 02 02 02 02");
     EXPECT_THAT(result, Eq(expected));
 }
 
@@ -192,9 +189,8 @@ TEST_F(GpuExecutorTest, SubmitMultipleCommandBuffers)
         future.wait();
         EXPECT_THAT(future.wait_for(0s), Eq(std::future_status::ready));
 
-        const auto resultSpan = std::span(reinterpret_cast<std::uint8_t*>(buffer.mappedData.data()), buffer.size);
-        const auto result = std::vector(resultSpan.begin(), resultSpan.end());
-        const auto expected = std::vector<std::uint8_t>{1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
+        const auto result = std::vector(buffer.mappedData.begin(), buffer.mappedData.end());
+        const auto expected = HexToBytes("01 01 01 01 01 01 01 01 01 01 01 01");
         EXPECT_THAT(result, Eq(expected));
     }
 }

@@ -31,7 +31,7 @@ struct ReadPngResult
 
 static ReadPngResult ReadPng(const std::filesystem::path& path)
 {
-    int width, height;
+    int width = 0, height = 0;
     Teide::uint8* rawData = stbi_load(path.string().c_str(), &width, &height, nullptr, 4);
     if (rawData == nullptr)
     {

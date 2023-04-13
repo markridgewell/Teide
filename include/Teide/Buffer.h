@@ -1,6 +1,7 @@
 
 #pragma once
 
+#include "Teide/AbstractBase.h"
 #include "Teide/BasicTypes.h"
 #include "Teide/BytesView.h"
 #include "Teide/ForwardDeclare.h"
@@ -32,7 +33,9 @@ void AppendBytes(std::vector<byte>& bytes, const T& elem)
 {
     const auto pos = bytes.size();
     bytes.resize(pos + sizeof(T));
-    std::memcpy(bytes.data() + pos, &elem, sizeof(T));
+    const auto source = std::as_bytes(std::span(&elem, 1));
+    const auto dest = std::span(bytes).subspan(pos);
+    std::ranges::copy(source, dest.begin());
 }
 
 template <TrivialObject T>
@@ -47,11 +50,9 @@ std::vector<byte> MakeBytes(std::initializer_list<T> init)
     return ret;
 }
 
-class Buffer
+class Buffer : AbstractBase
 {
 public:
-    virtual ~Buffer() = default;
-
     virtual usize GetSize() const = 0;
     virtual BytesView GetData() const = 0;
 };

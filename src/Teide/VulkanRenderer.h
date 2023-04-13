@@ -25,7 +25,12 @@ class VulkanRenderer : public Renderer
 public:
     explicit VulkanRenderer(VulkanGraphicsDevice& device, const QueueFamilies& queueFamilies, ShaderEnvironmentPtr shaderEnvironment);
 
-    ~VulkanRenderer();
+    VulkanRenderer(const VulkanRenderer&) = delete;
+    VulkanRenderer(VulkanRenderer&&) = delete;
+    VulkanRenderer& operator=(const VulkanRenderer&) = delete;
+    VulkanRenderer& operator=(VulkanRenderer&&) = delete;
+
+    ~VulkanRenderer() override;
 
     uint32 GetFrameNumber() const override;
     void BeginFrame(ShaderParameters sceneParameters) override;
@@ -43,10 +48,10 @@ private:
         return m_device.GetScheduler().ScheduleGpu(std::forward<F>(f));
     }
 
-    const ParameterBlockPtr& GetSceneParameterBlock() const { return m_frameResources[m_frameNumber].sceneParameters; }
+    const ParameterBlockPtr& GetSceneParameterBlock() const { return GetCurrentFrame().sceneParameters; }
     const ParameterBlockPtr& AddViewParameterBlock(uint32 threadIndex, ParameterBlockPtr p)
     {
-        return m_frameResources[m_frameNumber].threadResources[threadIndex].viewParameters.emplace_back(std::move(p));
+        return GetCurrentFrame().threadResources.at(threadIndex).viewParameters.emplace_back(std::move(p));
     }
 
     void BuildCommandBuffer(
@@ -67,6 +72,9 @@ private:
         ParameterBlockPtr sceneParameters;
         std::vector<ThreadResources> threadResources;
     };
+
+    const FrameResources& GetCurrentFrame() const { return m_frameResources.at(m_frameNumber); }
+    FrameResources& GetCurrentFrame() { return m_frameResources.at(m_frameNumber); }
 
     VulkanGraphicsDevice& m_device;
     vk::Queue m_graphicsQueue;

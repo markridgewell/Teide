@@ -49,7 +49,7 @@ struct VertexAttribute
 
 struct VertexLayout
 {
-    PrimitiveTopology topology;
+    PrimitiveTopology topology = PrimitiveTopology::TriangleList;
     std::vector<VertexBufferBinding> bufferBindings;
     std::vector<VertexAttribute> attributes;
 };

@@ -1,6 +1,7 @@
 
 #pragma once
 
+#include "Teide/AbstractBase.h"
 #include "Teide/BasicTypes.h"
 #include "Teide/Task.h"
 
@@ -116,9 +117,8 @@ private:
 
     tf::Executor m_executor;
 
-    struct AbstractScheduledTask
+    struct AbstractScheduledTask : AbstractBase
     {
-        virtual ~AbstractScheduledTask() = default;
         virtual bool IsReady() const = 0;
         virtual void Execute(CpuExecutor& executor) = 0;
     };

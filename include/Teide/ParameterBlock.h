@@ -1,6 +1,7 @@
 
 #pragma once
 
+#include "Teide/AbstractBase.h"
 #include "Teide/BytesView.h"
 #include "Teide/ForwardDeclare.h"
 #include "Teide/Shader.h"
@@ -16,11 +17,8 @@ struct ShaderParameters
     std::vector<TexturePtr> textures;
 };
 
-class ParameterBlockLayout
-{
-public:
-    virtual ~ParameterBlockLayout() = default;
-};
+class ParameterBlockLayout : AbstractBase
+{};
 
 struct ParameterBlockData
 {
@@ -29,11 +27,9 @@ struct ParameterBlockData
     ShaderParameters parameters;
 };
 
-class ParameterBlock
+class ParameterBlock : AbstractBase
 {
 public:
-    virtual ~ParameterBlock() = default;
-
     virtual usize GetUniformBufferSize() const = 0;
     virtual usize GetPushConstantSize() const = 0;
 };

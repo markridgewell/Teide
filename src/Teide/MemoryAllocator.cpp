@@ -45,13 +45,13 @@ MemoryAllocation MemoryAllocator::Allocate(const vk::MemoryRequirements& require
     }
     block.consumedSize = offset + requirements.size;
 
-    void* const mappedData = block.mappedData.get();
+    const auto mappedData = block.GetMappedData();
 
     return {
         .memory = block.memory.get(),
         .offset = offset,
         .size = requirements.size,
-        .mappedData = mappedData ? static_cast<char*>(mappedData) + offset : nullptr,
+        .mappedData = mappedData.empty() ? std::span<byte>{} : mappedData.subspan(offset, requirements.size),
     };
 }
 

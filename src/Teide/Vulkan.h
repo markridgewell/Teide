@@ -26,8 +26,8 @@ enum class VertexClass;
 
 struct QueueFamilies
 {
-    uint32 graphicsFamily;
-    uint32 transferFamily;
+    uint32 graphicsFamily = 0;
+    uint32 transferFamily = 0;
     std::optional<uint32> presentFamily;
 };
 
@@ -132,7 +132,7 @@ class VulkanError : public vk::Error, public std::exception
 public:
     explicit VulkanError(std::string message) : m_what{std::move(message)} {}
 
-    virtual const char* what() const noexcept { return m_what.c_str(); }
+    const char* what() const noexcept override { return m_what.c_str(); }
 
 private:
     std::string m_what;

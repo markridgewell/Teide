@@ -1,6 +1,7 @@
 
 #pragma once
 
+#include "Teide/AbstractBase.h"
 #include "Teide/BasicTypes.h"
 #include "Teide/Format.h"
 #include "Teide/ForwardDeclare.h"
@@ -12,10 +13,7 @@
 namespace Teide
 {
 
-class Pipeline
-{
-public:
-    virtual ~Pipeline() = default;
-};
+class Pipeline : AbstractBase
+{};
 
 } // namespace Teide

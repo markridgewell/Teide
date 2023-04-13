@@ -25,7 +25,7 @@ public:
     GraphicsDeviceTest() : m_device{CreateTestGraphicsDevice()} {}
 
 protected:
-    GraphicsDevicePtr m_device;
+    GraphicsDevicePtr m_device; // NOLINT(cppcoreguidelines-non-private-member-variables-in-classes)
 };
 
 TEST_F(GraphicsDeviceTest, CreateBuffer)

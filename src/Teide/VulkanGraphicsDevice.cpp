@@ -657,7 +657,7 @@ VulkanGraphicsDevice::VulkanGraphicsDevice(
     m_loader{std::move(loader)},
     m_instance{std::move(instance)},
     m_physicalDevice{FindPhysicalDevice(m_instance.get(), surface.get())},
-    m_device{CreateDevice(loader, m_physicalDevice)},
+    m_device{CreateDevice(m_loader, m_physicalDevice)},
     m_settings{settings},
     m_graphicsQueue{m_device->getQueue(m_physicalDevice.queueFamilies.graphicsFamily, 0)},
     m_workerDescriptorPools(settings.numThreads),

@@ -23,7 +23,7 @@ struct ShaderStageDefinition
 
 struct ShaderSourceData
 {
-    ShaderLanguage language;
+    ShaderLanguage language = ShaderLanguage::Glsl;
     Teide::ShaderEnvironmentData environment;
     Teide::ParameterBlockDesc materialPblock;
     Teide::ParameterBlockDesc objectPblock;

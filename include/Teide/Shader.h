@@ -1,6 +1,7 @@
 
 #pragma once
 
+#include "Teide/AbstractBase.h"
 #include "Teide/ForwardDeclare.h"
 
 namespace Teide
@@ -14,11 +15,9 @@ enum class ParameterBlockType
     Object,
 };
 
-class Shader
+class Shader : AbstractBase
 {
 public:
-    virtual ~Shader() = default;
-
     virtual ParameterBlockLayoutPtr GetMaterialPblockLayout() const = 0;
     virtual ParameterBlockLayoutPtr GetObjectPblockLayout() const = 0;
 };

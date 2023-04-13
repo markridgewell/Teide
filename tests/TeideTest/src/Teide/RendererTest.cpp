@@ -40,8 +40,8 @@ protected:
         };
     }
 
-    GraphicsDevicePtr m_device;
-    RendererPtr m_renderer;
+    GraphicsDevicePtr m_device; // NOLINT(cppcoreguidelines-non-private-member-variables-in-classes)
+    RendererPtr m_renderer;     // NOLINT(cppcoreguidelines-non-private-member-variables-in-classes)
 };
 
 TEST_F(RendererTest, RenderNothing)

@@ -43,7 +43,7 @@ namespace
         vk::DynamicLoader loader;
         const auto vkGetInstanceProcAddr = loader.getProcAddress<PFN_vkGetInstanceProcAddr>("vkGetInstanceProcAddr");
         const auto vkCreateInstance = PFN_vkCreateInstance(vkGetInstanceProcAddr(NULL, "vkCreateInstance"));
-        VkInstance instance;
+        VkInstance instance = nullptr;
         VkInstanceCreateInfo createInfo = {.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO};
         if (vkCreateInstance(&createInfo, nullptr, &instance) == VK_SUCCESS)
         {

@@ -34,7 +34,12 @@ public:
         VulkanLoader loader, vk::UniqueInstance instance, vk::UniqueSurfaceKHR surface,
         const GraphicsSettings& settings = {});
 
-    ~VulkanGraphicsDevice();
+    VulkanGraphicsDevice(const VulkanGraphicsDevice&) = delete;
+    VulkanGraphicsDevice(VulkanGraphicsDevice&&) = delete;
+    VulkanGraphicsDevice& operator=(const VulkanGraphicsDevice&) = delete;
+    VulkanGraphicsDevice& operator=(VulkanGraphicsDevice&&) = delete;
+
+    ~VulkanGraphicsDevice() override;
 
     SurfacePtr CreateSurface(SDL_Window* window, bool multisampled) override;
     RendererPtr CreateRenderer(ShaderEnvironmentPtr shaderEnvironment) override;

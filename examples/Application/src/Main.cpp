@@ -25,10 +25,10 @@ struct SDLWindowDeleter
 
 using UniqueSDLWindow = std::unique_ptr<SDL_Window, SDLWindowDeleter>;
 
-int Run(int argc, char* argv[])
+int Run(std::span<const char* const> args)
 {
-    const char* const imageFilename = (argc >= 2) ? argv[1] : nullptr;
-    const char* const modelFilename = (argc >= 3) ? argv[2] : nullptr;
+    const char* const imageFilename = (args.size() >= 2) ? args[1] : nullptr;
+    const char* const modelFilename = (args.size() >= 3) ? args[2] : nullptr;
 
     const auto windowFlags = SDL_WINDOW_VULKAN | SDL_WINDOW_ALLOW_HIGHDPI | SDL_WINDOW_RESIZABLE;
     const auto window = UniqueSDLWindow(
@@ -77,7 +77,7 @@ int SDL_main(int argc, char* argv[])
 
     spdlog::info("SDL initialised successfully");
 
-    int retcode = Run(argc, argv);
+    int retcode = Run({argv, static_cast<std::size_t>(argc)});
 
     SDL_Quit();
 

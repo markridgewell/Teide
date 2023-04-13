@@ -20,17 +20,9 @@ struct GraphicsSettings
     uint32 numThreads = std::thread::hardware_concurrency();
 };
 
-class GraphicsDevice
+class GraphicsDevice : AbstractBase
 {
 public:
-    virtual ~GraphicsDevice() = default;
-
-    GraphicsDevice() = default;
-    GraphicsDevice(const GraphicsDevice&) = delete;
-    GraphicsDevice(GraphicsDevice&&) = delete;
-    GraphicsDevice& operator=(const GraphicsDevice&) = delete;
-    GraphicsDevice& operator=(GraphicsDevice&&) = delete;
-
     virtual SurfacePtr CreateSurface(SDL_Window* window, bool multisampled) = 0;
     virtual RendererPtr CreateRenderer(ShaderEnvironmentPtr shaderEnvironment) = 0;
 

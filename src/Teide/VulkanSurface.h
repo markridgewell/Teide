@@ -71,11 +71,11 @@ private:
     std::vector<vk::UniqueImageView> m_swapchainImageViews;
     std::vector<vk::UniqueCommandBuffer> m_transitionToPresentSrc;
     uint32 m_msaaSampleCount = 1;
-    Format m_colorFormat;
+    Format m_colorFormat = Format::Unknown;
     vk::UniqueImage m_colorImage;
     MemoryAllocation m_colorMemory;
     vk::UniqueImageView m_colorImageView;
-    Format m_depthFormat;
+    Format m_depthFormat = Format::Unknown;
     vk::UniqueImage m_depthImage;
     MemoryAllocation m_depthMemory;
     vk::UniqueImageView m_depthImageView;

@@ -18,15 +18,11 @@ using namespace Teide;
 
 namespace
 {
-auto AsUint8s(std::span<const std::byte> bytes) -> std::span<const std::uint8_t>
-{
-    return std::span(reinterpret_cast<const std::uint8_t*>(bytes.data()), bytes.size());
-}
 
 class SchedulerTest : public testing::Test
 {
 public:
-    void SetUp()
+    void SetUp() override
     {
         m_instance = CreateInstance(m_loader);
         ASSERT_TRUE(m_instance);
@@ -137,10 +133,7 @@ TEST_F(SchedulerTest, ScheduleGpu)
     task.wait();
     EXPECT_THAT(task.wait_for(0s), Eq(std::future_status::ready));
 
-    const auto resultSpan = std::span(reinterpret_cast<std::uint8_t*>(buffer.mappedData.data()), buffer.size);
-    const auto resultData = std::vector(resultSpan.begin(), resultSpan.end());
-    const auto expectedData = std::vector<std::uint8_t>{1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
-    EXPECT_THAT(resultData, Eq(expectedData));
+    EXPECT_THAT(buffer.mappedData, Each(Eq(std::byte{1})));
 }
 
 TEST_F(SchedulerTest, ScheduleGpuWithReturn)
@@ -155,10 +148,8 @@ TEST_F(SchedulerTest, ScheduleGpuWithReturn)
     const auto& result = task.get();
     ASSERT_THAT(result.has_value(), IsTrue());
     const auto& buffer = *result.value();
-    const auto resultSpan = AsUint8s(buffer.GetData());
-    const auto resultData = std::vector(resultSpan.begin(), resultSpan.end());
-    const auto expectedData = std::vector<std::uint8_t>{1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
-    EXPECT_THAT(resultData, Eq(expectedData));
+
+    EXPECT_THAT(buffer.mappedData, Each(Eq(std::byte{1})));
 }
 
 TEST_F(SchedulerTest, ScheduleGpuAcrossMultipleFrames)
@@ -176,10 +167,7 @@ TEST_F(SchedulerTest, ScheduleGpuAcrossMultipleFrames)
 
         task.wait();
 
-        const auto resultSpan = AsUint8s(buffer.GetData());
-        const auto resultData = std::vector(resultSpan.begin(), resultSpan.end());
-        const auto expectedData = std::vector<std::uint8_t>{i, i, i, i};
-        EXPECT_THAT(resultData, Eq(expectedData));
+        EXPECT_THAT(buffer.mappedData, Each(Eq(std::byte{i})));
 
         scheduler.NextFrame();
     }

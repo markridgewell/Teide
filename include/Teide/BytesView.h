@@ -42,10 +42,7 @@ public:
     using const_iterator = span_type::iterator;
     using reverse_iterator = span_type::reverse_iterator;
 
-    BytesView(const BytesView&) = default;
-    BytesView(BytesView&&) = default;
-    BytesView& operator=(const BytesView&) = default;
-    BytesView& operator=(BytesView&&) = default;
+    BytesView(const byte* p, usize size) : m_span(p, size) {}
 
     BytesView(std::span<const byte> bytes = {}) : m_span{bytes} {}
 

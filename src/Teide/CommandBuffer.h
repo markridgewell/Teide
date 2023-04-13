@@ -26,7 +26,7 @@ public:
     vk::CommandBuffer& operator*();
     vk::CommandBuffer* operator->();
 
-protected:
+private:
     CommandBuffer() = default;
 
     vk::UniqueCommandBuffer m_cmdBuffer;

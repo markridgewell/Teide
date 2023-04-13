@@ -2,6 +2,7 @@
 #pragma once
 
 #include "GeoLib/Box.h"
+#include "Teide/AbstractBase.h"
 #include "Teide/ForwardDeclare.h"
 #include "Teide/MeshData.h"
 
@@ -10,11 +11,9 @@
 namespace Teide
 {
 
-class Mesh
+class Mesh : AbstractBase
 {
 public:
-    virtual ~Mesh() = default;
-
     virtual const VertexLayout& GetVertexLayout() const = 0;
     virtual BufferPtr GetVertexBuffer() const = 0;
     virtual BufferPtr GetIndexBuffer() const = 0;

@@ -17,6 +17,8 @@ namespace
 constexpr auto PblockNames = std::array{"Scene", "View", "Material", "Object"};
 constexpr auto PblockNamesLower = std::array{"scene", "view", "material", "object"};
 
+constexpr int VulkanGlslDialectVersion = 450;
+
 #if _DEBUG
 static constexpr bool IsDebugBuild = true;
 #else
@@ -159,10 +161,15 @@ mat4 mul(mat4 m1, mat4 m2) {
 }
 )--";
 
-struct StaticInit
+const struct StaticInit
 {
     StaticInit() { glslang::InitializeProcess(); }
     ~StaticInit() { glslang::FinalizeProcess(); }
+
+    StaticInit(const StaticInit&) = delete;
+    StaticInit(StaticInit&&) = delete;
+    StaticInit& operator=(const StaticInit&) = delete;
+    StaticInit& operator=(StaticInit&&) = delete;
 } s_staticInit;
 
 std::unique_ptr<glslang::TShader> CompileStage(std::string_view shaderSource, EShLanguage stage, glslang::EShSource source)
@@ -171,11 +178,11 @@ std::unique_ptr<glslang::TShader> CompileStage(std::string_view shaderSource, ES
     const auto inputStrings = std::array{data(ShaderCommon), data(shaderSource)};
     const auto inputStringLengths = std::array{static_cast<int>(size(ShaderCommon)), static_cast<int>(size(shaderSource))};
     shader->setStringsWithLengths(data(inputStrings), data(inputStringLengths), static_cast<int>(size(inputStringLengths)));
-    shader->setEnvInput(source, stage, glslang::EShClientVulkan, 450);
+    shader->setEnvInput(source, stage, glslang::EShClientVulkan, VulkanGlslDialectVersion);
     shader->setEnvClient(glslang::EShClientVulkan, glslang::EShTargetVulkan_1_0);
     shader->setEnvTarget(glslang::EShTargetSpv, glslang::EShTargetSpv_1_0);
 
-    if (!shader->parse(&DefaultTBuiltInResource, 110, false, EShMsgDefault))
+    if (!shader->parse(&DefaultTBuiltInResource, VulkanGlslDialectVersion, false, EShMsgDefault))
     {
         throw CompileError(shader->getInfoLog());
     }
@@ -325,7 +332,8 @@ glslang::EShSource GetEShSource(ShaderLanguage language)
     Unreachable();
 }
 
-void BuildUniformBuffer(std::string& source, const ParameterBlockDesc& pblock, int set)
+template <int Set>
+void BuildUniformBuffer(std::string& source, const ParameterBlockDesc& pblock)
 {
     if (std::ranges::count_if(pblock.parameters, [](const auto& v) { return !IsResourceType(v.type.baseType); }) == 0)
     {
@@ -335,15 +343,15 @@ void BuildUniformBuffer(std::string& source, const ParameterBlockDesc& pblock, i
 
     auto out = std::back_inserter(source);
 
-    if (BuildParameterBlockLayout(pblock, set).isPushConstant)
+    if (BuildParameterBlockLayout(pblock, Set).isPushConstant)
     {
         // Build push constants
-        fmt::format_to(out, "layout(push_constant) uniform {}Uniforms {{\n", PblockNames[set]);
+        fmt::format_to(out, "layout(push_constant) uniform {}Uniforms {{\n", PblockNames[Set]);
     }
     else
     {
         // Build uniform block
-        fmt::format_to(out, "layout(set = {}, binding = 0) uniform {}Uniforms {{\n", set, PblockNames[set]);
+        fmt::format_to(out, "layout(set = {}, binding = 0) uniform {}Uniforms {{\n", Set, PblockNames[Set]);
     }
 
     for (const auto& variable : pblock.parameters)
@@ -356,10 +364,11 @@ void BuildUniformBuffer(std::string& source, const ParameterBlockDesc& pblock, i
         std::string typeStr = ToString(variable.type);
         fmt::format_to(out, "    {} {};\n", typeStr, variable.name);
     }
-    fmt::format_to(out, "}} {};\n\n", PblockNamesLower[set]);
+    fmt::format_to(out, "}} {};\n\n", PblockNamesLower[Set]);
 }
 
-void BuildResourceBindings(std::string& source, const ParameterBlockDesc& pblock, int set)
+template <int Set>
+void BuildResourceBindings(std::string& source, const ParameterBlockDesc& pblock)
 {
     if (std::ranges::count_if(pblock.parameters, [](const auto& v) { return IsResourceType(v.type.baseType); }) == 0)
     {
@@ -375,7 +384,7 @@ void BuildResourceBindings(std::string& source, const ParameterBlockDesc& pblock
         if (IsResourceType(parameter.type.baseType))
         {
             fmt::format_to(
-                out, "layout(set = {}, binding = {}) uniform {} {};\n", set, slot, ToString(parameter.type), parameter.name);
+                out, "layout(set = {}, binding = {}) uniform {} {};\n", Set, slot, ToString(parameter.type), parameter.name);
             slot++;
         }
     }
@@ -383,10 +392,11 @@ void BuildResourceBindings(std::string& source, const ParameterBlockDesc& pblock
     source += '\n';
 }
 
-void BuildBindings(std::string& source, const ParameterBlockDesc& pblock, int set)
+template <int Set>
+void BuildBindings(std::string& source, const ParameterBlockDesc& pblock)
 {
-    BuildUniformBuffer(source, pblock, set);
-    BuildResourceBindings(source, pblock, set);
+    BuildUniformBuffer<Set>(source, pblock);
+    BuildResourceBindings<Set>(source, pblock);
 }
 
 void BuildVaryings(std::string& source, ShaderStageData& data, const ShaderStageDefinition& sourceStage)
@@ -428,10 +438,10 @@ ShaderData CompileShader(const ShaderSourceData& sourceData)
     data.objectPblock = sourceData.objectPblock;
 
     std::string parameters = "";
-    BuildBindings(parameters, sourceData.environment.scenePblock, 0);
-    BuildBindings(parameters, sourceData.environment.viewPblock, 1);
-    BuildBindings(parameters, sourceData.materialPblock, 2);
-    BuildBindings(parameters, sourceData.objectPblock, 3);
+    BuildBindings<0>(parameters, sourceData.environment.scenePblock);
+    BuildBindings<1>(parameters, sourceData.environment.viewPblock);
+    BuildBindings<2>(parameters, sourceData.materialPblock);
+    BuildBindings<3>(parameters, sourceData.objectPblock);
 
     std::string vertexShader = parameters;
     BuildVaryings(vertexShader, data.vertexShader, sourceData.vertexShader);

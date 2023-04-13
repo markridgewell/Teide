@@ -6,6 +6,7 @@ set(sources
     include/GeoLib/Scalar.h
     include/GeoLib/Vector.h
     include/ShaderCompiler/ShaderCompiler.h
+    include/Teide/AbstractBase.h
     include/Teide/BasicTypes.h
     include/Teide/Buffer.h
     include/Teide/BytesView.h
@@ -48,6 +49,7 @@ set(sources
     src/Teide/Vulkan.h
     src/Teide/VulkanBuffer.cpp
     src/Teide/VulkanBuffer.h
+    src/Teide/VulkanConfig.h
     src/Teide/VulkanGraphicsDevice.cpp
     src/Teide/VulkanGraphicsDevice.h
     src/Teide/VulkanLoader.cpp
