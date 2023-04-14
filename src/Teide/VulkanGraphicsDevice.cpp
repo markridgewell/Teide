@@ -402,7 +402,7 @@ namespace
             SetDebugName(ret.sampler, "{}:Sampler", debugName);
         }
 
-        return {std::move(ret), initialState};
+        return {VulkanTexture(std::move(ret)), initialState};
     }
 
     vk::UniqueDescriptorSetLayout

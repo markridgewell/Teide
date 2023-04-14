@@ -45,7 +45,9 @@ struct ShaderVariableType
         Texture2DShadow,
     };
 
-    ShaderVariableType(BaseType baseType, uint32 arraySize = 0) : baseType{baseType}, arraySize{arraySize} {}
+    ShaderVariableType(BaseType baseType, uint32 arraySize = 0) : // cppcheck-suppress noExplicitConstructor
+        baseType{baseType}, arraySize{arraySize}
+    {}
 
     BaseType baseType;
     uint32 arraySize = 0;

@@ -13,7 +13,7 @@ Checks: >-
   -cppcoreguidelines-pro-bounds-constant-array-index,
   -cppcoreguidelines-macro-usage,
   -cppcoreguidelines-avoid-const-or-ref-data-members,
-  -cppcoreguidelines-avoid-non-const-global-variables,
-  -cppcoreguidelines-owning-memory
+  -cppcoreguidelines-avoid-non-const-global-variables
 
-HeaderFilterRegex: .*
+WarningsAsErrors: '*'
+HeaderFilterRegex: '.*'

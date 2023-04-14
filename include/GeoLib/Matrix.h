@@ -49,10 +49,10 @@ struct Matrix<T, 1, N>
         return this->*members[i];
     }
 
-    friend bool operator==(const Matrix& a, const Matrix& b) noexcept = default;
+    friend constexpr bool operator==(const Matrix& a, const Matrix& b) noexcept = default;
 
-    static Matrix Zero() noexcept { return {{}}; }
-    static Matrix Identity() noexcept { return Matrix{}; }
+    static constexpr Matrix Zero() noexcept { return {{}}; }
+    static constexpr Matrix Identity() noexcept { return Matrix{}; }
 
 private:
     static constexpr decltype(&Matrix::x) members[] = {&Matrix::x};
@@ -75,10 +75,10 @@ struct Matrix<T, 2, N>
         return this->*members[i];
     }
 
-    friend bool operator==(const Matrix& a, const Matrix& b) noexcept = default;
+    friend constexpr bool operator==(const Matrix& a, const Matrix& b) noexcept = default;
 
-    static Matrix Zero() noexcept { return {{}, {}}; }
-    static Matrix Identity() noexcept { return Matrix{}; }
+    static constexpr Matrix Zero() noexcept { return {{}, {}}; }
+    static constexpr Matrix Identity() noexcept { return Matrix{}; }
 
 private:
     static constexpr decltype(&Matrix::x) members[] = {&Matrix::x, &Matrix::y};
@@ -102,10 +102,10 @@ struct Matrix<T, 3, N>
         return this->*members[i];
     }
 
-    friend bool operator==(const Matrix& a, const Matrix& b) noexcept = default;
+    friend constexpr bool operator==(const Matrix& a, const Matrix& b) noexcept = default;
 
-    static Matrix Zero() noexcept { return {{}, {}, {}}; }
-    static Matrix Identity() noexcept { return Matrix{}; }
+    static constexpr Matrix Zero() noexcept { return {{}, {}, {}}; }
+    static constexpr Matrix Identity() noexcept { return Matrix{}; }
 
 private:
     static constexpr decltype(&Matrix::x) members[] = {&Matrix::x, &Matrix::y, &Matrix::z};
@@ -130,10 +130,10 @@ struct Matrix<T, 4, N>
         return this->*members[i];
     }
 
-    friend bool operator==(const Matrix& a, const Matrix& b) noexcept = default;
+    friend constexpr bool operator==(const Matrix& a, const Matrix& b) noexcept = default;
 
-    static Matrix Zero() noexcept { return {{}, {}, {}, {}}; }
-    static Matrix Identity() noexcept { return Matrix{}; }
+    static constexpr Matrix Zero() noexcept { return {{}, {}, {}, {}}; }
+    static constexpr Matrix Identity() noexcept { return Matrix{}; }
 
     static Matrix<T, 4, 4> RotationX(AngleT<T> angle) noexcept
         requires(N == 4)
@@ -177,7 +177,7 @@ using Matrix3 = Matrix<float, 3, 3>;
 using Matrix4 = Matrix<float, 4, 4>;
 
 template <class T, Extent N, Extent M, Extent O>
-Matrix<T, M, O> operator*(const Matrix<T, M, N>& a, const Matrix<T, N, O>& b) noexcept
+constexpr Matrix<T, M, O> operator*(const Matrix<T, M, N>& a, const Matrix<T, N, O>& b) noexcept
 {
     auto ret = Matrix<T, M, O>::Zero();
     for (Extent row = 0; row < M; row++)
@@ -194,7 +194,7 @@ Matrix<T, M, O> operator*(const Matrix<T, M, N>& a, const Matrix<T, N, O>& b) no
 }
 
 template <class T, Extent M, class VectorTag>
-Vector<T, M, VectorTag> operator*(const Matrix<T, M, M>& a, const Vector<T, M, VectorTag>& b) noexcept
+constexpr Vector<T, M, VectorTag> operator*(const Matrix<T, M, M>& a, const Vector<T, M, VectorTag>& b) noexcept
 {
     Vector<T, M, VectorTag> ret{};
     for (Extent row = 0; row < M; row++)
@@ -208,21 +208,21 @@ Vector<T, M, VectorTag> operator*(const Matrix<T, M, M>& a, const Vector<T, M, V
 }
 
 template <class T>
-Vector<T, 3, VectorTag> operator*(const Matrix<T, 4, 4>& a, const Vector<T, 3, VectorTag>& b) noexcept
+constexpr Vector<T, 3, VectorTag> operator*(const Matrix<T, 4, 4>& a, const Vector<T, 3, VectorTag>& b) noexcept
 {
     const auto ret = a * Vector<T, 4, VectorTag>(b.x, b.y, b.z, T{0});
     return {ret.x, ret.y, ret.z};
 }
 
 template <class T>
-Vector<T, 3, PointTag> operator*(const Matrix<T, 4, 4>& a, const Vector<T, 3, PointTag>& b) noexcept
+constexpr Vector<T, 3, PointTag> operator*(const Matrix<T, 4, 4>& a, const Vector<T, 3, PointTag>& b) noexcept
 {
     const auto ret = a * Vector<T, 4, VectorTag>(b.x, b.y, b.z, T{1});
     return {ret.x / ret.w, ret.y / ret.w, ret.z / ret.w};
 }
 
 template <class T, Extent M, Extent N>
-Matrix<T, N, M> Transpose(const Matrix<T, M, N>& m) noexcept
+constexpr Matrix<T, N, M> Transpose(const Matrix<T, M, N>& m) noexcept
 {
     auto ret = Matrix<T, N, M>::Zero();
     for (Extent row = 0; row < N; row++)

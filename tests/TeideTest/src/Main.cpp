@@ -60,7 +60,8 @@ int main(int argc, char** argv)
     if (spdlog::get_level() > spdlog::level::debug)
     {
         testing::TestEventListeners& listeners = testing::UnitTest::GetInstance()->listeners();
-        listeners.Append(new LogSuppressor);
+        // gtest demands an owning raw pointer to be passed in here
+        listeners.Append(new LogSuppressor); // NOLINT(cppcoreguidelines-owning-memory)
     }
 
     return RUN_ALL_TESTS();

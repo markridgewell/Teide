@@ -44,14 +44,14 @@ public:
 
     BytesView(const byte* p, usize size) : m_span(p, size) {}
 
-    BytesView(std::span<const byte> bytes = {}) : m_span{bytes} {}
+    BytesView(std::span<const byte> bytes = {}) : m_span{bytes} {} // cppcheck-suppress noExplicitConstructor
 
     template <TrivialSpan T>
-    BytesView(const T& data) : m_span{std::as_bytes(std::span(data))}
+    BytesView(const T& data) : m_span{std::as_bytes(std::span(data))} // cppcheck-suppress noExplicitConstructor
     {}
 
     template <TrivialObject T>
-    BytesView(const T& data) : m_span{std::as_bytes(std::span(&data, 1))}
+    BytesView(const T& data) : m_span{std::as_bytes(std::span(&data, 1))} // cppcheck-suppress noExplicitConstructor
     {}
 
     auto data() const { return m_span.data(); }

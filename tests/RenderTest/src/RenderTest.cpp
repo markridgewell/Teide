@@ -224,7 +224,7 @@ void RenderTest::SetOutputDir(const std::filesystem::path& dir)
 RenderTest::RenderTest() : RenderTest(DefaultShaderEnv)
 {}
 
-RenderTest::RenderTest(Teide::ShaderEnvironmentData shaderEnv) :
+RenderTest::RenderTest(const Teide::ShaderEnvironmentData& shaderEnv) :
     m_device{Teide::CreateHeadlessDevice()},
     m_shaderEnv{m_device->CreateShaderEnvironment(shaderEnv, "ShaderEnv")},
     m_renderer{m_device->CreateRenderer(m_shaderEnv)}

@@ -114,12 +114,6 @@ TEST(VectorTest, ConstructVector4)
     EXPECT_EQ(5.0f, v2.w);
 }
 
-TEST(VectorTest, ConstructVector1FromPoint1)
-{
-    const Vector1 v{Point1{1.0f}};
-    EXPECT_EQ(1.0f, v.x);
-}
-
 TEST(VectorTest, ConstructVector2FromPoint2)
 {
     const Vector2 v{Point2{1.0f, 2.0f}};
@@ -200,12 +194,6 @@ TEST(VectorTest, CompareVector4)
 {
     EXPECT_TRUE(Compare(Vector4{1.0f, 0.0f, 2.0f, -5.0f}, Vector4{1.0f, 0.0f, 2.0f, -5.0f}, 0.00001f));
     EXPECT_FALSE(Compare(Vector4{1.0f, 0.0f, 2.0f, -5.0f}, Vector4{1.0f, 0.1f, 2.0f, -5.0f}, 0.00001f));
-}
-
-TEST(PointTest, ConstructPoint1FromVector1)
-{
-    const Point1 v{Vector1{1.0f}};
-    EXPECT_EQ(1.0f, v.x);
 }
 
 TEST(PointTest, ConstructPoint2FromVector2)
@@ -331,15 +319,15 @@ TEST(VectorTest, InPlaceOperationsVector3)
 
     p = p1;
     p -= p2;
-    EXPECT_THAT(p1 - p2, ApproxEq(Vector3{2.5f, -4.5f, 3.0f}));
+    EXPECT_THAT(p, ApproxEq(Point3{2.5f, -4.5f, 3.0f}));
 
     p = p1;
     p *= -1.0f;
     EXPECT_THAT(p, ApproxEq(Point3{-4.0f, 2.0f, -3.0f}));
 
     p = p2;
-    p /= 1.0f;
-    EXPECT_THAT(p2 / 10.0f, ApproxEq(Point3{0.15f, 0.25f, 0.0f}));
+    p /= 10.0f;
+    EXPECT_THAT(p, ApproxEq(Point3{0.15f, 0.25f, 0.0f}));
 }
 
 TEST(VectorTest, OperationsVector4)

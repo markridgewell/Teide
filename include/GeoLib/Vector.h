@@ -18,13 +18,6 @@ struct Vector<T, 1, Tag>
 {
     T x{};
 
-    constexpr Vector() = default;
-    constexpr Vector(T x) noexcept : x{x} {}
-
-    template <class OtherTag>
-    constexpr explicit Vector(const Vector<T, 1, OtherTag>& v) : x{v.x}
-    {}
-
     constexpr T& operator[](Extent i) noexcept
     {
         assert(i >= 0 && i < sizeof(members) / sizeof(members[0]));

@@ -58,7 +58,7 @@ public:
 
 protected:
     RenderTest();
-    explicit RenderTest(Teide::ShaderEnvironmentData shaderEnv);
+    explicit RenderTest(const Teide::ShaderEnvironmentData& shaderEnv);
 
     void RunTest(const SceneUniforms& sceneUniforms, Teide::RenderList renderList);
 
