@@ -25,8 +25,8 @@ public:
         return AngleT(static_cast<T>(degrees / 180.0 * PiT<long double>));
     }
 
-    constexpr T AsRadians() const noexcept { return m_radians; }
-    constexpr T AsDegrees() const noexcept { return m_radians / PiT<T> * 180.0f; }
+    [[nodiscard]] constexpr T AsRadians() const noexcept { return m_radians; }
+    [[nodiscard]] constexpr T AsDegrees() const noexcept { return m_radians / PiT<T> * 180.0f; }
 
     friend constexpr AngleT operator*(AngleT a, T b) noexcept { return AngleT{a.m_radians * b}; }
     friend constexpr AngleT operator/(AngleT a, T b) noexcept { return AngleT{a.m_radians / b}; }

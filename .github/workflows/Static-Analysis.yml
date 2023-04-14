@@ -7,22 +7,8 @@ env:
 
 jobs:
   cppcheck:
-    strategy:
-      fail-fast: false
-      matrix:
-        os: ['Windows', 'Linux']
-        include:
-          - os: 'Windows'
-            runner: 'windows-2022'
-            preset: 'msvc2022'
-            pkg: 'choco install --ignorepackageexitcodes'
-          - os: 'Linux'
-            runner: 'ubuntu-latest'
-            preset: 'linux'
-            pkg: 'sudo apt-get install'
-
-    name: CppCheck-${{matrix.os}}
-    runs-on: ${{matrix.runner}}
+    name: CppCheck
+    runs-on: windows-latest
 
     steps:
     - name: Checkout
@@ -31,20 +17,18 @@ jobs:
     - name: Install dependencies
       uses: ./.github/actions/install-dependencies
       with:
-        preset: ${{matrix.preset}}
+        preset: msvc2022
 
     - name: Install CppCheck
-      run: ${{matrix.pkg}} cppcheck
-
-    - name: Refresh environment
-      if: matrix.os == 'Windows'
-      run: refreshenv
+      run: |
+        choco install --ignorepackageexitcodes cppcheck
+        refreshenv
 
     - name: Configure CMake
-      run: cmake --preset ${{matrix.preset}}
+      run: cmake --preset msvc2022
 
     - name: Run CppCheck
-      run: python tools/cppcheck.py --build-dir=build/${{matrix.preset}} --show-code
+      run: python tools/cppcheck.py --build-dir=build/msvc2022 --show-code
 
   clang-tidy:
     name: ClangTidy

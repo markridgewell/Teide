@@ -9,8 +9,6 @@
 class LogSuppressor : public testing::EmptyTestEventListener
 {
 public:
-    LogSuppressor() {}
-
     void OnTestStart(const testing::TestInfo&) override
     {
         m_output.clear();

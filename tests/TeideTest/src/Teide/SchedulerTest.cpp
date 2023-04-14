@@ -45,10 +45,7 @@ protected:
     vk::Device GetDevice() const { return m_device.get(); }
     vk::Queue GetQueue() const { return m_queue; }
 
-    Scheduler CreateScheduler()
-    {
-        return Scheduler(2, GetDevice(), GetQueue(), m_physicalDevice.queueFamilies.transferFamily);
-    }
+    Scheduler CreateScheduler() { return {2, GetDevice(), GetQueue(), m_physicalDevice.queueFamilies.transferFamily}; }
 
     VulkanBuffer CreateHostVisibleBuffer(vk::DeviceSize size)
     {

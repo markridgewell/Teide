@@ -54,13 +54,13 @@ public:
     BytesView(const T& data) : m_span{std::as_bytes(std::span(&data, 1))} // cppcheck-suppress noExplicitConstructor
     {}
 
-    auto data() const { return m_span.data(); }
-    auto size() const { return m_span.size(); }
-    auto empty() const { return m_span.empty(); }
-    auto begin() const { return m_span.begin(); }
-    auto end() const { return m_span.end(); }
-    auto rbegin() const { return m_span.rbegin(); }
-    auto rend() const { return m_span.rend(); }
+    [[nodiscard]] auto data() const { return m_span.data(); }
+    [[nodiscard]] auto size() const { return m_span.size(); }
+    [[nodiscard]] auto empty() const { return m_span.empty(); }
+    [[nodiscard]] auto begin() const { return m_span.begin(); }
+    [[nodiscard]] auto end() const { return m_span.end(); }
+    [[nodiscard]] auto rbegin() const { return m_span.rbegin(); }
+    [[nodiscard]] auto rend() const { return m_span.rend(); }
 
 private:
     span_type m_span;

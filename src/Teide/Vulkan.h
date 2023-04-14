@@ -132,7 +132,7 @@ class VulkanError : public vk::Error, public std::exception
 public:
     explicit VulkanError(std::string message) : m_what{std::move(message)} {}
 
-    const char* what() const noexcept override { return m_what.c_str(); }
+    [[nodiscard]] const char* what() const noexcept override { return m_what.c_str(); }
 
 private:
     std::string m_what;

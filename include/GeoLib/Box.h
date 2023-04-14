@@ -18,12 +18,12 @@ struct Box
     Point min{std::numeric_limits<T>::max()};
     Point max{std::numeric_limits<T>::lowest()};
 
-    constexpr bool Contains(Point point) const noexcept
+    [[nodiscard]] constexpr bool Contains(Point point) const noexcept
     {
         return point.x >= min.x && point.y >= min.y && point.x <= max.x && point.y <= max.y;
     }
 
-    constexpr bool Contains(const Box& box) const noexcept
+    [[nodiscard]] constexpr bool Contains(const Box& box) const noexcept
     {
         return box.min.x >= min.x && box.min.y >= min.y && box.max.x <= max.x && box.max.y <= max.y;
     }

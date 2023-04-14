@@ -16,7 +16,7 @@ namespace Teide
 
 constexpr uint32_t MaxFramesInFlight = 2;
 
-typedef struct SDL_Window SDL_Window;
+using SDL_Window = struct SDL_Window;
 
 struct SurfaceImage
 {

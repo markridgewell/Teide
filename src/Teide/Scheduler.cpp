@@ -62,7 +62,7 @@ CommandBuffer& Scheduler::GetCommandBuffer(uint32_t threadIndex)
         for (uint32 i = 0; i < newCommandBuffers.size(); i++)
         {
             SetCommandBufferDebugName(newCommandBuffers[i], threadIndex, i + numCBs);
-            threadResources.commandBuffers.push_back(CommandBuffer(std::move(newCommandBuffers[i])));
+            threadResources.commandBuffers.emplace_back(std::move(newCommandBuffers[i]));
         }
     }
 

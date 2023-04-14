@@ -33,12 +33,12 @@ TEST(CpuExecutorTest, LaunchOneTaskWithWorkerID)
 {
     auto executor = CpuExecutor(2);
 
-    std::uint32_t result[4] = {9999, 9999, 9999, 9999};
-    for (std::uint32_t i = 0; i < 4; i++)
+    uint32 result[4] = {9999, 9999, 9999, 9999};
+    for (uint32& i : result)
     {
-        executor.LaunchTask([&result, i](std::uint32_t workerID) {
+        executor.LaunchTask([&i](uint32 workerID) {
             sleep_for(100ms);
-            result[i] = workerID;
+            i = workerID;
         });
     }
     executor.WaitForTasks();

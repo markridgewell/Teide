@@ -347,7 +347,7 @@ void VulkanRenderer::BuildCommandBuffer(
     }
     if (framebuffer.layout.depthStencilFormat.has_value())
     {
-        clearValues.push_back(vk::ClearDepthStencilValue{
+        clearValues.emplace_back(vk::ClearDepthStencilValue{
             .depth = renderList.clearState.depthValue.value_or(1.0f),
             .stencil = renderList.clearState.stencilValue.value_or(0),
         });
