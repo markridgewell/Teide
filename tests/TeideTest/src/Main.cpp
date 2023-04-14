@@ -39,9 +39,8 @@ private:
 
 int main(int argc, char** argv)
 {
-    for (int i = 1; i < argc; i++)
+    for (std::string_view arg : std::span(argv, argc).subspan<1>())
     {
-        const std::string_view arg = argv[i];
         if (arg == "-s" || arg == "--sw-render")
         {
             Teide::EnableSoftwareRendering();

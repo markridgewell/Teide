@@ -96,7 +96,7 @@ TEST_F(RendererTest, RenderFullscreenTri)
 
     const auto result = m_renderer->CopyTextureData(texture).get();
     ASSERT_TRUE(result.has_value());
-    const TextureData outputData = result.value();
+    const TextureData& outputData = result.value();
 
     EXPECT_THAT(outputData.size, Eq(Geo::Size2i{2, 2}));
     EXPECT_THAT(outputData.format, Eq(Format::Byte4Srgb));

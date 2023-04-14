@@ -1,6 +1,8 @@
 
 #include "RenderTest.h"
 
+#include <utility>
+
 #define STB_IMAGE_IMPLEMENTATION
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include <stb_image.h>
@@ -311,10 +313,10 @@ Teide::TexturePtr RenderTest::CreateCheckerTexture()
     return m_device->CreateTexture(textureData, "Checker");
 }
 
-Teide::PipelinePtr RenderTest::CreatePipeline(Teide::ShaderPtr shader, Teide::MeshPtr mesh)
+Teide::PipelinePtr RenderTest::CreatePipeline(Teide::ShaderPtr shader, const Teide::MeshPtr& mesh)
 {
     return m_device->CreatePipeline({
-        .shader = shader,
+        .shader = std::move(shader),
         .vertexLayout = mesh->GetVertexLayout(),
         .renderPasses = {
             { .framebufferLayout = RenderTarget.framebufferLayout },

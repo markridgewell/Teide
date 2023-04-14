@@ -13,9 +13,9 @@ class CommandBuffer
 public:
     explicit CommandBuffer(vk::UniqueCommandBuffer commandBuffer);
 
-    void AddTexture(TexturePtr texture);
-    void AddBuffer(BufferPtr buffer);
-    void AddParameterBlock(ParameterBlockPtr parameterBlock);
+    void AddTexture(const TexturePtr& texture);
+    void AddBuffer(const BufferPtr& buffer);
+    void AddParameterBlock(const ParameterBlockPtr& parameterBlock);
 
     void TakeOwnership(vk::UniqueBuffer buffer);
     void Reset();

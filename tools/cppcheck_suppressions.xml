@@ -18,4 +18,10 @@
   <suppress>
     <id>unmatchedSuppression</id>
   </suppress>
+
+  <!-- There is a bug in CppCheck that causes lots of false positives in Matrix.h -->
+  <suppress>
+    <id>returnDanglingLifetime</id>
+    <filename>*/include/GeoLib/Matrix.h</filename>
+  </suppress>
 </suppressions>

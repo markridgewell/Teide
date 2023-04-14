@@ -17,7 +17,11 @@ Checks: >-
   modernize-*,
   -modernize-use-trailing-return-type,
   -modernize-use-nodiscard,
-  -modernize-avoid-c-arrays
+  -modernize-avoid-c-arrays,
+  performance-*,
+  portability-*,
+  misc-*,
+  -misc-non-private-member-variables-in-classes
 
 WarningsAsErrors: '*'
 HeaderFilterRegex: '.*'

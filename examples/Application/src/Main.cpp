@@ -36,7 +36,7 @@ int Run(std::span<const char* const> args)
     if (!window)
     {
         spdlog::critical("SDL error: {}", SDL_GetError());
-        std::string message = fmt::format("The following error occurred when initializing SDL: {}", SDL_GetError());
+        const std::string message = fmt::format("The following error occurred when initializing SDL: {}", SDL_GetError());
         SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Error", message.c_str(), window.get());
         return 1;
     }
@@ -49,7 +49,8 @@ int Run(std::span<const char* const> args)
     catch (const std::exception& e)
     {
         spdlog::critical("Error: {}", e.what());
-        std::string message = fmt::format("The following error occurred when initializing the application:\n{}", e.what());
+        const std::string message
+            = fmt::format("The following error occurred when initializing the application:\n{}", e.what());
         SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Error", message.c_str(), window.get());
         return 1;
     }
@@ -77,7 +78,7 @@ int SDL_main(int argc, char* argv[])
 
     spdlog::info("SDL initialised successfully");
 
-    int retcode = Run({argv, static_cast<std::size_t>(argc)});
+    const int retcode = Run({argv, static_cast<std::size_t>(argc)});
 
     SDL_Quit();
 

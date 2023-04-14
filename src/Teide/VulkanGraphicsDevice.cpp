@@ -44,7 +44,8 @@ namespace
         }
         assert(surfaceTmp);
         spdlog::info("Surface created successfully");
-        vk::ObjectDestroy<vk::Instance, vk::DispatchLoaderDynamic> deleter(instance, s_allocator, VULKAN_HPP_DEFAULT_DISPATCHER);
+        const auto deleter = vk::ObjectDestroy<vk::Instance, vk::DispatchLoaderDynamic>(
+            instance, s_allocator, VULKAN_HPP_DEFAULT_DISPATCHER);
         return vk::UniqueSurfaceKHR(surfaceTmp, deleter);
     }
 

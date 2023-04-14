@@ -208,7 +208,7 @@ RenderToTextureResult VulkanRenderer::RenderToTexture(const RenderTargetInfo& re
         TextureState colorTextureState;
         TextureState depthStencilTextureState;
 
-        const auto addAttachment = [&](TexturePtr texture, TextureState& textureState) {
+        const auto addAttachment = [&](const TexturePtr& texture, TextureState& textureState) {
             const auto& textureImpl = m_device.GetImpl(*texture);
             commandBuffer.AddTexture(texture);
             textureImpl.TransitionToRenderTarget(textureState, commandBuffer);
@@ -331,7 +331,7 @@ void VulkanRenderer::BuildCommandBuffer(
 {
     using std::data;
 
-    vk::CommandBuffer commandBuffer = commandBufferWrapper;
+    const vk::CommandBuffer commandBuffer = commandBufferWrapper;
 
     auto clearValues = std::vector<vk::ClearValue>();
     if (framebuffer.layout.colorFormat.has_value())

@@ -27,15 +27,11 @@ struct Vertex
 
 struct SceneUniforms
 {
-    Geo::Vector3 lightDir;
-    float pad0 [[maybe_unused]];
-    Geo::Vector3 lightColor;
-    float pad1 [[maybe_unused]];
-    Geo::Vector3 ambientColorTop;
-    float pad2 [[maybe_unused]];
-    Geo::Vector3 ambientColorBottom;
-    float pad3 [[maybe_unused]];
-    Geo::Matrix4 shadowMatrix;
+    alignas(16) Geo::Vector3 lightDir;
+    alignas(16) Geo::Vector3 lightColor;
+    alignas(16) Geo::Vector3 ambientColorTop;
+    alignas(16) Geo::Vector3 ambientColorBottom;
+    alignas(16) Geo::Matrix4 shadowMatrix;
 };
 
 struct ViewUniforms
@@ -51,7 +47,6 @@ struct ObjectUniforms
 class RenderTest : public testing::Test
 {
 public:
-    static void SetSoftwareRendering(bool set);
     static void SetUpdateReferences(bool set);
     static void SetReferenceDir(const std::filesystem::path& dir);
     static void SetOutputDir(const std::filesystem::path& dir);
@@ -66,7 +61,7 @@ protected:
     Teide::MeshPtr CreateQuadMesh();
     Teide::TexturePtr CreateNullShadowmapTexture();
     Teide::TexturePtr CreateCheckerTexture();
-    Teide::PipelinePtr CreatePipeline(Teide::ShaderPtr shader, Teide::MeshPtr mesh);
+    Teide::PipelinePtr CreatePipeline(Teide::ShaderPtr shader, const Teide::MeshPtr& mesh);
 
     Teide::GraphicsDevice& GetDevice();
 

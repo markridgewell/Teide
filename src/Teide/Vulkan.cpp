@@ -247,7 +247,7 @@ vk::UniqueInstance CreateInstance(VulkanLoader& loader, SDL_Window* window)
         SDL_Vulkan_GetInstanceExtensions(window, &extensionCount, extensions.data());
     }
 
-    vk::ApplicationInfo applicationInfo{
+    const vk::ApplicationInfo applicationInfo{
         .apiVersion = VK_API_VERSION_1_0,
     };
 

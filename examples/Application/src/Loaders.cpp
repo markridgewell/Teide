@@ -15,6 +15,8 @@
 
 Teide::MeshData LoadMesh(const char* filename)
 {
+    using namespace Teide::BasicTypes;
+
     Assimp::Importer importer;
 
     const auto importFlags = aiProcess_CalcTangentSpace | aiProcess_Triangulate | aiProcess_JoinIdenticalVertices
@@ -44,10 +46,12 @@ Teide::MeshData LoadMesh(const char* filename)
 
     for (unsigned int i = 0; i < mesh.mNumVertices; i++)
     {
+        // NOLINTBEGIN(cppcoreguidelines-pro-bounds-pointer-arithmetic)
         const auto pos = mesh.mVertices[i];
         const auto uv = mesh.HasTextureCoords(0) ? mesh.mTextureCoords[0][i] : aiVector3D{};
         const auto norm = mesh.HasNormals() ? mesh.mNormals[i] : aiVector3D{};
         const auto color = mesh.HasVertexColors(0) ? mesh.mColors[0][i] : aiColor4D{1, 1, 1, 1};
+        // NOLINTEND(cppcoreguidelines-pro-bounds-pointer-arithmetic)
 
         const Vertex vertex = {
             .position = {pos.x, pos.y, pos.z},
@@ -60,19 +64,18 @@ Teide::MeshData LoadMesh(const char* filename)
         ret.aabb.Add(vertex.position);
     }
 
-    ret.indexData.reserve(static_cast<std::size_t>(mesh.mNumFaces) * 3 * sizeof(std::uint16_t));
+    ret.indexData.reserve(static_cast<usize>(mesh.mNumFaces) * 3 * sizeof(uint16));
 
-    for (unsigned int i = 0; i < mesh.mNumFaces; i++)
+    for (const auto& face : std::span(mesh.mFaces, mesh.mNumFaces))
     {
-        const auto& face = mesh.mFaces[i];
         assert(face.mNumIndices == 3);
-        for (int j = 0; j < 3; j++)
+        for (const int index : std::span(face.mIndices, 3))
         {
-            if (face.mIndices[j] > std::numeric_limits<uint16_t>::max())
+            if (index > std::numeric_limits<uint16>::max())
             {
                 throw ApplicationError("Too many vertices for 16-bit indices");
             }
-            Teide::AppendBytes(ret.indexData, static_cast<uint16_t>(face.mIndices[j]));
+            Teide::AppendBytes(ret.indexData, static_cast<uint16>(index));
         }
     }
 

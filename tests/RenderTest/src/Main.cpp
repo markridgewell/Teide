@@ -10,14 +10,13 @@
 class ArgParser
 {
 public:
-    explicit ArgParser(int argc, char** argv) : m_argc{argc}, m_argv{argv} {}
+    explicit ArgParser(int argc, char** argv) : m_args{std::span(argv, argc).subspan<1>()} {}
 
     auto GetOption(std::initializer_list<std::string_view> aliases) -> bool
     {
         assert(aliases.size() > 0);
-        for (int i = 1; i < m_argc; ++i)
+        for (const std::string_view arg : m_args)
         {
-            const std::string_view arg = m_argv[i];
             if (std::ranges::find(aliases, arg) != aliases.end())
             {
                 return true;
@@ -30,14 +29,14 @@ public:
     auto GetArg(std::initializer_list<std::string_view> aliases, std::optional<T> defaultValue = std::nullopt) -> T
     {
         assert(aliases.size() > 0);
-        for (int i = 1; i < m_argc; ++i)
+        for (unsigned i = 0; i < m_args.size(); ++i)
         {
-            const std::string_view arg = m_argv[i];
+            const std::string_view arg = m_args[i];
             if (std::ranges::find(aliases, arg) != aliases.end())
             {
-                if (i < m_argc - 1)
+                if (i < m_args.size() - 1)
                 {
-                    return m_argv[i + 1];
+                    return m_args[i + 1];
                 }
                 else
                 {
@@ -62,8 +61,7 @@ public:
     const std::string& GetErrors() const { return m_errorString; }
 
 private:
-    int m_argc;
-    char** m_argv;
+    std::span<const char* const> m_args;
     std::string m_errorString;
 };
 

@@ -11,30 +11,33 @@
 #endif
 
 
+#if RENDERDOC_FOUND
 RenderDoc::RenderDoc()
 {
-#if RENDERDOC_FOUND
-
     // reinterpret_cast is required here to convert the function pointers.
     // NOLINTBEGIN(cppcoreguidelines-pro-type-reinterpret-cast)
 #    if defined(_WIN32)
     if (HMODULE mod = GetModuleHandleA("renderdoc.dll"))
     {
         auto RENDERDOC_GetAPI = reinterpret_cast<pRENDERDOC_GetAPI>(GetProcAddress(mod, "RENDERDOC_GetAPI"));
-        [[maybe_unused]] int ret = RENDERDOC_GetAPI(eRENDERDOC_API_Version_1_1_2, reinterpret_cast<void**>(&rdoc_api));
+        [[maybe_unused]] const int ret
+            = RENDERDOC_GetAPI(eRENDERDOC_API_Version_1_1_2, reinterpret_cast<void**>(&rdoc_api));
         assert(ret == 1);
     }
 #    elif defined(__linux__)
     if (void* mod = dlopen("librenderdoc.so", RTLD_NOW | RTLD_NOLOAD))
     {
         pRENDERDOC_GetAPI RENDERDOC_GetAPI = reinterpret_cast<pRENDERDOC_GetAPI>(dlsym(mod, "RENDERDOC_GetAPI"));
-        [[maybe_unused]] int ret = RENDERDOC_GetAPI(eRENDERDOC_API_Version_1_1_2, reinterpret_cast<void**>(&rdoc_api));
+        [[maybe_unused]] const int ret
+            = RENDERDOC_GetAPI(eRENDERDOC_API_Version_1_1_2, reinterpret_cast<void**>(&rdoc_api));
         assert(ret == 1);
     }
 #    endif
     // NOLINTEND(cppcoreguidelines-pro-type-reinterpret-cast)
-#endif
 }
+#else
+RenderDoc::RenderDoc() = default;
+#endif
 
 void RenderDoc::StartFrameCapture()
 {

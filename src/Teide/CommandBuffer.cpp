@@ -7,17 +7,17 @@ namespace Teide
 CommandBuffer::CommandBuffer(vk::UniqueCommandBuffer commandBuffer) : m_cmdBuffer(std::move(commandBuffer))
 {}
 
-void CommandBuffer::AddTexture(TexturePtr texture)
+void CommandBuffer::AddTexture(const TexturePtr& texture)
 {
     m_referencedTextures.insert(texture);
 }
 
-void CommandBuffer::AddBuffer(BufferPtr buffer)
+void CommandBuffer::AddBuffer(const BufferPtr& buffer)
 {
     m_referencedBuffers.insert(buffer);
 }
 
-void CommandBuffer::AddParameterBlock(ParameterBlockPtr parameterBlock)
+void CommandBuffer::AddParameterBlock(const ParameterBlockPtr& parameterBlock)
 {
     m_referencedParameterBlocks.insert(parameterBlock);
 }
