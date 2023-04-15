@@ -37,13 +37,29 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+
+    - name: Get changes
+      run: |
+        export PATTERN='\.\(c\|cpp\|cc\|cxx\|h\|hpp\)$'
+        git diff --name-only --diff-filter=ACMRT ${{github.event.before}} ${{github.event.after}} | grep $PATTERN >changes.txt
+        if [ -s changes.txt ]; then
+          echo "Changed C++ source files:"
+          cat changes.txt
+        else
+          echo "No changes to C++ source files, skipping analysis"
+        fi
+        echo "CLANG_TIDY_SOURCES=$(cat changes.txt | tr '\n' ';')" >> $GITHUB_OUTPUT
 
     - name: Install dependencies
+      if: env.CLANG_TIDY_SOURCES != ''
       uses: ./.github/actions/install-dependencies
       with:
         preset: linux
 
     - name: Install clang-tidy
+      if: env.CLANG_TIDY_SOURCES != ''
       run: |
         wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key | sudo tee /etc/apt/trusted.gpg.d/apt.llvm.org.asc
         UBUNTU_CODENAME=`sudo cat /etc/os-release | sed -n s/UBUNTU_CODENAME=//p`
@@ -53,7 +69,9 @@ jobs:
         sudo ln -sf `which clang-tidy-16` /usr/bin/clang-tidy
 
     - name: Configure CMake
+      if: env.CLANG_TIDY_SOURCES != ''
       run: cmake --preset linux -DTEIDE_CLANG_TIDY=ON
 
     - name: Run clang-tidy
+      if: env.CLANG_TIDY_SOURCES != ''
       run: cmake --build --preset linux --target ClangTidy
