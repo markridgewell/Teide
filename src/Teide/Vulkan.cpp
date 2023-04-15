@@ -87,6 +87,8 @@ namespace
     {
         using MessageType = vk::DebugUtilsMessageTypeFlagBitsEXT;
         using MessageSeverity = vk::DebugUtilsMessageSeverityFlagBitsEXT;
+        const auto type = static_cast<MessageType>(messageType);
+        const auto severity = static_cast<MessageSeverity>(messageSeverity);
 
         // Filter unwanted messages
         constexpr int32 UnwantedMessages[] = {
@@ -103,7 +105,7 @@ namespace
         }
 
         const char* prefix = "";
-        switch (MessageType(messageType))
+        switch (type)
         {
             case MessageType::eValidation:
                 prefix = "[validation] ";
@@ -117,7 +119,7 @@ namespace
                 break;
         }
 
-        switch (MessageSeverity(messageSeverity))
+        switch (severity)
         {
             case MessageSeverity::eVerbose:
                 spdlog::debug("{}{}", prefix, pCallbackData->pMessage);
@@ -129,13 +131,22 @@ namespace
 
             case MessageSeverity::eWarning:
                 spdlog::warn("{}{}", prefix, pCallbackData->pMessage);
-                assert(!BreakOnVulkanWarning);
                 break;
 
             case MessageSeverity::eError:
                 spdlog::error("{}{}", prefix, pCallbackData->pMessage);
-                assert(!BreakOnVulkanError);
                 break;
+        }
+
+        if constexpr (BreakOnVulkanWarning)
+        {
+            // Vulkan warning triggered a debug break
+            assert(severity != MessageSeverity::eWarning);
+        }
+        if constexpr (BreakOnVulkanError)
+        {
+            // Vulkan error triggered a debug break
+            assert(severity != MessageSeverity::eError);
         }
         return VK_FALSE;
     }

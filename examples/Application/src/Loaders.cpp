@@ -21,7 +21,7 @@ Teide::MeshData LoadMesh(const char* filename)
 
     const auto importFlags = aiProcess_CalcTangentSpace | aiProcess_Triangulate | aiProcess_JoinIdenticalVertices
         | aiProcess_SortByPType | aiProcess_RemoveComponent | aiProcess_RemoveRedundantMaterials
-        | aiProcess_OptimizeMeshes | aiProcess_OptimizeGraph | aiProcess_ConvertToLeftHanded | aiProcess_FlipWindingOrder;
+        | aiProcess_OptimizeMeshes | aiProcess_OptimizeGraph | aiProcess_ConvertToLeftHanded;
 
     const aiScene* scene = importer.ReadFile(filename, importFlags);
     if (!scene)
@@ -68,8 +68,8 @@ Teide::MeshData LoadMesh(const char* filename)
 
     for (const auto& face : std::span(mesh.mFaces, mesh.mNumFaces))
     {
-        assert(face.mNumIndices == 3);
-        for (const int index : std::span(face.mIndices, 3))
+        assert(face.mNumIndices == 3u);
+        for (const int index : std::span(face.mIndices, face.mNumIndices))
         {
             if (index > std::numeric_limits<uint16>::max())
             {
