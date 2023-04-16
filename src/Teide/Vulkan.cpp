@@ -16,16 +16,14 @@ namespace Teide
 
 namespace
 {
-#ifndef NDEBUG
     constexpr bool BreakOnVulkanWarning = false;
     constexpr bool BreakOnVulkanError = true;
-#endif
 
     const vk::Optional<const vk::AllocationCallbacks> s_allocator = nullptr;
 
     template <std::ranges::input_range R, class V, class P = std::identity>
         requires std::indirect_binary_predicate<std::ranges::equal_to, std::projected<std::ranges::iterator_t<R>, P>, const V*>
-    bool constexpr contains(R&& range, const V& value, P&& proj = {})
+    constexpr bool contains(R&& range, const V& value, P&& proj = {})
     {
         return std::ranges::find(range, value, std::forward<P>(proj)) != std::ranges::end(range);
     }

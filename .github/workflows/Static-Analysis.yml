@@ -74,4 +74,4 @@ jobs:
 
     - name: Run clang-tidy
       if: env.CLANG_TIDY_SOURCES != ''
-      run: cmake --build --preset linux --target ClangTidy
+      run: cd build/linux && make ClangTidy
