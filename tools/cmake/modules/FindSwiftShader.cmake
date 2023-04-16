@@ -19,7 +19,8 @@ endif()
 FetchContent_Declare(
     swiftshader
     URL "${swiftshader_releases_url}/${version}/gfbuild-swiftshader-${version}-${build}.zip"
-    URL_HASH SHA1=${hash})
+    URL_HASH SHA1=${hash}
+    DOWNLOAD_EXTRACT_TIMESTAMP NEW)
 
 FetchContent_MakeAvailable(swiftshader)
 
