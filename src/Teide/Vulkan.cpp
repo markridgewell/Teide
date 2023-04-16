@@ -80,16 +80,8 @@ namespace
         {Format::Stencil8, vk::Format::eS8Uint},
     };
 
-
-    VKAPI_ATTR VkBool32 VKAPI_CALL DebugCallback(
-        VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, [[maybe_unused]] VkDebugUtilsMessageTypeFlagsEXT messageType,
-        const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, [[maybe_unused]] void* pUserData)
+    bool IsUnwantedMessage(const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData)
     {
-        using MessageType = vk::DebugUtilsMessageTypeFlagBitsEXT;
-        using MessageSeverity = vk::DebugUtilsMessageSeverityFlagBitsEXT;
-        const auto type = static_cast<MessageType>(messageType);
-        const auto severity = static_cast<MessageSeverity>(messageSeverity);
-
         // Filter unwanted messages
         constexpr int32 UnwantedMessages[] = {
             0,           // Loader Message
@@ -98,11 +90,21 @@ namespace
             -671457468,  // UNASSIGNED-khronos-validation-createinstance-status-message
             -1993852625, // UNASSIGNED-BestPractices-NonSuccess-Result
         };
-        if (std::ranges::find(UnwantedMessages, pCallbackData->messageIdNumber) != std::end(UnwantedMessages))
-        {
-            // Don't hide unwanted messages, just force them to only be visible at highest verbosity level
-            messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT;
-        }
+        return std::ranges::count(UnwantedMessages, pCallbackData->messageIdNumber) != 0;
+    }
+
+    VKAPI_ATTR VkBool32 VKAPI_CALL DebugCallback(
+        VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, [[maybe_unused]] VkDebugUtilsMessageTypeFlagsEXT messageType,
+        const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, [[maybe_unused]] void* pUserData)
+    {
+        using MessageType = vk::DebugUtilsMessageTypeFlagBitsEXT;
+        using MessageSeverity = vk::DebugUtilsMessageSeverityFlagBitsEXT;
+
+        // Don't hide unwanted messages, just force them to only be visible at highest verbosity level
+        const auto severity = IsUnwantedMessage(pCallbackData) ? MessageSeverity::eVerbose
+                                                               : static_cast<MessageSeverity>(messageSeverity);
+
+        const auto type = static_cast<MessageType>(messageType);
 
         const char* prefix = "";
         switch (type)
