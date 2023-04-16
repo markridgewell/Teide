@@ -52,10 +52,8 @@ td_add_library(
         fmt::fmt
         Taskflow::Taskflow
         function2::function2
-        glslang::HLSL
         glslang::SPIRV
-        glslang::glslang
-        glslang::OGLCompiler)
+        glslang::glslang)
 
 if(TEIDE_BUILD_TESTS)
     add_subdirectory(tests)
