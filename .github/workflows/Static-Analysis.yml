@@ -50,7 +50,7 @@ jobs:
         else
           echo "No changes to C++ source files, skipping analysis"
         fi
-        echo "CLANG_TIDY_SOURCES=$(cat changes.txt | tr '\n' ';')" >> $GITHUB_ENV
+        echo "CLANG_TIDY_SOURCES=\"$(cat changes.txt | tr '\n' ';')\"" >> $GITHUB_ENV
 
     - name: Install dependencies
       if: env.CLANG_TIDY_SOURCES != ''
