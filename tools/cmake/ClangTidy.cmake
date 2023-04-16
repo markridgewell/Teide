@@ -16,7 +16,7 @@ function(td_add_clang_tidy)
 
     add_custom_target(
         ClangTidy
-        COMMAND ${CMAKE_COMMAND} "-DSOURCES=${project_sources}" "-DCLANG_TIDY_ARGS=${clang_tidy_cmd}" -P
+        COMMAND ${CMAKE_COMMAND} "-DSOURCES='${project_sources}'" "-DCLANG_TIDY_ARGS='${clang_tidy_cmd}'" -P
                 ${CMAKE_SOURCE_DIR}/tools/cmake/scripts/RunClangTidy.cmake
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 

@@ -16,6 +16,12 @@ endif()
 
 # Add the rest of the command-line arguments
 list(APPEND clang_tidy_args ${CLANG_TIDY_ARGS})
+list(
+    FILTER
+    clang_tidy_args
+    EXCLUDE
+    REGEX
+    "")
 
 # Run the command and propogate error code
 list(JOIN clang_tidy_args "\" \"" clang_tidy_arg_str)
