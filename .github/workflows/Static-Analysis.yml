@@ -42,8 +42,8 @@ jobs:
 
     - name: Get changes
       run: |
-        export PATTERN='\.\(c\|cpp\|cc\|cxx\|h\|hpp\)$'
-        git diff --name-only --diff-filter=ACMRT ${{github.event.before}} ${{github.event.after}} | grep $PATTERN >changes.txt
+        PATTERN='\.\(c\|cpp\|cc\|cxx\|h\|hpp\)$'
+        git diff --name-only --diff-filter=ACMRT ${{github.event.before}} ${{github.event.after}} | grep $PATTERN || (( $? == 1 )) >changes.txt
         if [ -s changes.txt ]; then
           echo "Changed C++ source files:"
           cat changes.txt
