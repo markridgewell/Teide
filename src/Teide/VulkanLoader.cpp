@@ -29,7 +29,7 @@ namespace
         const auto basePath = SDL_GetBasePath();
         const auto applicationDir = std::filesystem::path(basePath);
         SDL_free(basePath);
-        const auto swiftshaderConfigPath = applicationDir / "vk_swiftshader_icd.json";
+        auto swiftshaderConfigPath = applicationDir / "vk_swiftshader_icd.json";
         if (!std::filesystem::exists(swiftshaderConfigPath))
         {
             throw VulkanError("Software rendering was requested, but no Vulkan software implementation was found.");

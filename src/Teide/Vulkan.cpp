@@ -23,6 +23,13 @@ namespace
 
     const vk::Optional<const vk::AllocationCallbacks> s_allocator = nullptr;
 
+    template <std::ranges::input_range R, class V, class P = std::identity>
+        requires std::indirect_binary_predicate<std::ranges::equal_to, std::projected<std::ranges::iterator_t<R>, P>, const V*>
+    bool constexpr contains(R&& range, const V& value, P&& proj = {})
+    {
+        return std::ranges::find(range, value, std::forward<P>(proj)) != std::ranges::end(range);
+    }
+
     static constexpr StaticMap<Format, vk::Format, FormatCount> VulkanFormats = {
         {Format::Unknown, vk::Format::eUndefined},
 
@@ -90,7 +97,7 @@ namespace
             -671457468,  // UNASSIGNED-khronos-validation-createinstance-status-message
             -1993852625, // UNASSIGNED-BestPractices-NonSuccess-Result
         };
-        return std::ranges::count(UnwantedMessages, pCallbackData->messageIdNumber) != 0;
+        return contains(UnwantedMessages, pCallbackData->messageIdNumber);
     }
 
     VKAPI_ATTR VkBool32 VKAPI_CALL DebugCallback(
@@ -219,9 +226,7 @@ vk::DebugUtilsMessengerCreateInfoEXT GetDebugCreateInfo()
 void EnableOptionalVulkanLayer(
     std::vector<const char*>& enabledLayers, const std::vector<vk::LayerProperties>& availableLayers, const char* layerName)
 {
-    std::string_view layerNameSV = layerName;
-    if (std::ranges::find_if(availableLayers, [layerNameSV](const auto& x) { return x.layerName == layerNameSV; })
-        != availableLayers.end())
+    if (contains(availableLayers, std::string_view(layerName), &vk::LayerProperties::layerName))
     {
         spdlog::info("Enabling Vulkan layer {}", layerName);
         enabledLayers.push_back(layerName);
@@ -236,9 +241,7 @@ void EnableRequiredVulkanExtension(
     std::vector<const char*>& enabledExtensions, const std::vector<vk::ExtensionProperties>& availableExtensions,
     const char* extensionName)
 {
-    std::string_view name = extensionName;
-    if (std::ranges::find_if(availableExtensions, [name](const auto& x) { return x.extensionName == name; })
-        != availableExtensions.end())
+    if (contains(availableExtensions, std::string_view(extensionName), &vk::ExtensionProperties::extensionName))
     {
         spdlog::info("Enabling Vulkan extension {}", extensionName);
         enabledExtensions.push_back(extensionName);
@@ -320,7 +323,7 @@ vk::UniqueDevice CreateDevice(VulkanLoader& loader, const PhysicalDevice& physic
     std::vector<vk::DeviceQueueCreateInfo> queueCreateInfos;
     for (const uint32_t index : physicalDevice.queueFamilyIndices)
     {
-        if (std::ranges::count(queueCreateInfos, index, &vk::DeviceQueueCreateInfo::queueFamilyIndex) == 0)
+        if (not contains(queueCreateInfos, index, &vk::DeviceQueueCreateInfo::queueFamilyIndex))
         {
             queueCreateInfos.push_back({.queueFamilyIndex = index, .queueCount = 1, .pQueuePriorities = &queuePriority});
         }
