@@ -131,6 +131,13 @@ namespace
 
         if (surface)
         {
+            // Check for surface support
+            if (device.queueFamilies.presentFamily
+                && !device.physicalDevice.getSurfaceSupportKHR(*device.queueFamilies.presentFamily, surface))
+            {
+                return false;
+            }
+
             // Check for adequate swap chain support
             if (device.physicalDevice.getSurfaceFormatsKHR(surface).empty())
             {
@@ -638,9 +645,11 @@ DeviceAndSurface CreateDeviceAndSurface(SDL_Window* window, bool multisampled, c
         spdlog::info("No window provided (headless mode)");
     }
 
-    auto device
-        = std::make_unique<VulkanGraphicsDevice>(std::move(loader), std::move(instance), std::move(vksurface), settings);
-    auto surface = device->CreateSurface(window, multisampled);
+    auto physicalDevice = FindPhysicalDevice(instance.get(), vksurface.get());
+
+    auto device = std::make_unique<VulkanGraphicsDevice>(
+        std::move(loader), std::move(instance), std::move(physicalDevice), settings);
+    auto surface = device->CreateSurface(std::move(vksurface), window, multisampled);
 
     return {std::move(device), std::move(surface)};
 }
@@ -649,15 +658,16 @@ GraphicsDevicePtr CreateHeadlessDevice(const GraphicsSettings& settings)
 {
     VulkanLoader loader;
     vk::UniqueInstance instance = CreateInstance(loader);
+    auto physicalDevice = FindPhysicalDevice(instance.get(), {});
 
-    return std::make_unique<VulkanGraphicsDevice>(std::move(loader), std::move(instance), vk::UniqueSurfaceKHR{}, settings);
+    return std::make_unique<VulkanGraphicsDevice>(std::move(loader), std::move(instance), std::move(physicalDevice), settings);
 }
 
 VulkanGraphicsDevice::VulkanGraphicsDevice(
-    VulkanLoader loader, vk::UniqueInstance instance, vk::UniqueSurfaceKHR surface, const GraphicsSettings& settings) :
+    VulkanLoader loader, vk::UniqueInstance instance, Teide::PhysicalDevice physicalDevice, const GraphicsSettings& settings) :
     m_loader{std::move(loader)},
     m_instance{std::move(instance)},
-    m_physicalDevice{FindPhysicalDevice(m_instance.get(), surface.get())},
+    m_physicalDevice{std::move(physicalDevice)},
     m_device{CreateDevice(m_loader, m_physicalDevice)},
     m_settings{settings},
     m_graphicsQueue{m_device->getQueue(m_physicalDevice.queueFamilies.graphicsFamily, 0)},
@@ -711,15 +721,7 @@ VulkanGraphicsDevice::~VulkanGraphicsDevice()
 
 SurfacePtr VulkanGraphicsDevice::CreateSurface(SDL_Window* window, bool multisampled)
 {
-    spdlog::info("Creating a new surface for a window");
-
-    vk::UniqueSurfaceKHR surface = CreateVulkanSurface(window, m_instance.get());
-
-    assert(m_physicalDevice.queueFamilies.presentFamily.has_value());
-
-    return std::make_unique<VulkanSurface>(
-        window, std::move(surface), m_device.get(), m_physicalDevice.physicalDevice,
-        m_physicalDevice.queueFamilyIndices, m_surfaceCommandPool.get(), m_graphicsQueue, multisampled);
+    return CreateSurface(CreateVulkanSurface(window, m_instance.get()), window, multisampled);
 }
 
 RendererPtr VulkanGraphicsDevice::CreateRenderer(ShaderEnvironmentPtr shaderEnvironment)
@@ -733,6 +735,17 @@ BufferPtr VulkanGraphicsDevice::CreateBuffer(const BufferData& data, const char*
         return CreateBuffer(data, name, cmdBuffer);
     });
     return task.get().value_or(nullptr);
+}
+
+SurfacePtr VulkanGraphicsDevice::CreateSurface(vk::UniqueSurfaceKHR surface, SDL_Window* window, bool multisampled)
+{
+    spdlog::info("Creating a new surface for a window");
+
+    assert(m_physicalDevice.queueFamilies.presentFamily.has_value());
+
+    return std::make_unique<VulkanSurface>(
+        window, std::move(surface), m_device.get(), m_physicalDevice.physicalDevice,
+        m_physicalDevice.queueFamilyIndices, m_surfaceCommandPool.get(), m_graphicsQueue, multisampled);
 }
 
 BufferPtr VulkanGraphicsDevice::CreateBuffer(const BufferData& data, const char* name, CommandBuffer& cmdBuffer)

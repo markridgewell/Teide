@@ -28,7 +28,10 @@ VulkanBuffer CreateBufferUninitialized(
     ret.buffer = device.createBufferUnique(createInfo, s_allocator);
     const auto allocation = allocator.Allocate(device.getBufferMemoryRequirements(ret.buffer.get()), memoryFlags);
     device.bindBufferMemory(ret.buffer.get(), allocation.memory, allocation.offset);
-    ret.mappedData = allocation.mappedData.subspan(0, size);
+    if (!allocation.mappedData.empty())
+    {
+        ret.mappedData = allocation.mappedData.subspan(0, size);
+    }
 
     return ret;
 }

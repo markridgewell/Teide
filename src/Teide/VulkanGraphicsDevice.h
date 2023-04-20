@@ -31,7 +31,7 @@ class VulkanGraphicsDevice : public GraphicsDevice
 {
 public:
     explicit VulkanGraphicsDevice(
-        VulkanLoader loader, vk::UniqueInstance instance, vk::UniqueSurfaceKHR surface,
+        VulkanLoader loader, vk::UniqueInstance instance, Teide::PhysicalDevice physicalDevice,
         const GraphicsSettings& settings = {});
 
     VulkanGraphicsDevice(const VulkanGraphicsDevice&) = delete;
@@ -72,6 +72,7 @@ public:
         return std::dynamic_pointer_cast<const typename VulkanImpl<std::remove_const_t<T>>::type>(ptr);
     }
 
+    SurfacePtr CreateSurface(vk::UniqueSurfaceKHR surface, SDL_Window* window, bool multisampled);
     BufferPtr CreateBuffer(const BufferData& data, const char* name, CommandBuffer& cmdBuffer);
     TexturePtr CreateTexture(const TextureData& data, const char* name, CommandBuffer& cmdBuffer);
     TexturePtr CreateRenderableTexture(const TextureData& data, const char* name);

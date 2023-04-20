@@ -19,7 +19,7 @@ TEST(TextureTest, GenerateMipmaps)
         .format = Format::Byte4Norm,
         .mipLevelCount = 2,
         .sampleCount = 1,
-        .pixels = HexToBytes("ff 00 00 ff 00 ff 00 ff ff 00 ff ff 00 00 ff ff"),
+        .pixels = HexToBytes("80 00 00 80 00 80 00 80 80 00 80 80 00 00 80 80"),
     };
 
     const auto texture = device->CreateTexture(textureData, "Texture");
@@ -30,8 +30,8 @@ TEST(TextureTest, GenerateMipmaps)
     ASSERT_THAT(result.has_value(), IsTrue());
     const TextureData data = result.value();
 
-    const auto expectedPixels = HexToBytes("ff 00 00 ff 00 ff 00 ff ff 00 ff ff 00 00 ff ff" // Mip 0
-                                           "80 40 80 ff"                                     // Mip 1
+    const auto expectedPixels = HexToBytes("80 00 00 80 00 80 00 80 80 00 80 80 00 00 80 80" // Mip 0
+                                           "40 20 40 80"                                     // Mip 1
     );
     EXPECT_THAT(data.pixels, Eq(expectedPixels));
 }
