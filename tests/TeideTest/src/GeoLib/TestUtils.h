@@ -5,7 +5,7 @@
 #include "GeoLib/Matrix.h"
 #include "GeoLib/Vector.h"
 
-#include <fmt/core.h>
+#include <format>
 #include <gmock/gmock.h>
 
 #include <concepts>
@@ -28,7 +28,7 @@ std::ostream& operator<<(std::ostream& os, const Matrix<T, M, N>& m)
 template <class T>
 constexpr T Epsilon = std::numeric_limits<T>::epsilon();
 
-MATCHER_P(ApproxEq, v, fmt::format("{} [approximately]", testing::PrintToString(v)))
+MATCHER_P(ApproxEq, v, std::format("{} [approximately]", testing::PrintToString(v)))
 {
     (void)result_listener;
     return Geo::Compare(arg, v, Epsilon<float> * 10.0f);

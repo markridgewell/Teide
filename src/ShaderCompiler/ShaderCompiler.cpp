@@ -1,7 +1,7 @@
 
 #include "ShaderCompiler/ShaderCompiler.h"
 
-#include <fmt/format.h>
+#include <format>
 #include <glslang/Public/ShaderLang.h>
 #include <glslang/SPIRV/GlslangToSpv.h>
 
@@ -346,12 +346,12 @@ void BuildUniformBuffer(std::string& source, const ParameterBlockDesc& pblock)
     if (BuildParameterBlockLayout(pblock, Set).isPushConstant)
     {
         // Build push constants
-        fmt::format_to(out, "layout(push_constant) uniform {}Uniforms {{\n", PblockNames[Set]);
+        std::format_to(out, "layout(push_constant) uniform {}Uniforms {{\n", PblockNames[Set]);
     }
     else
     {
         // Build uniform block
-        fmt::format_to(out, "layout(set = {}, binding = 0) uniform {}Uniforms {{\n", Set, PblockNames[Set]);
+        std::format_to(out, "layout(set = {}, binding = 0) uniform {}Uniforms {{\n", Set, PblockNames[Set]);
     }
 
     for (const auto& variable : pblock.parameters)
@@ -362,9 +362,9 @@ void BuildUniformBuffer(std::string& source, const ParameterBlockDesc& pblock)
         }
 
         std::string typeStr = ToString(variable.type);
-        fmt::format_to(out, "    {} {};\n", typeStr, variable.name);
+        std::format_to(out, "    {} {};\n", typeStr, variable.name);
     }
-    fmt::format_to(out, "}} {};\n\n", PblockNamesLower[Set]);
+    std::format_to(out, "}} {};\n\n", PblockNamesLower[Set]);
 }
 
 template <int Set>
@@ -383,7 +383,7 @@ void BuildResourceBindings(std::string& source, const ParameterBlockDesc& pblock
     {
         if (IsResourceType(parameter.type.baseType))
         {
-            fmt::format_to(
+            std::format_to(
                 out, "layout(set = {}, binding = {}) uniform {} {};\n", Set, slot, ToString(parameter.type), parameter.name);
             slot++;
         }
@@ -411,7 +411,7 @@ void BuildVaryings(std::string& source, ShaderStageData& data, const ShaderStage
             continue;
 
         data.inputs.push_back(input);
-        fmt::format_to(out, "layout(location = {}) in {} {};\n", i, ToString(input.type), input.name);
+        std::format_to(out, "layout(location = {}) in {} {};\n", i, ToString(input.type), input.name);
     }
 
     for (usize i = 0; i < sourceStage.outputs.size(); i++)
@@ -422,7 +422,7 @@ void BuildVaryings(std::string& source, ShaderStageData& data, const ShaderStage
             continue;
 
         data.outputs.push_back(output);
-        fmt::format_to(out, "layout(location = {}) out {} {};\n", i, ToString(output.type), output.name);
+        std::format_to(out, "layout(location = {}) out {} {};\n", i, ToString(output.type), output.name);
     }
 
     source += '\n';

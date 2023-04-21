@@ -8,7 +8,7 @@
 #include "Teide/PipelineData.h"
 #include "Teide/TextureData.h"
 
-#include <fmt/core.h>
+#include <format>
 
 #include <chrono>
 #include <span>
@@ -105,21 +105,21 @@ void SetDebugName(vk::UniqueHandle<Type, Dispatch>& handle [[maybe_unused]], con
 template <class Type, class Dispatch, class... FormatArgs>
 void SetDebugName(
     vk::UniqueHandle<Type, Dispatch>& handle [[maybe_unused]],
-    const fmt::format_string<FormatArgs...>& format [[maybe_unused]], FormatArgs&&... fmtArgs [[maybe_unused]])
+    const std::format_string<FormatArgs...>& format [[maybe_unused]], FormatArgs&&... fmtArgs [[maybe_unused]])
 {
     if constexpr (IsDebugBuild)
     {
-        const auto string = fmt::vformat(format, fmt::make_format_args(fmtArgs...));
+        const auto string = std::vformat(format.get(), std::make_format_args(fmtArgs...));
         SetDebugName(handle, string.c_str());
     }
 }
 
 template <class... Args>
-std::string DebugFormat(fmt::format_string<Args...> fmt [[maybe_unused]], Args&&... args [[maybe_unused]])
+std::string DebugFormat(std::format_string<Args...> fmt [[maybe_unused]], Args&&... args [[maybe_unused]])
 {
     if constexpr (IsDebugBuild)
     {
-        return fmt::vformat(fmt, fmt::make_format_args(std::forward<Args>(args)...));
+        return std::vformat(fmt.get(), std::make_format_args(std::forward<Args>(args)...));
     }
     else
     {

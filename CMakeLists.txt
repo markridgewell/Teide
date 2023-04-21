@@ -22,7 +22,6 @@ list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/tools/cmake/modules)
 
 find_package(Vulkan REQUIRED)
 find_package(SDL2 REQUIRED)
-find_package(fmt REQUIRED)
 find_package(spdlog REQUIRED)
 find_package(glslang REQUIRED)
 find_package(assimp REQUIRED)
@@ -49,7 +48,6 @@ td_add_library(
     PRIVATE_DEPS
         Vulkan::Vulkan
         SDL2::SDL2
-        fmt::fmt
         Taskflow::Taskflow
         function2::function2
         glslang::SPIRV
