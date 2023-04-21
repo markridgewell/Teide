@@ -6,6 +6,7 @@
 
 #include <function2/function2.hpp>
 
+#include <atomic>
 #include <future>
 #include <mutex>
 #include <queue>
@@ -54,8 +55,8 @@ private:
         std::vector<OnCompleteFunction> callbacks;
     };
     std::vector<InFlightSubmit> m_inFlightSubmits;
-    std::jthread m_schedulerThread;
-    std::stop_source m_schedulerStopSource;
+    std::thread m_schedulerThread;
+    std::atomic_bool m_schedulerStop = false;
 };
 
 } // namespace Teide

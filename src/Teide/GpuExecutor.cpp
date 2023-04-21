@@ -13,12 +13,12 @@ namespace Teide
 
 GpuExecutor::GpuExecutor(vk::Device device, vk::Queue queue) : m_device{device}, m_queue{queue}
 {
-    m_schedulerThread = std::jthread([this, stop_token = m_schedulerStopSource.get_token()] {
+    m_schedulerThread = std::thread([this] {
         constexpr auto timeout = std::chrono::milliseconds{2};
 
         std::vector<vk::Fence> fences;
 
-        while (!stop_token.stop_requested())
+        while (!m_schedulerStop)
         {
             fences.clear();
             {
@@ -67,7 +67,8 @@ GpuExecutor::GpuExecutor(vk::Device device, vk::Queue queue) : m_device{device},
 
 GpuExecutor::~GpuExecutor() noexcept
 {
-    m_schedulerStopSource.request_stop();
+    m_schedulerStop = true;
+    m_schedulerThread.join();
 
     auto lock = std::scoped_lock(m_readyCommandBuffersMutex);
     auto fences = std::vector<vk::Fence>();

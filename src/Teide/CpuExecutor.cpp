@@ -16,10 +16,10 @@ class WorkerInterface : public ::tf::WorkerInterface
 
 CpuExecutor::CpuExecutor(uint32 numThreads) : m_executor(numThreads, std::make_shared<WorkerInterface>())
 {
-    m_schedulerThread = std::jthread([this, stop_token = m_schedulerStopSource.get_token()] {
+    m_schedulerThread = std::thread([this] {
         constexpr auto timeout = 2ms;
 
-        while (!stop_token.stop_requested())
+        while (!m_schedulerStop)
         {
             std::this_thread::sleep_for(timeout);
 
@@ -43,7 +43,8 @@ CpuExecutor::CpuExecutor(uint32 numThreads) : m_executor(numThreads, std::make_s
 
 CpuExecutor::~CpuExecutor()
 {
-    m_schedulerStopSource.request_stop();
+    m_schedulerStop = true;
+    m_schedulerThread.join();
     WaitForTasks();
 }
 

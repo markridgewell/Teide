@@ -8,6 +8,7 @@
 #include <function2/function2.hpp>
 #include <taskflow/taskflow.hpp>
 
+#include <atomic>
 #include <future>
 #include <memory>
 #include <mutex>
@@ -200,8 +201,8 @@ private:
     std::vector<std::shared_ptr<AbstractScheduledTask>> m_scheduledTasks;
 
     std::mutex m_schedulerMutex;
-    std::stop_source m_schedulerStopSource;
-    std::jthread m_schedulerThread;
+    std::thread m_schedulerThread;
+    std::atomic_bool m_schedulerStop = false;
 };
 
 } // namespace Teide
