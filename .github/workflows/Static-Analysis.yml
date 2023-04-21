@@ -1,6 +1,6 @@
 
 name: Static-Analysis
-on: [push]
+on: [push, workflow_dispatch]
 
 env:
   clang_tidy_version: 16
@@ -41,16 +41,18 @@ jobs:
         fetch-depth: 0
 
     - name: Get changes
+      if: github.event_name == 'push'
       run: |
         PATTERN='\.\(c\|cpp\|cc\|cxx\|h\|hpp\)$'
-        git diff --name-only --diff-filter=ACMRT ${{github.event.before}} ${{github.event.after}} | grep $PATTERN || (( $? == 1 )) >changes.txt
-        if [ -s changes.txt ]; then
+        git diff --name-only --diff-filter=ACMRT ${{github.event.before}} ${{github.event.after}} >all_changes.txt
+        if cat all_changes.txt | grep -q $PATTERN; then
           echo "Changed C++ source files:"
-          cat changes.txt
+          cat all_changes.txt | grep $PATTERN >cpp_changes.txt
+          cat cpp_changes.txt
+          echo "CLANG_TIDY_SOURCES=$(cat cpp_changes.txt | tr '\n' ';')" >> $GITHUB_ENV
         else
           echo "No changes to C++ source files, skipping analysis"
         fi
-        echo "CLANG_TIDY_SOURCES=$(cat changes.txt | tr '\n' ';')" >> $GITHUB_ENV
 
     - name: Install dependencies
       if: env.CLANG_TIDY_SOURCES != ''
