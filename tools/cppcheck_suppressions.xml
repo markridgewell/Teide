@@ -22,6 +22,6 @@
   <!-- There is a bug in CppCheck that causes lots of false positives in Matrix.h -->
   <suppress>
     <id>returnDanglingLifetime</id>
-    <fileName>*/include/GeoLib/Matrix.h</fileName>
+    <fileName>*/GeoLib/Matrix.h</fileName>
   </suppress>
 </suppressions>
