@@ -4,6 +4,7 @@
 #include <GeoLib/Scalar.h>
 
 #include <cmath>
+#include <compare>
 #include <numbers>
 
 namespace Geo

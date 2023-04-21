@@ -5,6 +5,7 @@
 
 #include "GeoLib/Vector.h"
 #include "Teide/Definitions.h"
+#include "Teide/Hash.h"
 #include "Teide/PipelineData.h"
 #include "Teide/TextureData.h"
 
@@ -50,7 +51,8 @@ struct RenderPassInfo
     vk::AttachmentLoadOp stencilLoadOp = vk::AttachmentLoadOp::eDontCare;
     vk::AttachmentStoreOp stencilStoreOp = vk::AttachmentStoreOp::eDontCare;
 
-    auto operator<=>(const RenderPassInfo&) const = default;
+    bool operator==(const RenderPassInfo&) const = default;
+    usize hash() const { return hash_combine(colorLoadOp, colorStoreOp, depthLoadOp, depthStoreOp, stencilLoadOp, stencilStoreOp); }
 };
 
 struct Framebuffer
