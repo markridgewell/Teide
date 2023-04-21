@@ -7,6 +7,7 @@ td_add_application(
     DEPS Teide
          SDL2::SDL2
          SDL2::SDL2main
+         fmt::fmt
          spdlog::spdlog
          assimp::assimp
          Stb::Stb)

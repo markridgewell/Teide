@@ -10,7 +10,7 @@
 #include <assimp/mesh.h>
 #include <assimp/postprocess.h>
 #include <assimp/scene.h>
-#include <format>
+#include <fmt/format.h>
 #include <stb_image.h>
 
 Teide::MeshData LoadMesh(const char* filename)
@@ -31,11 +31,11 @@ Teide::MeshData LoadMesh(const char* filename)
 
     if (scene->mNumMeshes == 0)
     {
-        throw ApplicationError(std::format("Model file '{}' contains no meshes", filename));
+        throw ApplicationError(fmt::format("Model file '{}' contains no meshes", filename));
     }
     if (scene->mNumMeshes > 1)
     {
-        throw ApplicationError(std::format("Model file '{}' contains too many meshes", filename));
+        throw ApplicationError(fmt::format("Model file '{}' contains too many meshes", filename));
     }
 
     const aiMesh& mesh = **scene->mMeshes;
@@ -97,7 +97,7 @@ Teide::TextureData LoadTexture(const char* filename)
         const auto pixels = StbiPtr(stbi_load(filename, &width, &height, &channels, STBI_rgb_alpha));
         if (!pixels)
         {
-            throw ApplicationError(std::format("Error loading texture '{}'", filename));
+            throw ApplicationError(fmt::format("Error loading texture '{}'", filename));
         }
 
         const auto imageSize = static_cast<std::size_t>(width) * height * 4;

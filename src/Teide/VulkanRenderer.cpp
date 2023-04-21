@@ -192,7 +192,7 @@ RenderToTextureResult VulkanRenderer::RenderToTexture(const RenderTargetInfo& re
             .samplerState = renderTarget.samplerState,
         };
 
-        const auto textureName = std::format("{}:{}", renderList.name, name);
+        const auto textureName = fmt::format("{}:{}", renderList.name, name);
         return m_device.CreateRenderableTexture(data, textureName.c_str());
     };
 
@@ -373,7 +373,7 @@ void VulkanRenderer::BuildCommandBuffer(
         .lifetime = ResourceLifetime::Transient,
         .parameters = renderList.viewParameters,
     };
-    const auto viewParamsName = std::format("{}:View", renderList.name);
+    const auto viewParamsName = fmt::format("{}:View", renderList.name);
     const auto viewParameters = AddViewParameterBlock(
         threadIndex,
         m_device.CreateParameterBlock(viewParamsData, viewParamsName.c_str(), commandBufferWrapper, threadIndex));
