@@ -632,18 +632,13 @@ namespace
 
 DeviceAndSurface CreateDeviceAndSurface(SDL_Window* window, bool multisampled, const GraphicsSettings& settings)
 {
+    assert(window);
+
+    spdlog::info("Creating graphics device and surface");
     VulkanLoader loader;
     vk::UniqueInstance instance = CreateInstance(loader, window);
 
-    vk::UniqueSurfaceKHR vksurface;
-    if (window)
-    {
-        vksurface = CreateVulkanSurface(window, instance.get());
-    }
-    else
-    {
-        spdlog::info("No window provided (headless mode)");
-    }
+    vk::UniqueSurfaceKHR vksurface = CreateVulkanSurface(window, instance.get());
 
     auto physicalDevice = FindPhysicalDevice(instance.get(), vksurface.get());
 
@@ -656,6 +651,8 @@ DeviceAndSurface CreateDeviceAndSurface(SDL_Window* window, bool multisampled, c
 
 GraphicsDevicePtr CreateHeadlessDevice(const GraphicsSettings& settings)
 {
+    spdlog::info("Creating headless graphics device");
+
     VulkanLoader loader;
     vk::UniqueInstance instance = CreateInstance(loader);
     auto physicalDevice = FindPhysicalDevice(instance.get(), {});
@@ -731,6 +728,7 @@ RendererPtr VulkanGraphicsDevice::CreateRenderer(ShaderEnvironmentPtr shaderEnvi
 
 BufferPtr VulkanGraphicsDevice::CreateBuffer(const BufferData& data, const char* name)
 {
+    spdlog::debug("Creating buffer '{}' of size {}", name, data.data.size());
     auto task = m_scheduler.ScheduleGpu([=, this](CommandBuffer& cmdBuffer) { //
         return CreateBuffer(data, name, cmdBuffer);
     });
@@ -758,6 +756,7 @@ BufferPtr VulkanGraphicsDevice::CreateBuffer(const BufferData& data, const char*
 ShaderEnvironmentPtr
 VulkanGraphicsDevice::CreateShaderEnvironment(const ShaderEnvironmentData& data, const char* name [[maybe_unused]])
 {
+    spdlog::debug("Creating shader environment");
     auto shader = VulkanShaderEnvironmentBase{
         .scenePblockLayout = CreateParameterBlockLayout(data.scenePblock, 0),
         .viewPblockLayout = CreateParameterBlockLayout(data.viewPblock, 1),
@@ -768,6 +767,7 @@ VulkanGraphicsDevice::CreateShaderEnvironment(const ShaderEnvironmentData& data,
 
 ShaderPtr VulkanGraphicsDevice::CreateShader(const ShaderData& data, const char* name)
 {
+    spdlog::debug("Creating shader '{}'", name);
     const vk::ShaderModuleCreateInfo vertexCreateInfo = {
         .codeSize = data.vertexShader.spirv.size() * sizeof(uint32_t),
         .pCode = data.vertexShader.spirv.data(),
@@ -801,6 +801,7 @@ ShaderPtr VulkanGraphicsDevice::CreateShader(const ShaderData& data, const char*
 
 TexturePtr VulkanGraphicsDevice::CreateTexture(const TextureData& data, const char* name)
 {
+    spdlog::debug("Creating texture '{}' of size {}x{}", name, data.size.x, data.size.y);
     auto task = m_scheduler.ScheduleGpu([=, this](CommandBuffer& cmdBuffer) { //
         return CreateTexture(data, name, cmdBuffer);
     });
@@ -829,6 +830,7 @@ TexturePtr VulkanGraphicsDevice::CreateTexture(const TextureData& data, const ch
 
 TexturePtr VulkanGraphicsDevice::CreateRenderableTexture(const TextureData& data, const char* name)
 {
+    spdlog::debug("Creating renderable texture '{}' of size {}x{}", name, data.size.x, data.size.y);
     auto task = m_scheduler.ScheduleGpu([=, this](CommandBuffer& cmdBuffer) { //
         return CreateRenderableTexture(data, name, cmdBuffer);
     });
@@ -859,6 +861,7 @@ TexturePtr VulkanGraphicsDevice::CreateRenderableTexture(const TextureData& data
 
 MeshPtr VulkanGraphicsDevice::CreateMesh(const MeshData& data, const char* name)
 {
+    spdlog::debug("Creating mesh '{}' with {} vertices and {} indices", name, data.vertexCount, data.indexData.size() / 2);
     auto task = m_scheduler.ScheduleGpu([data, name, this](CommandBuffer& cmdBuffer) { //
         return CreateMesh(data, name, cmdBuffer);
     });
@@ -897,6 +900,7 @@ MeshPtr VulkanGraphicsDevice::CreateMesh(const MeshData& data, const char* name,
 
 PipelinePtr VulkanGraphicsDevice::CreatePipeline(const PipelineData& data)
 {
+    spdlog::debug("Creating pipeline");
     const auto shaderImpl = GetImpl(data.shader);
 
     const auto pipeline = std::make_shared<VulkanPipeline>(shaderImpl);
@@ -1079,6 +1083,7 @@ Framebuffer VulkanGraphicsDevice::CreateFramebuffer(
 
 ParameterBlockPtr VulkanGraphicsDevice::CreateParameterBlock(const ParameterBlockData& data, const char* name)
 {
+    spdlog::debug("Creating parameter block '{}'", name);
     auto task = m_scheduler.ScheduleGpu([=, this](CommandBuffer& cmdBuffer) {
         return CreateParameterBlock(data, name, cmdBuffer, m_mainDescriptorPool.get());
     });

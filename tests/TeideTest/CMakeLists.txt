@@ -15,6 +15,7 @@ td_add_test(
     DEPS Teide
          SDL2::SDL2
          Vulkan::Vulkan
+         function2::function2
          GTest::gtest
          GTest::gmock
          ${extra_deps}
