@@ -3,7 +3,7 @@ include(tools/cmake/CompileCommands.cmake)
 function(td_add_clang_tidy)
     compile_commands()
 
-    list(APPEND clang_tidy_cmd "-std=c++${CMAKE_CXX_STANDARD}")
+    list(APPEND clang_tidy_cmd "-xc++" "-std=c++${CMAKE_CXX_STANDARD}")
     foreach(dir IN LISTS project_include_directories)
         list(APPEND clang_tidy_cmd "-I${dir}")
     endforeach()

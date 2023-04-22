@@ -21,6 +21,7 @@ Checks: >-
   performance-*,
   portability-*,
   misc-*,
-  -misc-non-private-member-variables-in-classes
+  -misc-non-private-member-variables-in-classes,
+  clang-diagnostic-pragma-once-outside-header
 
 WarningsAsErrors: '*'
