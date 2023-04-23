@@ -16,6 +16,7 @@
 #include <vulkan/vulkan_hash.hpp>
 
 #include <compare>
+#include <concepts>
 #include <optional>
 #include <thread>
 #include <type_traits>

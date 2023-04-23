@@ -1,4 +1,16 @@
+cmake_minimum_required(VERSION 3.19)
+
 find_program(clang_tidy "clang-tidy" REQUIRED)
+
+message("Running ClangTidy script")
+
+# Remove empty arguments from the lists
+# cmake-format: off
+list(FILTER SOURCES INCLUDE REGEX ".+")
+list(FILTER INCLUDE_DIRS INCLUDE REGEX ".+")
+list(FILTER SYSTEM_INCLUDE_DIRS INCLUDE REGEX ".+")
+list(FILTER CLANG_TIDY_ARGS INCLUDE REGEX ".+")
+# cmake-format: on
 
 # Build clang-tidy command
 if(DEFINED ENV{CLANG_TIDY_SOURCES})
@@ -14,12 +26,15 @@ else()
     list(APPEND clang_tidy_args "--header-filter='.*'")
 endif()
 
+foreach(dir IN LISTS INCLUDE_DIRS)
+    list(APPEND clang_tidy_args "-I${dir}")
+endforeach()
+foreach(dir IN LISTS SYSTEM_INCLUDE_DIRS)
+    list(APPEND clang_tidy_args "-isystem" "${dir}")
+endforeach()
+
 # Add the rest of the command-line arguments
 list(APPEND clang_tidy_args ${CLANG_TIDY_ARGS})
-# Remove empty arguments from the list
-# cmake-format: off
-list(FILTER clang_tidy_args INCLUDE REGEX ".+")
-# cmake-format: on
 
 # Run the command and propogate error code
 list(JOIN clang_tidy_args "\" \"" clang_tidy_arg_str)
