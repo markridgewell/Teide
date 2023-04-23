@@ -3,7 +3,6 @@
 
 #include <GeoLib/ForwardDeclare.h>
 #include <GeoLib/Scalar.h>
-#include "Teide/Hash.h"
 
 #include <cassert>
 #include <cmath>
@@ -64,7 +63,7 @@ struct Vector<T, 2, Tag>
     }
 
     friend auto operator<=>(const Vector& a, const Vector& b) noexcept = default;
-    std::size_t hash() const { return hash_combine(x, y); }
+    constexpr void Visit(auto f) const { return f(x, y); }
 
     static constexpr Vector Zero() noexcept { return {}; }
     static constexpr Vector UnitX() noexcept { return {1.0f, 0.0f}; }

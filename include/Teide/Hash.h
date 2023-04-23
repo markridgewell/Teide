@@ -1,59 +1,82 @@
 
 #pragma once
 
+#include "Teide/BasicTypes.h"
+
 #include <cstddef>
 #include <functional>
 #include <ranges>
 
-template <typename T>
-concept hashable = requires(const T& obj)
+namespace Teide
 {
-    { obj.hash() } -> std::same_as<std::size_t>;
+
+struct Visitor // for exposition only, not actually used
+{
+    template <typename... Args>
+    void operator()(Args&&... args)
+    {}
 };
 
+// clang-format off
 template <typename T>
-struct hash : std::hash<T> {};
+concept Visitable = requires(const T& obj, Visitor v)
+{
+    { obj.Visit(v) } -> std::same_as<void>;
+};
+// clang-format on
 
 template <typename T>
-    requires hashable<T>
-struct hash<T>
+struct Hash : std::hash<T>
 {
-    std::size_t operator()(const T& val) const
+    using Base = std::hash<T>;
+    usize operator()(const T& val, usize seed = 0)
     {
-        return val.hash();
+        return seed ^ Base::operator()(val) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
     }
 };
 
 // hash_combine function from P0814R0
-namespace detail
-{
 template <typename T>
-void hash_combine(std::size_t& seed, const T& val)
+void HashCombineSingle(usize& seed, const T& val)
 {
-    seed ^= hash<T>()(val) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+    seed ^= Hash<T>()(val, seed) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
 }
-} // namespace detail
 
-template <typename... Types>
-std::size_t hash_combine(const Types&... args)
+struct HashCombiner
 {
-    std::size_t seed = 0;
-    (detail::hash_combine(seed, args), ...); // create hash value with seed over all args
-    return seed;
-}
+    usize value;
+
+    template <typename... Types>
+    void operator()(const Types&... args)
+    {
+        (HashCombineSingle(value, args), ...);
+    }
+};
+
+template <typename T>
+    requires Visitable<T>
+struct Hash<T>
+{
+    usize operator()(const T& val, usize seed = 0) const
+    {
+        HashCombiner h{seed};
+        val.Visit(h);
+        return h.value;
+    }
+};
 
 template <typename T>
     requires std::ranges::range<T>
-struct hash<T>
+struct Hash<T>
 {
-    std::size_t operator()(const T& val) const
+    usize operator()(const T& val, usize seed = 0) const
     {
-        std::size_t seed = 0;
+        Hash<std::ranges::range_value_t<T>> hash;
         for (auto&& elem : val)
         {
-            detail::hash_combine(seed, elem);
+            seed = hash(elem, seed);
         }
         return seed;
     }
 };
-
+} // namespace Teide

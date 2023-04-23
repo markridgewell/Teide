@@ -3,7 +3,6 @@
 
 #include "Teide/MeshData.h"
 #include "Teide/TextureData.h"
-#include "Teide/Hash.h"
 
 #include <bitset>
 
@@ -126,7 +125,7 @@ struct FramebufferLayout
     uint32 sampleCount = 1;
 
     bool operator==(const FramebufferLayout& other) const = default;
-    usize hash() const { return hash_combine(colorFormat, depthStencilFormat, sampleCount); }
+    void Visit(auto f) const { return f(colorFormat, depthStencilFormat, sampleCount); }
 };
 
 struct RenderOverrides
@@ -135,7 +134,7 @@ struct RenderOverrides
     std::optional<float> depthBiasSlope;
 
     bool operator==(const RenderOverrides&) const = default;
-    usize hash() const { return hash_combine(depthBiasConstant, depthBiasSlope); }
+    void Visit(auto f) const { return f(depthBiasConstant, depthBiasSlope); }
 };
 
 struct RenderPassDesc
@@ -144,7 +143,7 @@ struct RenderPassDesc
     RenderOverrides renderOverrides;
 
     bool operator==(const RenderPassDesc&) const = default;
-    usize hash() const { return hash_combine(framebufferLayout, renderOverrides); }
+    void Visit(auto f) const { return f(framebufferLayout, renderOverrides); }
 };
 
 struct PipelineData

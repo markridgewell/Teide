@@ -9,13 +9,13 @@
 
 #include "Teide/BasicTypes.h"
 #include "Teide/GraphicsDevice.h"
+#include "Teide/Hash.h"
 #include "Teide/Renderer.h"
 #include "Teide/Surface.h"
 
 #include <vulkan/vulkan_hash.hpp>
 
 #include <compare>
-#include <unordered_map>
 #include <optional>
 #include <thread>
 #include <type_traits>
@@ -97,7 +97,7 @@ private:
         RenderPassInfo renderPassInfo;
 
         bool operator==(const RenderPassDesc&) const = default;
-        usize hash() const { return hash_combine(framebufferLayout, renderPassInfo); }
+        void Visit(auto f) const { return f(framebufferLayout, renderPassInfo); }
     };
 
     struct FramebufferDesc
@@ -107,7 +107,7 @@ private:
         std::vector<vk::ImageView> attachments;
 
         bool operator==(const FramebufferDesc&) const = default;
-        usize hash() const { return hash_combine(renderPass, size, attachments); }
+        void Visit(auto f) const { return f(renderPass, size, attachments); }
     };
 
     vk::UniqueDescriptorSet CreateDescriptorSet(
@@ -124,10 +124,10 @@ private:
     GraphicsSettings m_settings;
 
     std::mutex m_renderPassCacheMutex;
-    std::unordered_map<RenderPassDesc, vk::UniqueRenderPass, hash<RenderPassDesc>> m_renderPassCache;
+    std::unordered_map<RenderPassDesc, vk::UniqueRenderPass, Hash<RenderPassDesc>> m_renderPassCache;
 
     std::mutex m_framebufferCacheMutex;
-    std::unordered_map<FramebufferDesc, vk::UniqueFramebuffer, hash<FramebufferDesc>> m_framebufferCache;
+    std::unordered_map<FramebufferDesc, vk::UniqueFramebuffer, Hash<FramebufferDesc>> m_framebufferCache;
 
     vk::Queue m_graphicsQueue;
     vk::UniqueDescriptorPool m_mainDescriptorPool;
