@@ -31,14 +31,15 @@ struct Hash : std::hash<T>
     using Base = std::hash<T>;
     usize operator()(const T& val, usize seed = 0)
     {
-        return seed ^ Base::operator()(val) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+        // hash_combine function from P0814R0
+        return seed ^ (Base::operator()(val) + 0x9e3779b9 + (seed << 6) + (seed >> 2));
     }
 };
 
-// hash_combine function from P0814R0
 template <typename T>
 void HashCombineSingle(usize& seed, const T& val)
 {
+    // hash_combine function from P0814R0
     seed ^= Hash<T>()(val, seed) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
 }
 
