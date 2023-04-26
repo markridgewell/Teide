@@ -14,6 +14,7 @@ set(sources
     include/Teide/Format.h
     include/Teide/ForwardDeclare.h
     include/Teide/GraphicsDevice.h
+    include/Teide/Hash.h
     include/Teide/Mesh.h
     include/Teide/MeshData.h
     include/Teide/ParameterBlock.h

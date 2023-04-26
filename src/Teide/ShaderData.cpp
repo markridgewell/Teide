@@ -18,6 +18,8 @@ namespace Teide
 
 namespace
 {
+    constexpr uint32 MaxPushConstantSize = 128u;
+
     constexpr auto RoundUp(std::integral auto a, std::integral auto b)
     {
         return ((a - 1) / b + 1) * b;
@@ -131,7 +133,7 @@ ParameterBlockLayoutData BuildParameterBlockLayout(const ParameterBlockDesc& pbl
         }
     }
 
-    if (set == 3 && bindings.uniformsSize <= 128u)
+    if (set == 3 && bindings.uniformsSize <= MaxPushConstantSize)
     {
         bindings.isPushConstant = true;
     }

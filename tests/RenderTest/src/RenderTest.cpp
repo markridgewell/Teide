@@ -18,7 +18,7 @@
 namespace
 {
 
-static void WritePng(const std::filesystem::path& path, Geo::Size2i size, Teide::BytesView pixels)
+void WritePng(const std::filesystem::path& path, Geo::Size2i size, Teide::BytesView pixels)
 {
     stbi_write_png(
         path.string().c_str(), static_cast<int>(size.x), static_cast<int>(size.y), 4, pixels.data(),
@@ -31,9 +31,10 @@ struct ReadPngResult
     std::vector<Teide::byte> pixels;
 };
 
-static ReadPngResult ReadPng(const std::filesystem::path& path)
+ReadPngResult ReadPng(const std::filesystem::path& path)
 {
-    int width = 0, height = 0;
+    int width = 0;
+    int height = 0;
     Teide::uint8* rawData = stbi_load(path.string().c_str(), &width, &height, nullptr, 4);
     if (rawData == nullptr)
     {
@@ -342,28 +343,26 @@ void RenderTest::CompareImageToReference(const Teide::TextureData& image, const 
 
         GTEST_SKIP_("Updated");
     }
-    else
+
+    if (!exists(referenceFile))
     {
-        if (!exists(referenceFile))
-        {
-            FAIL() << "Reference image missing";
-        }
+        FAIL() << "Reference image missing";
+    }
 
-        const auto [referenceSize, referenceData] = ReadPng(referenceFile);
-        if (referenceData.empty())
-        {
-            FAIL() << "Reference image could not be loaded";
-        }
+    const auto [referenceSize, referenceData] = ReadPng(referenceFile);
+    if (referenceData.empty())
+    {
+        FAIL() << "Reference image could not be loaded";
+    }
 
-        if (image.size != referenceSize || image.pixels != referenceData)
-        {
-            const std::filesystem::path testOutputDir = s_outputDir;
-            create_directories(testOutputDir);
-            WritePng(outputFile, image.size, image.pixels);
-            copy_file(referenceFile, testOutputDir / (testName + ".ref.png"));
+    if (image.size != referenceSize || image.pixels != referenceData)
+    {
+        const std::filesystem::path testOutputDir = s_outputDir;
+        create_directories(testOutputDir);
+        WritePng(outputFile, image.size, image.pixels);
+        copy_file(referenceFile, testOutputDir / (testName + ".ref.png"));
 
-            FAIL() << "Rendered image does not match reference";
-        }
+        FAIL() << "Rendered image does not match reference";
     }
 }
 

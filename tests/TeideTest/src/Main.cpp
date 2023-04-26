@@ -9,7 +9,7 @@
 class LogSuppressor : public testing::EmptyTestEventListener
 {
 public:
-    void OnTestStart(const testing::TestInfo&) override
+    void OnTestStart(const testing::TestInfo& /*unused*/) override
     {
         m_output.clear();
         m_logger = spdlog::default_logger();
@@ -30,7 +30,7 @@ public:
         }
     }
 
-    void OnTestEnd(const testing::TestInfo&) override { spdlog::set_default_logger(m_logger); }
+    void OnTestEnd(const testing::TestInfo& /*unused*/) override { spdlog::set_default_logger(m_logger); }
 
 private:
     std::shared_ptr<spdlog::logger> m_logger;

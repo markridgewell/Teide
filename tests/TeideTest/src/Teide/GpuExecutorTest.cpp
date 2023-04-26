@@ -60,7 +60,7 @@ protected:
             *m_allocator);
     }
 
-    std::future<void> SubmitCommandBuffer(GpuExecutor& executor, std::uint32_t index, vk::CommandBuffer commandBuffer)
+    static std::future<void> SubmitCommandBuffer(GpuExecutor& executor, std::uint32_t index, vk::CommandBuffer commandBuffer)
     {
         std::promise<void> promise;
         std::future<void> future = promise.get_future();

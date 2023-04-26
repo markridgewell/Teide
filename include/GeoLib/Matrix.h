@@ -13,13 +13,21 @@ namespace Impl
     consteval Vector<T, N, VectorTag> InitRow(T x, T y, T z, T w)
     {
         if constexpr (N == 1)
+        {
             return {x};
+        }
         if constexpr (N == 2)
+        {
             return {x, y};
+        }
         if constexpr (N == 3)
+        {
             return {x, y, z};
+        }
         if constexpr (N == 4)
+        {
             return {x, y, z, w};
+        }
         return {};
     }
 

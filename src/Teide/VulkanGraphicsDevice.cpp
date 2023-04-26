@@ -32,7 +32,7 @@ namespace Teide
 
 namespace
 {
-    static const vk::Optional<const vk::AllocationCallbacks> s_allocator = nullptr;
+    const vk::Optional<const vk::AllocationCallbacks> s_allocator = nullptr;
 
     vk::UniqueSurfaceKHR CreateVulkanSurface(SDL_Window* window, vk::Instance instance)
     {
@@ -195,9 +195,8 @@ namespace
         }
 
         // Prefer discrete GPUs to integrated GPUs
-        std::ranges::sort(physicalDevices, [](const PhysicalDevice& a, const PhysicalDevice& b) {
-            return (a.properties.deviceType == vk::PhysicalDeviceType::eDiscreteGpu)
-                > (b.properties.deviceType == vk::PhysicalDeviceType::eIntegratedGpu);
+        std::ranges::sort(physicalDevices, [](const PhysicalDevice& a, const PhysicalDevice& b [[maybe_unused]]) {
+            return a.properties.deviceType == vk::PhysicalDeviceType::eDiscreteGpu;
         });
 
         if (IsSoftwareRenderingEnabled())
@@ -250,37 +249,7 @@ namespace
     {
         const vk::BufferUsageFlags usageFlags = GetBufferUsageFlags(usage);
 
-        if (lifetime == ResourceLifetime::Permanent)
-        {
-            // Create staging buffer
-            auto stagingBuffer = std::make_shared<VulkanBuffer>(CreateBufferUninitialized(
-                data.size(), vk::BufferUsageFlagBits::eTransferSrc,
-                vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent, device, allocator));
-            cmdBuffer.AddBuffer(stagingBuffer);
-            SetBufferData(*stagingBuffer, data);
-
-            // Create device-local buffer
-            VulkanBuffer ret = CreateBufferUninitialized(
-                data.size(), usageFlags | vk::BufferUsageFlagBits::eTransferDst,
-                vk::MemoryPropertyFlagBits::eDeviceLocal, device, allocator);
-            CopyBuffer(cmdBuffer, stagingBuffer->buffer.get(), ret.buffer.get(), data.size());
-
-            // Add pipeline barrier to make the buffer usable in shader
-            cmdBuffer->pipelineBarrier(
-                vk::PipelineStageFlagBits::eTransfer, vk::PipelineStageFlagBits::eVertexShader, {}, {},
-                vk::BufferMemoryBarrier{
-                    .srcAccessMask = vk::AccessFlagBits::eTransferWrite,
-                    .dstAccessMask = vk::AccessFlagBits::eShaderRead,
-                    .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-                    .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-                    .buffer = ret.buffer.get(),
-                    .offset = 0,
-                    .size = VK_WHOLE_SIZE,
-                },
-                {});
-            return ret;
-        }
-        else
+        if (lifetime == ResourceLifetime::Transient)
         {
             VulkanBuffer ret = CreateBufferUninitialized(
                 data.size(), usageFlags | vk::BufferUsageFlagBits::eTransferDst,
@@ -288,6 +257,34 @@ namespace
             SetBufferData(ret, data);
             return ret;
         }
+
+        // Create staging buffer
+        auto stagingBuffer = std::make_shared<VulkanBuffer>(CreateBufferUninitialized(
+            data.size(), vk::BufferUsageFlagBits::eTransferSrc,
+            vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent, device, allocator));
+        cmdBuffer.AddBuffer(stagingBuffer);
+        SetBufferData(*stagingBuffer, data);
+
+        // Create device-local buffer
+        VulkanBuffer ret = CreateBufferUninitialized(
+            data.size(), usageFlags | vk::BufferUsageFlagBits::eTransferDst, vk::MemoryPropertyFlagBits::eDeviceLocal,
+            device, allocator);
+        CopyBuffer(cmdBuffer, stagingBuffer->buffer.get(), ret.buffer.get(), data.size());
+
+        // Add pipeline barrier to make the buffer usable in shader
+        cmdBuffer->pipelineBarrier(
+            vk::PipelineStageFlagBits::eTransfer, vk::PipelineStageFlagBits::eVertexShader, {}, {},
+            vk::BufferMemoryBarrier{
+                .srcAccessMask = vk::AccessFlagBits::eTransferWrite,
+                .dstAccessMask = vk::AccessFlagBits::eShaderRead,
+                .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                .buffer = ret.buffer.get(),
+                .offset = 0,
+                .size = VK_WHOLE_SIZE,
+            },
+            {});
+        return ret;
     }
 
     struct TextureAndState
@@ -962,7 +959,9 @@ vk::UniqueDescriptorSet VulkanGraphicsDevice::CreateDescriptorSet(
     for (const auto& texture : textures)
     {
         if (!texture)
+        {
             continue;
+        }
 
         const auto& textureImpl = GetImpl(*texture);
 

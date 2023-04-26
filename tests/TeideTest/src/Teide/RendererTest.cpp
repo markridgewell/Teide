@@ -25,7 +25,7 @@ public:
     RendererTest() : m_device{CreateTestGraphicsDevice()}, m_renderer{m_device->CreateRenderer(nullptr)} {}
 
 protected:
-    RenderTargetInfo CreateRenderTargetInfo(Geo::Size2i size)
+    static RenderTargetInfo CreateRenderTargetInfo(Geo::Size2i size)
     {
         return {
             .size = size,

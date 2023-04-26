@@ -24,7 +24,7 @@ namespace Teide
 
 namespace
 {
-    static const vk::Optional<const vk::AllocationCallbacks> s_allocator = nullptr;
+    const vk::Optional<const vk::AllocationCallbacks> s_allocator = nullptr;
 
     vk::Viewport MakeViewport(Geo::Size2i size, const ViewportRegion& region = {})
     {
@@ -182,7 +182,9 @@ RenderToTextureResult VulkanRenderer::RenderToTexture(const RenderTargetInfo& re
 
     const auto CreateRenderableTexture = [&](std::optional<Format> format, const char* name) -> TexturePtr {
         if (!format)
+        {
             return nullptr;
+        }
 
         const TextureData data = {
             .size = renderTarget.size,

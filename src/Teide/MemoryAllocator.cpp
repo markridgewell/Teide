@@ -12,7 +12,7 @@ namespace Teide
 
 namespace
 {
-    static uint32_t s_nextBlockID = 0;
+    uint32_t s_nextBlockID = 0;
 
     uint32_t FindMemoryType(vk::PhysicalDevice physicalDevice, uint32_t typeFilter, vk::MemoryPropertyFlags flags)
     {
@@ -65,58 +65,70 @@ void MemoryAllocator::DeallocateAll()
     }
 }
 
+bool MemoryAllocator::MemoryBlock::IsSuitable(uint32_t requiredMemoryType, vk::MemoryRequirements requirements) const
+{
+    if (memoryType != requiredMemoryType)
+    {
+        return false;
+    }
+
+    // Check if the block has enough space for the allocation
+    const auto offset = (((consumedSize - 1) / requirements.alignment) + 1) * requirements.alignment;
+    return offset + requirements.size <= capacity;
+}
+
+std::span<byte> MemoryAllocator::MemoryBlock::GetMappedData() const
+{
+    if (mappedData)
+    {
+        return {static_cast<byte*>(mappedData.get()), capacity};
+    }
+    return {};
+}
+
 MemoryAllocator::MemoryBlock& MemoryAllocator::FindMemoryBlock(uint32_t memoryType, vk::MemoryRequirements requirements)
 {
-    const auto it = std::ranges::find_if(m_memoryBlocks, [&](const MemoryBlock& block) {
-        if (block.memoryType != memoryType)
-        {
-            return false;
-        }
-
-        // Check if the block has enough space for the allocation
-        const auto offset = (((block.consumedSize - 1) / requirements.alignment) + 1) * requirements.alignment;
-        return offset + requirements.size <= block.capacity;
-    });
-
-    if (it == m_memoryBlocks.end())
+    if (const auto it = std::ranges::find_if(
+            m_memoryBlocks, [&](const MemoryBlock& block) { return block.IsSuitable(memoryType, requirements); });
+        it != m_memoryBlocks.end())
     {
-        // No compatible memory block found; create a new one
-
-        // Make sure the new block has at least enough space for the allocation
-        const auto newBlockSize = std::max(MemoryBlockSize, requirements.size);
-
-        const vk::MemoryAllocateInfo allocInfo = {
-            .allocationSize = newBlockSize,
-            .memoryTypeIndex = memoryType,
-        };
-
-        spdlog::info("Allocating {} bytes of memory in memory type {}", allocInfo.allocationSize, allocInfo.memoryTypeIndex);
-
-        m_memoryBlocks.push_back({
-            .capacity = newBlockSize,
-            .consumedSize = 0,
-            .memoryType = memoryType,
-            .memory = m_device.allocateMemoryUnique(allocInfo),
-            .id = s_nextBlockID++,
-        });
-        auto& block = m_memoryBlocks.back();
-
-        // Persistently map memory if it's host visible
-        const auto memoryProperties = m_physicalDevice.getMemoryProperties().memoryTypes[memoryType];
-        if ((memoryProperties.propertyFlags & vk::MemoryPropertyFlagBits::eHostVisible) != vk::MemoryPropertyFlags{})
-        {
-            block.mappedData = MappedMemory(
-                m_device.mapMemory(block.memory.get(), 0, block.capacity), MemoryUnmapper{m_device, block.memory.get()});
-        }
-
-        const bool isDeviceLocal
-            = (memoryProperties.propertyFlags & vk::MemoryPropertyFlagBits::eDeviceLocal) != vk::MemoryPropertyFlags{};
-        SetDebugName(
-            block.memory, "{}Memory{} ({} MB)", isDeviceLocal ? "Device" : "Host", block.id, newBlockSize / 1024 / 1024);
-
-        return block;
+        return *it;
     }
-    return *it;
+
+    // No compatible memory block found; create a new one
+
+    // Make sure the new block has at least enough space for the allocation
+    const auto newBlockSize = std::max(MemoryBlockSize, requirements.size);
+
+    const vk::MemoryAllocateInfo allocInfo = {
+        .allocationSize = newBlockSize,
+        .memoryTypeIndex = memoryType,
+    };
+
+    spdlog::info("Allocating {} bytes of memory in memory type {}", allocInfo.allocationSize, allocInfo.memoryTypeIndex);
+
+    m_memoryBlocks.push_back({
+        .capacity = newBlockSize,
+        .consumedSize = 0,
+        .memoryType = memoryType,
+        .memory = m_device.allocateMemoryUnique(allocInfo),
+        .id = s_nextBlockID++,
+    });
+    auto& block = m_memoryBlocks.back();
+
+    // Persistently map memory if it's host visible
+    const auto memoryProperties = m_physicalDevice.getMemoryProperties().memoryTypes[memoryType];
+    if ((memoryProperties.propertyFlags & vk::MemoryPropertyFlagBits::eHostVisible) != vk::MemoryPropertyFlags{})
+    {
+        block.mappedData = MappedMemory(
+            m_device.mapMemory(block.memory.get(), 0, block.capacity), MemoryUnmapper{m_device, block.memory.get()});
+    }
+
+    const bool isDeviceLocal
+        = (memoryProperties.propertyFlags & vk::MemoryPropertyFlagBits::eDeviceLocal) != vk::MemoryPropertyFlags{};
+    SetDebugName(block.memory, "{}Memory{} ({} MB)", isDeviceLocal ? "Device" : "Host", block.id, newBlockSize / 1024 / 1024);
+
+    return block;
 }
 
 } // namespace Teide

@@ -284,7 +284,8 @@ bool Application::OnEvent(const SDL_Event& event)
 
 bool Application::OnUpdate()
 {
-    int mouseX{}, mouseY{};
+    int mouseX = 0;
+    int mouseY = 0;
     const uint32_t mouseButtonMask = SDL_GetRelativeMouseState(&mouseX, &mouseY);
 
     if (SDL_GetModState() & KMOD_CTRL)
@@ -360,7 +361,7 @@ void Application::CreateMaterial(const char* imageFilename)
 {
     m_material.shader = m_device->CreateShader(CompileShader(ModelShader), "ModelShader");
 
-    const auto textureName = imageFilename ? imageFilename : "DefaultTexture";
+    const auto* const textureName = imageFilename ? imageFilename : "DefaultTexture";
     const auto texture = m_device->CreateTexture(LoadTexture(imageFilename), textureName);
 
     const Teide::ParameterBlockData materialData = {

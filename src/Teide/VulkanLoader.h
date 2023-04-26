@@ -13,8 +13,8 @@ class VulkanLoader
 public:
     VulkanLoader();
 
-    void LoadInstanceFunctions(vk::Instance instance);
-    void LoadDeviceFunctions(vk::Device device);
+    static void LoadInstanceFunctions(vk::Instance instance);
+    static void LoadDeviceFunctions(vk::Device device);
 
 private:
     vk::DynamicLoader m_loader;
