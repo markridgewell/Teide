@@ -1,0 +1,42 @@
+name: 'get-file-changes'
+description: 'Output a list of files changed by a push or in a pull request'
+
+inputs:
+  filter-pattern:
+    description: 'Regular expression filter to apply to filenames'
+    required: false
+    default: '.*'
+outputs:
+  files:
+    description: "List of changed files matching the provided pattern"
+    value: ${{ steps.filter.outputs.files }}
+
+runs:
+  using: composite
+  steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+      with:
+        fetch-depth: ${{ github.event_name == 'pull_request' && 2 || 0 }}
+
+    - name: Get changes from push
+      if: github.event_name == 'push'
+      run: |
+        git diff --name-only --diff-filter=ACMRT ${{github.event.before}} ${{github.event.after}} >all_changes.txt
+
+    - name: Get changes in pull request
+      if: github.event_name == 'pull_request'
+      run: |
+        git diff --name-only --diff-filter=ACMRT HEAD^1 HEAD >all_changes.txt
+
+    - name: Filter file list
+      id: filter
+      run: |
+        if cat all_changes.txt | grep -q "${{inputs.filter-pattern}}"; then
+          echo "Changed files matching pattern:"
+          cat all_changes.txt | grep "${{inputs.filter-pattern}}" >filtered_changes.txt
+          cat filtered_changes.txt
+          echo "files=$(cat filtered_changes.txt | tr '\n' ';')" >> $GITHUB_OUTPUT
+        else
+          echo "No file changes matching pattern."
+        fi

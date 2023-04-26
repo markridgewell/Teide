@@ -12,22 +12,29 @@ jobs:
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v3
+      id: checkout
+      uses: ./.github/actions/checkout-list-changes
+      with:
+        filter-pattern: '\.\(c\|cpp\|cc\|cxx\|h\|hpp\)$'
 
     - name: Install dependencies
+      if: steps.checkout.outputs.changed-files != ''
       uses: ./.github/actions/install-dependencies
       with:
         preset: msvc2022
 
     - name: Install CppCheck
+      if: steps.checkout.outputs.changed-files != ''
       run: |
         choco install --ignorepackageexitcodes cppcheck
         refreshenv
 
     - name: Configure CMake
+      if: steps.checkout.outputs.changed-files != ''
       run: cmake --preset msvc2022
 
     - name: Run CppCheck
+      if: steps.checkout.outputs.changed-files != ''
       run: python tools/cppcheck.py --build-dir=build/msvc2022 --show-code
 
   clang-tidy:
