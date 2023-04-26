@@ -1,4 +1,4 @@
-name: 'get-file-changes'
+name: 'get-changed-files'
 description: 'Output a list of files changed by a push or in a pull request'
 
 inputs:
@@ -7,18 +7,13 @@ inputs:
     required: false
     default: '.*'
 outputs:
-  files:
+  changed-files:
     description: "List of changed files matching the provided pattern"
     value: ${{ steps.filter.outputs.files }}
 
 runs:
   using: composite
   steps:
-    - name: Checkout
-      uses: actions/checkout@v3
-      with:
-        fetch-depth: ${{ github.event_name == 'pull_request' && 2 || 0 }}
-
     - name: Get changes from push
       if: github.event_name == 'push'
       run: |
