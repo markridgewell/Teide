@@ -70,6 +70,10 @@ int SDL_main(int argc, char* argv[])
 
     spdlog::set_pattern("[%Y-%m-%D %H:%M:%S.%e] [%l] %v");
 
+    int buf[10];
+    if (argc == 1000)
+        buf[argc] = 0; // <- ERROR
+
     if (SDL_Init(SDL_INIT_VIDEO) < 0)
     {
         spdlog::critical("Couldn't initialise SDL: {}", SDL_GetError());
