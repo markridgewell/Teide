@@ -932,10 +932,11 @@ vk::UniqueDescriptorSet VulkanGraphicsDevice::CreateDescriptorSet(
     std::vector<vk::WriteDescriptorSet> descriptorWrites;
     descriptorWrites.reserve(numUniformBuffers + textures.size());
 
+    vk::DescriptorBufferInfo bufferInfo;
     if (uniformBuffer)
     {
         const auto& uniformBufferImpl = GetImpl(*uniformBuffer);
-        const vk::DescriptorBufferInfo bufferInfo = {
+        bufferInfo = vk::DescriptorBufferInfo{
             .buffer = uniformBufferImpl.buffer.get(),
             .offset = 0,
             .range = uniformBufferImpl.size,
