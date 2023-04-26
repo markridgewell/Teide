@@ -16,16 +16,19 @@ runs:
   steps:
     - name: Get changes from push
       if: github.event_name == 'push'
+      shell: bash
       run: |
         git diff --name-only --diff-filter=ACMRT ${{github.event.before}} ${{github.event.after}} >all_changes.txt
 
     - name: Get changes in pull request
       if: github.event_name == 'pull_request'
+      shell: bash
       run: |
         git diff --name-only --diff-filter=ACMRT HEAD^1 HEAD >all_changes.txt
 
     - name: Filter file list
       id: filter
+      shell: bash
       run: |
         if cat all_changes.txt | grep -q "${{inputs.filter-pattern}}"; then
           echo "Changed files matching pattern:"
