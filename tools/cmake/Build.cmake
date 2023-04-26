@@ -1,3 +1,5 @@
+include(tools/cmake/Coverage.cmake)
+
 set(options)
 set(oneValueArgs)
 
@@ -55,6 +57,9 @@ function(td_add_library target)
         ${target}
         PUBLIC ${ARG_PUBLIC_DEPS}
         PRIVATE ${ARG_PRIVATE_DEPS})
+    if(TEIDE_TEST_COVERAGE)
+        target_enable_coverage(${target})
+    endif()
 
     if(EXISTS ${source_dir} AND IS_DIRECTORY "${source_dir}")
         target_include_directories(${target} PRIVATE ${source_dir})
@@ -86,6 +91,9 @@ function(td_add_application target)
     source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${ARG_SOURCES})
     target_include_directories(${target} PRIVATE ${source_dir})
     target_link_libraries(${target} PRIVATE ${ARG_DEPS})
+    if(TEIDE_TEST_COVERAGE)
+        target_enable_coverage(${target})
+    endif()
 
     _copy_install_files(${target})
 endfunction()
@@ -107,7 +115,20 @@ function(td_add_test target)
     target_link_libraries(${target} PRIVATE ${ARG_DEPS})
     target_include_directories(${target} PRIVATE ${source_dir})
     target_include_directories(${target} PRIVATE ${test_dir})
-    add_test(NAME ${target} COMMAND ${target} ${ARG_TEST_ARGS})
+    if(TEIDE_TEST_COVERAGE)
+        target_enable_coverage(${target})
+    endif()
+
+    add_test(
+        NAME ${target}
+        COMMAND
+            ${CMAKE_COMMAND} "-DTEST_BINARY=$<TARGET_FILE:${target}>" "-DTEST_ARGS=${ARG_TEST_ARGS}"
+            "-DTEIDE_TEST_COVERAGE=${TEIDE_TEST_COVERAGE}" "-DCOVERAGE_DIR=${COVERAGE_DIR}" -P
+            "${SCRIPTS_DIR}/RunTest.cmake")
+    if(TEIDE_TEST_COVERAGE)
+        test_enable_coverage(${target})
+    endif()
+
     list(JOIN ARG_TEST_ARGS " " debugger_args)
     set_property(TARGET ${target} PROPERTY VS_DEBUGGER_COMMAND_ARGUMENTS "${debugger_args}")
 

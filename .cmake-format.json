@@ -29,6 +29,13 @@
         "DEPS": "*",
         "TEST_ARGS": "*"
       }
+    },
+    "exec": {
+      "pargs": 0,
+      "kwargs": {
+        "COMMAND": "*",
+        "OUTPUT_FILE": "1"
+      }
     }
   },
   "format": {
