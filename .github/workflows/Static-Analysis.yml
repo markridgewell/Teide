@@ -10,6 +10,7 @@ on:
 
 env:
   clang_tidy_version: 16
+  pattern: '\.\(c\|cpp\|cc\|cxx\|h\|hpp\)$'
 
 jobs:
   cppcheck:
@@ -26,7 +27,7 @@ jobs:
       id: checkout
       uses: ./.github/actions/get-changed-files
       with:
-        filter-pattern: '\.\(c\|cpp\|cc\|cxx\|h\|hpp\)$'
+        filter-pattern: ${{env.pattern}}
 
     - name: Install dependencies
       if: steps.checkout.outputs.changed-files != ''
@@ -56,21 +57,13 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v3
       with:
-        fetch-depth: 0
+        fetch-depth: ${{ github.event_name == 'pull_request' && 2 || 0 }}
 
-    - name: Get changes
-      if: github.event_name == 'push'
-      run: |
-        PATTERN='\.\(c\|cpp\|cc\|cxx\|h\|hpp\)$'
-        git diff --name-only --diff-filter=ACMRT ${{github.event.before}} ${{github.event.after}} >all_changes.txt
-        if cat all_changes.txt | grep -q $PATTERN; then
-          echo "Changed C++ source files:"
-          cat all_changes.txt | grep $PATTERN >cpp_changes.txt
-          cat cpp_changes.txt
-          echo "CLANG_TIDY_SOURCES=$(cat cpp_changes.txt | tr '\n' ';')" >> $GITHUB_ENV
-        else
-          echo "No changes to C++ source files, skipping analysis"
-        fi
+    - name: Get changed files
+      id: checkout
+      uses: ./.github/actions/get-changed-files
+      with:
+        filter-pattern: ${{env.pattern}}
 
     - name: Install dependencies
       if: env.CLANG_TIDY_SOURCES != ''
@@ -79,7 +72,7 @@ jobs:
         preset: linux
 
     - name: Install clang-tidy
-      if: env.CLANG_TIDY_SOURCES != ''
+      if: steps.checkout.outputs.changed-files != ''
       run: |
         wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key | sudo tee /etc/apt/trusted.gpg.d/apt.llvm.org.asc
         UBUNTU_CODENAME=`sudo cat /etc/os-release | sed -n s/UBUNTU_CODENAME=//p`
@@ -89,9 +82,11 @@ jobs:
         sudo ln -sf `which clang-tidy-16` /usr/bin/clang-tidy
 
     - name: Configure CMake
-      if: env.CLANG_TIDY_SOURCES != ''
+      if: steps.checkout.outputs.changed-files != ''
       run: cmake --preset linux -DTEIDE_CLANG_TIDY=ON
 
     - name: Run clang-tidy
-      if: env.CLANG_TIDY_SOURCES != ''
+      if: steps.checkout.outputs.changed-files != ''
+      env:
+        CLANG_TIDY_SOURCES: ${{steps.checkout.outputs.changed-files}}
       run: cd build/linux && make ClangTidy
