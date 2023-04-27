@@ -96,7 +96,7 @@ jobs:
       matrix:
         buildtype: [Debug, Release]
         preset: [linux]
-        compiler: [g++-11, clang++-16]
+        compiler: [g++-11, clang-16]
       fail-fast: false
 
     name: Linux-${{matrix.buildtype}}
