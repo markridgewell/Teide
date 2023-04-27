@@ -27,4 +27,5 @@ runs:
 
     - if: ${{runner.os == Linux && inputs.apt-packages != ''}}
       name: Install apt packages
+      shell: bash
       run: sudo apt install ${{inputs.apt-packages}}
