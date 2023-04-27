@@ -66,7 +66,7 @@ protected:
     Teide::GraphicsDevice& GetDevice();
 
 private:
-    void CompareImageToReference(const Teide::TextureData& image, const testing::TestInfo& testInfo);
+    static void CompareImageToReference(const Teide::TextureData& image, const testing::TestInfo& testInfo);
 
     static bool s_updateReferences;
     static std::filesystem::path s_referenceDir;

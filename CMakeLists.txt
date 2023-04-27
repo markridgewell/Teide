@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.19)
 
 include(CMakeParseArguments)
+include(CMakeDependentOption)
 include(tools/cmake/Build.cmake)
 
 project(
@@ -12,6 +13,8 @@ project(
 option(TEIDE_BUILD_EXAMPLES "Build examples for Teide" ON)
 option(TEIDE_BUILD_TESTS "Build tests for Teide" ON)
 option(TEIDE_TEST_VERBOSE "Enable verbose logging for Teide tests" OFF)
+option(TEIDE_TEST_COVERAGE "Enable code coverage reporting when running tests" OFF)
+option(TEIDE_TEST_WINDOWLESS "Disable tests requiring a windowing system" OFF)
 option(TEIDE_UNIT_TEST_SW_RENDER "Enable software rendering for Teide unit tests" OFF)
 option(TEIDE_RENDER_TEST_SW_RENDER "Enable software rendering for Teide render tests" ON)
 option(TEIDE_CLANG_TIDY "Enable static analysis with clang-tidy" OFF)
@@ -19,6 +22,7 @@ option(TEIDE_CLANG_TIDY "Enable static analysis with clang-tidy" OFF)
 enable_testing()
 
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/tools/cmake/modules)
+set(SCRIPTS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/tools/cmake/scripts)
 
 find_package(Vulkan REQUIRED)
 find_package(SDL2 REQUIRED)
@@ -57,6 +61,9 @@ td_add_library(
 
 if(TEIDE_BUILD_TESTS)
     add_subdirectory(tests)
+    if(TEIDE_TEST_COVERAGE)
+        setup_coverage()
+    endif()
 endif()
 
 if(TEIDE_BUILD_EXAMPLES)

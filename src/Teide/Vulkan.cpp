@@ -28,7 +28,7 @@ namespace
         return std::ranges::find(range, value, std::forward<P>(proj)) != std::ranges::end(range);
     }
 
-    static constexpr StaticMap<Format, vk::Format, FormatCount> VulkanFormats = {
+    constexpr StaticMap<Format, vk::Format, FormatCount> VulkanFormats = {
         {Format::Unknown, vk::Format::eUndefined},
 
         {Format::Byte1, vk::Format::eR8Uint},
@@ -727,13 +727,21 @@ vk::ColorComponentFlags ToVulkan(ColorMask mask)
 {
     vk::ColorComponentFlags ret = {};
     if (mask.red)
+    {
         ret |= vk::ColorComponentFlagBits::eR;
+    }
     if (mask.green)
+    {
         ret |= vk::ColorComponentFlagBits::eG;
+    }
     if (mask.blue)
+    {
         ret |= vk::ColorComponentFlagBits::eB;
+    }
     if (mask.alpha)
+    {
         ret |= vk::ColorComponentFlagBits::eA;
+    }
     return ret;
 }
 

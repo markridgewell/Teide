@@ -40,7 +40,7 @@ private:
         vk::Device device;
         vk::DeviceMemory memory;
 
-        void operator()(void*) { device.unmapMemory(memory); }
+        void operator()(void* /*unused*/) const { device.unmapMemory(memory); }
     };
 
     using MappedMemory = std::unique_ptr<void, MemoryUnmapper>;
@@ -54,14 +54,8 @@ private:
         MappedMemory mappedData;
         uint32_t id;
 
-        std::span<byte> GetMappedData() const
-        {
-            if (mappedData)
-            {
-                return {static_cast<byte*>(mappedData.get()), capacity};
-            }
-            return {};
-        }
+        bool IsSuitable(uint32_t requiredMemoryType, vk::MemoryRequirements requirements) const;
+        std::span<byte> GetMappedData() const;
     };
 
     MemoryBlock& FindMemoryBlock(uint32_t memoryType, vk::MemoryRequirements requirements);

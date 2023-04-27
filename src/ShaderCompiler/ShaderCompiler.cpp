@@ -20,9 +20,9 @@ constexpr auto PblockNamesLower = std::array{"scene", "view", "material", "objec
 constexpr int VulkanGlslDialectVersion = 450;
 
 #if _DEBUG
-static constexpr bool IsDebugBuild = true;
+constexpr bool IsDebugBuild = true;
 #else
-static constexpr bool IsDebugBuild = false;
+constexpr bool IsDebugBuild = false;
 #endif
 
 #ifdef __GNUC__ // GCC 4.8+, Clang, Intel and other compilers compatible with GCC (-std=c++0x or above)
@@ -408,7 +408,9 @@ void BuildVaryings(std::string& source, ShaderStageData& data, const ShaderStage
         const auto& input = sourceStage.inputs[i];
 
         if (input.name.starts_with("gl_"))
+        {
             continue;
+        }
 
         data.inputs.push_back(input);
         fmt::format_to(out, "layout(location = {}) in {} {};\n", i, ToString(input.type), input.name);
@@ -419,7 +421,9 @@ void BuildVaryings(std::string& source, ShaderStageData& data, const ShaderStage
         const auto& output = sourceStage.outputs[i];
 
         if (output.name.starts_with("gl_"))
+        {
             continue;
+        }
 
         data.outputs.push_back(output);
         fmt::format_to(out, "layout(location = {}) out {} {};\n", i, ToString(output.type), output.name);
@@ -437,7 +441,7 @@ ShaderData CompileShader(const ShaderSourceData& sourceData)
     data.materialPblock = sourceData.materialPblock;
     data.objectPblock = sourceData.objectPblock;
 
-    std::string parameters = "";
+    std::string parameters;
     BuildBindings<0>(parameters, sourceData.environment.scenePblock);
     BuildBindings<1>(parameters, sourceData.environment.viewPblock);
     BuildBindings<2>(parameters, sourceData.materialPblock);

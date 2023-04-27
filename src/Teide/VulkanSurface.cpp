@@ -15,7 +15,7 @@ namespace Teide
 
 namespace
 {
-    static const vk::Optional<const vk::AllocationCallbacks> s_allocator = nullptr;
+    const vk::Optional<const vk::AllocationCallbacks> s_allocator = nullptr;
 
     vk::SurfaceFormatKHR ChooseSurfaceFormat(std::span<const vk::SurfaceFormatKHR> availableFormats)
     {
@@ -48,19 +48,19 @@ namespace
         {
             return {capabilities.currentExtent.width, capabilities.currentExtent.height};
         }
-        else
-        {
-            int width = 0, height = 0;
-            SDL_Vulkan_GetDrawableSize(window, &width, &height);
 
-            const Geo::Size2i windowExtent = {static_cast<uint32_t>(width), static_cast<uint32_t>(height)};
 
-            const Geo::Size2i actualExtent
-                = {std::clamp(windowExtent.x, capabilities.minImageExtent.width, capabilities.maxImageExtent.width),
-                   std::clamp(windowExtent.y, capabilities.minImageExtent.height, capabilities.maxImageExtent.height)};
+        int width = 0;
+        int height = 0;
+        SDL_Vulkan_GetDrawableSize(window, &width, &height);
 
-            return actualExtent;
-        }
+        const Geo::Size2i windowExtent = {static_cast<uint32_t>(width), static_cast<uint32_t>(height)};
+
+        const Geo::Size2i actualExtent
+            = {std::clamp(windowExtent.x, capabilities.minImageExtent.width, capabilities.maxImageExtent.width),
+               std::clamp(windowExtent.y, capabilities.minImageExtent.height, capabilities.maxImageExtent.height)};
+
+        return actualExtent;
     }
 
     vk::UniqueSwapchainKHR CreateSwapchain(
@@ -224,7 +224,7 @@ std::optional<SurfaceImage> VulkanSurface::AcquireNextImage(vk::Fence fence)
         RecreateSwapchain();
         return std::nullopt;
     }
-    else if (result == vk::Result::eSuboptimalKHR)
+    if (result == vk::Result::eSuboptimalKHR)
     {
         spdlog::warn("Suboptimal swapchain image");
     }

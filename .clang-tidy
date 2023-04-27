@@ -21,6 +21,12 @@ Checks: >-
   performance-*,
   portability-*,
   misc-*,
-  -misc-non-private-member-variables-in-classes
+  -misc-non-private-member-variables-in-classes,
+  concurrency-*,
+  readability-*,
+  -readability-magic-numbers,
+  -readability-uppercase-literal-suffix,
+  -readability-identifier-length,
+  -readability-implicit-bool-conversion
 
 WarningsAsErrors: '*,-clang-diagnostic-*'

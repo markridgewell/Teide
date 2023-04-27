@@ -26,7 +26,7 @@ namespace
 {
     std::filesystem::path FindSwiftShaderConfig()
     {
-        const auto basePath = SDL_GetBasePath();
+        auto* const basePath = SDL_GetBasePath();
         const auto applicationDir = std::filesystem::path(basePath);
         SDL_free(basePath);
         auto swiftshaderConfigPath = applicationDir / "vk_swiftshader_icd.json";

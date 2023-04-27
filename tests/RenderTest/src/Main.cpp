@@ -38,13 +38,11 @@ public:
                 {
                     return m_args[i + 1];
                 }
-                else
-                {
-                    m_errorString += "Missing argument to ";
-                    m_errorString += arg;
-                    m_errorString += '\n';
-                    return {};
-                }
+
+                m_errorString += "Missing argument to ";
+                m_errorString += arg;
+                m_errorString += '\n';
+                return {};
             }
         }
         if (!defaultValue)
