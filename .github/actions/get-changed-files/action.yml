@@ -26,6 +26,11 @@ runs:
       run: |
         git diff --name-only --diff-filter=ACMRT HEAD^1 HEAD >all_changes.txt
 
+    - name: Get all files for workflow dispatch
+      if: github.event_name == 'workflow_dispatch'
+      run: |
+        git ls-tree -r --name-only HEAD >all_changes.txt
+
     - name: Filter file list
       id: filter
       shell: bash
