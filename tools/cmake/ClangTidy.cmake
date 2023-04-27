@@ -14,7 +14,7 @@ function(td_add_clang_tidy)
         COMMAND
             ${CMAKE_COMMAND} "-DSOURCES='${project_sources}'" "-DINCLUDE_DIRS='${project_include_directories}'"
             "-DSYSTEM_INCLUDE_DIRS='${project_system_include_directories}'" "-DCLANG_TIDY_ARGS='${clang_tidy_cmd}'" -P
-            ${CMAKE_SOURCE_DIR}/tools/cmake/scripts/RunClangTidy.cmake
+            "${SCRIPTS_DIR}/RunClangTidy.cmake"
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 
     set_target_properties(ClangTidy PROPERTIES FOLDER StaticAnalysis)
