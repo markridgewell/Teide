@@ -16,5 +16,5 @@ td_add_test(
     TeideTest
     TARGET Teide
     SOURCES "${sources}"
-    DEPS SDL2::SDL2 GTest::gtest GTest::gmock ${extra_deps}
+    DEPS GTest::gtest GTest::gmock ${extra_deps}
     TEST_ARGS ${extra_args})
