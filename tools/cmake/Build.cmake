@@ -99,6 +99,7 @@ function(td_add_application target)
 endfunction()
 
 function(td_add_test target)
+    set(oneValueArgs TARGET)
     set(multiValueArgs SOURCES DEPS TEST_ARGS)
     cmake_parse_arguments(
         "ARG"
@@ -112,9 +113,12 @@ function(td_add_test target)
 
     add_executable(${target} ${ARG_SOURCES})
     source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${ARG_SOURCES})
-    target_link_libraries(${target} PRIVATE ${ARG_DEPS})
+    target_link_libraries(${target} PRIVATE ${ARG_TARGET} ${ARG_DEPS})
     target_include_directories(${target} PRIVATE ${source_dir})
     target_include_directories(${target} PRIVATE ${test_dir})
+    if(TARGET ${ARG_TARGET})
+        target_include_directories(${target} PRIVATE $<TARGET_PROPERTY:${ARG_TARGET},INCLUDE_DIRECTORIES>)
+    endif()
     if(TEIDE_TEST_COVERAGE)
         target_enable_coverage(${target})
     endif()
