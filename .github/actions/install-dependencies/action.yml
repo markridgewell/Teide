@@ -28,4 +28,12 @@ runs:
     - if: ${{runner.os == 'Linux' && inputs.apt-packages != ''}}
       name: Install apt packages
       shell: bash
-      run: sudo apt install ${{inputs.apt-packages}}
+      run: |
+        # If clang packages requested, add the appropriate llvm repository
+        for version in $(echo $* | tr ' ' '\n' | sed -n 's/^clang.*-\([1-9][0-9]*\)/\1/p' | sort | uniq); do
+          wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key | sudo tee /etc/apt/trusted.gpg.d/apt.llvm.org.asc
+          UBUNTU_CODENAME=`sudo cat /etc/os-release | sed -n s/UBUNTU_CODENAME=//p`
+          sudo add-apt-repository "deb http://apt.llvm.org/${UBUNTU_CODENAME}/ llvm-toolchain-${UBUNTU_CODENAME}-${version} main"
+        done
+        sudo apt-get update
+        sudo apt install ${{inputs.apt-packages}}
