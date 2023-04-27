@@ -106,7 +106,6 @@ jobs:
       job_name: Linux-${{matrix.buildtype}}
       CMAKE_CXX_COMPILER: ${{matrix.compiler}}
       CMAKE_BUILD_TYPE: ${{matrix.buildtype}}
-      GTEST_FILTER: -SurfaceTest.*
       ASAN_OPTIONS: detect_leaks=0 # Vulkan on Linux appears to leak memory, so disable leak checks
 
     steps:
@@ -122,7 +121,7 @@ jobs:
         apt-packages: ${{matrix.compiler}}
 
     - name: Configure CMake
-      run: cmake --preset ${{matrix.preset}} -DTEIDE_TEST_VERBOSE=ON -DTEIDE_UNIT_TEST_SW_RENDER=ON
+      run: cmake --preset ${{matrix.preset}} -DTEIDE_TEST_VERBOSE=ON -DTEIDE_UNIT_TEST_SW_RENDER=ON -DTEIDE_TEST_WINDOWLESS=ON
 
     - name: Build
       run: cmake --build --preset ${{matrix.preset}} --config ${{matrix.buildtype}}
