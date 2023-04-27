@@ -5,6 +5,9 @@ inputs:
   preset:
     description: 'CMake preset used to build vcpkg packages'
     required: true
+  apt-packages:
+    description: 'Additional packages to install with apt (Linux only)'
+    required: false
 
 runs:
   using: composite
@@ -21,3 +24,7 @@ runs:
         vulkan-query-version: latest
         vulkan-components: Vulkan-Headers, Vulkan-Loader
         vulkan-use-cache: true
+
+    - if: ${{runner.os == Linux && inputs.apt-packages != ''}}
+      name: Install apt packages
+      run: sudo apt install ${{inputs.apt-packages}}

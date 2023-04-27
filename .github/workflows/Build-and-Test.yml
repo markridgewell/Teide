@@ -96,6 +96,7 @@ jobs:
       matrix:
         buildtype: [Debug, Release]
         preset: [linux]
+        compiler: [g++-11, clang++-16]
       fail-fast: false
 
     name: Linux-${{matrix.buildtype}}
@@ -103,7 +104,7 @@ jobs:
 
     env:
       job_name: Linux-${{matrix.buildtype}}
-      CMAKE_CXX_COMPILER: g++
+      CMAKE_CXX_COMPILER: ${{matrix.compiler}}
       CMAKE_BUILD_TYPE: ${{matrix.buildtype}}
       GTEST_FILTER: -SurfaceTest.*
       ASAN_OPTIONS: detect_leaks=0 # Vulkan on Linux appears to leak memory, so disable leak checks
@@ -118,6 +119,7 @@ jobs:
       uses: ./.github/actions/install-dependencies
       with:
         preset: ${{matrix.preset}}
+        apt-packages: ${{matrix.compiler}}
 
     - name: Configure CMake
       run: cmake --preset ${{matrix.preset}} -DTEIDE_TEST_VERBOSE=ON -DTEIDE_UNIT_TEST_SW_RENDER=ON
