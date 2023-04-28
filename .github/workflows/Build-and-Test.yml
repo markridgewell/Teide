@@ -99,7 +99,7 @@ jobs:
         compiler: [gcc-11, clang-16]
       fail-fast: false
 
-    name: Linux-${{matrix.buildtype}}
+    name: Linux-${{matrix.buildtype}}-${{matrix.compiler}}
     runs-on: ubuntu-latest
 
     env:
