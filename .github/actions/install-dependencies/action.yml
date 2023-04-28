@@ -26,7 +26,8 @@ runs:
         vulkan-use-cache: true
 
     - name: Install chocolatey packages
-    - if: ${{runner.os == 'Windows' && inputs.extra-packages != ''}}
+      if: ${{runner.os == 'Windows' && inputs.extra-packages != ''}}
+      shell: pwsh
       run: |
         choco install --ignorepackageexitcodes ${{extra-packages}}
         refreshenv
