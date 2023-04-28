@@ -42,11 +42,7 @@ jobs:
       uses: ./.github/actions/install-dependencies
       with:
         preset: ${{matrix.preset}}
-
-    - name: Setup OpenCppCoverage
-      run: |
-        choco install OpenCppCoverage -y
-        echo "C:\Program Files\OpenCppCoverage" >> $env:GITHUB_PATH
+        extra-packages: OpenCppCoverage
 
     - name: Configure CMake
       run: cmake --preset ${{matrix.preset}} -DTEIDE_TEST_VERBOSE=ON -DTEIDE_UNIT_TEST_SW_RENDER=ON
@@ -96,14 +92,15 @@ jobs:
       matrix:
         buildtype: [Debug, Release]
         preset: [linux]
+        compiler: [gcc-11, clang-16]
       fail-fast: false
 
-    name: Linux-${{matrix.buildtype}}
+    name: Linux-${{matrix.buildtype}}-${{matrix.compiler}}
     runs-on: ubuntu-latest
 
     env:
-      job_name: Linux-${{matrix.buildtype}}
-      CMAKE_CXX_COMPILER: g++
+      job_name: Linux-${{matrix.buildtype}}-${{matrix.compiler}}
+      CMAKE_CXX_COMPILER: ${{matrix.compiler}}
       CMAKE_BUILD_TYPE: ${{matrix.buildtype}}
       ASAN_OPTIONS: detect_leaks=0 # Vulkan on Linux appears to leak memory, so disable leak checks
 
@@ -117,6 +114,7 @@ jobs:
       uses: ./.github/actions/install-dependencies
       with:
         preset: ${{matrix.preset}}
+        extra-packages: ${{matrix.compiler}}
 
     - name: Configure CMake
       run: cmake --preset ${{matrix.preset}} -DTEIDE_TEST_VERBOSE=ON -DTEIDE_UNIT_TEST_SW_RENDER=ON -DTEIDE_TEST_WINDOWLESS=ON
