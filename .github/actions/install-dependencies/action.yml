@@ -29,7 +29,7 @@ runs:
       if: ${{runner.os == 'Windows' && inputs.extra-packages != ''}}
       shell: pwsh
       run: |
-        choco install --ignorepackageexitcodes ${{extra-packages}}
+        choco install --ignorepackageexitcodes ${{inputs.extra-packages}}
         refreshenv
 
     - if: ${{runner.os == 'Linux' && inputs.extra-packages != ''}}
