@@ -30,10 +30,14 @@ runs:
       shell: bash
       run: |
         # If clang packages requested, add the appropriate llvm repository
-        for version in $(echo $* | tr ' ' '\n' | sed -n 's/^clang.*-\([1-9][0-9]*\)$/\1/p' | sort | uniq); do
+        LLVM_VERSIONS=$(echo $* | tr ' ' '\n' | sed -n 's/^clang.*-\([1-9][0-9]*\)$/\1/p' | sort | uniq)
+        for VERSION in $LLVM_VERSIONS; do
           wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key | sudo tee /etc/apt/trusted.gpg.d/apt.llvm.org.asc
           UBUNTU_CODENAME=`sudo cat /etc/os-release | sed -n s/UBUNTU_CODENAME=//p`
-          sudo add-apt-repository "deb http://apt.llvm.org/${UBUNTU_CODENAME}/ llvm-toolchain-${UBUNTU_CODENAME}-${version} main"
+          REPO="deb http://apt.llvm.org/${UBUNTU_CODENAME}/ llvm-toolchain-${UBUNTU_CODENAME}-${VERSION} main"
+          echo Adding repository "${REPO}"
+          sudo add-apt-repository "${REPO}"
         done
         sudo apt-get update
-        sudo apt-get install ${{inputs.apt-packages}}
+        sudo apt-get install -y clang-tidy-16
+        sudo apt-get install -y ${{inputs.apt-packages}}

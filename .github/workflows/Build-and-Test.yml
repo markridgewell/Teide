@@ -96,14 +96,14 @@ jobs:
       matrix:
         buildtype: [Debug, Release]
         preset: [linux]
-        compiler: [g++-11, clang-16]
+        compiler: [gcc-11, clang-16]
       fail-fast: false
 
     name: Linux-${{matrix.buildtype}}
     runs-on: ubuntu-latest
 
     env:
-      job_name: Linux-${{matrix.buildtype}}
+      job_name: Linux-${{matrix.buildtype}}-${{matrix.compiler}}
       CMAKE_CXX_COMPILER: ${{matrix.compiler}}
       CMAKE_BUILD_TYPE: ${{matrix.buildtype}}
       ASAN_OPTIONS: detect_leaks=0 # Vulkan on Linux appears to leak memory, so disable leak checks
