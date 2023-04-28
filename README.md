@@ -33,10 +33,10 @@ To build, either build the sln file in Visual Studio, or build using CMake like 
 
 **Linux**: To generate makefiles, run the command:
 
-    $ cmake --preset linux -DCMAKE_BUILD_TYPE=Debug
+    $ cmake --preset make -DCMAKE_BUILD_TYPE=Debug
 
 The selected build type may be Debug or Release
 
 To build with the selected build type, run the command:
 
-    $ cmake --build --preset linux
+    $ cmake --build --preset make

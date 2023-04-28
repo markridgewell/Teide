@@ -21,7 +21,7 @@ jobs:
         - os: windows-latest
           preset: msvc2022
         - os: ubuntu-latest
-          preset: linux
+          preset: make
 
     runs-on: ${{matrix.os}}
 
