@@ -1,7 +1,7 @@
 set(COVERAGE_DIR "${CMAKE_BINARY_DIR}/coverage")
 
 function(setup_coverage)
-    add_test(NAME ClearCoverage COMMAND ${CMAKE_COMMAND} -E rm -r ${COVERAGE_DIR})
+    add_test(NAME ClearCoverage COMMAND ${CMAKE_COMMAND} -E rm -rf ${COVERAGE_DIR})
     add_test(NAME InitCoverage COMMAND ${CMAKE_COMMAND} -E make_directory ${COVERAGE_DIR})
     set_tests_properties(InitCoverage PROPERTIES DEPENDS ClearCoverage)
     set_tests_properties(ClearCoverage InitCoverage PROPERTIES FIXTURES_SETUP CppCoverage)
