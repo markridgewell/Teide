@@ -5,8 +5,8 @@ inputs:
   preset:
     description: 'CMake preset used to build vcpkg packages'
     required: true
-  apt-packages:
-    description: 'Additional packages to install with apt (Linux only)'
+  extra-packages:
+    description: 'Additional packages to install with apt-get (Linux) or chocolatey (Windows)'
     required: false
 
 runs:
@@ -25,18 +25,26 @@ runs:
         vulkan-components: Vulkan-Headers, Vulkan-Loader
         vulkan-use-cache: true
 
-    - if: ${{runner.os == 'Linux' && inputs.apt-packages != ''}}
+    - name: Install chocolatey packages
+    - if: ${{runner.os == 'Windows' && inputs.extra-packages != ''}}
+      run: |
+        choco install --ignorepackageexitcodes ${{extra-packages}}
+        refreshenv
+
+    - if: ${{runner.os == 'Linux' && inputs.extra-packages != ''}}
       name: Install apt packages
       shell: bash
       run: |
         # If clang packages requested, add the appropriate llvm repository
-        LLVM_VERSIONS=$(echo ${{inputs.apt-packages}} | tr ' ' '\n' | sed -n 's/^clang.*-\([1-9][0-9]*\)$/\1/p' | sort | uniq)
-        for VERSION in $LLVM_VERSIONS; do
+        LLVM_VERSIONS=$(echo ${{inputs.extra-packages}} | tr ' ' '\n' | sed -n 's/^clang.*-\([1-9][0-9]*\)$/\1/p' | sort | uniq
+        if [ -n "{$LLVM_VERSIONS}" ]; then
           wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key | sudo tee /etc/apt/trusted.gpg.d/apt.llvm.org.asc
           UBUNTU_CODENAME=`sudo cat /etc/os-release | sed -n s/UBUNTU_CODENAME=//p`
-          REPO="deb http://apt.llvm.org/${UBUNTU_CODENAME}/ llvm-toolchain-${UBUNTU_CODENAME}-${VERSION} main"
-          echo Adding repository "${REPO}"
-          sudo add-apt-repository "${REPO}"
-        done
+          for VERSION in ${LLVM_VERSIONS}; do
+            REPO="deb http://apt.llvm.org/${UBUNTU_CODENAME}/ llvm-toolchain-${UBUNTU_CODENAME}-${VERSION} main"
+            echo Adding repository "${REPO}"
+            sudo add-apt-repository "${REPO}"
+          done
+        fi
         sudo apt-get update
-        sudo apt-get install -y ${{inputs.apt-packages}}
+        sudo apt-get install -y ${{inputs.extra-packages}}

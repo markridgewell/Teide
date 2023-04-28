@@ -34,12 +34,7 @@ jobs:
       uses: ./.github/actions/install-dependencies
       with:
         preset: msvc2022
-
-    - name: Install CppCheck
-      if: steps.get-changes.outputs.changed-files != ''
-      run: |
-        choco install --ignorepackageexitcodes cppcheck
-        refreshenv
+        extra-packages: cppcheck
 
     - name: Configure CMake
       if: steps.get-changes.outputs.changed-files != ''
@@ -70,16 +65,7 @@ jobs:
       uses: ./.github/actions/install-dependencies
       with:
         preset: linux
-
-    - name: Install clang-tidy
-      if: steps.get-changes.outputs.changed-files != ''
-      run: |
-        wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key | sudo tee /etc/apt/trusted.gpg.d/apt.llvm.org.asc
-        UBUNTU_CODENAME=`sudo cat /etc/os-release | sed -n s/UBUNTU_CODENAME=//p`
-        sudo add-apt-repository "deb http://apt.llvm.org/${UBUNTU_CODENAME}/ llvm-toolchain-${UBUNTU_CODENAME}-${{env.clang_tidy_version}} main"
-        sudo apt-get update
-        sudo apt-get install -y clang-tidy-${{env.clang_tidy_version}}
-        sudo ln -sf `which clang-tidy-16` /usr/bin/clang-tidy
+        extra-packages: clang-tidy-${{env.clang_tidy_version}}
 
     - name: Configure CMake
       if: steps.get-changes.outputs.changed-files != ''
@@ -89,4 +75,6 @@ jobs:
       if: steps.get-changes.outputs.changed-files != ''
       env:
         CLANG_TIDY_SOURCES: ${{steps.get-changes.outputs.changed-files}}
-      run: cd build/linux && make ClangTidy
+      run: |
+        sudo ln -sf `which clang-tidy-${{env.clang_tidy_version}}` /usr/bin/clang-tidy
+        cd build/linux && make ClangTidy

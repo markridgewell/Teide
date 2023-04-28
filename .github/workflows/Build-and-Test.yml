@@ -42,11 +42,7 @@ jobs:
       uses: ./.github/actions/install-dependencies
       with:
         preset: ${{matrix.preset}}
-
-    - name: Setup OpenCppCoverage
-      run: |
-        choco install OpenCppCoverage -y
-        echo "C:\Program Files\OpenCppCoverage" >> $env:GITHUB_PATH
+        extra-packages: OpenCppCoverage
 
     - name: Configure CMake
       run: cmake --preset ${{matrix.preset}} -DTEIDE_TEST_VERBOSE=ON -DTEIDE_UNIT_TEST_SW_RENDER=ON
@@ -118,7 +114,7 @@ jobs:
       uses: ./.github/actions/install-dependencies
       with:
         preset: ${{matrix.preset}}
-        apt-packages: ${{matrix.compiler}}
+        extra-packages: ${{matrix.compiler}}
 
     - name: Configure CMake
       run: cmake --preset ${{matrix.preset}} -DTEIDE_TEST_VERBOSE=ON -DTEIDE_UNIT_TEST_SW_RENDER=ON -DTEIDE_TEST_WINDOWLESS=ON
