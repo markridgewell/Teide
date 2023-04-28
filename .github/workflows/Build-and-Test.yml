@@ -93,6 +93,11 @@ jobs:
         buildtype: [Debug, Release]
         preset: [linux]
         compiler: [gcc-11, clang-16]
+        coverage: [OFF]
+        include:
+        - buildtype: Debug
+          compiler: clang-16
+          coverage: ON
       fail-fast: false
 
     name: Linux-${{matrix.buildtype}}-${{matrix.compiler}}
@@ -101,7 +106,6 @@ jobs:
     env:
       job_name: Linux-${{matrix.buildtype}}-${{matrix.compiler}}
       CMAKE_CXX_COMPILER: ${{matrix.compiler}}
-      CMAKE_BUILD_TYPE: ${{matrix.buildtype}}
       ASAN_OPTIONS: detect_leaks=0 # Vulkan on Linux appears to leak memory, so disable leak checks
 
     steps:
@@ -117,7 +121,7 @@ jobs:
         extra-packages: ${{matrix.compiler}}
 
     - name: Configure CMake
-      run: cmake --preset ${{matrix.preset}} -DTEIDE_TEST_VERBOSE=ON -DTEIDE_UNIT_TEST_SW_RENDER=ON -DTEIDE_TEST_WINDOWLESS=ON
+      run: cmake --preset ${{matrix.preset}} -DCMAKE_BUILD_TYPE=${{matrix.buildtype}} -DTEIDE_TEST_VERBOSE=ON -DTEIDE_UNIT_TEST_SW_RENDER=ON -DTEIDE_TEST_WINDOWLESS=ON -DTEIDE_TEST_COVERAGE=${{matrix.coverage}}
 
     - name: Build
       run: cmake --build --preset ${{matrix.preset}} --config ${{matrix.buildtype}}
@@ -146,3 +150,18 @@ jobs:
       with:
         name: TestLog-${{env.job_name}}
         path: build/${{matrix.preset}}/Testing/Temporary/LastTest.log
+
+    - name: Upload coverage report
+      if: matrix.coverage == 'ON'
+      uses: codecov/codecov-action@v3
+      with:
+        directory: build/${{matrix.preset}}/coverage/output
+        fail_ci_if_error: false
+        functionalities: fix
+
+    - name: Save coverage report
+      if: matrix.coverage == 'ON'
+      uses: actions/upload-artifact@v3
+      with:
+        name: CoverageReport-${{env.job_name}}
+        path: build/${{matrix.preset}}/coverage/output
