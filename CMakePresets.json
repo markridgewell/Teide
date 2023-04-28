@@ -52,15 +52,7 @@
       "displayName": "Linux",
       "generator": "Unix Makefiles",
       "cacheVariables": {
-        "CMAKE_CXX_FLAGS": "--std=c++2a -DSDL_main=main -Wall -Werror -Wno-attributes -ggdb -fsanitize=address -fno-omit-frame-pointer -static-libasan -lX11 -lXext"
-      }
-    },
-    {
-      "name": "linux-coverage",
-      "inherits": "linux",
-      "displayName": "Linux + Coverage",
-      "cacheVariables": {
-        "CMAKE_CXX_FLAGS_DEBUG": "-O0 -g --coverage"
+        "CMAKE_CXX_FLAGS": "-DSDL_main=main -Wall -Werror -Wno-attributes -Wno-error=unused-command-line-argument -ggdb -lX11 -lXext"
       }
     },
     {
