@@ -31,6 +31,8 @@ runs:
       run: |
         choco install --ignorepackageexitcodes ${{inputs.extra-packages}}
         refreshenv
+        echo PATH:
+        echo $env:path -split ";"
 
     - if: ${{runner.os == 'Linux' && inputs.extra-packages != ''}}
       name: Install apt packages
