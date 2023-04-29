@@ -26,7 +26,8 @@ TEST(TextureTest, GenerateMipmaps)
     ASSERT_THAT(texture.get(), NotNull());
 
     auto renderer = device->CreateRenderer(nullptr);
-    const auto& result = renderer->CopyTextureData(texture).get();
+    auto task = renderer->CopyTextureData(texture);
+    const auto result = task.get();
     ASSERT_THAT(result.has_value(), IsTrue());
     const TextureData& data = result.value();
 
