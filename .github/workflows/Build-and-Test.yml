@@ -91,12 +91,12 @@ jobs:
     strategy:
       matrix:
         buildtype: [Debug, Release]
-        compiler: [gcc-11, clang-16]
+        compiler: [g++-11, clang++-16]
         include:
         - preset: make
         - coverage: OFF
         - buildtype: Debug
-          compiler: clang-16
+          compiler: clang++-16
           coverage: ON
       fail-fast: false
 
