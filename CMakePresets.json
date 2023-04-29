@@ -51,7 +51,7 @@
       "inherits": "_common",
       "hidden": true,
       "cacheVariables": {
-        "CMAKE_CXX_FLAGS": "-DSDL_main=main -Wall -Werror -Wno-attributes -Wno-error=unused-command-line-argument -ggdb -lX11 -lXext"
+        "CMAKE_CXX_FLAGS": "-DSDL_main=main -Wall -Werror -Wno-attributes -ggdb"
       }
     },
     {
