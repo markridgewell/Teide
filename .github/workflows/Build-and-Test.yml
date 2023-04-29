@@ -154,7 +154,7 @@ jobs:
       if: matrix.coverage == 'ON'
       uses: codecov/codecov-action@v3
       with:
-        directory: build/${{matrix.preset}}/coverage/output
+        #directory: build/${{matrix.preset}}/coverage/output
         fail_ci_if_error: false
         functionalities: fix
 
