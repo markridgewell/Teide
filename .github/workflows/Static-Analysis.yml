@@ -47,6 +47,7 @@ jobs:
   clang-tidy:
     name: ClangTidy
     runs-on: ubuntu-latest
+    env: [ preset: make ]
 
     steps:
     - name: Checkout
@@ -77,4 +78,4 @@ jobs:
         CLANG_TIDY_SOURCES: ${{steps.get-changes.outputs.changed-files}}
       run: |
         sudo ln -sf `which clang-tidy-${{env.clang_tidy_version}}` /usr/bin/clang-tidy
-        cd build/linux && make ClangTidy
+        cd build/make && make ClangTidy
