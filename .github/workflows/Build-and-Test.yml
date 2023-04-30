@@ -155,7 +155,6 @@ jobs:
       uses: codecov/codecov-action@v3
       with:
         directory: build/${{matrix.preset}}/coverage/output
-        files: build/${{matrix.preset}}/coverage/output/report.txt
         fail_ci_if_error: false
         verbose: true
         functionalities: fixes

@@ -23,7 +23,7 @@ if(COMPILER STREQUAL "Clang")
     # Generate lcov txt file for uploading to Codecov
     exec(COMMAND ${cov} export -format=lcov "-ignore-filename-regex=/tests/" -instr-profile
                  "${COVERAGE_DIR}/coverage.profdata" -object ${binaries} #
-         OUTPUT_FILE "${output_dir}/report.txt")
+         OUTPUT_FILE "${output_dir}/lcov.info")
 
     # Generate HTML report for local inspection
     exec(COMMAND ${cov} show -format=html "-ignore-filename-regex=/tests/" "-output-dir=${output_dir}" -instr-profile
