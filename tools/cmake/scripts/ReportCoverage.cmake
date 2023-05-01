@@ -20,12 +20,19 @@ if(COMPILER STREQUAL "Clang")
     set(output_dir "${COVERAGE_DIR}/output")
     file(MAKE_DIRECTORY "${output_dir}")
 
+    set(ignore_patterns
+        /tests/
+        /usr/include/
+        /VULKAN_SDK/
+        /vcpkg_installed/
+        ${IGNORE_PATTERNS})
+    list(JOIN ignore_patterns "|" ignore_regex)
+    set(common_args "-ignore-filename-regex=${ignore_regex}" -instr-profile "${COVERAGE_DIR}/coverage.profdata")
+
     # Generate lcov txt file for uploading to Codecov
-    exec(COMMAND ${cov} export -format=lcov "-ignore-filename-regex=/tests/" -instr-profile
-                 "${COVERAGE_DIR}/coverage.profdata" -object ${binaries} #
-         OUTPUT_FILE "${output_dir}/report.txt")
+    exec(COMMAND ${cov} export -format=lcov ${common_args} -object ${binaries} #
+         OUTPUT_FILE "${output_dir}/lcov.info")
 
     # Generate HTML report for local inspection
-    exec(COMMAND ${cov} show -format=html "-ignore-filename-regex=/tests/" "-output-dir=${output_dir}" -instr-profile
-                 "${COVERAGE_DIR}/coverage.profdata" -object ${binaries})
+    exec(COMMAND ${cov} show -format=html ${common_args} "-output-dir=${output_dir}" -object ${binaries})
 endif()

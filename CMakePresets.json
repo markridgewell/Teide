@@ -47,21 +47,24 @@
       "toolset": "ClangCL"
     },
     {
-      "name": "linux",
+      "name": "_linux-common",
       "inherits": "_common",
-      "displayName": "Linux",
-      "generator": "Unix Makefiles",
+      "hidden": true,
       "cacheVariables": {
-        "CMAKE_CXX_FLAGS": "--std=c++2a -DSDL_main=main -Wall -Werror -Wno-attributes -ggdb -fsanitize=address -fno-omit-frame-pointer -static-libasan -lX11 -lXext"
+        "CMAKE_CXX_FLAGS": "-DSDL_main=main -Wall -Werror -Wno-attributes -ggdb"
       }
     },
     {
-      "name": "linux-coverage",
-      "inherits": "linux",
-      "displayName": "Linux + Coverage",
-      "cacheVariables": {
-        "CMAKE_CXX_FLAGS_DEBUG": "-O0 -g --coverage"
-      }
+      "name": "make",
+      "inherits": "_linux-common",
+      "displayName": "Makefiles",
+      "generator": "Unix Makefiles"
+    },
+    {
+      "name": "ninja",
+      "inherits": "_linux-common",
+      "displayName": "Ninja",
+      "generator": "Ninja Multi-Config"
     },
     {
       "name": "mingw",
@@ -96,8 +99,12 @@
       "configurePreset": "mingw"
     },
     {
-      "name": "linux",
-      "configurePreset": "linux"
+      "name": "make",
+      "configurePreset": "make"
+    },
+    {
+      "name": "ninja",
+      "configurePreset": "ninja"
     }
   ],
   "testPresets": [
@@ -118,8 +125,12 @@
       "configurePreset": "mingw"
     },
     {
-      "name": "linux",
-      "configurePreset": "linux"
+      "name": "make",
+      "configurePreset": "make"
+    },
+    {
+      "name": "ninja",
+      "configurePreset": "ninja"
     }
   ]
 }

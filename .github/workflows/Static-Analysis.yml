@@ -47,6 +47,7 @@ jobs:
   clang-tidy:
     name: ClangTidy
     runs-on: ubuntu-latest
+    env: [ preset: make ]
 
     steps:
     - name: Checkout
@@ -64,12 +65,12 @@ jobs:
       if: steps.get-changes.outputs.changed-files != ''
       uses: ./.github/actions/install-dependencies
       with:
-        preset: linux
+        preset: make
         extra-packages: clang-tidy-${{env.clang_tidy_version}}
 
     - name: Configure CMake
       if: steps.get-changes.outputs.changed-files != ''
-      run: cmake --preset linux -DTEIDE_CLANG_TIDY=ON
+      run: cmake --preset make -DTEIDE_CLANG_TIDY=ON
 
     - name: Run clang-tidy
       if: steps.get-changes.outputs.changed-files != ''
@@ -77,4 +78,4 @@ jobs:
         CLANG_TIDY_SOURCES: ${{steps.get-changes.outputs.changed-files}}
       run: |
         sudo ln -sf `which clang-tidy-${{env.clang_tidy_version}}` /usr/bin/clang-tidy
-        cd build/linux && make ClangTidy
+        cd build/make && make ClangTidy

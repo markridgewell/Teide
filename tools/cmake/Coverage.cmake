@@ -1,13 +1,14 @@
 set(COVERAGE_DIR "${CMAKE_BINARY_DIR}/coverage")
 
-function(setup_coverage)
-    add_test(NAME ClearCoverage COMMAND ${CMAKE_COMMAND} -E rm -r ${COVERAGE_DIR})
+function(setup_coverage ignore_patterns)
+    add_test(NAME ClearCoverage COMMAND ${CMAKE_COMMAND} -E rm -rf ${COVERAGE_DIR})
     add_test(NAME InitCoverage COMMAND ${CMAKE_COMMAND} -E make_directory ${COVERAGE_DIR})
     set_tests_properties(InitCoverage PROPERTIES DEPENDS ClearCoverage)
     set_tests_properties(ClearCoverage InitCoverage PROPERTIES FIXTURES_SETUP CppCoverage)
 
-    add_test(NAME ReportCoverage COMMAND ${CMAKE_COMMAND} -DCOMPILER=${CMAKE_CXX_COMPILER_ID}
-                                         "-DCOVERAGE_DIR=${COVERAGE_DIR}" -P "${SCRIPTS_DIR}/ReportCoverage.cmake")
+    add_test(NAME ReportCoverage
+             COMMAND ${CMAKE_COMMAND} -DCOMPILER=${CMAKE_CXX_COMPILER_ID} "-DCOVERAGE_DIR=${COVERAGE_DIR}"
+                     "-DIGNORE_PATTERNS=${ignore_patterns}" -P "${SCRIPTS_DIR}/ReportCoverage.cmake")
     set_tests_properties(ReportCoverage PROPERTIES FIXTURES_CLEANUP CppCoverage)
 endfunction()
 
