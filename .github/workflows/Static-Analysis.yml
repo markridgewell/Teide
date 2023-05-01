@@ -47,7 +47,7 @@ jobs:
   clang-tidy:
     name: ClangTidy
     runs-on: ubuntu-latest
-    env: [ preset: make ]
+    env: { preset: make }
 
     steps:
     - name: Checkout
