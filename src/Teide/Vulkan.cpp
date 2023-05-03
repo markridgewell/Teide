@@ -319,7 +319,7 @@ vk::UniqueInstance CreateInstance(VulkanLoader& loader, SDL_Window* window)
         instance = vk::createInstanceUnique(createInfo, s_allocator);
     }
 
-    loader.LoadInstanceFunctions(instance.get());
+    VulkanLoader::LoadInstanceFunctions(instance.get());
     return instance;
 }
 
@@ -359,7 +359,7 @@ vk::UniqueDevice CreateDevice(VulkanLoader& loader, const PhysicalDevice& physic
            .pEnabledFeatures = &deviceFeatures};
 
     auto ret = physicalDevice.physicalDevice.createDeviceUnique(deviceCreateInfo, s_allocator);
-    loader.LoadDeviceFunctions(ret.get());
+    VulkanLoader::LoadDeviceFunctions(ret.get());
     return ret;
 }
 
