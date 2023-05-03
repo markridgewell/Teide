@@ -64,11 +64,18 @@ struct Framebuffer
     Geo::Size2i size;
 };
 
-void EnableOptionalVulkanLayer(
-    std::vector<const char*>& enabledLayers, const std::vector<vk::LayerProperties>& availableLayers, const char* layerName);
-void EnableRequiredVulkanExtension(
+enum class Required : bool
+{
+    False = false,
+    True = true
+};
+
+void EnableVulkanLayer(
+    std::vector<const char*>& enabledLayers, const std::vector<vk::LayerProperties>& availableLayers,
+    const char* layerName, Required required);
+void EnableVulkanExtension(
     std::vector<const char*>& enabledExtensions, const std::vector<vk::ExtensionProperties>& availableExtensions,
-    const char* extensionName);
+    const char* extensionName, Required required);
 
 vk::DebugUtilsMessengerCreateInfoEXT GetDebugCreateInfo();
 
@@ -98,11 +105,14 @@ void SetDebugName(vk::UniqueHandle<Type, Dispatch>& handle [[maybe_unused]], con
 {
     if constexpr (IsDebugBuild)
     {
-        handle.getOwner().setDebugUtilsObjectNameEXT({
-            .objectType = handle->objectType,
-            .objectHandle = std::bit_cast<uint64_t>(handle.get()),
-            .pObjectName = debugName,
-        });
+        if (VULKAN_HPP_DEFAULT_DISPATCHER.vkSetDebugUtilsObjectNameEXT != nullptr)
+        {
+            handle.getOwner().setDebugUtilsObjectNameEXT({
+                .objectType = handle->objectType,
+                .objectHandle = std::bit_cast<uint64_t>(handle.get()),
+                .pObjectName = debugName,
+            });
+        }
     }
 }
 
