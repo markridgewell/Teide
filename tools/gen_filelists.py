@@ -38,7 +38,6 @@ def gen_filelist(dir):
         f.write("set(sources")
         f.write("\n    ")
         f.write("\n    ".join(source_files) + ")\n")
-        f.write("\n")
 
     subprocess.run(["cmake-format", "-i", tempfilename], shell=True)
 

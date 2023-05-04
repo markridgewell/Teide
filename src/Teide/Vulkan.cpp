@@ -204,13 +204,18 @@ vk::DebugUtilsMessengerCreateInfoEXT GetDebugCreateInfo()
     };
 }
 
-void EnableOptionalVulkanLayer(
-    std::vector<const char*>& enabledLayers, const std::vector<vk::LayerProperties>& availableLayers, const char* layerName)
+void EnableVulkanLayer(
+    std::vector<const char*>& enabledLayers, const std::vector<vk::LayerProperties>& availableLayers,
+    const char* layerName, Required required)
 {
     if (contains(availableLayers, std::string_view(layerName), &vk::LayerProperties::layerName))
     {
         spdlog::info("Enabling Vulkan layer {}", layerName);
         enabledLayers.push_back(layerName);
+    }
+    else if (required == Required::True)
+    {
+        throw vk::LayerNotPresentError(layerName);
     }
     else
     {
@@ -218,18 +223,22 @@ void EnableOptionalVulkanLayer(
     }
 }
 
-void EnableRequiredVulkanExtension(
+void EnableVulkanExtension(
     std::vector<const char*>& enabledExtensions, const std::vector<vk::ExtensionProperties>& availableExtensions,
-    const char* extensionName)
+    const char* extensionName, Required required)
 {
     if (contains(availableExtensions, std::string_view(extensionName), &vk::ExtensionProperties::extensionName))
     {
         spdlog::info("Enabling Vulkan extension {}", extensionName);
         enabledExtensions.push_back(extensionName);
     }
-    else
+    else if (required == Required::True)
     {
         throw vk::ExtensionNotPresentError(extensionName);
+    }
+    else
+    {
+        spdlog::warn("Vulkan extension {} not enabled!", extensionName);
     }
 }
 
@@ -256,8 +265,8 @@ vk::UniqueInstance CreateInstance(VulkanLoader& loader, SDL_Window* window)
     vk::UniqueInstance instance;
     if constexpr (IsDebugBuild)
     {
-        EnableOptionalVulkanLayer(layers, availableLayers, "VK_LAYER_KHRONOS_validation");
-        EnableRequiredVulkanExtension(extensions, availableExtensions, "VK_EXT_debug_utils");
+        EnableVulkanLayer(layers, availableLayers, "VK_LAYER_KHRONOS_validation", Required::False);
+        EnableVulkanExtension(extensions, availableExtensions, "VK_EXT_debug_utils", Required::False);
 
         const std::array enabledFeatures = {
             vk::ValidationFeatureEnableEXT::eSynchronizationValidation,
@@ -320,7 +329,7 @@ vk::UniqueDevice CreateDevice(VulkanLoader& loader, const PhysicalDevice& physic
     std::vector<const char*> layers;
     if constexpr (IsDebugBuild)
     {
-        EnableOptionalVulkanLayer(layers, availableLayers, "VK_LAYER_KHRONOS_validation");
+        EnableVulkanLayer(layers, availableLayers, "VK_LAYER_KHRONOS_validation", Required::False);
     }
 
     const vk::DeviceCreateInfo deviceCreateInfo

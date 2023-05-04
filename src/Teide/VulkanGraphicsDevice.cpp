@@ -674,7 +674,10 @@ VulkanGraphicsDevice::VulkanGraphicsDevice(
 {
     if constexpr (IsDebugBuild)
     {
-        m_debugMessenger = m_instance->createDebugUtilsMessengerEXTUnique(GetDebugCreateInfo(), s_allocator);
+        if (VULKAN_HPP_DEFAULT_DISPATCHER.vkCreateDebugUtilsMessengerEXT != nullptr)
+        {
+            m_debugMessenger = m_instance->createDebugUtilsMessengerEXTUnique(GetDebugCreateInfo(), s_allocator);
+        }
     }
 
     // TODO: Don't hardcode descriptor pool sizes
