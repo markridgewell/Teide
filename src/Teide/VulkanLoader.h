@@ -13,11 +13,12 @@ class VulkanLoader
 public:
     VulkanLoader();
 
-    static void LoadInstanceFunctions(vk::Instance instance);
-    static void LoadDeviceFunctions(vk::Device device);
+    void LoadInstanceFunctions(vk::Instance instance);
+    void LoadDeviceFunctions(vk::Device device);
 
 private:
     vk::DynamicLoader m_loader;
+    vk::DispatchLoaderDynamic& m_dispatch;
 };
 
 bool IsSoftwareRenderingEnabled();

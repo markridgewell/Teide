@@ -93,7 +93,7 @@ void EnableSoftwareRendering()
     }
 }
 
-VulkanLoader::VulkanLoader() : m_loader(s_vulkanLibraryName)
+VulkanLoader::VulkanLoader() : m_loader(s_vulkanLibraryName), m_dispatch{VULKAN_HPP_DEFAULT_DISPATCHER}
 {
 #if defined(_WIN32) && defined(_DEBUG)
     {
@@ -113,17 +113,17 @@ VulkanLoader::VulkanLoader() : m_loader(s_vulkanLibraryName)
     }
 #endif
 
-    VULKAN_HPP_DEFAULT_DISPATCHER.init(m_loader.getProcAddress<PFN_vkGetInstanceProcAddr>("vkGetInstanceProcAddr"));
+    m_dispatch.init(m_loader.getProcAddress<PFN_vkGetInstanceProcAddr>("vkGetInstanceProcAddr"));
 }
 
 void VulkanLoader::LoadInstanceFunctions(vk::Instance instance)
 {
-    VULKAN_HPP_DEFAULT_DISPATCHER.init(instance);
+    m_dispatch.init(instance);
 }
 
 void VulkanLoader::LoadDeviceFunctions(vk::Device device)
 {
-    VULKAN_HPP_DEFAULT_DISPATCHER.init(device);
+    m_dispatch.init(device);
 }
 
 } // namespace Teide
