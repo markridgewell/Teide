@@ -28,41 +28,35 @@ namespace
 
 bool IsResourceType(ShaderVariableType::BaseType type)
 {
+    using enum ShaderVariableType::BaseType;
     switch (type)
     {
-        using enum ShaderVariableType::BaseType;
-        case Float:
-        case Vector2:
-        case Vector3:
-        case Vector4:
-        case Matrix4:
-            return false;
-        case Texture2D:
-        case Texture2DShadow:
-            return true;
+        case Float: return false;
+        case Vector2: return false;
+        case Vector3: return false;
+        case Vector4: return false;
+        case Matrix4: return false;
+
+        case Texture2D: return true;
+        case Texture2DShadow: return true;
     }
     Unreachable();
 }
 
 SizeAndAlignment GetSizeAndAlignment(ShaderVariableType::BaseType type)
 {
+    using enum ShaderVariableType::BaseType;
     switch (type)
     {
-        using enum ShaderVariableType::BaseType;
-        case Float:
-            return {.size = sizeof(float), .alignment = sizeof(float)};
+        case Float: return {.size = sizeof(float), .alignment = sizeof(float)};
 
-        case Vector2:
-            return {.size = sizeof(float) * 2, .alignment = sizeof(float) * 2};
-        case Vector3:
-        case Vector4:
-            return {.size = sizeof(float) * 4, .alignment = sizeof(float) * 4};
-        case Matrix4:
-            return {.size = sizeof(float) * 4 * 4, .alignment = sizeof(float) * 4};
+        case Vector2: return {.size = sizeof(float) * 2, .alignment = sizeof(float) * 2};
+        case Vector3: [[fallthrough]]; // Vector3s are padded to 16 bytes
+        case Vector4: return {.size = sizeof(float) * 4, .alignment = sizeof(float) * 4};
+        case Matrix4: return {.size = sizeof(float) * 4 * 4, .alignment = sizeof(float) * 4};
 
-        case Texture2D:
-        case Texture2DShadow:
-            return {};
+        case Texture2D: return {};
+        case Texture2DShadow: return {};
     }
     Unreachable();
 }
@@ -83,20 +77,13 @@ std::string ToString(ShaderVariableType::BaseType type)
     switch (type)
     {
         using enum ShaderVariableType::BaseType;
-        case Float:
-            return "float";
-        case Vector2:
-            return "vec2";
-        case Vector3:
-            return "vec3";
-        case Vector4:
-            return "vec4";
-        case Matrix4:
-            return "mat4";
-        case Texture2D:
-            return "sampler2D";
-        case Texture2DShadow:
-            return "sampler2DShadow";
+        case Float: return "float";
+        case Vector2: return "vec2";
+        case Vector3: return "vec3";
+        case Vector4: return "vec4";
+        case Matrix4: return "mat4";
+        case Texture2D: return "sampler2D";
+        case Texture2DShadow: return "sampler2DShadow";
     }
     Unreachable();
 }

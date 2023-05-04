@@ -193,14 +193,10 @@ ParameterBlockDesc& GetPblockLayout(ShaderData& data, unsigned int set)
 {
     switch (set)
     {
-        case 0:
-            return data.environment.scenePblock;
-        case 1:
-            return data.environment.viewPblock;
-        case 2:
-            return data.materialPblock;
-        case 3:
-            return data.objectPblock;
+        case 0: return data.environment.scenePblock;
+        case 1: return data.environment.viewPblock;
+        case 2: return data.materialPblock;
+        case 3: return data.objectPblock;
     }
     Unreachable();
 }
@@ -324,10 +320,8 @@ glslang::EShSource GetEShSource(ShaderLanguage language)
 {
     switch (language)
     {
-        case ShaderLanguage::Glsl:
-            return glslang::EShSourceGlsl;
-        case ShaderLanguage::Hlsl:
-            return glslang::EShSourceHlsl;
+        case ShaderLanguage::Glsl: return glslang::EShSourceGlsl;
+        case ShaderLanguage::Hlsl: return glslang::EShSourceHlsl;
     }
     Unreachable();
 }

@@ -38,17 +38,13 @@ VulkanBuffer CreateBufferUninitialized(
 
 vk::BufferUsageFlags GetBufferUsageFlags(BufferUsage usage)
 {
+    using enum BufferUsage;
     switch (usage)
     {
-        using enum BufferUsage;
-        case Generic:
-            return {};
-        case Vertex:
-            return vk::BufferUsageFlagBits::eVertexBuffer;
-        case Index:
-            return vk::BufferUsageFlagBits::eIndexBuffer;
-        case Uniform:
-            return vk::BufferUsageFlagBits::eUniformBuffer;
+        case Generic: return {};
+        case Vertex: return vk::BufferUsageFlagBits::eVertexBuffer;
+        case Index: return vk::BufferUsageFlagBits::eIndexBuffer;
+        case Uniform: return vk::BufferUsageFlagBits::eUniformBuffer;
     }
     return {};
 }

@@ -98,6 +98,32 @@ namespace
         return contains(UnwantedMessages, pCallbackData->messageIdNumber);
     }
 
+    std::string_view GetLogPrefix(vk::DebugUtilsMessageTypeFlagBitsEXT type)
+    {
+        using enum vk::DebugUtilsMessageTypeFlagBitsEXT;
+        switch (type)
+        {
+            case eGeneral: return "";
+            case eValidation: return "[validation] ";
+            case ePerformance: return "[performance] ";
+            case eDeviceAddressBinding: return "";
+        }
+        Unreachable();
+    }
+
+    spdlog::level::level_enum GetLogLevel(vk::DebugUtilsMessageSeverityFlagBitsEXT severity)
+    {
+        using enum vk::DebugUtilsMessageSeverityFlagBitsEXT;
+        switch (severity)
+        {
+            case eVerbose: return spdlog::level::debug;
+            case eInfo: return spdlog::level::info;
+            case eWarning: return spdlog::level::warn;
+            case eError: return spdlog::level::err;
+        }
+        Unreachable();
+    }
+
     VKAPI_ATTR VkBool32 VKAPI_CALL DebugCallback(
         VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, [[maybe_unused]] VkDebugUtilsMessageTypeFlagsEXT messageType,
         const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, [[maybe_unused]] void* pUserData)
@@ -108,42 +134,11 @@ namespace
         // Don't hide unwanted messages, just force them to only be visible at highest verbosity level
         const auto severity = IsUnwantedMessage(pCallbackData) ? MessageSeverity::eVerbose
                                                                : static_cast<MessageSeverity>(messageSeverity);
-
         const auto type = static_cast<MessageType>(messageType);
+        const auto prefix = GetLogPrefix(type);
+        const auto logLevel = GetLogLevel(severity);
 
-        const char* prefix = "";
-        switch (type)
-        {
-            case MessageType::eValidation:
-                prefix = "[validation] ";
-                break;
-
-            case MessageType::ePerformance:
-                prefix = "[performance] ";
-                break;
-
-            default:
-                break;
-        }
-
-        switch (severity)
-        {
-            case MessageSeverity::eVerbose:
-                spdlog::debug("{}{}", prefix, pCallbackData->pMessage);
-                break;
-
-            case MessageSeverity::eInfo:
-                spdlog::info("{}{}", prefix, pCallbackData->pMessage);
-                break;
-
-            case MessageSeverity::eWarning:
-                spdlog::warn("{}{}", prefix, pCallbackData->pMessage);
-                break;
-
-            case MessageSeverity::eError:
-                spdlog::error("{}{}", prefix, pCallbackData->pMessage);
-                break;
-        }
+        spdlog::log(logLevel, "{}{}", prefix, pCallbackData->pMessage);
 
         if constexpr (BreakOnVulkanWarning)
         {
@@ -171,35 +166,22 @@ namespace
 
         switch (layout)
         {
-            case eUndefined:
-                return {};
+            case eUndefined: return {};
 
-            case eTransferDstOptimal:
-                return Access::eTransferWrite;
-
-            case eColorAttachmentOptimal:
-                return Access::eColorAttachmentRead | Access::eColorAttachmentWrite;
+            case eTransferDstOptimal: return Access::eTransferWrite;
+            case eColorAttachmentOptimal: return Access::eColorAttachmentRead | Access::eColorAttachmentWrite;
 
             case eDepthStencilAttachmentOptimal:
             case eDepthAttachmentOptimal:
             case eStencilAttachmentOptimal:
                 return Access::eDepthStencilAttachmentRead | Access::eDepthStencilAttachmentWrite;
 
-            case eShaderReadOnlyOptimal:
-                return Access::eShaderRead;
+            case eShaderReadOnlyOptimal: return Access::eShaderRead;
+            case eTransferSrcOptimal: return Access::eTransferRead;
+            case eDepthStencilReadOnlyOptimal: return Access::eShaderRead;
+            case ePresentSrcKHR: return Access::eNoneKHR;
 
-            case eTransferSrcOptimal:
-                return Access::eTransferRead;
-
-            case eDepthStencilReadOnlyOptimal:
-                return Access::eShaderRead;
-
-            case ePresentSrcKHR:
-                return Access::eNoneKHR;
-
-            default:
-                assert(false && "Unsupported image transition");
-                return {};
+            default: assert(false && "Unsupported image transition"); return {};
         }
     }
 
