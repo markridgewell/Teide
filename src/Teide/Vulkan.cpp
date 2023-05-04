@@ -3,6 +3,7 @@
 
 #include "VulkanLoader.h"
 
+#include "Teide/Definitions.h"
 #include "Teide/Pipeline.h"
 #include "Teide/Renderer.h"
 #include "Teide/StaticMap.h"
