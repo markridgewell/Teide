@@ -103,7 +103,7 @@ TEST(ShaderDataTest, UniformOffsetFloatArray)
 
     const auto result = BuildParameterBlockLayout(input, 0);
     EXPECT_THAT(result.uniformsSize, Eq(16u));
-    EXPECT_THAT(result.uniformDescs, HasPaddedElement({Type::Float,2}, 4u, 12u));
+    EXPECT_THAT(result.uniformDescs, HasPaddedElement({Type::Float, 2}, 4u, 12u));
 }
 
 TEST(ShaderDataTest, UniformOffsetVector2Array)
@@ -118,7 +118,7 @@ TEST(ShaderDataTest, UniformOffsetVector2Array)
 
     const auto result = BuildParameterBlockLayout(input, 0);
     EXPECT_THAT(result.uniformsSize, Eq(28u));
-    EXPECT_THAT(result.uniformDescs, HasPaddedElement({Type::Vector2,2}, 8u, 24u));
+    EXPECT_THAT(result.uniformDescs, HasPaddedElement({Type::Vector2, 2}, 8u, 24u));
 }
 
 TEST(ShaderDataTest, UniformOffsetVector3Array)
@@ -133,7 +133,7 @@ TEST(ShaderDataTest, UniformOffsetVector3Array)
 
     const auto result = BuildParameterBlockLayout(input, 0);
     EXPECT_THAT(result.uniformsSize, Eq(40u));
-    EXPECT_THAT(result.uniformDescs, HasPaddedElement({Type::Vector3,2}, 12u, 36u));
+    EXPECT_THAT(result.uniformDescs, HasPaddedElement({Type::Vector3, 2}, 12u, 36u));
 }
 
 TEST(ShaderDataTest, UniformOffsetVector4Array)
@@ -148,7 +148,7 @@ TEST(ShaderDataTest, UniformOffsetVector4Array)
 
     const auto result = BuildParameterBlockLayout(input, 0);
     EXPECT_THAT(result.uniformsSize, Eq(52u));
-    EXPECT_THAT(result.uniformDescs, HasPaddedElement({Type::Vector4,2}, 16u, 48u));
+    EXPECT_THAT(result.uniformDescs, HasPaddedElement({Type::Vector4, 2}, 16u, 48u));
 }
 
 TEST(ShaderDataTest, UniformOffsetTexture2D)
@@ -163,7 +163,7 @@ TEST(ShaderDataTest, UniformOffsetTexture2D)
 
     const auto result = BuildParameterBlockLayout(input, 0);
     EXPECT_THAT(result.uniformsSize, Eq(8u));
-    EXPECT_THAT(result.uniformDescs, ElementsAre(UniformDesc{"pad0", Type::Float,0u}, UniformDesc{"pad1",Type::Float,4u}));
+    EXPECT_THAT(result.uniformDescs, ElementsAre(UniformDesc{"pad0", Type::Float, 0u}, UniformDesc{"pad1", Type::Float, 4u}));
     EXPECT_THAT(result.textureCount, Eq(1));
 }
 
@@ -179,5 +179,5 @@ TEST(ShaderDataTest, UniformOffsetMatrix4Array)
 
     const auto result = BuildParameterBlockLayout(input, 0);
     EXPECT_THAT(result.uniformsSize, Eq(148u));
-    EXPECT_THAT(result.uniformDescs, HasPaddedElement({Type::Matrix4,2}, 16u, 144u));
+    EXPECT_THAT(result.uniformDescs, HasPaddedElement({Type::Matrix4, 2}, 16u, 144u));
 }
