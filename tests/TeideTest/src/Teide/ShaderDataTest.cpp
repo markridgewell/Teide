@@ -44,3 +44,48 @@ TEST(ShaderDataTest, UniformOffsetVector2)
     EXPECT_THAT(result.uniformsSize, Eq(20u));
     EXPECT_THAT(result.uniformDescs, HasPaddedElement(Type::Vector2, 8u, 16u));
 }
+
+TEST(ShaderDataTest, UniformOffsetVector3)
+{
+    const ParameterBlockDesc input = {
+        .parameters = {
+            {"pad0", Type::Float},
+            {"test", Type::Vector3},
+            {"pad1", Type::Float},
+        },
+    };
+
+    const auto result = BuildParameterBlockLayout(input, 0);
+    EXPECT_THAT(result.uniformsSize, Eq(36u));
+    EXPECT_THAT(result.uniformDescs, HasPaddedElement(Type::Vector3, 16u, 32u));
+}
+
+TEST(ShaderDataTest, UniformOffsetVector4)
+{
+    const ParameterBlockDesc input = {
+        .parameters = {
+            {"pad0", Type::Float},
+            {"test", Type::Vector4},
+            {"pad1", Type::Float},
+        },
+    };
+
+    const auto result = BuildParameterBlockLayout(input, 0);
+    EXPECT_THAT(result.uniformsSize, Eq(36u));
+    EXPECT_THAT(result.uniformDescs, HasPaddedElement(Type::Vector4, 16u, 32u));
+}
+
+TEST(ShaderDataTest, UniformOffsetMatrix4)
+{
+    const ParameterBlockDesc input = {
+        .parameters = {
+            {"pad0", Type::Float},
+            {"test", Type::Matrix4},
+            {"pad1", Type::Float},
+        },
+    };
+
+    const auto result = BuildParameterBlockLayout(input, 0);
+    EXPECT_THAT(result.uniformsSize, Eq(84u));
+    EXPECT_THAT(result.uniformDescs, HasPaddedElement(Type::Matrix4, 16u, 80u));
+}
