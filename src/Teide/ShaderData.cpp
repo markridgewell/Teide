@@ -23,13 +23,13 @@ bool IsResourceType(ShaderVariableType::BaseType type)
     using enum ShaderVariableType::BaseType;
     switch (type)
     {
-        case Float: return false;
-        case Vector2: return false;
-        case Vector3: return false;
-        case Vector4: return false;
+        case Float:
+        case Vector2:
+        case Vector3:
+        case Vector4:
         case Matrix4: return false;
 
-        case Texture2D: return true;
+        case Texture2D:
         case Texture2DShadow: return true;
     }
     Unreachable();
