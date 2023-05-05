@@ -259,25 +259,27 @@ bool Application::OnEvent(const SDL_Event& event)
 {
     switch (event.type)
     {
-        case SDL_QUIT:
-            return false;
+        case SDL_QUIT: return false;
 
         case SDL_WINDOWEVENT:
             switch (event.window.event)
             {
-                case SDL_WINDOWEVENT_SIZE_CHANGED:
+                case SDL_WINDOWEVENT_SIZE_CHANGED: {
                     OnResize();
                     break;
+                }
             }
             break;
 
-        case SDL_MOUSEBUTTONDOWN:
+        case SDL_MOUSEBUTTONDOWN: {
             SDL_SetRelativeMouseMode(SDL_TRUE);
             break;
+        }
 
-        case SDL_MOUSEBUTTONUP:
+        case SDL_MOUSEBUTTONUP: {
             SDL_SetRelativeMouseMode(SDL_FALSE);
             break;
+        }
     }
     return true;
 }
