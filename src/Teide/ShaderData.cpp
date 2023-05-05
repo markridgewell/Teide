@@ -58,7 +58,7 @@ SizeAndAlignment GetSizeAndAlignment(ShaderVariableType type)
     if (type.arraySize != 0 && type.baseType == ShaderVariableType::BaseType::Vector3)
     {
         const uint32 arraySize = sizeof(float) * 3 * type.arraySize;
-        return {.size = arraySize, .alignment = arraySize};
+        return {.size = arraySize, .alignment = sizeof(float) * 3};
     }
     const auto [size, alignment] = GetSizeAndAlignment(type.baseType);
     return {size * std::max(1u, type.arraySize), alignment};
