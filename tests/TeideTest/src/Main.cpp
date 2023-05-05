@@ -40,7 +40,7 @@ private:
 
 int main(int argc, char** argv)
 {
-    for (std::string_view arg : std::span(argv, argc).subspan<1>())
+    for (const std::string_view arg : std::span(argv, argc).subspan<1>())
     {
         if (arg == "-s" || arg == "--sw-render")
         {
