@@ -34,5 +34,10 @@ if(COMPILER STREQUAL "Clang")
          OUTPUT_FILE "${output_dir}/lcov.info")
 
     # Generate HTML report for local inspection
-    exec(COMMAND ${cov} show -format=html ${common_args} "-output-dir=${output_dir}" -object ${binaries})
+    exec(COMMAND ${cov} show -format=html -use-color -Xdemangler c++filt ${common_args} "-output-dir=${output_dir}"
+                 -object ${binaries})
+
+    # Add a little extra css to highlight covered lines
+    file(APPEND "${output_dir}/style.css"
+         "td.covered-line + td > pre { background-color: #d0ffd0 }\npre:has(span.red) { background-color: #ffd0d0; }")
 endif()
