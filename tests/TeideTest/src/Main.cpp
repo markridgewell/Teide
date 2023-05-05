@@ -11,7 +11,7 @@ class LogSuppressor : public testing::EmptyTestEventListener
 public:
     void OnTestStart(const testing::TestInfo& /*unused*/) override
     {
-        m_output.clear();
+        m_output = {};
         m_logger = spdlog::default_logger();
         spdlog::set_default_logger(
             std::make_shared<spdlog::logger>("test", std::make_shared<spdlog::sinks::ostream_sink_mt>(m_output)));
@@ -20,12 +20,13 @@ public:
     // Called after a failed assertion or a SUCCEED() invocation.
     void OnTestPartResult(const testing::TestPartResult& result) override
     {
-        if (result.failed())
+        const auto logString = m_output.str();
+        if (result.failed() && !logString.empty())
         {
             std::cerr << "\n";
             std::cerr << "Log output for this test:\n";
             std::cerr << "=========================\n";
-            std::cerr << m_output.str();
+            std::cerr << logString;
             std::cerr << "=========================\n";
         }
     }
