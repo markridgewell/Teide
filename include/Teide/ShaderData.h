@@ -102,15 +102,6 @@ struct ShaderData
 
 bool IsResourceType(ShaderVariableType::BaseType type);
 
-struct SizeAndAlignment
-{
-    uint32 size = 0;
-    uint32 alignment = 0;
-};
-
-SizeAndAlignment GetSizeAndAlignment(ShaderVariableType::BaseType type);
-SizeAndAlignment GetSizeAndAlignment(ShaderVariableType type);
-
 std::ostream& operator<<(std::ostream& os, ShaderVariableType::BaseType type);
 std::ostream& operator<<(std::ostream& os, ShaderVariableType type);
 
