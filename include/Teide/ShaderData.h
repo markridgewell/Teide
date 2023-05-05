@@ -3,9 +3,9 @@
 
 #include "Teide/BasicTypes.h"
 
+#include <iosfwd>
 #include <string>
 #include <vector>
-#include <iosfwd>
 
 namespace Teide
 {

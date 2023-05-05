@@ -15,8 +15,12 @@
 
 using namespace Teide;
 
-template <> struct fmt::formatter<ShaderVariableType> : ostream_formatter {};
-template <> struct fmt::formatter<ShaderVariableType::BaseType> : ostream_formatter {};
+template <>
+struct fmt::formatter<ShaderVariableType> : ostream_formatter
+{};
+template <>
+struct fmt::formatter<ShaderVariableType::BaseType> : ostream_formatter
+{};
 
 namespace
 {
@@ -364,8 +368,7 @@ void BuildResourceBindings(std::string& source, const ParameterBlockDesc& pblock
     {
         if (IsResourceType(parameter.type.baseType))
         {
-            fmt::format_to(
-                out, "layout(set = {}, binding = {}) uniform {} {};\n", Set, slot, parameter.type, parameter.name);
+            fmt::format_to(out, "layout(set = {}, binding = {}) uniform {} {};\n", Set, slot, parameter.type, parameter.name);
             slot++;
         }
     }

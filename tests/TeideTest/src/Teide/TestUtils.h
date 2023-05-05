@@ -5,13 +5,14 @@
 #include "Teide/Visitable.h"
 #include "Teide/Vulkan.h"
 
+#include <gtest/gtest.h>
+
 #include <cstddef>
 #include <cstdint>
 #include <optional>
 #include <ostream>
 #include <string_view>
 #include <vector>
-#include <gtest/gtest.h>
 
 Teide::GraphicsDevicePtr CreateTestGraphicsDevice();
 

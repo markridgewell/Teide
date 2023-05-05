@@ -12,7 +12,8 @@ using Type = ShaderVariableType::BaseType;
 auto HasPaddedElement(Type type, uint32 offset, uint32 offsetNext)
 {
     return ElementsAre(
-        UniformDesc{"pad0", Type::Float, 0u}, UniformDesc{"test", type, offset}, UniformDesc{"pad1", Type::Float, offsetNext});
+        UniformDesc{"pad0", Type::Float, 0u}, UniformDesc{"test", type, offset},
+        UniformDesc{"pad1", Type::Float, offsetNext});
 }
 
 TEST(ShaderDataTest, UniformOffsetFloat)
