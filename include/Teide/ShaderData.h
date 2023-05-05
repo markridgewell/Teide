@@ -118,6 +118,8 @@ struct UniformDesc
     std::string name;
     ShaderVariableType type;
     uint32 offset = 0;
+
+    bool operator==(const UniformDesc&) const = default;
 };
 
 struct ParameterBlockLayoutData

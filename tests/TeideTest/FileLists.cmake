@@ -6,6 +6,7 @@ set(sources
     src/Main.cpp
     src/ShaderCompiler/ShaderCompilerTest.cpp
     src/Teide/CpuExecutorTest.cpp
+    src/Teide/FormatTest.cpp
     src/Teide/GpuExecutorTest.cpp
     src/Teide/GraphicsDeviceTest.cpp
     src/Teide/RendererTest.cpp
