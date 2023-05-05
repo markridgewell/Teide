@@ -1,20 +1,12 @@
 
 #include "Teide/ShaderData.h"
 
+#include "Teide/Definitions.h"
+
+#include <ostream>
+
 namespace Teide
 {
-
-#ifdef __GNUC__ // GCC 4.8+, Clang, Intel and other compilers compatible with GCC (-std=c++0x or above)
-[[noreturn]] inline __attribute__((always_inline)) void Unreachable()
-{
-    __builtin_unreachable();
-}
-#elif defined(_MSC_VER) // MSVC
-[[noreturn]] __forceinline void Unreachable()
-{
-    __assume(false);
-}
-#endif
 
 namespace
 {
@@ -28,89 +20,62 @@ namespace
 
 bool IsResourceType(ShaderVariableType::BaseType type)
 {
+    using enum ShaderVariableType::BaseType;
     switch (type)
     {
-        using enum ShaderVariableType::BaseType;
         case Float:
         case Vector2:
         case Vector3:
         case Vector4:
-        case Matrix4:
-            return false;
+        case Matrix4: return false;
+
         case Texture2D:
-        case Texture2DShadow:
-            return true;
+        case Texture2DShadow: return true;
     }
     Unreachable();
 }
 
-SizeAndAlignment GetSizeAndAlignment(ShaderVariableType::BaseType type)
+std::string_view ToString(ShaderVariableType::BaseType type)
 {
     switch (type)
     {
         using enum ShaderVariableType::BaseType;
-        case Float:
-            return {.size = sizeof(float), .alignment = sizeof(float)};
-
-        case Vector2:
-            return {.size = sizeof(float) * 2, .alignment = sizeof(float) * 2};
-        case Vector3:
-        case Vector4:
-            return {.size = sizeof(float) * 4, .alignment = sizeof(float) * 4};
-        case Matrix4:
-            return {.size = sizeof(float) * 4 * 4, .alignment = sizeof(float) * 4};
-
-        case Texture2D:
-        case Texture2DShadow:
-            return {};
+        case Float: return "float";
+        case Vector2: return "vec2";
+        case Vector3: return "vec3";
+        case Vector4: return "vec4";
+        case Matrix4: return "mat4";
+        case Texture2D: return "sampler2D";
+        case Texture2DShadow: return "sampler2DShadow";
     }
     Unreachable();
 }
 
-SizeAndAlignment GetSizeAndAlignment(ShaderVariableType type)
+std::ostream& operator<<(std::ostream& os, ShaderVariableType::BaseType type)
 {
-    if (type.arraySize != 0 && type.baseType == ShaderVariableType::BaseType::Vector3)
-    {
-        const uint32 arraySize = sizeof(float) * 3 * type.arraySize;
-        return {.size = arraySize, .alignment = arraySize};
-    }
-    const auto [size, alignment] = GetSizeAndAlignment(type.baseType);
-    return {size * std::max(1u, type.arraySize), alignment};
+    return os << ToString(type);
 }
 
-std::string ToString(ShaderVariableType::BaseType type)
+std::ostream& operator<<(std::ostream& os, ShaderVariableType type)
 {
-    switch (type)
-    {
-        using enum ShaderVariableType::BaseType;
-        case Float:
-            return "float";
-        case Vector2:
-            return "vec2";
-        case Vector3:
-            return "vec3";
-        case Vector4:
-            return "vec4";
-        case Matrix4:
-            return "mat4";
-        case Texture2D:
-            return "sampler2D";
-        case Texture2DShadow:
-            return "sampler2DShadow";
-    }
-    Unreachable();
-}
-
-std::string ToString(ShaderVariableType type)
-{
-    std::string ret = ToString(type.baseType);
+    os << type.baseType;
     if (type.arraySize != 0)
     {
-        ret += '[';
-        ret += std::to_string(type.arraySize);
-        ret += ']';
+        os << '[' << type.arraySize << ']';
     }
-    return ret;
+    return os;
+}
+
+void AddUniformBinding(ParameterBlockLayoutData& bindings, const ShaderVariable& var, uint32 size, uint32 alignment)
+{
+    const auto offset = RoundUp(bindings.uniformsSize, alignment);
+    bindings.uniformDescs.push_back(UniformDesc{.name = var.name, .type = var.type, .offset = offset});
+    bindings.uniformsSize = offset + size * std::max(1u, var.type.arraySize);
+}
+
+void AddResourceBinding(ParameterBlockLayoutData& bindings, const ShaderVariable& var [[maybe_unused]])
+{
+    bindings.textureCount++;
 }
 
 ParameterBlockLayoutData BuildParameterBlockLayout(const ParameterBlockDesc& pblock, int set)
@@ -120,16 +85,23 @@ ParameterBlockLayoutData BuildParameterBlockLayout(const ParameterBlockDesc& pbl
 
     for (const auto& parameter : pblock.parameters)
     {
-        if (IsResourceType(parameter.type.baseType))
+        using enum ShaderVariableType::BaseType;
+        switch (parameter.type.baseType)
         {
-            bindings.textureCount++;
-        }
-        else
-        {
-            const auto [size, alignment] = GetSizeAndAlignment(parameter.type);
-            const auto offset = RoundUp(bindings.uniformsSize, alignment);
-            bindings.uniformDescs.push_back(UniformDesc{.name = parameter.name, .type = parameter.type, .offset = offset});
-            bindings.uniformsSize = offset + size;
+            case Float: AddUniformBinding(bindings, parameter, sizeof(float), sizeof(float)); break;
+            case Vector2: AddUniformBinding(bindings, parameter, sizeof(float) * 2, sizeof(float) * 2); break;
+            case Vector3:
+                if (parameter.type.arraySize != 0)
+                {
+                    AddUniformBinding(bindings, parameter, sizeof(float) * 3, sizeof(float) * 3);
+                    break;
+                }
+                [[fallthrough]]; // Vector3s are padded to 16 bytes
+            case Vector4: AddUniformBinding(bindings, parameter, sizeof(float) * 4, sizeof(float) * 4); break;
+            case Matrix4: AddUniformBinding(bindings, parameter, sizeof(float) * 4 * 4, sizeof(float) * 4); break;
+
+            case Texture2D:
+            case Texture2DShadow: AddResourceBinding(bindings, parameter); break;
         }
     }
 

@@ -1,7 +1,10 @@
 
 #include "ShaderCompiler/ShaderCompiler.h"
 
+#include "Teide/Definitions.h"
+
 #include <fmt/format.h>
+#include <fmt/ostream.h>
 #include <glslang/Public/ShaderLang.h>
 #include <glslang/SPIRV/GlslangToSpv.h>
 
@@ -12,30 +15,19 @@
 
 using namespace Teide;
 
+template <>
+struct fmt::formatter<ShaderVariableType> : ostream_formatter
+{};
+template <>
+struct fmt::formatter<ShaderVariableType::BaseType> : ostream_formatter
+{};
+
 namespace
 {
 constexpr auto PblockNames = std::array{"Scene", "View", "Material", "Object"};
 constexpr auto PblockNamesLower = std::array{"scene", "view", "material", "object"};
 
 constexpr int VulkanGlslDialectVersion = 450;
-
-#if _DEBUG
-constexpr bool IsDebugBuild = true;
-#else
-constexpr bool IsDebugBuild = false;
-#endif
-
-#ifdef __GNUC__ // GCC 4.8+, Clang, Intel and other compilers compatible with GCC (-std=c++0x or above)
-[[noreturn]] inline __attribute__((always_inline)) void Unreachable()
-{
-    __builtin_unreachable();
-}
-#elif defined(_MSC_VER) // MSVC
-[[noreturn]] __forceinline void Unreachable()
-{
-    __assume(false);
-}
-#endif
 
 // Taken from glslang StandAlone/ResourceLimits.cpp
 constexpr TBuiltInResource DefaultTBuiltInResource
@@ -193,14 +185,10 @@ ParameterBlockDesc& GetPblockLayout(ShaderData& data, unsigned int set)
 {
     switch (set)
     {
-        case 0:
-            return data.environment.scenePblock;
-        case 1:
-            return data.environment.viewPblock;
-        case 2:
-            return data.materialPblock;
-        case 3:
-            return data.objectPblock;
+        case 0: return data.environment.scenePblock;
+        case 1: return data.environment.viewPblock;
+        case 2: return data.materialPblock;
+        case 3: return data.objectPblock;
     }
     Unreachable();
 }
@@ -324,10 +312,8 @@ glslang::EShSource GetEShSource(ShaderLanguage language)
 {
     switch (language)
     {
-        case ShaderLanguage::Glsl:
-            return glslang::EShSourceGlsl;
-        case ShaderLanguage::Hlsl:
-            return glslang::EShSourceHlsl;
+        case ShaderLanguage::Glsl: return glslang::EShSourceGlsl;
+        case ShaderLanguage::Hlsl: return glslang::EShSourceHlsl;
     }
     Unreachable();
 }
@@ -361,8 +347,7 @@ void BuildUniformBuffer(std::string& source, const ParameterBlockDesc& pblock)
             continue;
         }
 
-        std::string typeStr = ToString(variable.type);
-        fmt::format_to(out, "    {} {};\n", typeStr, variable.name);
+        fmt::format_to(out, "    {} {};\n", variable.type, variable.name);
     }
     fmt::format_to(out, "}} {};\n\n", PblockNamesLower[Set]);
 }
@@ -383,8 +368,7 @@ void BuildResourceBindings(std::string& source, const ParameterBlockDesc& pblock
     {
         if (IsResourceType(parameter.type.baseType))
         {
-            fmt::format_to(
-                out, "layout(set = {}, binding = {}) uniform {} {};\n", Set, slot, ToString(parameter.type), parameter.name);
+            fmt::format_to(out, "layout(set = {}, binding = {}) uniform {} {};\n", Set, slot, parameter.type, parameter.name);
             slot++;
         }
     }
@@ -413,7 +397,7 @@ void BuildVaryings(std::string& source, ShaderStageData& data, const ShaderStage
         }
 
         data.inputs.push_back(input);
-        fmt::format_to(out, "layout(location = {}) in {} {};\n", i, ToString(input.type), input.name);
+        fmt::format_to(out, "layout(location = {}) in {} {};\n", i, input.type, input.name);
     }
 
     for (usize i = 0; i < sourceStage.outputs.size(); i++)
@@ -426,7 +410,7 @@ void BuildVaryings(std::string& source, ShaderStageData& data, const ShaderStage
         }
 
         data.outputs.push_back(output);
-        fmt::format_to(out, "layout(location = {}) out {} {};\n", i, ToString(output.type), output.name);
+        fmt::format_to(out, "layout(location = {}) out {} {};\n", i, output.type, output.name);
     }
 
     source += '\n';

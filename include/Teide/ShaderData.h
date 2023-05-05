@@ -3,6 +3,7 @@
 
 #include "Teide/BasicTypes.h"
 
+#include <iosfwd>
 #include <string>
 #include <vector>
 
@@ -101,17 +102,8 @@ struct ShaderData
 
 bool IsResourceType(ShaderVariableType::BaseType type);
 
-struct SizeAndAlignment
-{
-    uint32 size = 0;
-    uint32 alignment = 0;
-};
-
-SizeAndAlignment GetSizeAndAlignment(ShaderVariableType::BaseType type);
-SizeAndAlignment GetSizeAndAlignment(ShaderVariableType type);
-
-std::string ToString(ShaderVariableType::BaseType type);
-std::string ToString(ShaderVariableType type);
+std::ostream& operator<<(std::ostream& os, ShaderVariableType::BaseType type);
+std::ostream& operator<<(std::ostream& os, ShaderVariableType type);
 
 struct UniformDesc
 {
@@ -120,6 +112,7 @@ struct UniformDesc
     uint32 offset = 0;
 
     bool operator==(const UniformDesc&) const = default;
+    void Visit(auto f) const { f(name, type, offset); }
 };
 
 struct ParameterBlockLayoutData
