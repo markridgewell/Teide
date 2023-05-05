@@ -5,6 +5,7 @@
 
 #include <string>
 #include <vector>
+#include <iosfwd>
 
 namespace Teide
 {
@@ -110,14 +111,17 @@ struct SizeAndAlignment
 SizeAndAlignment GetSizeAndAlignment(ShaderVariableType::BaseType type);
 SizeAndAlignment GetSizeAndAlignment(ShaderVariableType type);
 
-std::string ToString(ShaderVariableType::BaseType type);
-std::string ToString(ShaderVariableType type);
+std::ostream& operator<<(std::ostream& os, ShaderVariableType::BaseType type);
+std::ostream& operator<<(std::ostream& os, ShaderVariableType type);
 
 struct UniformDesc
 {
     std::string name;
     ShaderVariableType type;
     uint32 offset = 0;
+
+    bool operator==(const UniformDesc&) const = default;
+    void Visit(auto f) const { f(name, type, offset); }
 };
 
 struct ParameterBlockLayoutData

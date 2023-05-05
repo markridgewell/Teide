@@ -4,6 +4,7 @@
 #include "Teide/Definitions.h"
 
 #include <fmt/format.h>
+#include <fmt/ostream.h>
 #include <glslang/Public/ShaderLang.h>
 #include <glslang/SPIRV/GlslangToSpv.h>
 
@@ -13,6 +14,9 @@
 #include <span>
 
 using namespace Teide;
+
+template <> struct fmt::formatter<ShaderVariableType> : ostream_formatter {};
+template <> struct fmt::formatter<ShaderVariableType::BaseType> : ostream_formatter {};
 
 namespace
 {
@@ -339,8 +343,7 @@ void BuildUniformBuffer(std::string& source, const ParameterBlockDesc& pblock)
             continue;
         }
 
-        std::string typeStr = ToString(variable.type);
-        fmt::format_to(out, "    {} {};\n", typeStr, variable.name);
+        fmt::format_to(out, "    {} {};\n", variable.type, variable.name);
     }
     fmt::format_to(out, "}} {};\n\n", PblockNamesLower[Set]);
 }
@@ -362,7 +365,7 @@ void BuildResourceBindings(std::string& source, const ParameterBlockDesc& pblock
         if (IsResourceType(parameter.type.baseType))
         {
             fmt::format_to(
-                out, "layout(set = {}, binding = {}) uniform {} {};\n", Set, slot, ToString(parameter.type), parameter.name);
+                out, "layout(set = {}, binding = {}) uniform {} {};\n", Set, slot, parameter.type, parameter.name);
             slot++;
         }
     }
@@ -391,7 +394,7 @@ void BuildVaryings(std::string& source, ShaderStageData& data, const ShaderStage
         }
 
         data.inputs.push_back(input);
-        fmt::format_to(out, "layout(location = {}) in {} {};\n", i, ToString(input.type), input.name);
+        fmt::format_to(out, "layout(location = {}) in {} {};\n", i, input.type, input.name);
     }
 
     for (usize i = 0; i < sourceStage.outputs.size(); i++)
@@ -404,7 +407,7 @@ void BuildVaryings(std::string& source, ShaderStageData& data, const ShaderStage
         }
 
         data.outputs.push_back(output);
-        fmt::format_to(out, "layout(location = {}) out {} {};\n", i, ToString(output.type), output.name);
+        fmt::format_to(out, "layout(location = {}) out {} {};\n", i, output.type, output.name);
     }
 
     source += '\n';

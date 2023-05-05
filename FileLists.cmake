@@ -28,6 +28,7 @@ set(sources
     include/Teide/Task.h
     include/Teide/Texture.h
     include/Teide/TextureData.h
+    include/Teide/Visitable.h
     src/GeoLib.natvis
     src/ShaderCompiler/ShaderCompiler.cpp
     src/Teide.natvis

@@ -3,6 +3,8 @@
 
 #include "Teide/Definitions.h"
 
+#include <ostream>
+
 namespace Teide
 {
 
@@ -62,7 +64,7 @@ SizeAndAlignment GetSizeAndAlignment(ShaderVariableType type)
     return {size * std::max(1u, type.arraySize), alignment};
 }
 
-std::string ToString(ShaderVariableType::BaseType type)
+std::string_view ToString(ShaderVariableType::BaseType type)
 {
     switch (type)
     {
@@ -78,16 +80,19 @@ std::string ToString(ShaderVariableType::BaseType type)
     Unreachable();
 }
 
-std::string ToString(ShaderVariableType type)
+std::ostream& operator<<(std::ostream& os, ShaderVariableType::BaseType type)
 {
-    std::string ret = ToString(type.baseType);
+    return os << ToString(type);
+}
+
+std::ostream& operator<<(std::ostream& os, ShaderVariableType type)
+{
+    os << type.baseType;
     if (type.arraySize != 0)
     {
-        ret += '[';
-        ret += std::to_string(type.arraySize);
-        ret += ']';
+        os << '[' << type.arraySize << ']';
     }
-    return ret;
+    return os;
 }
 
 ParameterBlockLayoutData BuildParameterBlockLayout(const ParameterBlockDesc& pblock, int set)
