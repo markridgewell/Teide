@@ -73,7 +73,7 @@ void AddUniformBinding(ParameterBlockLayoutData& bindings, const ShaderVariable&
     bindings.uniformsSize = offset + size * std::max(1u, var.type.arraySize);
 }
 
-void AddResourceBinding(ParameterBlockLayoutData& bindings, const ShaderVariable& var)
+void AddResourceBinding(ParameterBlockLayoutData& bindings, const ShaderVariable& var [[maybe_unused]])
 {
     bindings.textureCount++;
 }
