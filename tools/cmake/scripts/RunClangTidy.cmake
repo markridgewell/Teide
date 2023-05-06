@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.19)
 
 find_program(clang_tidy "clang-tidy" REQUIRED)
+mark_as_advanced(clang_tidy)
 
 message("Running ClangTidy script")
 
