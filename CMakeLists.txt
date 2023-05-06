@@ -3,6 +3,7 @@ cmake_minimum_required(VERSION 3.19)
 include(CMakeParseArguments)
 include(CMakeDependentOption)
 include(tools/cmake/Build.cmake)
+include(tools/cmake/Cache.cmake)
 
 project(
     Teide
@@ -78,3 +79,5 @@ if(TEIDE_CLANG_TIDY)
     include(tools/cmake/ClangTidy.cmake)
     td_add_clang_tidy()
 endif()
+
+mark_as_advanced_pattern("[a-z0-9]+_DIR|VCPKG_|FETCHCONTENT_")
