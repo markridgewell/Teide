@@ -2,6 +2,7 @@ add_library(RenderDoc::RenderDoc INTERFACE IMPORTED GLOBAL)
 
 if(NOT RENDERDOC_INCLUDE_DIR)
     find_path(RENDERDOC_INCLUDE_DIR "renderdoc_app.h")
+    mark_as_advanced(RENDERDOC_INCLUDE_DIR)
 endif()
 
 if(RENDERDOC_INCLUDE_DIR)
