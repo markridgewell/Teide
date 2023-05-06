@@ -9,7 +9,11 @@ using namespace testing;
 using namespace Teide;
 
 #ifdef NDEBUG
-#    define EXPECT_UNREACHABLE(statement) if (false) { statement; }
+#    define EXPECT_UNREACHABLE(statement)                                                                              \
+        if (false)                                                                                                     \
+        {                                                                                                              \
+            statement;                                                                                                 \
+        }
 #else
 #    define EXPECT_UNREACHABLE(statement) EXPECT_DEATH(statement, UnreachableMessage)
 #endif
