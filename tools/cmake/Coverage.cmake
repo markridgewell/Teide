@@ -20,6 +20,6 @@ function(target_enable_coverage target)
 endfunction()
 
 function(test_enable_coverage test)
-    set_tests_properties(${test} PROPERTIES ENVIRONMENT "LLVM_PROFILE_FILE=${COVERAGE_DIR}/${target}.profraw"
+    set_tests_properties(${test} PROPERTIES ENVIRONMENT "LLVM_PROFILE_FILE=${COVERAGE_DIR}/${target}-%p.profraw"
                                             FIXTURES_REQUIRED CppCoverage)
 endfunction()

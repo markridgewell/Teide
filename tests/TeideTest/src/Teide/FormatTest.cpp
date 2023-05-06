@@ -8,18 +8,16 @@
 using namespace testing;
 using namespace Teide;
 
-constexpr int ExitCode = 42;
-void TerminateGracefully()
-{
-    std::exit(ExitCode);
-}
+#ifdef NDEBUG
+#define EXPECT_UNREACHABLE(statement) \
+    if (false) { statement; }
+#else
+#define EXPECT_UNREACHABLE(statement) \
+    EXPECT_DEATH(statement, UnreachableMessage)
+#endif
 
 TEST(TextureTest, InvalidFormat_Death)
 {
-    EXPECT_EXIT(
-        {
-            std::set_terminate(TerminateGracefully);
-            GetFormatElementSize(static_cast<Format>(-1));
-        },
-        ExitedWithCode(ExitCode), UnreachableMessage);
+    const auto invalidFormat = static_cast<Format>(-1);
+    EXPECT_UNREACHABLE(GetFormatElementSize(invalidFormat));
 }
