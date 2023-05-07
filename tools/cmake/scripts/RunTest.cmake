@@ -3,9 +3,12 @@ if(TEIDE_TEST_COVERAGE)
         find_program(OPENCPPCOVERAGE_PATH "OpenCppCoverage" REQUIRED)
         mark_as_advanced(OPENCPPCOVERAGE_PATH)
         cmake_path(GET TEST_BINARY STEM TEST_NAME)
-        set(RUNNER_COMMAND
-            ${OPENCPPCOVERAGE_PATH} --export_type "binary:${COVERAGE_DIR}/${TEST_NAME}.cov" --modules "*.exe" --source
-            "Teide\\src" --source "Teide\\include" --source "Teide\\examples" --cover_children --)
+        foreach(dir IN LISTS SOURCE_DIRS)
+            cmake_path(NATIVE_PATH dir native_dir)
+            list(APPEND sources "--source=${native_dir}")
+        endforeach()
+        set(RUNNER_COMMAND ${OPENCPPCOVERAGE_PATH} "--export_type=binary:${COVERAGE_DIR}/${TEST_NAME}.cov"
+                           "--modules=*.exe" ${sources} --cover_children --)
     elseif(COMPILER STREQUAL "Clang")
         message(STATUS "Writing ${TEST_BINARY} into file ${COVERAGE_DIR}/test_binaries.txt")
         file(APPEND "${COVERAGE_DIR}/test_binaries.txt" "${TEST_BINARY}\n")
