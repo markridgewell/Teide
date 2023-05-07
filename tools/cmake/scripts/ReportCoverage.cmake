@@ -7,7 +7,20 @@ function(exec)
         ANY)
 endfunction()
 
-if(COMPILER STREQUAL "Clang")
+if(COMPILER STREQUAL "MSVC")
+    # Gather binary coverage data
+    file(GLOB_RECURSE cov_files "${COVERAGE_DIR}/*.cov")
+    list(TRANSFORM cov_files PREPEND "--input_coverage=")
+
+    # Combine the coverage data and generate output
+    find_program(OPENCPPCOVERAGE_PATH "OpenCppCoverage" REQUIRED)
+    mark_as_advanced(OPENCPPCOVERAGE_PATH)
+    set(output_dir "${COVERAGE_DIR}/output")
+    file(MAKE_DIRECTORY "${output_dir}")
+    exec(COMMAND ${OPENCPPCOVERAGE_PATH} --export_type "html:${output_dir}" --export_type
+                 "cobertura:${output_dir}/coverage.xml" ${cov_files})
+
+elseif(COMPILER STREQUAL "Clang")
     # Gather raw profile data
     file(GLOB_RECURSE profraw_files "${COVERAGE_DIR}/*.profraw")
 

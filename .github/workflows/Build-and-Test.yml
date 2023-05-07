@@ -45,7 +45,7 @@ jobs:
         extra-packages: OpenCppCoverage
 
     - name: Configure CMake
-      run: cmake --preset ${{matrix.preset}} -DTEIDE_TEST_VERBOSE=ON -DTEIDE_UNIT_TEST_SW_RENDER=ON
+      run: cmake --preset ${{matrix.preset}} -DTEIDE_TEST_VERBOSE=ON -DTEIDE_UNIT_TEST_SW_RENDER=ON -DTEIDE_TEST_COVERAGE=${{matrix.coverage}}
 
     - name: Build
       run: cmake --build --preset ${{matrix.preset}} --config ${{matrix.buildtype}}
@@ -58,7 +58,7 @@ jobs:
         path: ./build/${{matrix.preset}}/CMakeFiles/CMakeOutput.log
 
     - name: Test
-      run: python ./tools/coverage.py ci ${{matrix.preset}} ${{matrix.buildtype}}
+      run: ctest --preset ${{matrix.preset}} --build-config ${{matrix.buildtype}} --verbose --no-tests=error
 
     - name: Save render test output
       if: steps.test.outcome == 'failure'

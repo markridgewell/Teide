@@ -127,8 +127,8 @@ function(td_add_test target)
         NAME ${target}
         COMMAND
             ${CMAKE_COMMAND} "-DTEST_BINARY=$<TARGET_FILE:${target}>" "-DTEST_ARGS=${ARG_TEST_ARGS}"
-            "-DTEIDE_TEST_COVERAGE=${TEIDE_TEST_COVERAGE}" "-DCOVERAGE_DIR=${COVERAGE_DIR}" -P
-            "${SCRIPTS_DIR}/RunTest.cmake")
+            "-DTEIDE_TEST_COVERAGE=${TEIDE_TEST_COVERAGE}" "-DCOVERAGE_DIR=${COVERAGE_DIR}"
+            "-DCOMPILER=${CMAKE_CXX_COMPILER_ID}" -P "${SCRIPTS_DIR}/RunTest.cmake")
     if(TEIDE_TEST_COVERAGE)
         test_enable_coverage(${target})
     endif()
