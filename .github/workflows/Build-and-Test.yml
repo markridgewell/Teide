@@ -58,6 +58,7 @@ jobs:
         path: ./build/${{matrix.preset}}/CMakeFiles/CMakeOutput.log
 
     - name: Test
+      id: test
       run: ctest --preset ${{matrix.preset}} --build-config ${{matrix.buildtype}} --verbose --no-tests=error
 
     - name: Save render test output
@@ -77,15 +78,16 @@ jobs:
     - name: Upload coverage report
       uses: codecov/codecov-action@v3
       with:
-        files: ./coverage.xml
+        directory: build/${{matrix.preset}}/coverage/output
         fail_ci_if_error: false
-        functionalities: fix
+        verbose: true
+        functionalities: fixes
 
     - name: Save coverage report
       uses: actions/upload-artifact@v3
       with:
         name: CoverageReport-${{env.job_name}}
-        path: ./coverage.xml
+        path: build/${{matrix.preset}}/coverage/output
 
   linux:
     strategy:
