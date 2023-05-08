@@ -1,4 +1,5 @@
 include(tools/cmake/Coverage.cmake)
+include(tools/cmake/Target.cmake)
 
 set(options)
 set(oneValueArgs)
@@ -28,23 +29,6 @@ function(_copy_install_files target)
             POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E copy_if_different ${install_files} $<TARGET_FILE_DIR:${target}>
             COMMAND_EXPAND_LISTS)
-    endif()
-
-endfunction()
-
-function(get_local_dependencies out_var target)
-    get_target_property(target_deps ${target} LINK_LIBRARIES)
-    if(target_deps)
-        foreach(dep IN LISTS target_deps)
-            get_target_property(is_imported ${dep} IMPORTED)
-            if(NOT is_imported)
-                set(${out_var}
-                    ${${out_var}} ${dep}
-                    PARENT_SCOPE)
-                list(REMOVE_DUPLICATES ${out_var})
-                get_local_dependencies(${out_var} ${dep})
-            endif()
-        endforeach()
     endif()
 endfunction()
 
@@ -139,18 +123,14 @@ function(td_add_test target)
     endif()
 
     get_local_dependencies(dependencies ${target})
-    foreach(dep IN LISTS dependencies)
-        get_target_property(dep_source_dirs ${dep} INCLUDE_DIRECTORIES)
-        list(APPEND source_dirs ${dep_source_dirs})
-        list(REMOVE_DUPLICATES source_dirs)
-    endforeach()
+    get_target_sources(dep_sources ${dependencies})
 
     add_test(
         NAME ${target}
         COMMAND
             ${CMAKE_COMMAND} "-DTEST_BINARY=$<TARGET_FILE:${target}>" "-DTEST_ARGS=${ARG_TEST_ARGS}"
             "-DTEIDE_TEST_COVERAGE=${TEIDE_TEST_COVERAGE}" "-DCOVERAGE_DIR=${COVERAGE_DIR}"
-            "-DCOMPILER=${CMAKE_CXX_COMPILER_ID}" "-DSOURCE_DIRS=${source_dirs}" -P "${SCRIPTS_DIR}/RunTest.cmake")
+            "-DCOMPILER=${CMAKE_CXX_COMPILER_ID}" "-DSOURCES=${dep_sources}" -P "${SCRIPTS_DIR}/RunTest.cmake")
     if(TEIDE_TEST_COVERAGE)
         test_enable_coverage(${target})
     endif()
