@@ -24,6 +24,7 @@ elseif(COMPILER STREQUAL "Clang")
 
     # Combine raw data into indexed file
     find_program(profdata llvm-profdata REQUIRED)
+    exec(COMMAND "${profdata}" merge --version)
     exec(COMMAND "${profdata}" merge ${profraw_files} -o ${COVERAGE_DIR}/coverage.profdata)
 
     find_program(cov llvm-cov REQUIRED)
