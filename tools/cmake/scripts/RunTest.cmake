@@ -4,7 +4,7 @@ if("$ENV{TEST_COVERAGE}")
     if(COMPILER STREQUAL "MSVC")
         cmake_path(GET TEST_BINARY STEM test_name)
         foreach(path IN LISTS SOURCES)
-            cmake_path(NATIVE_PATH file native_path)
+            cmake_path(NATIVE_PATH path native_path)
             list(APPEND sources "--source=${native_path}")
         endforeach()
         set(RUNNER_COMMAND $ENV{OPENCPPCOVERAGE} "--export_type=binary:${coverage_dir}/${test_name}.cov"
