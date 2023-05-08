@@ -13,8 +13,6 @@ if(COMPILER STREQUAL "MSVC")
     list(TRANSFORM cov_files PREPEND "--input_coverage=")
 
     # Combine the coverage data and generate output
-    find_program(OPENCPPCOVERAGE_PATH "OpenCppCoverage" REQUIRED)
-    mark_as_advanced(OPENCPPCOVERAGE_PATH)
     set(output_dir "${COVERAGE_DIR}/output")
     file(MAKE_DIRECTORY "${output_dir}")
     exec(COMMAND ${OPENCPPCOVERAGE_PATH} --export_type "html:${output_dir}" --export_type

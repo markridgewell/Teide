@@ -61,7 +61,7 @@ function(td_add_library target)
         target_enable_coverage(${target})
     endif()
 
-    if(EXISTS ${source_dir} AND IS_DIRECTORY "${source_dir}")
+    if(EXISTS "${source_dir}" AND IS_DIRECTORY "${source_dir}")
         target_include_directories(${target} PRIVATE ${source_dir})
     endif()
     if(EXISTS ${include_dir} AND IS_DIRECTORY "${include_dir}")
@@ -125,12 +125,9 @@ function(td_add_test target)
     get_local_dependencies(dependencies ${target})
     get_target_sources(dep_sources ${dependencies})
 
-    add_test(
-        NAME ${target}
-        COMMAND
-            ${CMAKE_COMMAND} "-DTEST_BINARY=$<TARGET_FILE:${target}>" "-DTEST_ARGS=${ARG_TEST_ARGS}"
-            "-DTEIDE_TEST_COVERAGE=${TEIDE_TEST_COVERAGE}" "-DCOVERAGE_DIR=${COVERAGE_DIR}"
-            "-DCOMPILER=${CMAKE_CXX_COMPILER_ID}" "-DSOURCES=${dep_sources}" -P "${SCRIPTS_DIR}/RunTest.cmake")
+    add_test(NAME ${target}
+             COMMAND ${CMAKE_COMMAND} "-DTEST_BINARY=$<TARGET_FILE:${target}>" "-DTEST_ARGS=${ARG_TEST_ARGS}"
+                     "-DCOMPILER=${CMAKE_CXX_COMPILER_ID}" "-DSOURCES=${dep_sources}" -P "${SCRIPTS_DIR}/RunTest.cmake")
     if(TEIDE_TEST_COVERAGE)
         test_enable_coverage(${target})
     endif()

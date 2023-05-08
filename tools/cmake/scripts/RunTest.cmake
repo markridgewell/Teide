@@ -1,18 +1,18 @@
-if(TEIDE_TEST_COVERAGE)
+set(coverage_dir "$ENV{COVERAGE_DIR}")
+
+if("$ENV{TEST_COVERAGE}")
     if(COMPILER STREQUAL "MSVC")
-        find_program(OPENCPPCOVERAGE_PATH "OpenCppCoverage" REQUIRED)
-        mark_as_advanced(OPENCPPCOVERAGE_PATH)
-        cmake_path(GET TEST_BINARY STEM TEST_NAME)
+        cmake_path(GET TEST_BINARY STEM test_name)
         foreach(path IN LISTS SOURCES)
             cmake_path(NATIVE_PATH file native_path)
             list(APPEND sources "--source=${native_path}")
         endforeach()
-        set(RUNNER_COMMAND ${OPENCPPCOVERAGE_PATH} "--export_type=binary:${COVERAGE_DIR}/${TEST_NAME}.cov"
+        set(RUNNER_COMMAND $ENV{OPENCPPCOVERAGE} "--export_type=binary:${coverage_dir}/${test_name}.cov"
                            "--modules=*.exe" ${sources} --cover_children --)
     elseif(COMPILER STREQUAL "Clang")
-        file(APPEND "${COVERAGE_DIR}/test_binaries.txt" "${TEST_BINARY}\n")
+        file(APPEND "$ENV{COVERAGE_DIR}/test_binaries.txt" "${TEST_BINARY}\n")
         list(JOIN SOURCES "\n" source_list)
-        file(APPEND "${COVERAGE_DIR}/test_sources.txt" "${source_list}\n")
+        file(APPEND "$ENV{COVERAGE_DIR}/test_sources.txt" "${source_list}\n")
     endif()
 endif()
 
