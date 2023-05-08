@@ -2,7 +2,7 @@ set(COVERAGE_DIR "${CMAKE_BINARY_DIR}/coverage")
 
 function(setup_coverage)
     if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
-        find_program(OPENCPPCOVERAGE_PATH "OpenCppCoverage" REQUIRED)
+        find_program(OPENCPPCOVERAGE_PATH "OpenCppCoverage" HINTS "C:\\Program Files\\OpenCppCoverage" REQUIRED)
         mark_as_advanced(OPENCPPCOVERAGE_PATH)
     endif()
     add_test(NAME ClearCoverage COMMAND ${CMAKE_COMMAND} -E rm -rf ${COVERAGE_DIR})
