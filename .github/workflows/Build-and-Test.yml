@@ -17,6 +17,7 @@ jobs:
       matrix:
         buildtype: [Debug, Release]
         preset: [msvc2019, msvc2022, msvc2022-clang]
+        coverage: [ON]
         include:
         - preset: msvc2019
           runner: windows-2019
