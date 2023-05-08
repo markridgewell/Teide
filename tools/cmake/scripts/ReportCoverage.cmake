@@ -29,19 +29,18 @@ elseif(COMPILER STREQUAL "Clang")
 
     find_program(cov llvm-cov REQUIRED)
     file(STRINGS "${COVERAGE_DIR}/test_binaries.txt" binaries)
+    list(JOIN binaries ";-object;" objects)
     set(output_dir "${COVERAGE_DIR}/output")
     file(MAKE_DIRECTORY "${output_dir}")
 
     file(STRINGS "${COVERAGE_DIR}/test_sources.txt" sources)
-    set(common_args -sources ${sources} -instr-profile "${COVERAGE_DIR}/coverage.profdata")
+    set(common_args -instr-profile "${COVERAGE_DIR}/coverage.profdata" ${objects} ${sources})
 
     # Generate lcov txt file for uploading to Codecov
-    exec(COMMAND ${cov} export -format=lcov ${common_args} -object ${binaries} #
-         OUTPUT_FILE "${output_dir}/lcov.info")
+    exec(OUTPUT_FILE "${output_dir}/lcov.info" COMMAND ${cov} export -format=lcov ${common_args})
 
     # Generate HTML report for local inspection
-    exec(COMMAND ${cov} show -format=html -use-color -Xdemangler c++filt ${common_args} "-output-dir=${output_dir}"
-                 -object ${binaries})
+    exec(COMMAND ${cov} show -format=html -use-color -Xdemangler c++filt "-output-dir=${output_dir}" ${common_args})
 
     # Add a little extra css to highlight covered lines
     file(APPEND "${output_dir}/style.css"
