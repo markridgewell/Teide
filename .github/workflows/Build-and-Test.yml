@@ -17,14 +17,16 @@ jobs:
       matrix:
         buildtype: [Debug, Release]
         preset: [msvc2019, msvc2022, msvc2022-clang]
-        coverage: [ON]
         include:
         - preset: msvc2019
           runner: windows-2019
+          coverage: ON
         - preset: msvc2022
           runner: windows-2022
+          coverage: ON
         - preset: msvc2022-clang
           runner: windows-2022
+          coverage: OFF
 
     name: Windows-${{matrix.buildtype}}-${{matrix.preset}}
     runs-on: ${{matrix.runner}}
