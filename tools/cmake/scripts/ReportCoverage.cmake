@@ -15,7 +15,7 @@ if(COMPILER STREQUAL "MSVC")
     # Combine the coverage data and generate output
     set(output_dir "${COVERAGE_DIR}/output")
     file(MAKE_DIRECTORY "${output_dir}")
-    exec(COMMAND ${OPENCPPCOVERAGE} --export_type "html:${output_dir}" --export_type
+    exec(COMMAND "${OPENCPPCOVERAGE}" --export_type "html:${output_dir}" --export_type
                  "cobertura:${output_dir}/coverage.xml" ${cov_files})
 
 elseif(COMPILER STREQUAL "Clang")

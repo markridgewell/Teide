@@ -7,7 +7,7 @@ if("$ENV{TEST_COVERAGE}")
             cmake_path(NATIVE_PATH path native_path)
             list(APPEND sources "--source=${native_path}")
         endforeach()
-        set(RUNNER_COMMAND $ENV{OPENCPPCOVERAGE} "--export_type=binary:${coverage_dir}/${test_name}.cov"
+        set(RUNNER_COMMAND "$ENV{OPENCPPCOVERAGE}" "--export_type=binary:${coverage_dir}/${test_name}.cov"
                            "--modules=*.exe" ${sources} --cover_children --)
     elseif(COMPILER STREQUAL "Clang")
         file(APPEND "$ENV{COVERAGE_DIR}/test_binaries.txt" "${TEST_BINARY}\n")
