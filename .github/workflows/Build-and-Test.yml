@@ -122,7 +122,7 @@ jobs:
       uses: ./.github/actions/install-dependencies
       with:
         preset: ${{matrix.preset}}
-        extra-packages: ${{matrix.compiler}}
+        extra-packages: ninja-build ${{matrix.compiler}}
 
     - name: Configure CMake
       run: cmake --preset ${{matrix.preset}} -DCMAKE_CXX_COMPILER=${{matrix.compiler}} -DTEIDE_TEST_VERBOSE=ON -DTEIDE_UNIT_TEST_SW_RENDER=ON -DTEIDE_TEST_WINDOWLESS=ON -DTEIDE_TEST_COVERAGE=${{matrix.coverage}}
