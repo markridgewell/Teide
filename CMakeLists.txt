@@ -63,10 +63,7 @@ td_add_library(
 if(TEIDE_BUILD_TESTS)
     add_subdirectory(tests)
     if(TEIDE_TEST_COVERAGE)
-        if(TEIDE_TEST_WINDOWLESS)
-            set(ignore_patterns VulkanSurface.h VulkanSurface.cpp)
-        endif()
-        setup_coverage("${ignore_patterns}")
+        setup_coverage()
     endif()
 endif()
 
