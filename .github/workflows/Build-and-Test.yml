@@ -20,10 +20,13 @@ jobs:
         include:
         - preset: msvc2019
           runner: windows-2019
+          coverage: ON
         - preset: msvc2022
           runner: windows-2022
+          coverage: ON
         - preset: msvc2022-clang
           runner: windows-2022
+          coverage: OFF
 
     name: Windows-${{matrix.buildtype}}-${{matrix.preset}}
     runs-on: ${{matrix.runner}}
@@ -45,7 +48,7 @@ jobs:
         extra-packages: OpenCppCoverage
 
     - name: Configure CMake
-      run: cmake --preset ${{matrix.preset}} -DTEIDE_TEST_VERBOSE=ON -DTEIDE_UNIT_TEST_SW_RENDER=ON
+      run: cmake --preset ${{matrix.preset}} -DTEIDE_TEST_VERBOSE=ON -DTEIDE_UNIT_TEST_SW_RENDER=ON -DTEIDE_TEST_COVERAGE=${{matrix.coverage}}
 
     - name: Build
       run: cmake --build --preset ${{matrix.preset}} --config ${{matrix.buildtype}}
@@ -58,7 +61,8 @@ jobs:
         path: ./build/${{matrix.preset}}/CMakeFiles/CMakeOutput.log
 
     - name: Test
-      run: python ./tools/coverage.py ci ${{matrix.preset}} ${{matrix.buildtype}}
+      id: test
+      run: ctest --preset ${{matrix.preset}} --build-config ${{matrix.buildtype}} --verbose --no-tests=error
 
     - name: Save render test output
       if: steps.test.outcome == 'failure'
@@ -77,15 +81,16 @@ jobs:
     - name: Upload coverage report
       uses: codecov/codecov-action@v3
       with:
-        files: ./coverage.xml
+        directory: build/${{matrix.preset}}/coverage/output
         fail_ci_if_error: false
-        functionalities: fix
+        verbose: true
+        functionalities: fixes
 
     - name: Save coverage report
       uses: actions/upload-artifact@v3
       with:
         name: CoverageReport-${{env.job_name}}
-        path: ./coverage.xml
+        path: build/${{matrix.preset}}/coverage/output
 
   linux:
     strategy:
