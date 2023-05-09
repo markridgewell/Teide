@@ -48,7 +48,13 @@ jobs:
         extra-packages: OpenCppCoverage
 
     - name: Configure CMake
-      run: cmake --preset ${{matrix.preset}} -DTEIDE_TEST_VERBOSE=ON -DTEIDE_UNIT_TEST_SW_RENDER=ON -DTEIDE_TEST_COVERAGE=${{matrix.coverage}}
+      run: cmake --preset ${{matrix.preset}} -DTEIDE_TEST_VERBOSE=ON -DTEIDE_UNIT_TEST_SW_RENDER=ON -DTEIDE_TEST_COVERAGE=${{matrix.coverage}} --trace --trace-format=json-v1 --trace-redirect=CMakeTrace.txt
+
+    - name: Save CMake trace
+      uses: actions/upload-artifact@v3
+      with:
+        name: CMakeTrace-${{env.job_name}}
+        path: ./CMakeTrace.txt
 
     - name: Build
       run: cmake --build --preset ${{matrix.preset}} --config ${{matrix.buildtype}}
