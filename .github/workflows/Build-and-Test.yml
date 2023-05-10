@@ -48,7 +48,13 @@ jobs:
         extra-packages: OpenCppCoverage
 
     - name: Configure CMake
-      run: cmake --preset ${{matrix.preset}} -DTEIDE_TEST_VERBOSE=ON -DTEIDE_UNIT_TEST_SW_RENDER=ON -DTEIDE_TEST_COVERAGE=${{matrix.coverage}}
+      run: cmake --preset ${{matrix.preset}} -DTEIDE_TEST_VERBOSE=ON -DTEIDE_UNIT_TEST_SW_RENDER=ON -DTEIDE_TEST_COVERAGE=${{matrix.coverage}} --trace --trace-format=json-v1 --trace-redirect=CMakeTrace.txt
+
+    - name: Save CMake trace
+      uses: actions/upload-artifact@v3
+      with:
+        name: CMakeTrace-${{env.job_name}}
+        path: ./CMakeTrace.txt
 
     - name: Build
       run: cmake --build --preset ${{matrix.preset}} --config ${{matrix.buildtype}}
@@ -98,7 +104,7 @@ jobs:
         buildtype: [Debug, Release]
         compiler: [g++-11, clang++-16]
         include:
-        - preset: make
+        - preset: ninja
         - coverage: OFF
         - buildtype: Debug
           compiler: clang++-16
@@ -122,10 +128,10 @@ jobs:
       uses: ./.github/actions/install-dependencies
       with:
         preset: ${{matrix.preset}}
-        extra-packages: ${{matrix.compiler}}
+        extra-packages: ninja-build ${{matrix.compiler}}
 
     - name: Configure CMake
-      run: cmake --preset ${{matrix.preset}} -DCMAKE_CXX_COMPILER=${{matrix.compiler}} -DCMAKE_BUILD_TYPE=${{matrix.buildtype}} -DTEIDE_TEST_VERBOSE=ON -DTEIDE_UNIT_TEST_SW_RENDER=ON -DTEIDE_TEST_WINDOWLESS=ON -DTEIDE_TEST_COVERAGE=${{matrix.coverage}}
+      run: cmake --preset ${{matrix.preset}} -DCMAKE_CXX_COMPILER=${{matrix.compiler}} -DTEIDE_TEST_VERBOSE=ON -DTEIDE_UNIT_TEST_SW_RENDER=ON -DTEIDE_TEST_WINDOWLESS=ON -DTEIDE_TEST_COVERAGE=${{matrix.coverage}}
 
     - name: Build
       run: cmake --build --preset ${{matrix.preset}} --config ${{matrix.buildtype}}
