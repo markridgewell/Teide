@@ -16,7 +16,7 @@ constexpr bool IsDebugBuild = true;
 [[noreturn]] inline void Unreachable()
 {
     std::cerr << UnreachableMessage << std::endl;
-    std::exit(1);
+    std::exit(1); // NOLINT(concurrency-mt-unsafe)
 }
 
 #else

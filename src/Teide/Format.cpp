@@ -24,46 +24,46 @@ uint32 GetFormatElementSize(Format format)
     {
         case Format::Unknown: return 0;
 
-        case Format::Byte1: return ByteSize * 1;
+        case Format::Byte1:
         case Format::Byte1Norm: return ByteSize * 1;
-        case Format::Short1: return ShortSize * 1;
+        case Format::Short1:
         case Format::Short1Norm: return ShortSize * 1;
-        case Format::Ushort1: return UshortSize * 1;
+        case Format::Ushort1:
         case Format::Ushort1Norm: return UshortSize * 1;
         case Format::Half1: return HalfSize * 1;
         case Format::Int1: return IntSize * 1;
         case Format::Uint1: return UintSize * 1;
         case Format::Float1: return FloatSize * 1;
 
-        case Format::Byte2: return ByteSize * 2;
+        case Format::Byte2:
         case Format::Byte2Norm: return ByteSize * 2;
-        case Format::Short2: return ShortSize * 2;
+        case Format::Short2:
         case Format::Short2Norm: return ShortSize * 2;
-        case Format::Ushort2: return UshortSize * 2;
+        case Format::Ushort2:
         case Format::Ushort2Norm: return UshortSize * 2;
         case Format::Half2: return HalfSize * 2;
         case Format::Int2: return IntSize * 2;
         case Format::Uint2: return UintSize * 2;
         case Format::Float2: return FloatSize * 2;
 
-        case Format::Byte3: return ByteSize * 3;
+        case Format::Byte3:
         case Format::Byte3Norm: return ByteSize * 3;
-        case Format::Short3: return ShortSize * 3;
+        case Format::Short3:
         case Format::Short3Norm: return ShortSize * 3;
-        case Format::Ushort3: return UshortSize * 3;
+        case Format::Ushort3:
         case Format::Ushort3Norm: return UshortSize * 3;
         case Format::Half3: return HalfSize * 3;
         case Format::Int3: return IntSize * 3;
         case Format::Uint3: return UintSize * 3;
         case Format::Float3: return FloatSize * 3;
 
-        case Format::Byte4: return ByteSize * 4;
-        case Format::Byte4Norm: return ByteSize * 4;
-        case Format::Byte4Srgb: return ByteSize * 4;
+        case Format::Byte4:
+        case Format::Byte4Norm:
+        case Format::Byte4Srgb:
         case Format::Byte4SrgbBGRA: return ByteSize * 4;
-        case Format::Short4: return ShortSize * 4;
+        case Format::Short4:
         case Format::Short4Norm: return ShortSize * 4;
-        case Format::Ushort4: return UshortSize * 4;
+        case Format::Ushort4:
         case Format::Ushort4Norm: return UshortSize * 4;
         case Format::Half4: return HalfSize * 4;
         case Format::Int4: return IntSize * 4;
