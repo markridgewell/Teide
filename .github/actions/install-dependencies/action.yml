@@ -2,8 +2,8 @@ name: 'install-dependencies'
 description: 'Install dependencies required for building Teide'
 
 inputs:
-  preset:
-    description: 'CMake preset used to build vcpkg packages'
+  vcpkg-cache-key:
+    description: 'Cache key used to build vcpkg packages'
     required: true
   extra-packages:
     description: 'Additional packages to install with apt-get (Linux) or chocolatey (Windows)'
@@ -16,7 +16,7 @@ runs:
       uses: lukka/run-vcpkg@v10
       with:
         vcpkgGitCommitId: '716c3524a54f1f50a25d16a4cdd360f5a7fcc150'
-        appendedCacheKey: ${{inputs.preset}}
+        appendedCacheKey: ${{inputs.vcpkg-cache-key}}
 
     - name: Setup Vulkan SDK
       uses: humbletim/setup-vulkan-sdk@v1.2.0

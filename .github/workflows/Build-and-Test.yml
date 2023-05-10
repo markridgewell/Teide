@@ -44,7 +44,7 @@ jobs:
     - name: Install dependencies
       uses: ./.github/actions/install-dependencies
       with:
-        preset: ${{matrix.preset}}
+        vcpkg-cache-key: ${{matrix.job_name}}
         extra-packages: OpenCppCoverage
 
     - name: Configure CMake
@@ -121,7 +121,7 @@ jobs:
     - name: Install dependencies
       uses: ./.github/actions/install-dependencies
       with:
-        preset: ${{matrix.preset}}
+        vcpkg-cache-key: ${{matrix.job_name}}
         extra-packages: ${{matrix.compiler}}
 
     - name: Configure CMake
