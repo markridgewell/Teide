@@ -1,0 +1,6 @@
+function(target_enable_sanitizer target sanitizer)
+    if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang" AND sanitizer STREQUAL "ASAN")
+        target_compile_options(${target} PRIVATE -ggdb -fsanitize=address -fno-omit-frame-pointer)
+        target_link_options(${target} PRIVATE -fsanitize=address -fno-omit-frame-pointer)
+    endif()
+endfunction()
