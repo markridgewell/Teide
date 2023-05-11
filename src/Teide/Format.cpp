@@ -1,7 +1,7 @@
 
 #include "Teide/Format.h"
 
-#include "Teide/StaticMap.h"
+#include "Teide/Definitions.h"
 
 namespace Teide
 {
@@ -20,64 +20,65 @@ enum TypeSizes : uint32
 
 uint32 GetFormatElementSize(Format format)
 {
-    static constexpr StaticMap<Format, uint32, FormatCount> map = {
-        {Format::Unknown, 0},
+    switch (format)
+    {
+        case Format::Unknown: return 0;
 
-        {Format::Byte1, ByteSize * 1},
-        {Format::Byte1Norm, ByteSize * 1},
-        {Format::Short1, ShortSize * 1},
-        {Format::Short1Norm, ShortSize * 1},
-        {Format::Ushort1, UshortSize * 1},
-        {Format::Ushort1Norm, UshortSize * 1},
-        {Format::Half1, HalfSize * 1},
-        {Format::Int1, IntSize * 1},
-        {Format::Uint1, UintSize * 1},
-        {Format::Float1, FloatSize * 1},
+        case Format::Byte1:
+        case Format::Byte1Norm: return ByteSize * 1;
+        case Format::Short1:
+        case Format::Short1Norm: return ShortSize * 1;
+        case Format::Ushort1:
+        case Format::Ushort1Norm: return UshortSize * 1;
+        case Format::Half1: return HalfSize * 1;
+        case Format::Int1: return IntSize * 1;
+        case Format::Uint1: return UintSize * 1;
+        case Format::Float1: return FloatSize * 1;
 
-        {Format::Byte2, ByteSize * 2},
-        {Format::Byte2Norm, ByteSize * 2},
-        {Format::Short2, ShortSize * 2},
-        {Format::Short2Norm, ShortSize * 2},
-        {Format::Ushort2, UshortSize * 2},
-        {Format::Ushort2Norm, UshortSize * 2},
-        {Format::Half2, HalfSize * 2},
-        {Format::Int2, IntSize * 2},
-        {Format::Uint2, UintSize * 2},
-        {Format::Float2, FloatSize * 2},
+        case Format::Byte2:
+        case Format::Byte2Norm: return ByteSize * 2;
+        case Format::Short2:
+        case Format::Short2Norm: return ShortSize * 2;
+        case Format::Ushort2:
+        case Format::Ushort2Norm: return UshortSize * 2;
+        case Format::Half2: return HalfSize * 2;
+        case Format::Int2: return IntSize * 2;
+        case Format::Uint2: return UintSize * 2;
+        case Format::Float2: return FloatSize * 2;
 
-        {Format::Byte3, ByteSize * 3},
-        {Format::Byte3Norm, ByteSize * 3},
-        {Format::Short3, ShortSize * 3},
-        {Format::Short3Norm, ShortSize * 3},
-        {Format::Ushort3, UshortSize * 3},
-        {Format::Ushort3Norm, UshortSize * 3},
-        {Format::Half3, HalfSize * 3},
-        {Format::Int3, IntSize * 3},
-        {Format::Uint3, UintSize * 3},
-        {Format::Float3, FloatSize * 3},
+        case Format::Byte3:
+        case Format::Byte3Norm: return ByteSize * 3;
+        case Format::Short3:
+        case Format::Short3Norm: return ShortSize * 3;
+        case Format::Ushort3:
+        case Format::Ushort3Norm: return UshortSize * 3;
+        case Format::Half3: return HalfSize * 3;
+        case Format::Int3: return IntSize * 3;
+        case Format::Uint3: return UintSize * 3;
+        case Format::Float3: return FloatSize * 3;
 
-        {Format::Byte4, ByteSize * 4},
-        {Format::Byte4Norm, ByteSize * 4},
-        {Format::Byte4Srgb, ByteSize * 4},
-        {Format::Byte4SrgbBGRA, ByteSize * 4},
-        {Format::Short4, ShortSize * 4},
-        {Format::Short4Norm, ShortSize * 4},
-        {Format::Ushort4, UshortSize * 4},
-        {Format::Ushort4Norm, UshortSize * 4},
-        {Format::Half4, HalfSize * 4},
-        {Format::Int4, IntSize * 4},
-        {Format::Uint4, UintSize * 4},
-        {Format::Float4, FloatSize * 4},
+        case Format::Byte4:
+        case Format::Byte4Norm:
+        case Format::Byte4Srgb:
+        case Format::Byte4SrgbBGRA: return ByteSize * 4;
+        case Format::Short4:
+        case Format::Short4Norm: return ShortSize * 4;
+        case Format::Ushort4:
+        case Format::Ushort4Norm: return UshortSize * 4;
+        case Format::Half4: return HalfSize * 4;
+        case Format::Int4: return IntSize * 4;
+        case Format::Uint4: return UintSize * 4;
+        case Format::Float4: return FloatSize * 4;
 
-        {Format::Depth16, 2},
-        {Format::Depth32, 4},
-        {Format::Depth16Stencil8, 3},
-        {Format::Depth24Stencil8, 4},
-        {Format::Depth32Stencil8, 5},
-        {Format::Stencil8, 1},
-    };
+        case Format::Depth16: return 2;
+        case Format::Depth32: return 4;
+        case Format::Depth16Stencil8: return 3;
+        case Format::Depth24Stencil8: return 4;
+        case Format::Depth32Stencil8: return 5;
+        case Format::Stencil8: return 1;
+    }
 
-    return map.at(format);
+    Unreachable();
 }
 
 bool HasDepthComponent(Format format)
