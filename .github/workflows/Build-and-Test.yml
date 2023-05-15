@@ -104,7 +104,6 @@ jobs:
         buildtype: [Debug, Release]
         compiler: [g++-11, clang++-16]
         sanitizer: [OFF]
-        name-suffix : ['']
         include:
         - preset: ninja
         - coverage: OFF
@@ -114,15 +113,21 @@ jobs:
         - buildtype: Debug
           compiler: clang++-16
           sanitizer: ASAN
-          name-suffix: '-asan'
+          preset: ninja
+          coverage: OFF
+          name-suffix: -asan
         - buildtype: Debug
           compiler: clang++-16
           sanitizer: UBSAN
-          name-suffix: '-ubsan'
+          preset: ninja
+          coverage: OFF
+          name-suffix: -ubsan
         - buildtype: Debug
           compiler: clang++-16
           sanitizer: MSAN
-          name-suffix: '-msan'
+          preset: ninja
+          coverage: OFF
+          name-suffix: -msan
       fail-fast: false
 
     name: Linux-${{matrix.buildtype}}-${{matrix.compiler}}${{matrix.name-suffix}}
@@ -145,7 +150,7 @@ jobs:
         extra-packages: ninja-build ${{matrix.compiler}}
 
     - name: Configure CMake
-      run: cmake --preset ${{matrix.preset}} -DCMAKE_CXX_COMPILER=${{matrix.compiler}} -DTEIDE_TEST_VERBOSE=ON -DTEIDE_UNIT_TEST_SW_RENDER=ON -DTEIDE_TEST_WINDOWLESS=ON -DTEIDE_TEST_COVERAGE=${{matrix.coverage}}
+      run: cmake --preset ${{matrix.preset}} -DCMAKE_CXX_COMPILER=${{matrix.compiler}} -DTEIDE_TEST_VERBOSE=ON -DTEIDE_UNIT_TEST_SW_RENDER=ON -DTEIDE_TEST_WINDOWLESS=ON -DTEIDE_TEST_COVERAGE=${{matrix.coverage}} -DTEIDE_SANITIZER=${{matrix.sanitizer}}
 
     - name: Build
       run: cmake --build --preset ${{matrix.preset}} --config ${{matrix.buildtype}}
