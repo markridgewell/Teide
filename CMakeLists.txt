@@ -20,7 +20,7 @@ option(TEIDE_UNIT_TEST_SW_RENDER "Enable software rendering for Teide unit tests
 option(TEIDE_RENDER_TEST_SW_RENDER "Enable software rendering for Teide render tests" ON)
 option(TEIDE_CLANG_TIDY "Enable static analysis with clang-tidy" OFF)
 option(TEIDE_SANITIZER "Name of a sanitizer to enable, or OFF to disable" OFF)
-set_property(CACHE TEIDE_SANITIZER PROPERTY STRINGS "OFF;ASAN;UBSAN;TSAN")
+set_property(CACHE TEIDE_SANITIZER PROPERTY STRINGS "OFF;ASAN;UBSAN;MSAN")
 
 enable_testing()
 
