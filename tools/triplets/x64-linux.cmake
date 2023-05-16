@@ -6,7 +6,6 @@ set(VCPKG_LIBRARY_LINKAGE static)
 
 set(VCPKG_CMAKE_SYSTEM_NAME Linux)
 
-if(TEIDE_SANITIZER STREQUAL "UBSAN")
-    message(STATUS "UBSan detected; enabling RTTI")
-    set(ENABLE_RTTI ON)
+if(PORT MATCHES "glslang")
+    set(VCPKG_CMAKE_CONFIGURE_OPTIONS "-DENABLE_RTTI=ON")
 endif()
