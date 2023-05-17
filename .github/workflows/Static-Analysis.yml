@@ -33,7 +33,6 @@ jobs:
       if: steps.get-changes.outputs.changed-files != ''
       uses: ./.github/actions/install-dependencies
       with:
-        vcpkg-cache-key: cppcheck
         extra-packages: cppcheck
 
     - name: Configure CMake
@@ -65,7 +64,6 @@ jobs:
       if: steps.get-changes.outputs.changed-files != ''
       uses: ./.github/actions/install-dependencies
       with:
-        vcpkg-cache-key: clang-tidy
         extra-packages: clang-tidy-${{env.clang_tidy_version}}
 
     - name: Configure CMake
