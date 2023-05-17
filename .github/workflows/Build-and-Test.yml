@@ -135,7 +135,6 @@ jobs:
 
     env:
       job_name: Linux-${{matrix.buildtype}}-${{matrix.compiler}}${{matrix.name-suffix}}
-      ASAN_OPTIONS: detect_leaks=0 # Vulkan on Linux appears to leak memory, so disable leak checks
 
     steps:
     - name: Checkout
