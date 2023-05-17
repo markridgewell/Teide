@@ -95,11 +95,6 @@ void TransitionImageLayout(
 
 vk::UniqueCommandPool CreateCommandPool(uint32_t queueFamilyIndex, vk::Device device, const char* debugName = "");
 
-inline auto GetHandle()
-{
-    return []<class T, class Dispatch>(const vk::UniqueHandle<T, Dispatch>& uniqueHandle) { return uniqueHandle.get(); };
-}
-
 template <class Type, class Dispatch>
 void SetDebugName(vk::UniqueHandle<Type, Dispatch>& handle [[maybe_unused]], const char* debugName [[maybe_unused]])
 {
@@ -187,7 +182,7 @@ Format FromVulkan(vk::Format format);
 template <class Rep, class Period>
 constexpr uint64 Timeout(std::chrono::duration<Rep, Period> duration)
 {
-    return std::chrono::nanoseconds(duration).count();
+    return static_cast<uint64>(std::chrono::nanoseconds(duration).count());
 }
 
 template <class T>

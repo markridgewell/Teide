@@ -96,7 +96,7 @@ Teide::MeshData LoadMesh(const char* filename)
     for (const auto& face : std::span(mesh.mFaces, mesh.mNumFaces))
     {
         assert(face.mNumIndices == 3u);
-        for (const int index : std::span(face.mIndices, face.mNumIndices))
+        for (const uint32 index : std::span(face.mIndices, face.mNumIndices))
         {
             if (index > std::numeric_limits<uint16>::max())
             {

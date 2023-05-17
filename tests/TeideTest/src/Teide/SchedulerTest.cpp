@@ -146,25 +146,25 @@ TEST_F(SchedulerTest, ScheduleGpuWithReturn)
     ASSERT_THAT(result.has_value(), IsTrue());
     const auto& buffer = *result.value();
 
-    EXPECT_THAT(buffer.mappedData, Each(Eq(std::byte{1})));
+    EXPECT_THAT(buffer.mappedData, Each(Eq(byte{1})));
 }
 
 TEST_F(SchedulerTest, ScheduleGpuAcrossMultipleFrames)
 {
     auto scheduler = CreateScheduler();
 
-    constexpr std::uint32_t numFrames = 3;
-    for (std::uint8_t i = 0; i < numFrames; i++)
+    constexpr uint32 numFrames = 3;
+    for (uint32 i = 0; i < numFrames; i++)
     {
         auto buffer = CreateHostVisibleBuffer(4);
 
         const auto task = scheduler.ScheduleGpu([&](CommandBuffer& cmdBuffer) {
-            cmdBuffer->fillBuffer(buffer.buffer.get(), 0, 4, i | (i << 8) | (i << 16) | (i << 24));
+            cmdBuffer->fillBuffer(buffer.buffer.get(), 0u, 4u, i | (i << 8) | (i << 16) | (i << 24));
         });
 
         task.wait();
 
-        EXPECT_THAT(buffer.mappedData, Each(Eq(std::byte{i})));
+        EXPECT_THAT(buffer.mappedData, Each(Eq(static_cast<byte>(i))));
 
         scheduler.NextFrame();
     }

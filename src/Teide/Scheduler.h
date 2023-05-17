@@ -23,8 +23,8 @@ public:
         return m_cpuExecutor.LaunchTask(std::forward<F>(f));
     }
 
-    template <std::invocable<uint32_t> F>
-    auto Schedule(F&& f) -> TaskForCallable<F, uint32_t>
+    template <std::invocable<uint32> F>
+    auto Schedule(F&& f) -> TaskForCallable<F, uint32>
     {
         return m_cpuExecutor.LaunchTask(std::forward<F>(f));
     }

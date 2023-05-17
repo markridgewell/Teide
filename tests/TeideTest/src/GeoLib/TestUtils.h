@@ -13,11 +13,11 @@
 
 namespace Geo
 {
-template <class T, int M, int N>
+template <class T, Extent M, Extent N>
 std::ostream& operator<<(std::ostream& os, const Matrix<T, M, N>& m)
 {
     os << '(';
-    for (int i = 0; i < N - 1; i++)
+    for (Extent i = 0; i < N - 1; i++)
     {
         os << m[i] << ", ";
     }

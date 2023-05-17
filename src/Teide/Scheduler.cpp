@@ -78,7 +78,7 @@ Scheduler::CreateThreadResources(vk::Device device, uint32_t queueFamilyIndex, u
 {
     std::vector<ThreadResources> ret;
     ret.resize(numThreads);
-    int i = 0;
+    uint32 i = 0;
     std::ranges::generate(ret, [&] {
         ThreadResources res;
         res.commandPool = CreateCommandPool(queueFamilyIndex, device);
