@@ -29,13 +29,16 @@ function(target_enable_coverage target)
 endfunction()
 
 function(test_enable_coverage test)
-    get_test_property(${test} ENVIRONMENT environment)
-    list(APPEND environment "TEST_COVERAGE=1" "COVERAGE_DIR=${COVERAGE_DIR}")
+    set(environment "TEST_COVERAGE=1" "COVERAGE_DIR=${COVERAGE_DIR}")
     if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
         _find_opencppcoverage()
         list(APPEND environment "OPENCPPCOVERAGE=${OPENCPPCOVERAGE_PATH}")
     elseif(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
         list(APPEND environment "LLVM_PROFILE_FILE=${COVERAGE_DIR}/${target}-%p.profraw")
     endif()
-    set_tests_properties(${test} PROPERTIES ENVIRONMENT "${environment}" FIXTURES_REQUIRED CppCoverage)
+    set_property(
+        TEST ${test}
+        APPEND
+        PROPERTY ENVIRONMENT "${environment}")
+    set_property(TEST ${test} PROPERTY FIXTURES_REQUIRED CppCoverage)
 endfunction()
