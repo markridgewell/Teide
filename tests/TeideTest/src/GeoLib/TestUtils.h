@@ -17,11 +17,11 @@ template <class T, Extent M, Extent N>
 std::ostream& operator<<(std::ostream& os, const Matrix<T, M, N>& m)
 {
     os << '(';
-    for (Extent i = 0; i < N - 1; i++)
+    for (Extent i = 0; i < M - 1; i++)
     {
         os << m[i] << ", ";
     }
-    return os << m[N - 1] << ')';
+    return os << m[M - 1] << ')';
 }
 } // namespace Geo
 
