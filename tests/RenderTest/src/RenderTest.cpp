@@ -240,9 +240,7 @@ void RenderTest::RunTest(const SceneUniforms& sceneUniforms, Teide::RenderList r
 
     const auto output = m_renderer->RenderToTexture(RenderTarget, std::move(renderList)).colorTexture;
 
-    const auto result = m_renderer->CopyTextureData(output).get();
-    ASSERT_TRUE(result.has_value());
-    const Teide::TextureData& outputData = result.value();
+    const Teide::TextureData outputData = m_renderer->CopyTextureData(output).get();
 
     m_renderer->EndFrame();
     m_renderDoc.EndFrameCapture();
