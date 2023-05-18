@@ -12,7 +12,7 @@ runs:
     - name: Setup vcpkg
       uses: lukka/run-vcpkg@v11
       with:
-        vcpkgGitCommitId: '716c3524a54f1f50a25d16a4cdd360f5a7fcc150'
+        vcpkgGitCommitId: '7b30311f0a79d395bf2d933d82fec1853c6a4e77'
 
     - name: Setup Vulkan SDK
       uses: humbletim/setup-vulkan-sdk@v1.2.0

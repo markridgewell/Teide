@@ -23,8 +23,8 @@ public:
         return m_cpuExecutor.LaunchTask(std::forward<F>(f));
     }
 
-    template <std::invocable<uint32_t> F>
-    auto Schedule(F&& f) -> TaskForCallable<F, uint32_t>
+    template <std::invocable<uint32> F>
+    auto Schedule(F&& f) -> TaskForCallable<F, uint32>
     {
         return m_cpuExecutor.LaunchTask(std::forward<F>(f));
     }
@@ -36,7 +36,7 @@ public:
 
         using FRet = std::invoke_result_t<F, CommandBuffer&>;
 
-        auto promise = std::make_shared<Promise<FRet>>();
+        auto promise = std::make_shared<std::promise<FRet>>();
         auto future = promise->get_future();
 
         m_cpuExecutor.LaunchTask(
@@ -53,7 +53,7 @@ public:
                 {
                     FRet ret = std::forward<F>(f)(commandBuffer); // call the callback
                     auto callback = [promise = std::move(promise), ret = std::move(ret)]() mutable {
-                        promise->set_value(std::make_optional(std::move(ret)));
+                        promise->set_value(std::move(ret));
                     };
                     m_gpuExecutor.SubmitCommandBuffer(sequenceIndex, commandBuffer, std::move(callback));
                 }
@@ -69,7 +69,7 @@ public:
     }
 
     template <class T, std::invocable<T> F>
-    auto ScheduleAfter(std::shared_future<std::optional<T>> dependency, F&& f) -> TaskForCallable<F, T>
+    auto ScheduleAfter(Task<T> dependency, F&& f) -> TaskForCallable<F, T>
     {
         return m_cpuExecutor.LaunchTask(std::forward<F>(f), std::move(dependency));
     }
@@ -79,10 +79,10 @@ public:
     uint32 GetThreadCount() const { return static_cast<uint32>(m_frameResources.front().size()); }
     uint32 GetThreadIndex() const { return m_cpuExecutor.GetThreadIndex(); }
 
-    CommandBuffer& GetCommandBuffer(uint32_t threadIndex);
+    CommandBuffer& GetCommandBuffer(uint32 threadIndex);
 
 private:
-    static constexpr uint32_t MaxFramesInFlight = 2;
+    static constexpr uint32 MaxFramesInFlight = 2;
 
     struct ThreadResources
     {
@@ -94,7 +94,7 @@ private:
         void Reset(vk::Device device);
     };
 
-    static std::vector<ThreadResources> CreateThreadResources(vk::Device device, uint32_t queueFamilyIndex, uint32_t numThreads);
+    static std::vector<ThreadResources> CreateThreadResources(vk::Device device, uint32 queueFamilyIndex, uint32 numThreads);
 
     CpuExecutor m_cpuExecutor;
     GpuExecutor m_gpuExecutor;

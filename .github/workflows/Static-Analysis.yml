@@ -22,6 +22,7 @@ jobs:
       uses: actions/checkout@v3
       with:
         fetch-depth: ${{ github.event_name == 'pull_request' && 2 || 0 }}
+        submodules: true
 
     - name: Get changed files
       id: get-changes
@@ -53,6 +54,7 @@ jobs:
       uses: actions/checkout@v3
       with:
         fetch-depth: ${{ github.event_name == 'pull_request' && 2 || 0 }}
+        submodules: true
 
     - name: Get changed files
       id: get-changes
