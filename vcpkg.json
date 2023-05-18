@@ -4,43 +4,34 @@
   "dependencies": [
     {
       "name": "sdl2",
-      "version>=": "2.24.0",
       "features": [
         "vulkan"
       ]
     },
     {
-      "name": "fmt",
-      "version>=": "9.0.0"
+      "name": "fmt"
     },
     {
-      "name": "spdlog",
-      "version>=": "1.10.0"
+      "name": "spdlog"
     },
     {
-      "name": "glslang",
-      "version>=": "11.11.0"
+      "name": "glslang"
     },
     {
-      "name": "stb",
-      "version>=": "2021-09-10"
+      "name": "stb"
     },
     {
-      "name": "assimp",
-      "version>=": "5.2.5"
+      "name": "assimp"
     },
     {
-      "name": "gtest",
-      "version>=": "1.12.1"
+      "name": "gtest"
     },
     {
-      "name": "taskflow",
-      "version>=": "3.4.0"
+      "name": "taskflow"
     },
     {
-      "name": "function2",
-      "version>=": "4.2.2"
+      "name": "function2"
     }
   ],
-  "builtin-baseline": "716c3524a54f1f50a25d16a4cdd360f5a7fcc150"
+  "builtin-baseline": "7b30311f0a79d395bf2d933d82fec1853c6a4e77"
 }

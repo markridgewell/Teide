@@ -15,7 +15,7 @@ runs:
     - name: Setup vcpkg
       uses: lukka/run-vcpkg@v10
       with:
-        vcpkgGitCommitId: '716c3524a54f1f50a25d16a4cdd360f5a7fcc150'
+        vcpkgDirectory: '${{github.workspace}}/external/vcpkg'
         appendedCacheKey: ${{inputs.vcpkg-cache-key}}
 
     - name: Setup Vulkan SDK

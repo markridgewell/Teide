@@ -19,18 +19,6 @@ namespace Teide
 
 namespace detail
 {
-    template <class T>
-    struct PromiseHelper
-    {
-        using type = std::promise<std::optional<T>>;
-    };
-
-    template <>
-    struct PromiseHelper<void>
-    {
-        using type = std::promise<void>;
-    };
-
     template <class Ret, class Arg>
     struct UnaryFunctionHelper
     {
@@ -44,9 +32,6 @@ namespace detail
     };
 
 } // namespace detail
-
-template <class T = void>
-using Promise = typename detail::PromiseHelper<T>::type;
 
 template <class F, class... Args>
     requires std::invocable<F, Args...>
@@ -91,7 +76,7 @@ public:
     }
 
     template <class T, std::invocable<T> F>
-    auto LaunchTask(F&& f, std::shared_future<std::optional<T>> dependency) -> TaskForCallable<F, T>
+    auto LaunchTask(F&& f, Task<T> dependency) -> TaskForCallable<F, T>
     {
         const auto lock = std::scoped_lock(m_schedulerMutex);
 
@@ -131,7 +116,7 @@ private:
     {
         Task<InT> future;
         UnaryFunction<OutT, InT> callback;
-        Promise<OutT> promise;
+        std::promise<OutT> promise;
 
         OutT InvokeCallback()
             requires std::is_void_v<InT>
@@ -139,7 +124,7 @@ private:
             return callback();
         }
 
-        OutT InvokeCallback() { return callback(future.get().value()); }
+        OutT InvokeCallback() { return callback(future.get()); }
 
         void ExecuteTask()
             requires std::is_void_v<OutT>
