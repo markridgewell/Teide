@@ -5,6 +5,10 @@ include(CMakeDependentOption)
 include(tools/cmake/Build.cmake)
 include(tools/cmake/Cache.cmake)
 
+if(LINUX AND TEIDE_SANITIZER STREQUAL "UBSAN")
+    set(VCPKG_TARGET_TRIPLET "x64-linux-ubsan")
+endif()
+
 project(
     Teide
     VERSION 0.0.0
