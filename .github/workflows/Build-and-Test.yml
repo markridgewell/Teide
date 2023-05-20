@@ -59,12 +59,14 @@ jobs:
     - name: Build
       run: cmake --build --preset ${{matrix.preset}} --config ${{matrix.buildtype}}
 
-    - name: Save CMake output log
+    - name: Save CMake output logs
       if: failure()
       uses: actions/upload-artifact@v3
       with:
-        name: CMakeOutput-${{env.job_name}}
-        path: ./build/${{matrix.preset}}/CMakeFiles/CMakeOutput.log
+        name: CMakeLogs-${{env.job_name}}
+        path: |
+          ./build/${{matrix.preset}}/**/*.log
+          ./external/vcpkg/**/*.log
 
     - name: Test
       id: test
@@ -154,12 +156,14 @@ jobs:
     - name: Build
       run: cmake --build --preset ${{matrix.preset}} --config ${{matrix.buildtype}}
 
-    - name: Save CMake output log
+    - name: Save CMake output logs
       if: failure()
       uses: actions/upload-artifact@v3
       with:
-        name: CMakeOutput-${{env.job_name}}
-        path: ./build/${{matrix.preset}}/CMakeFiles/CMakeOutput.log
+        name: CMakeLogs-${{env.job_name}}
+        path: |
+          ./build/${{matrix.preset}}/**/*.log
+          ./external/vcpkg/**/*.log
 
     - name: Test
       id: test
