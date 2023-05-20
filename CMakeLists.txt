@@ -7,7 +7,10 @@ include(tools/cmake/Cache.cmake)
 
 if(LINUX AND TEIDE_SANITIZER STREQUAL "UBSAN")
     set(VCPKG_TARGET_TRIPLET "x64-linux-ubsan")
-elseif(LINUX AND TEIDE_SANITIZER STREQUAL "MSAN")
+elseif(
+    LINUX
+    AND CMAKE_CXX_COMPILER MATCHES "clang"
+    AND TEIDE_SANITIZER STREQUAL "MSAN")
     set(VCPKG_TARGET_TRIPLET "x64-linux-msan")
 endif()
 

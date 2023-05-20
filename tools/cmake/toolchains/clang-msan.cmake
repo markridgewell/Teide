@@ -1,0 +1,5 @@
+set(CMAKE_C_COMPILER clang)
+set(CMAKE_CXX_COMPILER clang++)
+set(VCPKG_C_FLAGS "-fsanitize=memory -ggdb -fno-omit-frame-pointer")
+set(VCPKG_CXX_FLAGS "-fsanitize=memory -ggdb -fno-omit-frame-pointer")
+set(VCPKG_LINKER_FLAGS "-fsanitize=memory")
