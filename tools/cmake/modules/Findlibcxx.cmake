@@ -8,7 +8,7 @@ set(INSTALL_COMMAND ninja -C build install-cxx install-cxxabi install-unwind)
 set(PREFIX "${CMAKE_CURRENT_BINARY_DIR}/libcxx")
 
 FetchContent_Declare(
-    libcxx-msan
+    libcxx
     GIT_REPOSITORY https://github.com/llvm/llvm-project
     GIT_TAG llvmorg-16.0.4
     GIT_SHALLOW TRUE
@@ -25,13 +25,18 @@ FetchContent_Declare(
     INSTALL_COMMAND
     ${INSTALL_COMMAND})
 
-FetchContent_MakeAvailable(libcxx-msan)
+FetchContent_MakeAvailable(libcxx)
 
-find_package_handle_standard_args(SwiftShader DEFAULT_MSG swiftshader_POPULATED swiftshader_SOURCE_DIR)
+find_package_handle_standard_args(libcxx DEFAULT_MSG libcxx_POPULATED)
 
-set(LIBCXX_INCLUDE_DIR
-    "${PREFIX}/include"
-    PARENT_SCOPE)
-set(LIBCXX_LIB_DIR
-    "${PREFIX}/lib"
-    PARENT_SCOPE)
+if(libcxx_POPULATED
+   AND EXISTS "${PREFIX}/include"
+   AND EXISTS "${PREFIX}/lib")
+    message(STATUS "libc++ found at ${PREFIX}")
+    set(LIBCXX_INCLUDE_DIR
+        "${PREFIX}/include"
+        PARENT_SCOPE)
+    set(LIBCXX_LIB_DIR
+        "${PREFIX}/lib"
+        PARENT_SCOPE)
+endif()
