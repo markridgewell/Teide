@@ -1,6 +1,6 @@
-set(CMAKE_ASM_COMPILER clang)
-set(CMAKE_C_COMPILER clang)
-set(CMAKE_CXX_COMPILER clang++)
+set(CMAKE_ASM_COMPILER clang-16)
+set(CMAKE_C_COMPILER clang-16)
+set(CMAKE_CXX_COMPILER clang++-16)
 
 string(APPEND CMAKE_C_FLAGS " -fsanitize=memory -ggdb -fno-omit-frame-pointer")
 string(APPEND CMAKE_CXX_FLAGS " -fsanitize=memory -ggdb -fno-omit-frame-pointer")
