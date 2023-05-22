@@ -5,7 +5,7 @@ set(BUILD_COMMAND ninja -C build cxx cxxabi unwind)
 set(TEST_COMMAND ninja -C build check-cxx check-cxxabi check-unwind)
 set(INSTALL_COMMAND ninja -C build install-cxx install-cxxabi install-unwind)
 
-set(PREFIX "${CMAKE_CURRENT_BINARY_DIR}/libcxx")
+set(PREFIX "${CMAKE_BINARY_DIR}/libcxx")
 
 FetchContent_Declare(
     libcxx
