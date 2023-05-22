@@ -1,28 +1,21 @@
 
 #include "RenderTest.h"
 
-#include <utility>
+#include <SDL.h>
+#include <SDL_image.h>
 
-#define STB_IMAGE_IMPLEMENTATION
-#define STB_IMAGE_WRITE_IMPLEMENTATION
-#include <stb_image.h>
-#ifdef __clang__
-#    pragma clang diagnostic push
-#    pragma clang diagnostic ignored "-Wmissing-field-initializers"
-#endif
-#include <stb_image_write.h>
-#ifdef __clang__
-#    pragma clang diagnostic pop
-#endif
+#include <utility>
 
 namespace
 {
 
 void WritePng(const std::filesystem::path& path, Geo::Size2i size, Teide::BytesView pixels)
 {
-    stbi_write_png(
-        path.string().c_str(), static_cast<int>(size.x), static_cast<int>(size.y), 4, pixels.data(),
-        static_cast<int>(size.x * 4));
+    SDL_Surface* surface
+        = SDL_CreateRGBSurfaceWithFormat(0, static_cast<int>(size.x), static_cast<int>(size.y), 32, SDL_PIXELFORMAT_RGBA32);
+    std::memcpy(surface->pixels, pixels.data(), pixels.size());
+    IMG_SavePNG(surface, path.string().c_str());
+    SDL_FreeSurface(surface);
 }
 
 struct ReadPngResult
@@ -33,18 +26,14 @@ struct ReadPngResult
 
 ReadPngResult ReadPng(const std::filesystem::path& path)
 {
-    int width = 0;
-    int height = 0;
-    Teide::uint8* rawData = stbi_load(path.string().c_str(), &width, &height, nullptr, 4);
-    if (rawData == nullptr)
-    {
-        return {};
-    }
-
     ReadPngResult result;
-    result.size = {static_cast<Teide::uint32>(width), static_cast<Teide::uint32>(height)};
-    result.pixels = Teide::ToBytes(std::span{rawData, Teide::usize{result.size.x} * Teide::usize{result.size.y} * 4});
-    stbi_image_free(rawData);
+    if (SDL_Surface* image = IMG_Load(path.string().c_str()))
+    {
+        result.size = {static_cast<Teide::uint32>(image->w), static_cast<Teide::uint32>(image->h)};
+        result.pixels = Teide::ToBytes(std::span{
+            static_cast<const Teide::uint8*>(image->pixels), Teide::usize{result.size.x} * Teide::usize{result.size.y} * 4});
+        SDL_FreeSurface(image);
+    }
     return result;
 }
 

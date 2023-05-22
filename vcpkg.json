@@ -9,6 +9,9 @@
       ]
     },
     {
+      "name": "sdl2-image"
+    },
+    {
       "name": "fmt"
     },
     {
@@ -16,9 +19,6 @@
     },
     {
       "name": "glslang"
-    },
-    {
-      "name": "stb"
     },
     {
       "name": "assimp"
