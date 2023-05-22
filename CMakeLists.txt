@@ -36,6 +36,10 @@ find_package(Taskflow REQUIRED)
 find_package(function2 REQUIRED)
 find_package(RenderDoc)
 
+if(NOT TARGET SDL2_image::SDL2_image)
+    add_library(SDL2_image::SDL2_image ALIAS SDL2_image::SDL2_image-static)
+endif()
+
 if(TEIDE_BUILD_TESTS)
     find_package(GTest REQUIRED)
     find_package(SwiftShader REQUIRED)
