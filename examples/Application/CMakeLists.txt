@@ -7,10 +7,10 @@ td_add_application(
     DEPS Teide
          SDL2::SDL2
          SDL2::SDL2main
+         SDL2_image::SDL2_image
          fmt::fmt
          spdlog::spdlog
-         assimp::assimp
-         Stb::Stb)
+         assimp::assimp)
 
 # Visual Studio debugging environment, from preset
 set_property(TARGET Application PROPERTY VS_DEBUGGER_COMMAND ${TEIDE_VS_DEBUGGER_COMMAND})
