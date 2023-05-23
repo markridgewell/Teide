@@ -54,9 +54,11 @@ private:
         return GetCurrentFrame().threadResources.at(threadIndex).viewParameters.emplace_back(std::move(p));
     }
 
-    void BuildCommandBuffer(
+    void RecordRenderListCommands(
         CommandBuffer& commandBuffer, const RenderList& renderList, vk::RenderPass renderPass,
         const RenderPassDesc& renderPassDesc, const Framebuffer& framebuffer);
+    void RecordRenderObjectCommands(
+        CommandBuffer& commandBufferWrapper, const RenderObject& obj, const RenderPassDesc& renderPassDesc) const;
 
     std::optional<SurfaceImage> AddSurfaceToPresent(VulkanSurface& surface);
 
