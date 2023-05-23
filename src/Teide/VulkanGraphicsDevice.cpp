@@ -732,7 +732,7 @@ BufferPtr VulkanGraphicsDevice::CreateBuffer(const BufferData& data, const char*
     auto task = m_scheduler.ScheduleGpu([=, this](CommandBuffer& cmdBuffer) { //
         return CreateBuffer(data, name, cmdBuffer);
     });
-    return task.get().value_or(nullptr);
+    return task.get();
 }
 
 SurfacePtr VulkanGraphicsDevice::CreateSurface(vk::UniqueSurfaceKHR surface, SDL_Window* window, bool multisampled)
@@ -805,7 +805,7 @@ TexturePtr VulkanGraphicsDevice::CreateTexture(const TextureData& data, const ch
     auto task = m_scheduler.ScheduleGpu([=, this](CommandBuffer& cmdBuffer) { //
         return CreateTexture(data, name, cmdBuffer);
     });
-    return task.get().value_or(nullptr);
+    return task.get();
 }
 
 TexturePtr VulkanGraphicsDevice::CreateTexture(const TextureData& data, const char* name, CommandBuffer& cmdBuffer)
@@ -834,7 +834,7 @@ TexturePtr VulkanGraphicsDevice::CreateRenderableTexture(const TextureData& data
     auto task = m_scheduler.ScheduleGpu([=, this](CommandBuffer& cmdBuffer) { //
         return CreateRenderableTexture(data, name, cmdBuffer);
     });
-    return task.get().value_or(nullptr);
+    return task.get();
 }
 
 TexturePtr VulkanGraphicsDevice::CreateRenderableTexture(const TextureData& data, const char* name, CommandBuffer& cmdBuffer)
@@ -865,7 +865,7 @@ MeshPtr VulkanGraphicsDevice::CreateMesh(const MeshData& data, const char* name)
     auto task = m_scheduler.ScheduleGpu([data, name, this](CommandBuffer& cmdBuffer) { //
         return CreateMesh(data, name, cmdBuffer);
     });
-    return task.get().value_or(nullptr);
+    return task.get();
 }
 
 MeshPtr VulkanGraphicsDevice::CreateMesh(const MeshData& data, const char* name, CommandBuffer& cmdBuffer)
@@ -1090,7 +1090,7 @@ ParameterBlockPtr VulkanGraphicsDevice::CreateParameterBlock(const ParameterBloc
     auto task = m_scheduler.ScheduleGpu([=, this](CommandBuffer& cmdBuffer) {
         return CreateParameterBlock(data, name, cmdBuffer, m_mainDescriptorPool.get());
     });
-    return task.get().value_or(nullptr);
+    return task.get();
 }
 
 ParameterBlockPtr VulkanGraphicsDevice::CreateParameterBlock(

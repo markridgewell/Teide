@@ -27,9 +27,7 @@ TEST(TextureTest, GenerateMipmaps)
 
     auto renderer = device->CreateRenderer(nullptr);
     auto task = renderer->CopyTextureData(texture);
-    const auto result = task.get();
-    ASSERT_THAT(result.has_value(), IsTrue());
-    const TextureData& data = result.value();
+    const TextureData& data = task.get();
 
     const auto expectedPixels = HexToBytes("80 00 00 80 00 80 00 80 80 00 80 80 00 00 80 80" // Mip 0
                                            "40 20 40 80"                                     // Mip 1

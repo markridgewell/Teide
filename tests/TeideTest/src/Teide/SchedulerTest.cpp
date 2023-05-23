@@ -75,9 +75,8 @@ TEST_F(SchedulerTest, ScheduleNoArguments)
     task.wait();
     EXPECT_THAT(task.wait_for(0s), Eq(std::future_status::ready));
 
-    const auto& result = task.get();
-    ASSERT_THAT(result.has_value(), IsTrue());
-    EXPECT_THAT(*result, Eq(42));
+    const auto result = task.get();
+    EXPECT_THAT(result, Eq(42));
 }
 
 TEST_F(SchedulerTest, ScheduleWorkerIndexArgument)
@@ -96,9 +95,8 @@ TEST_F(SchedulerTest, ScheduleWorkerIndexArgument)
 
     EXPECT_THAT(storage, Lt(2u));
 
-    const auto& result = task2.get();
-    ASSERT_THAT(result.has_value(), IsTrue());
-    EXPECT_THAT(*result, IsTrue());
+    const auto result = task2.get();
+    EXPECT_THAT(result, IsTrue());
 }
 
 TEST_F(SchedulerTest, ScheduleChain)
@@ -113,7 +111,7 @@ TEST_F(SchedulerTest, ScheduleChain)
 
     scheduler.WaitForTasks();
 
-    const auto result = task3.get().value_or(-1);
+    const auto result = task3.get();
     EXPECT_THAT(result, Eq(24));
     EXPECT_THAT(interm, ElementsAre(42, 21, 84));
 }
@@ -143,8 +141,7 @@ TEST_F(SchedulerTest, ScheduleGpuWithReturn)
     });
 
     const auto& result = task.get();
-    ASSERT_THAT(result.has_value(), IsTrue());
-    const auto& buffer = *result.value();
+    const auto& buffer = *result;
 
     EXPECT_THAT(buffer.mappedData, Each(Eq(byte{1})));
 }

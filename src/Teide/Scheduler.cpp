@@ -45,7 +45,7 @@ void Scheduler::ThreadResources::Reset(vk::Device device)
     }
 }
 
-CommandBuffer& Scheduler::GetCommandBuffer(uint32_t threadIndex)
+CommandBuffer& Scheduler::GetCommandBuffer(uint32 threadIndex)
 {
     auto& threadResources = m_frameResources[m_frameNumber][threadIndex];
 
@@ -74,7 +74,7 @@ CommandBuffer& Scheduler::GetCommandBuffer(uint32_t threadIndex)
 }
 
 std::vector<Scheduler::ThreadResources>
-Scheduler::CreateThreadResources(vk::Device device, uint32_t queueFamilyIndex, uint32_t numThreads)
+Scheduler::CreateThreadResources(vk::Device device, uint32 queueFamilyIndex, uint32 numThreads)
 {
     std::vector<ThreadResources> ret;
     ret.resize(numThreads);
