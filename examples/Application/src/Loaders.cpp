@@ -6,12 +6,13 @@
 
 #include "Teide/Buffer.h"
 
+#include <SDL.h>
+#include <SDL_image.h>
 #include <assimp/Importer.hpp>
 #include <assimp/mesh.h>
 #include <assimp/postprocess.h>
 #include <assimp/scene.h>
 #include <fmt/format.h>
-#include <stb_image.h>
 
 namespace
 {
@@ -96,7 +97,7 @@ Teide::MeshData LoadMesh(const char* filename)
     for (const auto& face : std::span(mesh.mFaces, mesh.mNumFaces))
     {
         assert(face.mNumIndices == 3u);
-        for (const int index : std::span(face.mIndices, face.mNumIndices))
+        for (const uint32 index : std::span(face.mIndices, face.mNumIndices))
         {
             if (index > std::numeric_limits<uint16>::max())
             {
@@ -116,29 +117,27 @@ Teide::TextureData LoadTexture(const char* filename)
         return LoadDefaultTexture();
     }
 
-    struct StbiDeleter
+    struct SurfaceDeleter
     {
-        void operator()(stbi_uc* p) { stbi_image_free(p); }
+        void operator()(SDL_Surface* p) { SDL_FreeSurface(p); }
     };
-    using StbiPtr = std::unique_ptr<stbi_uc, StbiDeleter>;
+    using SurfacePtr = std::unique_ptr<SDL_Surface, SurfaceDeleter>;
 
     // Load image
-    int width = 0;
-    int height = 0;
-    int channels = 0;
-    const auto pixels = StbiPtr(stbi_load(filename, &width, &height, &channels, STBI_rgb_alpha));
-    if (!pixels)
+    SurfacePtr image{IMG_Load(filename)};
+    if (!image)
     {
         throw ApplicationError(fmt::format("Error loading texture '{}'", filename));
     }
 
-    const auto imageSize = static_cast<std::size_t>(width) * height * 4;
+    using namespace Teide::BasicTypes;
 
     return {
-        .size = {static_cast<uint32_t>(width), static_cast<uint32_t>(height)},
+        .size = {static_cast<uint32>(image->w), static_cast<uint32>(image->h)},
         .format = Teide::Format::Byte4Srgb,
-        .mipLevelCount = static_cast<uint32_t>(std::floor(std::log2(std::max(width, height)))) + 1,
+        .mipLevelCount = static_cast<uint32>(std::floor(std::log2(std::max(image->w, image->h)))) + 1,
         .samplerState = {.magFilter = Teide::Filter::Linear, .minFilter = Teide::Filter::Linear},
-        .pixels = Teide::ToBytes(std::span(pixels.get(), imageSize)),
+        .pixels = Teide::ToBytes(std::span{
+            static_cast<const uint8*>(image->pixels), static_cast<usize>(image->w) * static_cast<usize>(image->h) * 4}),
     };
 }
