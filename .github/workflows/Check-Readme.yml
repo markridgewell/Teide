@@ -34,8 +34,6 @@ jobs:
 
     - name: Install dependencies
       uses: ./.github/actions/install-dependencies
-      with:
-        preset: check_readme-${{matrix.preset}}
 
     - name: Check readme
       run: python ${{github.workspace}}/tools/check_readme.py
