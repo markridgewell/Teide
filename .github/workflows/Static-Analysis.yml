@@ -84,4 +84,5 @@ jobs:
       if: failure() && github.event_name == 'pull_request'
       uses: platisd/clang-tidy-pr-comments@v1
       with:
-        clang_tidy_fixes: build/${{env.preset}}/clang-tidy-fixes.yaml
+        github_token: ${{secrets.GITHUB_TOKEN}}
+        clang_tidy_fixes: ${{github.workspace}}/build/${{env.preset}}/clang-tidy-fixes.yaml
