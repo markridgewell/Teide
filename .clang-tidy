@@ -30,3 +30,6 @@ Checks: >-
   -readability-implicit-bool-conversion
 
 WarningsAsErrors: '*,-clang-diagnostic-*'
+
+CheckOptions:
+  readability-function-cognitive-complexity.IgnoreMacros: true
