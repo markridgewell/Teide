@@ -38,6 +38,32 @@ namespace
         };
     }
 
+    std::vector<vk::ClearValue> MakeClearValues(const Framebuffer& framebuffer, const ClearState& clearState)
+    {
+        auto clearValues = std::vector<vk::ClearValue>();
+        if (framebuffer.layout.colorFormat.has_value())
+        {
+            if (clearState.colorValue.has_value())
+            {
+                clearValues.push_back(vk::ClearColorValue{*clearState.colorValue});
+            }
+            else
+            {
+                clearValues.emplace_back();
+            }
+        }
+        if (framebuffer.layout.depthStencilFormat.has_value())
+        {
+            clearValues.emplace_back(vk::ClearDepthStencilValue{
+                .depth = clearState.depthValue.value_or(1.0f),
+                .stencil = clearState.stencilValue.value_or(0),
+            });
+        };
+        return clearValues;
+    }
+
+    constexpr auto NotNull = [](const auto& handle) { return static_cast<bool>(handle); };
+
 } // namespace
 
 VulkanRenderer::VulkanRenderer(VulkanGraphicsDevice& device, const QueueFamilies& queueFamilies, ShaderEnvironmentPtr shaderEnvironment) :
@@ -235,7 +261,7 @@ RenderToTextureResult VulkanRenderer::RenderToTexture(const RenderTargetInfo& re
         const auto framebuffer
             = m_device.CreateFramebuffer(renderPass, renderTarget.framebufferLayout, renderTarget.size, attachments);
 
-        BuildCommandBuffer(commandBuffer, renderList, renderPass, renderPassDesc, framebuffer);
+        RecordRenderListCommands(commandBuffer, renderList, renderPass, renderPassDesc, framebuffer);
 
         if (color && renderTarget.captureColor)
         {
@@ -272,7 +298,7 @@ void VulkanRenderer::RenderToSurface(Surface& surface, RenderList renderList)
 
             const auto renderPass = m_device.CreateRenderPass(framebuffer.layout, renderList.clearState);
 
-            BuildCommandBuffer(commandBuffer, renderList, renderPass, renderPassDesc, framebuffer);
+            RecordRenderListCommands(commandBuffer, renderList, renderPass, renderPassDesc, framebuffer);
 
             commandBuffer.Get()->end();
 
@@ -327,7 +353,7 @@ Task<TextureData> VulkanRenderer::CopyTextureData(TexturePtr texture)
     });
 }
 
-void VulkanRenderer::BuildCommandBuffer(
+void VulkanRenderer::RecordRenderListCommands(
     CommandBuffer& commandBufferWrapper, const RenderList& renderList, vk::RenderPass renderPass,
     const RenderPassDesc& renderPassDesc, const Framebuffer& framebuffer)
 {
@@ -335,25 +361,7 @@ void VulkanRenderer::BuildCommandBuffer(
 
     const vk::CommandBuffer commandBuffer = commandBufferWrapper;
 
-    auto clearValues = std::vector<vk::ClearValue>();
-    if (framebuffer.layout.colorFormat.has_value())
-    {
-        if (renderList.clearState.colorValue.has_value())
-        {
-            clearValues.push_back(vk::ClearColorValue{*renderList.clearState.colorValue});
-        }
-        else
-        {
-            clearValues.emplace_back();
-        }
-    }
-    if (framebuffer.layout.depthStencilFormat.has_value())
-    {
-        clearValues.emplace_back(vk::ClearDepthStencilValue{
-            .depth = renderList.clearState.depthValue.value_or(1.0f),
-            .stencil = renderList.clearState.stencilValue.value_or(0),
-        });
-    };
+    const auto clearValues = MakeClearValues(framebuffer, renderList.clearState);
 
     const vk::RenderPassBeginInfo renderPassBegin = {
         .renderPass = renderPass,
@@ -384,68 +392,65 @@ void VulkanRenderer::BuildCommandBuffer(
 
     if (!renderList.objects.empty())
     {
-        std::vector<vk::DescriptorSet> descriptorSets;
-        uint32 first = 0;
+        const auto descriptorSets = std::array{
+            GetDescriptorSet(GetSceneParameterBlock().get()),
+            GetDescriptorSet(viewParameters.get()),
+        };
+        const auto firstActiveSet
+            = static_cast<uint32>(std::distance(descriptorSets.begin(), std::ranges::find_if(descriptorSets, NotNull)));
+        const auto activeDescriptorSets = std::span{descriptorSets}.subspan(firstActiveSet);
 
-        if (const auto set = GetDescriptorSet(GetSceneParameterBlock().get()))
-        {
-            descriptorSets.push_back(set);
-        }
-        else
-        {
-            first++;
-        }
-
-        if (const auto set = GetDescriptorSet(viewParameters.get()))
-        {
-            descriptorSets.push_back(set);
-        }
-
-        if (!descriptorSets.empty())
+        if (!activeDescriptorSets.empty())
         {
             const auto& firstPipeline = m_device.GetImpl(*renderList.objects.front().pipeline);
             commandBuffer.bindDescriptorSets(
-                vk::PipelineBindPoint::eGraphics, firstPipeline.layout, first, descriptorSets, {});
+                vk::PipelineBindPoint::eGraphics, firstPipeline.layout, firstActiveSet, activeDescriptorSets, {});
         }
 
         for (const RenderObject& obj : renderList.objects)
         {
-            const auto& pipeline = m_device.GetImpl(*obj.pipeline);
-
-            commandBufferWrapper.AddParameterBlock(obj.materialParameters);
-
-            if (obj.materialParameters)
-            {
-                commandBuffer.bindDescriptorSets(
-                    vk::PipelineBindPoint::eGraphics, pipeline.layout, 2,
-                    GetDescriptorSet(obj.materialParameters.get()), {});
-            }
-
-            commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, pipeline.GetPipeline(renderPassDesc));
-
-            const auto& meshImpl = m_device.GetImpl(*obj.mesh);
-            commandBuffer.bindVertexBuffers(0, meshImpl.vertexBuffer->buffer.get(), vk::DeviceSize{0});
-
-            if (pipeline.shader->objectPblockLayout && pipeline.shader->objectPblockLayout->pushConstantRange.has_value())
-            {
-                commandBuffer.pushConstants(
-                    pipeline.layout, pipeline.shader->objectPblockLayout->uniformsStages, 0,
-                    size32(obj.objectParameters.uniformData), data(obj.objectParameters.uniformData));
-            }
-
-            if (meshImpl.indexBuffer)
-            {
-                commandBuffer.bindIndexBuffer(meshImpl.indexBuffer->buffer.get(), vk::DeviceSize{0}, meshImpl.indexType);
-                commandBuffer.drawIndexed(meshImpl.indexCount, 1, 0, 0, 0);
-            }
-            else
-            {
-                commandBuffer.draw(meshImpl.vertexCount, 1, 0, 0);
-            }
+            RecordRenderObjectCommands(commandBufferWrapper, obj, renderPassDesc);
         }
     }
 
     commandBuffer.endRenderPass();
+}
+
+void VulkanRenderer::RecordRenderObjectCommands(
+    CommandBuffer& commandBufferWrapper, const RenderObject& obj, const RenderPassDesc& renderPassDesc) const
+{
+    const vk::CommandBuffer commandBuffer = commandBufferWrapper;
+    const auto& pipeline = m_device.GetImpl(*obj.pipeline);
+
+    commandBufferWrapper.AddParameterBlock(obj.materialParameters);
+
+    if (obj.materialParameters)
+    {
+        commandBuffer.bindDescriptorSets(
+            vk::PipelineBindPoint::eGraphics, pipeline.layout, 2, GetDescriptorSet(obj.materialParameters.get()), {});
+    }
+
+    commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, pipeline.GetPipeline(renderPassDesc));
+
+    const auto& meshImpl = m_device.GetImpl(*obj.mesh);
+    commandBuffer.bindVertexBuffers(0, meshImpl.vertexBuffer->buffer.get(), vk::DeviceSize{0});
+
+    if (pipeline.shader->objectPblockLayout && pipeline.shader->objectPblockLayout->pushConstantRange.has_value())
+    {
+        commandBuffer.pushConstants(
+            pipeline.layout, pipeline.shader->objectPblockLayout->uniformsStages, 0,
+            size32(obj.objectParameters.uniformData), data(obj.objectParameters.uniformData));
+    }
+
+    if (meshImpl.indexBuffer)
+    {
+        commandBuffer.bindIndexBuffer(meshImpl.indexBuffer->buffer.get(), vk::DeviceSize{0}, meshImpl.indexType);
+        commandBuffer.drawIndexed(meshImpl.indexCount, 1, 0, 0, 0);
+    }
+    else
+    {
+        commandBuffer.draw(meshImpl.vertexCount, 1, 0, 0);
+    }
 }
 
 std::optional<SurfaceImage> VulkanRenderer::AddSurfaceToPresent(VulkanSurface& surface)
