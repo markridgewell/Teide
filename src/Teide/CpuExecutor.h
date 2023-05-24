@@ -55,11 +55,11 @@ public:
         return LaunchTaskImpl(std::forward<F>(f));
     }
 
-    template <std::invocable<uint32_t> F>
-    auto LaunchTask(F&& f) -> TaskForCallable<F, uint32_t>
+    template <std::invocable<uint32> F>
+    auto LaunchTask(F&& f) -> TaskForCallable<F, uint32>
     {
         return LaunchTaskImpl([this, f = std::forward<F>(f)]() mutable {
-            const uint32_t taskIndex = m_executor.this_worker_id();
+            const auto taskIndex = static_cast<uint32>(m_executor.this_worker_id());
             return std::forward<F>(f)(taskIndex);
         });
     }
@@ -86,7 +86,7 @@ public:
         return future;
     }
 
-    uint32 GetThreadIndex() const { return m_executor.this_worker_id(); }
+    uint32 GetThreadIndex() const { return static_cast<uint32>(m_executor.this_worker_id()); }
 
     void WaitForTasks();
 

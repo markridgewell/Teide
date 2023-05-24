@@ -52,7 +52,7 @@ namespace
     template <class F>
     std::optional<uint32> FindQueueFamily(std::span<const vk::QueueFamilyProperties> queueFamilies, const F& predicate)
     {
-        int i = 0;
+        uint32 i = 0;
         for (const auto& queueFamily : queueFamilies)
         {
             if (predicate(i, queueFamily))
@@ -70,7 +70,7 @@ namespace
 
         QueueFamilies ret;
 
-        if (const auto index = FindQueueFamily(queueFamilies, [](int, const vk::QueueFamilyProperties& qf) {
+        if (const auto index = FindQueueFamily(queueFamilies, [](uint32, const vk::QueueFamilyProperties& qf) {
                 return (qf.queueFlags & vk::QueueFlagBits::eGraphics) != vk::QueueFlagBits{};
             }))
         {
@@ -81,7 +81,7 @@ namespace
             return std::nullopt;
         }
 
-        if (const auto index = FindQueueFamily(queueFamilies, [](int, const vk::QueueFamilyProperties& qf) {
+        if (const auto index = FindQueueFamily(queueFamilies, [](uint32, const vk::QueueFamilyProperties& qf) {
                 return (qf.queueFlags & vk::QueueFlagBits::eTransfer) != vk::QueueFlagBits{};
             }))
         {
@@ -94,7 +94,7 @@ namespace
 
         if (surface)
         {
-            if (const auto index = FindQueueFamily(queueFamilies, [&](int i, const vk::QueueFamilyProperties&) {
+            if (const auto index = FindQueueFamily(queueFamilies, [&](uint32 i, const vk::QueueFamilyProperties&) {
                     return physicalDevice.getSurfaceSupportKHR(i, surface);
                 }))
             {

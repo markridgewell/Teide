@@ -288,7 +288,7 @@ void VulkanRenderer::RenderToSurface(Surface& surface, RenderList renderList)
 
         const auto framebuffer = surfaceImage.framebuffer;
 
-        m_device.GetScheduler().Schedule([=, this, renderList = std::move(renderList)](uint32_t taskIndex) {
+        m_device.GetScheduler().Schedule([=, this, renderList = std::move(renderList)](uint32 taskIndex) {
             CommandBuffer& commandBuffer = m_device.GetScheduler().GetCommandBuffer(taskIndex);
 
             const RenderPassDesc renderPassDesc = {

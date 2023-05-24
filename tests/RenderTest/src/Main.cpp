@@ -10,7 +10,7 @@
 class ArgParser
 {
 public:
-    explicit ArgParser(int argc, char** argv) : m_args{std::span(argv, argc).subspan<1>()} {}
+    explicit ArgParser(int argc, char** argv) : m_args{std::span(argv, static_cast<std::size_t>(argc)).subspan<1>()} {}
 
     auto GetOption(std::initializer_list<std::string_view> aliases) -> bool
     {
