@@ -24,11 +24,11 @@ uint32 GetFormatElementSize(Format format)
     {
         case Format::Unknown: return 0;
 
-        case Format::Byte1: return ByteSize * 1;
+        case Format::Byte1:
         case Format::Byte1Norm: return ByteSize * 1;
-        case Format::Short1: return ShortSize * 1;
+        case Format::Short1:
         case Format::Short1Norm: return ShortSize * 1;
-        case Format::Ushort1: return UshortSize * 1;
+        case Format::Ushort1:
         case Format::Ushort1Norm: return UshortSize * 1;
         case Format::Half1: return HalfSize * 1;
         case Format::Int1: return IntSize * 1;

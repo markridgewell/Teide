@@ -83,7 +83,7 @@ ParameterBlockLayoutData BuildParameterBlockLayout(const ParameterBlockDesc& pbl
     ParameterBlockLayoutData bindings;
     bindings.uniformsStages = pblock.uniformsStages;
 
-    for (auto& parameter : pblock.parameters)
+    for (const auto& parameter : pblock.parameters)
     {
         using enum ShaderVariableType::BaseType;
         switch (parameter.type.baseType)
