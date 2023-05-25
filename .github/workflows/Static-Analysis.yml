@@ -70,7 +70,7 @@ jobs:
 
     - name: Configure CMake
       if: steps.get-changes.outputs.changed-files != ''
-      run: cmake --preset make -DTEIDE_CLANG_TIDY=ON
+      run: cmake --preset ${{env.preset}} -DTEIDE_CLANG_TIDY=ON
 
     - name: Run clang-tidy
       if: steps.get-changes.outputs.changed-files != ''
@@ -78,4 +78,11 @@ jobs:
         CLANG_TIDY_SOURCES: ${{steps.get-changes.outputs.changed-files}}
       run: |
         sudo ln -sf `which clang-tidy-${{env.clang_tidy_version}}` /usr/bin/clang-tidy
-        cd build/make && make ClangTidy
+        cmake --build --preset ${{env.preset}} --target ClangTidy
+
+    - name: Report issues as PR comments
+      if: failure() && github.event_name == 'pull_request'
+      uses: platisd/clang-tidy-pr-comments@v1
+      with:
+        github_token: ${{secrets.GITHUB_TOKEN}}
+        clang_tidy_fixes: ${{github.workspace}}/build/${{env.preset}}/clang-tidy-fixes.yaml
