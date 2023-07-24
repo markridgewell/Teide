@@ -26,6 +26,8 @@ runs:
       shell: pwsh
       run: |
         choco install --ignorepackageexitcodes ${{inputs.extra-packages}}
+        $env:ChocolateyInstall = Convert-Path "$((Get-Command choco).Path)\..\.."
+        Import-Module "$env:ChocolateyInstall\helpers\chocolateyProfile.psm1"
         refreshenv
         echo PATH:
         echo $env:path -split ";"
