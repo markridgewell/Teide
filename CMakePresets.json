@@ -14,6 +14,9 @@
       "cacheVariables": {
         "VCPKG_INSTALL_OPTIONS": "--no-print-usage",
         "CMAKE_OPTIMIZE_DEPENDENCIES": "ON"
+      },
+      "environment": {
+        "VCPKG_ROOT": "${sourceDir}/external/vcpkg"
       }
     },
     {
