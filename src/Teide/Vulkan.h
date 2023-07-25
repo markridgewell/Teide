@@ -12,9 +12,19 @@
 
 #include <chrono>
 #include <span>
+#include <string_view>
 #include <unordered_set>
 
 struct SDL_Window;
+
+template <std::size_t N>
+struct fmt::formatter<vk::ArrayWrapper1D<char, N>> : formatter<std::string_view>
+{
+    auto format(const vk::ArrayWrapper1D<char, N>& value, format_context& ctx) const -> format_context::iterator
+    {
+        return fmt::format_to(ctx.out(), "{}", std::string_view(value.data(), value.size()));
+    }
+};
 
 namespace Teide
 {
