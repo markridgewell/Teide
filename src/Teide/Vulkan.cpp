@@ -108,7 +108,6 @@ namespace
             case ePerformance: return "[performance] ";
             default: return "";
         }
-        Unreachable();
     }
 
     spdlog::level::level_enum GetLogLevel(vk::DebugUtilsMessageSeverityFlagBitsEXT severity)
