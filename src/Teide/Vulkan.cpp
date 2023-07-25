@@ -104,12 +104,10 @@ namespace
         using enum vk::DebugUtilsMessageTypeFlagBitsEXT;
         switch (type)
         {
-            case eGeneral: return "";
             case eValidation: return "[validation] ";
             case ePerformance: return "[performance] ";
-            case eDeviceAddressBinding: return "";
+            default: return "";
         }
-        Unreachable();
     }
 
     spdlog::level::level_enum GetLogLevel(vk::DebugUtilsMessageSeverityFlagBitsEXT severity)
