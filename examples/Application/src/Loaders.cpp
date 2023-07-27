@@ -16,6 +16,12 @@
 
 namespace
 {
+struct SurfaceDeleter
+{
+    void operator()(SDL_Surface* p) { SDL_FreeSurface(p); }
+};
+using SurfacePtr = std::unique_ptr<SDL_Surface, SurfaceDeleter>;
+
 Teide::TextureData LoadDefaultTexture()
 {
     // Create default checkerboard texture
@@ -112,16 +118,12 @@ Teide::MeshData LoadMesh(const char* filename)
 
 Teide::TextureData LoadTexture(const char* filename)
 {
+    using namespace Teide::BasicTypes;
+
     if (!filename)
     {
         return LoadDefaultTexture();
     }
-
-    struct SurfaceDeleter
-    {
-        void operator()(SDL_Surface* p) { SDL_FreeSurface(p); }
-    };
-    using SurfacePtr = std::unique_ptr<SDL_Surface, SurfaceDeleter>;
 
     // Load image
     SurfacePtr image{IMG_Load(filename)};
@@ -130,7 +132,12 @@ Teide::TextureData LoadTexture(const char* filename)
         throw ApplicationError(fmt::format("Error loading texture '{}'", filename));
     }
 
-    using namespace Teide::BasicTypes;
+    const auto targetFormatEnum = SDL_PIXELFORMAT_ABGR8888;
+    if (image->format->format != targetFormatEnum)
+    {
+        image.reset(SDL_ConvertSurfaceFormat(image.get(), SDL_PIXELFORMAT_ABGR8888, 0));
+    }
+    assert(image->format->format == targetFormatEnum);
 
     return {
         .size = {static_cast<uint32>(image->w), static_cast<uint32>(image->h)},
