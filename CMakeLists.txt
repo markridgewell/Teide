@@ -66,10 +66,15 @@ if(TEIDE_BUILD_EXAMPLES)
 endif()
 
 if(TEIDE_BUILD_TESTS)
+    find_package(GTest REQUIRED)
+    find_package(SwiftShader REQUIRED)
+
     add_subdirectory(tests)
 endif()
 
 if(TEIDE_BUILD_BENCHMARKS)
+    find_package(benchmark REQUIRED)
+
     add_subdirectory(benchmarks)
 endif()
 
