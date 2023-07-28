@@ -32,6 +32,17 @@ void Scheduler::NextFrame()
     }
 }
 
+void Scheduler::WaitForCpu()
+{
+    m_cpuExecutor.WaitForTasks();
+}
+
+void Scheduler::WaitForGpu()
+{
+    WaitForCpu();
+    m_gpuExecutor.WaitForTasks();
+}
+
 void Scheduler::ThreadResources::Reset(vk::Device device)
 {
     device.resetCommandPool(commandPool.get());

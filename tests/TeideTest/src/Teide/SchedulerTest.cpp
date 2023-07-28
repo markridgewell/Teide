@@ -109,7 +109,7 @@ TEST_F(SchedulerTest, ScheduleChain)
     const auto task2 = scheduler.ScheduleAfter(task1, [&] { return interm[2] = interm[1] * 4; });
     const auto task3 = scheduler.ScheduleAfter(task2, [&](int prev) { return prev - 60; });
 
-    scheduler.WaitForTasks();
+    scheduler.WaitForCpu();
 
     const auto result = task3.get();
     EXPECT_THAT(result, Eq(24));

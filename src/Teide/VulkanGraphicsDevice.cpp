@@ -262,7 +262,7 @@ namespace
         auto stagingBuffer = std::make_shared<VulkanBuffer>(CreateBufferUninitialized(
             data.size(), vk::BufferUsageFlagBits::eTransferSrc,
             vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent, device, allocator));
-        cmdBuffer.AddBuffer(stagingBuffer);
+        cmdBuffer.AddReference(stagingBuffer);
         SetBufferData(*stagingBuffer, data);
 
         // Create device-local buffer

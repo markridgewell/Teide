@@ -41,6 +41,9 @@ public:
 
         m_cpuExecutor.LaunchTask(
             [this, sequenceIndex, f = std::forward<F>(f), promise = std::move(promise)](uint32 taskIndex) mutable {
+                // TODO: This is dangerous as we're passing references to an asynchronous callback.
+                // If the GPU executor is destroyed while this task is still alive it will crash.
+                // Try to refactor so this isn't possible!
                 CommandBuffer& commandBuffer = GetCommandBuffer(taskIndex);
 
                 if constexpr (std::is_void_v<FRet>)
@@ -74,7 +77,8 @@ public:
         return m_cpuExecutor.LaunchTask(std::forward<F>(f), std::move(dependency));
     }
 
-    void WaitForTasks() { m_cpuExecutor.WaitForTasks(); }
+    void WaitForCpu();
+    void WaitForGpu();
 
     uint32 GetThreadCount() const { return static_cast<uint32>(m_frameResources.front().size()); }
     uint32 GetThreadIndex() const { return m_cpuExecutor.GetThreadIndex(); }
@@ -96,12 +100,11 @@ private:
 
     static std::vector<ThreadResources> CreateThreadResources(vk::Device device, uint32 queueFamilyIndex, uint32 numThreads);
 
-    CpuExecutor m_cpuExecutor;
-    GpuExecutor m_gpuExecutor;
-
     vk::Device m_device;
     uint32 m_frameNumber = 0;
 
+    CpuExecutor m_cpuExecutor;
+    GpuExecutor m_gpuExecutor;
     std::array<std::vector<ThreadResources>, MaxFramesInFlight> m_frameResources;
 };
 

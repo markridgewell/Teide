@@ -101,8 +101,6 @@ private:
         return m_executor.async(std::forward<F>(f), std::forward<Args>(args)...);
     }
 
-    tf::Executor m_executor;
-
     struct AbstractScheduledTask : AbstractBase
     {
         virtual bool IsReady() const = 0;
@@ -178,6 +176,8 @@ private:
         using U = std::invoke_result_t<F, T>;
         return MakeScheduledTask<T, U>(std::move(future), std::forward<F>(callback));
     }
+
+    tf::Executor m_executor;
 
     // Ideally we'd store unique_ptrs here. However, the Taskflow library doesn't support move-only
     // function types, which causes problems as std::future and std::promise are both move-only.

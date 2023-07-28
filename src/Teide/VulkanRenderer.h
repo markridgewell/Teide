@@ -36,6 +36,9 @@ public:
     void BeginFrame(ShaderParameters sceneParameters) override;
     void EndFrame() override;
 
+    void WaitForCpu() override;
+    void WaitForGpu() override;
+
     RenderToTextureResult RenderToTexture(const RenderTargetInfo& renderTarget, RenderList renderList) override;
     void RenderToSurface(Surface& surface, RenderList renderList) override;
 
