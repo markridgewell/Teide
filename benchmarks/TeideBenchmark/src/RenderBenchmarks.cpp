@@ -58,8 +58,6 @@ constexpr Teide::RenderTargetInfo CreateRenderTargetInfo(Teide::uint32 size)
     return CreateRenderTargetInfo(Geo::Size2i{size});
 }
 
-constexpr Teide::RenderTargetInfo RenderTarget2x2 = CreateRenderTargetInfo(2);
-
 Teide::TexturePtr
 Render(const Teide::RendererPtr& renderer, const Teide::RenderTargetInfo& renderTarget, std::vector<Teide::RenderObject> objects)
 {
