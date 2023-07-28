@@ -84,7 +84,6 @@ void BM_RenderNothing(benchmark::State& state)
     for (auto _ : state)
     {
         const auto texture = Render(renderer, renderTarget, {});
-        benchmark::DoNotOptimize(texture);
     }
 }
 BENCHMARK(BM_RenderNothing)->Arg(8); //->Arg(256)->Arg(4096);
@@ -118,7 +117,6 @@ void BM_RenderToTexture(benchmark::State& state)
     for (auto _ : state)
     {
         const auto texture = Render(renderer, renderTarget, renderObjects);
-        benchmark::DoNotOptimize(texture);
     }
 }
 BENCHMARK(BM_RenderToTexture)->Arg(8); //->Arg(256)->Arg(4096);
