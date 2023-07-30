@@ -4,6 +4,7 @@
 #include "Vulkan.h"
 
 #include <spdlog/spdlog.h>
+#include <fmt/chrono.h>
 
 #include <ranges>
 #include <span>
@@ -60,10 +61,10 @@ void GpuExecutor::WaitForTasks()
 
     if (!fences.empty())
     {
-        constexpr auto timeout = Timeout(std::chrono::seconds{1});
-        if (m_device.waitForFences(fences, true, timeout) == vk::Result::eTimeout)
+        constexpr auto timeout = std::chrono::seconds{4};
+        if (m_device.waitForFences(fences, true, Timeout(timeout)) == vk::Result::eTimeout)
         {
-            spdlog::error("Timeout while waiting for command buffer execution to complete!");
+            spdlog::error("Timeout (>{}) while waiting for command buffer execution to complete!", timeout);
         }
     }
 }

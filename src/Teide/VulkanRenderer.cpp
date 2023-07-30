@@ -14,6 +14,7 @@
 #include "Teide/Renderer.h"
 #include "Teide/TextureData.h"
 
+#include <fmt/chrono.h>
 #include <spdlog/spdlog.h>
 
 #include <algorithm>
@@ -120,10 +121,10 @@ VulkanRenderer::~VulkanRenderer()
     std::array<vk::Fence, std::tuple_size_v<decltype(m_inFlightFences)>> fences;
     std::ranges::transform(m_inFlightFences, fences.begin(), [](const auto& f) { return f.get(); });
 
-    constexpr auto timeout = Timeout(std::chrono::seconds{1});
-    if (m_device.GetVulkanDevice().waitForFences(fences, true, timeout) == vk::Result::eTimeout)
+    constexpr auto timeout = std::chrono::seconds{1};
+    if (m_device.GetVulkanDevice().waitForFences(fences, true, Timeout(timeout)) == vk::Result::eTimeout)
     {
-        spdlog::error("Timeout while waiting for command buffer execution to complete!");
+        spdlog::error("Timeout (>{}) while waiting for all in-flight command buffers to complete!", timeout);
     }
 }
 
