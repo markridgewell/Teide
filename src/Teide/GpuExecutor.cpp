@@ -3,8 +3,8 @@
 
 #include "Vulkan.h"
 
-#include <spdlog/spdlog.h>
 #include <fmt/chrono.h>
+#include <spdlog/spdlog.h>
 
 #include <ranges>
 #include <span>
