@@ -47,6 +47,7 @@ set(sources
     src/Teide/StaticMap.h
     src/Teide/Synchronized.h
     src/Teide/TextureData.cpp
+    src/Teide/VmaImpl.cpp
     src/Teide/Vulkan.cpp
     src/Teide/Vulkan.h
     src/Teide/VulkanBuffer.cpp

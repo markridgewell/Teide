@@ -670,6 +670,7 @@ VulkanGraphicsDevice::VulkanGraphicsDevice(
     m_surfaceCommandPool{
         CreateCommandPool(m_physicalDevice.queueFamilies.graphicsFamily, m_device.get(), "SurfaceCommandPool")},
     m_allocator(m_device.get(), m_physicalDevice.physicalDevice),
+    m_allocator2{CreateAllocator(m_loader, m_instance.get(), m_device.get(), m_physicalDevice.physicalDevice)},
     m_scheduler(m_settings.numThreads, m_device.get(), m_graphicsQueue, m_physicalDevice.queueFamilies.graphicsFamily)
 {
     if constexpr (IsDebugBuild)

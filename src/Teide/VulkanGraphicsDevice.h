@@ -137,6 +137,7 @@ private:
     vk::UniqueCommandPool m_surfaceCommandPool;
 
     MemoryAllocator m_allocator;
+    vma::UniqueAllocator m_allocator2;
 
     Scheduler m_scheduler;
 };
