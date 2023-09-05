@@ -42,7 +42,8 @@ if(NOT TARGET SDL2_image::SDL2_image)
     add_library(SDL2_image::SDL2_image ALIAS SDL2_image::SDL2_image-static)
 endif()
 if(NOT TARGET VulkanMemoryAllocator-Hpp::VulkanMemoryAllocator-Hpp)
-    add_library(VulkanMemoryAllocator-Hpp::VulkanMemoryAllocator-Hpp ALIAS unofficial::VulkanMemoryAllocator-Hpp::VulkanMemoryAllocator-Hpp)
+    add_library(VulkanMemoryAllocator-Hpp::VulkanMemoryAllocator-Hpp ALIAS
+                unofficial::VulkanMemoryAllocator-Hpp::VulkanMemoryAllocator-Hpp)
 endif()
 
 if(TEIDE_BUILD_TESTS)

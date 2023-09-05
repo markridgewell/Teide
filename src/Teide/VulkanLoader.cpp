@@ -124,7 +124,7 @@ void VulkanLoader::LoadInstanceFunctions(vk::Instance instance)
 void VulkanLoader::LoadDeviceFunctions(vk::Device device)
 {
     m_dispatch.init(device);
-    
+
     m_allocatorFunctions = vma::functionsFromDispatcher(m_dispatch);
     assert(m_allocatorFunctions.vkGetInstanceProcAddr);
     assert(m_allocatorFunctions.vkGetDeviceProcAddr);
