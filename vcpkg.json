@@ -34,9 +34,9 @@
     }
   ],
   "builtin-baseline": "080bf4d78f31ff6f2fe302951edc9d777be7e3a4"
-  "vcpkg-configuration": {
-    "overlay-triplets": [
-      "tools/cmake/triplets"
-    ]
-  }
+                      "vcpkg-configuration": {
+                        "overlay-triplets": [
+                          "tools/cmake/triplets"
+                        ]
+                      }
 }
