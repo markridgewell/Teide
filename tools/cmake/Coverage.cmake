@@ -36,5 +36,9 @@ function(test_enable_coverage test)
     elseif(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
         list(APPEND environment "LLVM_PROFILE_FILE=${COVERAGE_DIR}/${target}-%p.profraw")
     endif()
-    set_tests_properties(${test} PROPERTIES ENVIRONMENT "${environment}" FIXTURES_REQUIRED CppCoverage)
+    set_property(
+        TEST ${test}
+        APPEND
+        PROPERTY ENVIRONMENT "${environment}")
+    set_property(TEST ${test} PROPERTY FIXTURES_REQUIRED CppCoverage)
 endfunction()
