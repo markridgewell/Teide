@@ -59,12 +59,14 @@ jobs:
     - name: Build
       run: cmake --build --preset ${{matrix.preset}} --config ${{matrix.buildtype}}
 
-    - name: Save CMake output log
+    - name: Save CMake output logs
       if: failure()
       uses: actions/upload-artifact@v3
       with:
-        name: CMakeOutput-${{env.job_name}}
-        path: ./build/${{matrix.preset}}/CMakeFiles/CMakeOutput.log
+        name: CMakeLogs-${{env.job_name}}
+        path: |
+          ./build/${{matrix.preset}}/**/*.log
+          ./external/vcpkg/**/*.log
 
     - name: Test
       id: test
@@ -103,20 +105,32 @@ jobs:
       matrix:
         buildtype: [Debug, Release]
         compiler: [g++-11, clang++-16]
+        sanitizer: [OFF]
         include:
         - preset: ninja
         - coverage: OFF
         - buildtype: Debug
           compiler: clang++-16
           coverage: ON
+        - buildtype: Debug
+          compiler: clang++-16
+          sanitizer: ASAN
+          preset: ninja
+          coverage: OFF
+          name-suffix: -asan
+        - buildtype: Debug
+          compiler: clang++-16
+          sanitizer: UBSAN
+          preset: ninja
+          coverage: OFF
+          name-suffix: -ubsan
       fail-fast: false
 
-    name: Linux-${{matrix.buildtype}}-${{matrix.compiler}}
+    name: Linux-${{matrix.buildtype}}-${{matrix.compiler}}${{matrix.name-suffix}}
     runs-on: ubuntu-latest
 
     env:
-      job_name: Linux-${{matrix.buildtype}}-${{matrix.compiler}}
-      ASAN_OPTIONS: detect_leaks=0 # Vulkan on Linux appears to leak memory, so disable leak checks
+      job_name: Linux-${{matrix.buildtype}}-${{matrix.compiler}}${{matrix.name-suffix}}
 
     steps:
     - name: Checkout
@@ -131,17 +145,19 @@ jobs:
         extra-packages: ninja-build ${{matrix.compiler}}
 
     - name: Configure CMake
-      run: cmake --preset ${{matrix.preset}} -DCMAKE_CXX_COMPILER=${{matrix.compiler}} -DTEIDE_TEST_VERBOSE=ON -DTEIDE_UNIT_TEST_SW_RENDER=ON -DTEIDE_TEST_WINDOWLESS=ON -DTEIDE_TEST_COVERAGE=${{matrix.coverage}}
+      run: cmake --preset ${{matrix.preset}} -DCMAKE_CXX_COMPILER=${{matrix.compiler}} -DTEIDE_TEST_VERBOSE=ON -DTEIDE_UNIT_TEST_SW_RENDER=ON -DTEIDE_TEST_WINDOWLESS=ON -DTEIDE_TEST_COVERAGE=${{matrix.coverage}} -DTEIDE_SANITIZER=${{matrix.sanitizer}}
 
     - name: Build
       run: cmake --build --preset ${{matrix.preset}} --config ${{matrix.buildtype}}
 
-    - name: Save CMake output log
+    - name: Save CMake output logs
       if: failure()
       uses: actions/upload-artifact@v3
       with:
-        name: CMakeOutput-${{env.job_name}}
-        path: ./build/${{matrix.preset}}/CMakeFiles/CMakeOutput.log
+        name: CMakeLogs-${{env.job_name}}
+        path: |
+          ./build/${{matrix.preset}}/**/*.log
+          ./external/vcpkg/**/*.log
 
     - name: Test
       id: test
