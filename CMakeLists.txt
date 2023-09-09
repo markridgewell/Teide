@@ -7,6 +7,12 @@ include(tools/cmake/Cache.cmake)
 
 if(LINUX AND TEIDE_SANITIZER STREQUAL "UBSAN")
     set(VCPKG_TARGET_TRIPLET "x64-linux-ubsan")
+elseif(
+    LINUX
+    AND CMAKE_CXX_COMPILER MATCHES "clang"
+    AND TEIDE_SANITIZER STREQUAL "MSAN")
+    find_package(libcxx REQUIRED)
+    set(VCPKG_TARGET_TRIPLET "x64-linux-msan")
 endif()
 
 project(
@@ -27,7 +33,7 @@ option(TEIDE_CLANG_TIDY "Enable static analysis with clang-tidy" OFF)
 set(TEIDE_SANITIZER
     OFF
     CACHE STRING "Name of a sanitizer to enable, or OFF to disable")
-set_property(CACHE TEIDE_SANITIZER PROPERTY STRINGS "OFF;ASAN;UBSAN")
+set_property(CACHE TEIDE_SANITIZER PROPERTY STRINGS "OFF;ASAN;UBSAN;MSAN")
 
 enable_testing()
 

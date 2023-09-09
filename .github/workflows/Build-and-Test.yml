@@ -124,6 +124,12 @@ jobs:
           preset: ninja
           coverage: OFF
           name-suffix: -ubsan
+        - buildtype: Debug
+          compiler: clang++-16
+          sanitizer: MSAN
+          preset: ninja
+          coverage: OFF
+          name-suffix: -msan
       fail-fast: false
 
     name: Linux-${{matrix.buildtype}}-${{matrix.compiler}}${{matrix.name-suffix}}
