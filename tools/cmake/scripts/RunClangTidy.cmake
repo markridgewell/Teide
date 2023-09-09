@@ -18,11 +18,11 @@ if(DEFINED ENV{CLANG_TIDY_SOURCES})
     # Add source files from environment variable
     message(STATUS "Taking sources from CLANG_TIDY_SOURCES environment variable")
     list(APPEND clang_tidy_args $ENV{CLANG_TIDY_SOURCES})
-    list(APPEND clang_tidy_args "--")
+    list(APPEND clang_tidy_args ${CLANG_TIDY_ARGS} "--")
 else()
     # Add source files passed into script
     list(APPEND clang_tidy_args ${SOURCES})
-    list(APPEND clang_tidy_args "--")
+    list(APPEND clang_tidy_args ${CLANG_TIDY_ARGS} "--")
     # Supplied sources will be .cpp files only; use header filter to include warnings from headers
     list(APPEND clang_tidy_args "--header-filter='.*'")
 endif()
@@ -35,7 +35,7 @@ foreach(dir IN LISTS SYSTEM_INCLUDE_DIRS)
 endforeach()
 
 # Add the rest of the command-line arguments
-list(APPEND clang_tidy_args ${CLANG_TIDY_ARGS})
+list(APPEND clang_tidy_args ${COMPILER_ARGS})
 
 # Run the command and propogate error code
 list(JOIN clang_tidy_args "\" \"" clang_tidy_arg_str)

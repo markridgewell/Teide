@@ -12,7 +12,7 @@ runs:
     - name: Setup vcpkg
       uses: lukka/run-vcpkg@v11
       with:
-        vcpkgGitCommitId: '7b30311f0a79d395bf2d933d82fec1853c6a4e77'
+        vcpkgDirectory: '${{github.workspace}}/external/vcpkg'
 
     - name: Setup Vulkan SDK
       uses: humbletim/setup-vulkan-sdk@v1.2.0
@@ -26,6 +26,8 @@ runs:
       shell: pwsh
       run: |
         choco install --ignorepackageexitcodes ${{inputs.extra-packages}}
+        $env:ChocolateyInstall = Convert-Path "$((Get-Command choco).Path)\..\.."
+        Import-Module "$env:ChocolateyInstall\helpers\chocolateyProfile.psm1"
         refreshenv
         echo PATH:
         echo $env:path -split ";"

@@ -10,49 +10,43 @@
 class ArgParser
 {
 public:
-    explicit ArgParser(int argc, char** argv) : m_args{std::span(argv, argc).subspan<1>()} {}
+    explicit ArgParser(int argc, char** argv) : m_args{std::span(argv, static_cast<std::size_t>(argc)).subspan<1>()} {}
 
     auto GetOption(std::initializer_list<std::string_view> aliases) -> bool
     {
         assert(aliases.size() > 0);
-        for (const std::string_view arg : m_args)
-        {
-            if (std::ranges::find(aliases, arg) != aliases.end())
-            {
-                return true;
-            }
-        }
-        return false;
+        const auto containsAlias = [&](std::string_view arg) { return std::ranges::find(aliases, arg) != aliases.end(); };
+        return std::ranges::any_of(m_args, containsAlias);
     };
 
     template <class T>
     auto GetArg(std::initializer_list<std::string_view> aliases, std::optional<T> defaultValue = std::nullopt) -> T
     {
         assert(aliases.size() > 0);
-        for (unsigned i = 0; i < m_args.size(); ++i)
-        {
-            const std::string_view arg = m_args[i];
-            if (std::ranges::find(aliases, arg) != aliases.end())
-            {
-                if (i < m_args.size() - 1)
-                {
-                    return m_args[i + 1];
-                }
+        const auto containsAlias = [&](std::string_view arg) { return std::ranges::find(aliases, arg) != aliases.end(); };
 
-                m_errorString += "Missing argument to ";
-                m_errorString += arg;
-                m_errorString += '\n';
-                return {};
-            }
-        }
-        if (!defaultValue)
+        const auto arg = std::ranges::find_if(m_args, containsAlias);
+        if (arg == m_args.end())
         {
+            if (defaultValue)
+            {
+                return defaultValue.value();
+            }
             m_errorString += "Missing required argument ";
             m_errorString += *aliases.begin();
             m_errorString += '\n';
             return {};
         }
-        return defaultValue.value();
+
+        const auto nextArg = arg + 1;
+        if (nextArg == m_args.end() || std::string_view(*nextArg).starts_with("-"))
+        {
+            m_errorString += "Missing argument to ";
+            m_errorString += *arg;
+            m_errorString += '\n';
+            return {};
+        }
+        return *nextArg;
     };
 
     bool HasErrors() const { return !m_errorString.empty(); }

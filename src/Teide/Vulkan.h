@@ -12,9 +12,19 @@
 
 #include <chrono>
 #include <span>
+#include <string_view>
 #include <unordered_set>
 
 struct SDL_Window;
+
+template <std::size_t N>
+struct fmt::formatter<vk::ArrayWrapper1D<char, N>> : formatter<std::string_view>
+{
+    auto format(const vk::ArrayWrapper1D<char, N>& value, format_context& ctx) const -> format_context::iterator
+    {
+        return fmt::format_to(ctx.out(), "{}", std::string_view(value.data(), value.size()));
+    }
+};
 
 namespace Teide
 {
@@ -94,11 +104,6 @@ void TransitionImageLayout(
     vk::ImageLayout newLayout, vk::PipelineStageFlags srcStageMask, vk::PipelineStageFlags dstStageMask);
 
 vk::UniqueCommandPool CreateCommandPool(uint32_t queueFamilyIndex, vk::Device device, const char* debugName = "");
-
-inline auto GetHandle()
-{
-    return []<class T, class Dispatch>(const vk::UniqueHandle<T, Dispatch>& uniqueHandle) { return uniqueHandle.get(); };
-}
 
 template <class Type, class Dispatch>
 void SetDebugName(vk::UniqueHandle<Type, Dispatch>& handle [[maybe_unused]], const char* debugName [[maybe_unused]])
@@ -187,7 +192,7 @@ Format FromVulkan(vk::Format format);
 template <class Rep, class Period>
 constexpr uint64 Timeout(std::chrono::duration<Rep, Period> duration)
 {
-    return std::chrono::nanoseconds(duration).count();
+    return static_cast<uint64>(std::chrono::nanoseconds(duration).count());
 }
 
 template <class T>
