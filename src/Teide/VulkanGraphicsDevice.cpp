@@ -294,8 +294,8 @@ namespace
     };
 
     TextureAndState CreateTextureImpl(
-        const TextureData& data, vk::Device device, MemoryAllocator& allocator, vk::ImageUsageFlags usage,
-        CommandBuffer& cmdBuffer, const char* debugName)
+        const TextureData& data, vk::Device device, MemoryAllocator& allocator, vma::Allocator& allocator2,
+        vk::ImageUsageFlags usage, CommandBuffer& cmdBuffer, const char* debugName)
     {
         // For now, all textures will be created with TransferSrc so they can be copied from
         usage |= vk::ImageUsageFlagBits::eTransferSrc;
@@ -332,10 +332,14 @@ namespace
             .initialLayout = initialState.layout,
         };
 
+        auto [image, allocation] = allocator2.createImageUnique(imageInfo, {.usage = vma::MemoryUsage::eAuto});
+
+        /*
         auto image = device.createImageUnique(imageInfo, s_allocator);
         const auto memory
-            = allocator.Allocate(device.getImageMemoryRequirements(image.get()), vk::MemoryPropertyFlagBits::eDeviceLocal);
-        device.bindImageMemory(image.get(), memory.memory, memory.offset);
+            = allocator.Allocate(device.getImageMemoryRequirements(image.get()),
+        vk::MemoryPropertyFlagBits::eDeviceLocal); device.bindImageMemory(image.get(), memory.memory, memory.offset);
+        */
 
         if (!data.pixels.empty())
         {
@@ -390,8 +394,9 @@ namespace
         auto sampler = device.createSamplerUnique(samplerInfo, s_allocator);
 
         auto ret = VulkanTextureData{
-            .image = std::move(image),
-            .memory = memory,
+            .image = vk::UniqueImage(
+                image.release(), vk::ObjectDestroy<vk::Device, VULKAN_HPP_DEFAULT_DISPATCHER_TYPE>(device, s_allocator)),
+            .allocation = std::move(allocation),
             .imageView = std::move(imageView),
             .sampler = std::move(sampler),
             .size = {imageExtent.width, imageExtent.height},
@@ -813,7 +818,7 @@ TexturePtr VulkanGraphicsDevice::CreateTexture(const TextureData& data, const ch
 {
     const auto usage = vk::ImageUsageFlagBits::eSampled;
 
-    auto [texture, state] = CreateTextureImpl(data, m_device.get(), m_allocator, usage, cmdBuffer, name);
+    auto [texture, state] = CreateTextureImpl(data, m_device.get(), m_allocator, m_allocator2.get(), usage, cmdBuffer, name);
 
     if (data.mipLevelCount > 1)
     {
@@ -846,7 +851,7 @@ TexturePtr VulkanGraphicsDevice::CreateRenderableTexture(const TextureData& data
 
     const auto usage = renderUsage | vk::ImageUsageFlagBits::eSampled;
 
-    auto [texture, state] = CreateTextureImpl(data, m_device.get(), m_allocator, usage, cmdBuffer, name);
+    auto [texture, state] = CreateTextureImpl(data, m_device.get(), m_allocator, m_allocator2.get(), usage, cmdBuffer, name);
 
     if (isColorTarget)
     {

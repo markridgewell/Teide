@@ -20,6 +20,7 @@ struct VulkanTextureData
 {
     vk::UniqueImage image;
     MemoryAllocation memory;
+    vma::UniqueAllocation allocation;
     vk::UniqueImageView imageView;
     vk::UniqueSampler sampler;
     Geo::Size2i size;
