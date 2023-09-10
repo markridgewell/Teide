@@ -7,6 +7,8 @@ if(unofficial-vulkan-memory-allocator-hpp_FOUND)
     set_target_properties(
         unofficial::VulkanMemoryAllocator-Hpp::VulkanMemoryAllocator-Hpp
         PROPERTIES INTERFACE_INCLUDE_DIRECTORIES
+                   "${_VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/include/vulkan-memory-allocator-hpp"
+                   INTERFACE_SYSTEM_INCLUDE_DIRECTORIES
                    "${_VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/include/vulkan-memory-allocator-hpp")
 
     find_package_handle_standard_args(VulkanMemoryAllocator-Hpp DEFAULT_MSG)
