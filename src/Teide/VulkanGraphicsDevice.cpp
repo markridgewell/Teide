@@ -544,13 +544,14 @@ VulkanGraphicsDevice::~VulkanGraphicsDevice()
     m_device->waitIdle();
 }
 
-VulkanBuffer VulkanGraphicsDevice::CreateBufferUninitialized(vk::DeviceSize size, vk::BufferUsageFlags usage, vma::AllocationCreateFlags allocationFlags, vma::MemoryUsage memoryUsage)
+VulkanBuffer VulkanGraphicsDevice::CreateBufferUninitialized(
+    vk::DeviceSize size, vk::BufferUsageFlags usage, vma::AllocationCreateFlags allocationFlags, vma::MemoryUsage memoryUsage)
 {
     return Teide::CreateBufferUninitialized(size, usage, allocationFlags, memoryUsage, m_device.get(), m_allocator2.get());
 }
 
-VulkanBuffer VulkanGraphicsDevice::CreateBufferWithData(
-    BytesView data, BufferUsage usage, ResourceLifetime lifetime, CommandBuffer& cmdBuffer)
+VulkanBuffer
+VulkanGraphicsDevice::CreateBufferWithData(BytesView data, BufferUsage usage, ResourceLifetime lifetime, CommandBuffer& cmdBuffer)
 {
     const vk::BufferUsageFlags usageFlags = GetBufferUsageFlags(usage);
 
@@ -570,8 +571,7 @@ VulkanBuffer VulkanGraphicsDevice::CreateBufferWithData(
     SetBufferData(*stagingBuffer, data);
 
     // Create device-local buffer
-    VulkanBuffer ret = CreateBufferUninitialized(
-        data.size(), usageFlags | vk::BufferUsageFlagBits::eTransferDst);
+    VulkanBuffer ret = CreateBufferUninitialized(data.size(), usageFlags | vk::BufferUsageFlagBits::eTransferDst);
     CopyBuffer(cmdBuffer, stagingBuffer->buffer.get(), ret.buffer.get(), data.size());
 
     // Add pipeline barrier to make the buffer usable in shader
@@ -591,8 +591,7 @@ VulkanBuffer VulkanGraphicsDevice::CreateBufferWithData(
 }
 
 auto VulkanGraphicsDevice::CreateTextureImpl(
-    const TextureData& data, vk::ImageUsageFlags usage,
-    CommandBuffer& cmdBuffer, const char* debugName) -> TextureAndState
+    const TextureData& data, vk::ImageUsageFlags usage, CommandBuffer& cmdBuffer, const char* debugName) -> TextureAndState
 {
     // For now, all textures will be created with TransferSrc so they can be copied from
     usage |= vk::ImageUsageFlagBits::eTransferSrc;
@@ -887,8 +886,8 @@ MeshPtr VulkanGraphicsDevice::CreateMesh(const MeshData& data, const char* name,
 
     if (!data.indexData.empty())
     {
-        mesh.indexBuffer = std::make_shared<VulkanBuffer>(CreateBufferWithData(
-            data.indexData, BufferUsage::Index, data.lifetime, cmdBuffer));
+        mesh.indexBuffer = std::make_shared<VulkanBuffer>(
+            CreateBufferWithData(data.indexData, BufferUsage::Index, data.lifetime, cmdBuffer));
         if (name)
         {
             SetDebugName(mesh.indexBuffer->buffer, "{}:ibuffer", name);

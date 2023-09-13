@@ -55,7 +55,8 @@ protected:
     VulkanBuffer CreateHostVisibleBuffer(vk::DeviceSize size)
     {
         return CreateBufferUninitialized(
-            size, vk::BufferUsageFlagBits::eTransferDst, vma::AllocationCreateFlagBits::eMapped | vma::AllocationCreateFlagBits::eHostAccessRandom,
+            size, vk::BufferUsageFlagBits::eTransferDst,
+            vma::AllocationCreateFlagBits::eMapped | vma::AllocationCreateFlagBits::eHostAccessRandom,
             vma::MemoryUsage::eAuto, m_device.get(), m_allocator.get());
     }
 

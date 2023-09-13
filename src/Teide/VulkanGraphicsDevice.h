@@ -86,7 +86,9 @@ public:
     TextureAndState
     CreateTextureImpl(const TextureData& data, vk::ImageUsageFlags usage, CommandBuffer& cmdBuffer, const char* debugName);
 
-    VulkanBuffer CreateBufferUninitialized(vk::DeviceSize size, vk::BufferUsageFlags usage, vma::AllocationCreateFlags allocationFlags = {}, vma::MemoryUsage memoryUsage = vma::MemoryUsage::eAuto);
+    VulkanBuffer CreateBufferUninitialized(
+        vk::DeviceSize size, vk::BufferUsageFlags usage, vma::AllocationCreateFlags allocationFlags = {},
+        vma::MemoryUsage memoryUsage = vma::MemoryUsage::eAuto);
     VulkanBuffer CreateBufferWithData(BytesView data, BufferUsage usage, ResourceLifetime lifetime, CommandBuffer& cmdBuffer);
     void SetBufferData(VulkanBuffer& buffer, BytesView data);
 
