@@ -34,6 +34,25 @@ void PrintTo(const Visitable auto& obj, std::ostream* os)
 }
 } // namespace Teide
 
+namespace std
+{
+inline void PrintTo(std::byte b, std::ostream* os) {
+    fmt::format_to(std::ostream_iterator<char>(*os), "0x{:02x}", static_cast<std::uint8_t>(b));
+}
+
+template <class T, std::size_t N>
+void PrintTo(const std::span<T, N>& span, std::ostream* os) {
+    *os << "{";
+    bool firstElem = true;
+    for (const auto& elem : span)
+    {
+        if (firstElem) firstElem = false; else *os << ",";
+        testing::internal::UniversalPrint(elem, os);
+    }
+    *os << "}";
+}
+}
+
 #ifdef NDEBUG
 #    define EXPECT_UNREACHABLE(statement)                                                                              \
         if (false)                                                                                                     \
