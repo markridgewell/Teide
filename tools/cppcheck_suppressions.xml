@@ -18,6 +18,9 @@
   <suppress>
     <id>unmatchedSuppression</id>
   </suppress>
+  <suppress>
+    <id>passedByValue</id>
+  </suppress>
 
   <!-- There is a bug in CppCheck that causes lots of false positives in Matrix.h -->
   <suppress>

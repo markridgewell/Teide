@@ -10,7 +10,7 @@ runs:
   using: composite
   steps:
     - name: Setup vcpkg
-      uses: lukka/run-vcpkg@v10
+      uses: lukka/run-vcpkg@v11
       with:
         vcpkgDirectory: '${{github.workspace}}/external/vcpkg'
 

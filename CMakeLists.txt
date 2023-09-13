@@ -5,6 +5,10 @@ include(CMakeDependentOption)
 include(tools/cmake/Build.cmake)
 include(tools/cmake/Cache.cmake)
 
+if(LINUX AND TEIDE_SANITIZER STREQUAL "UBSAN")
+    set(VCPKG_TARGET_TRIPLET "x64-linux-ubsan")
+endif()
+
 project(
     Teide
     VERSION 0.0.0
@@ -20,6 +24,11 @@ option(TEIDE_TEST_WINDOWLESS "Disable tests requiring a windowing system" OFF)
 option(TEIDE_UNIT_TEST_SW_RENDER "Enable software rendering for Teide unit tests" OFF)
 option(TEIDE_RENDER_TEST_SW_RENDER "Enable software rendering for Teide render tests" ON)
 option(TEIDE_CLANG_TIDY "Enable static analysis with clang-tidy" OFF)
+
+set(TEIDE_SANITIZER
+    OFF
+    CACHE STRING "Name of a sanitizer to enable, or OFF to disable")
+set_property(CACHE TEIDE_SANITIZER PROPERTY STRINGS "OFF;ASAN;UBSAN")
 
 enable_testing()
 
