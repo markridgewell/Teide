@@ -17,11 +17,11 @@ public:
             std::make_shared<spdlog::logger>("test", std::make_shared<spdlog::sinks::ostream_sink_mt>(m_output)));
     }
 
-    // Called after a failed assertion or a SUCCEED() invocation.
-    void OnTestPartResult(const testing::TestPartResult& result) override
+    void OnTestEnd(const testing::TestInfo& testInfo) override
     {
+        spdlog::set_default_logger(m_logger);
         const auto logString = m_output.str();
-        if (result.failed() && !logString.empty())
+        if (testInfo.result()->Failed() && !logString.empty())
         {
             std::cerr << "\n";
             std::cerr << "Log output for this test:\n";
@@ -30,8 +30,6 @@ public:
             std::cerr << "=========================\n";
         }
     }
-
-    void OnTestEnd(const testing::TestInfo& /*unused*/) override { spdlog::set_default_logger(m_logger); }
 
 private:
     std::shared_ptr<spdlog::logger> m_logger;
