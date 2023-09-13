@@ -48,10 +48,11 @@ void PrintTo(const std::span<T, N>& span, std::ostream* os)
     bool firstElem = true;
     for (const auto& elem : span)
     {
-        if (firstElem)
-            firstElem = false;
-        else
+        if (!firstElem)
+        {
             *os << ",";
+        }
+        firstElem = false;
         testing::internal::UniversalPrint(elem, os);
     }
     *os << "}";
