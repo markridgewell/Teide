@@ -14,26 +14,33 @@ namespace
 }
 
 VulkanBuffer CreateBufferUninitialized(
-    vk::DeviceSize size, vk::BufferUsageFlags usage, vk::MemoryPropertyFlags memoryFlags, vk::Device device,
-    MemoryAllocator& allocator)
+    vk::DeviceSize size, vk::BufferUsageFlags usage, vma::AllocationCreateFlags allocationFlags,
+    vma::MemoryUsage memoryUsage, vk::Device device, vma::Allocator& allocator)
 {
-    VulkanBuffer ret{};
-
-    const vk::BufferCreateInfo createInfo = {
+    const vk::BufferCreateInfo bufferInfo = {
         .size = size,
         .usage = usage,
         .sharingMode = vk::SharingMode::eExclusive,
     };
-    ret.size = size;
-    ret.buffer = device.createBufferUnique(createInfo, s_allocator);
-    const auto allocation = allocator.Allocate(device.getBufferMemoryRequirements(ret.buffer.get()), memoryFlags);
-    device.bindBufferMemory(ret.buffer.get(), allocation.memory, allocation.offset);
-    if (!allocation.mappedData.empty())
+    const vma::AllocationCreateInfo allocInfo = {
+        .flags = allocationFlags,
+        .usage = memoryUsage,
+    };
+    auto [buffer, allocation] = allocator.createBufferUnique(bufferInfo, allocInfo);
+
+    std::span<byte> mappedData;
+    if (allocationFlags & vma::AllocationCreateFlagBits::eMapped)
     {
-        ret.mappedData = allocation.mappedData.subspan(0, size);
+        const vma::AllocationInfo allocInfo = allocator.getAllocationInfo(allocation.get());
+        mappedData = {static_cast<std::byte*>(allocInfo.pMappedData), allocInfo.size};
     }
 
-    return ret;
+    return VulkanBuffer({
+        .size = size,
+        .buffer = vk::UniqueBuffer(buffer.release(), device),
+        .allocation = std::move(allocation),
+        .mappedData = mappedData,
+    });
 }
 
 vk::BufferUsageFlags GetBufferUsageFlags(BufferUsage usage)

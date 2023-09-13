@@ -37,7 +37,7 @@ public:
             = m_device->createCommandPoolUnique({.queueFamilyIndex = m_physicalDevice.queueFamilies.transferFamily});
         ASSERT_TRUE(m_commandPool);
 
-        m_allocator = std::make_unique<MemoryAllocator>(m_device.get(), m_physicalDevice.physicalDevice);
+        m_allocator = CreateAllocator(m_loader, m_instance.get(), m_device.get(), m_physicalDevice.physicalDevice);
     }
 
 protected:
@@ -55,9 +55,8 @@ protected:
     VulkanBuffer CreateHostVisibleBuffer(vk::DeviceSize size)
     {
         return CreateBufferUninitialized(
-            size, vk::BufferUsageFlagBits::eTransferDst,
-            vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent, m_device.get(),
-            *m_allocator);
+            size, vk::BufferUsageFlagBits::eTransferDst, vma::AllocationCreateFlagBits::eMapped | vma::AllocationCreateFlagBits::eHostAccessRandom,
+            vma::MemoryUsage::eAuto, m_device.get(), m_allocator.get());
     }
 
     static std::future<void> SubmitCommandBuffer(GpuExecutor& executor, std::uint32_t index, vk::CommandBuffer commandBuffer)
@@ -76,7 +75,7 @@ private:
     vk::UniqueDevice m_device;
     vk::Queue m_queue;
     vk::UniqueCommandPool m_commandPool;
-    std::unique_ptr<MemoryAllocator> m_allocator;
+    vma::UniqueAllocator m_allocator;
 };
 
 

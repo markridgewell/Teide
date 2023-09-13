@@ -8,13 +8,17 @@
 namespace Teide
 {
 
-class MemoryAllocator;
-
-struct VulkanBuffer : public Buffer
+struct VulkanBufferData
 {
     vk::DeviceSize size = 0;
     vk::UniqueBuffer buffer;
+    vma::UniqueAllocation allocation;
     std::span<byte> mappedData;
+};
+
+struct VulkanBuffer : public Buffer, VulkanBufferData
+{
+    explicit VulkanBuffer(VulkanBufferData data) : VulkanBufferData{std::move(data)} {}
 
     usize GetSize() const override { return size; }
     BytesView GetData() const override { return mappedData; }
@@ -27,8 +31,8 @@ struct VulkanImpl<Buffer>
 };
 
 VulkanBuffer CreateBufferUninitialized(
-    vk::DeviceSize size, vk::BufferUsageFlags usage, vk::MemoryPropertyFlags memoryFlags, vk::Device device,
-    MemoryAllocator& allocator);
+    vk::DeviceSize size, vk::BufferUsageFlags usage, vma::AllocationCreateFlags allocationFlags,
+    vma::MemoryUsage memoryUsage, vk::Device device, vma::Allocator& allocator);
 
 vk::BufferUsageFlags GetBufferUsageFlags(BufferUsage usage);
 
