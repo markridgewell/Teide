@@ -52,7 +52,7 @@
       "inherits": "_common",
       "hidden": true,
       "cacheVariables": {
-        "CMAKE_CXX_FLAGS": "-DSDL_main=main -Wall -Werror -Wno-attributes -Wno-mismatched-tags -ggdb"
+        "CMAKE_CXX_FLAGS": "-DSDL_main=main -Wall -Werror -Wno-attributes -ggdb"
       }
     },
     {
