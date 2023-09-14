@@ -49,10 +49,6 @@ private:
     }
 
     const ParameterBlockPtr& GetSceneParameterBlock() const { return GetCurrentFrame().sceneParameters; }
-    const ParameterBlockPtr& AddViewParameterBlock(uint32 threadIndex, ParameterBlockPtr p)
-    {
-        return GetCurrentFrame().threadResources.at(threadIndex).viewParameters.emplace_back(std::move(p));
-    }
 
     void RecordRenderListCommands(
         CommandBuffer& commandBuffer, const RenderList& renderList, vk::RenderPass renderPass,
@@ -64,15 +60,9 @@ private:
 
     vk::DescriptorSet GetDescriptorSet(const ParameterBlock* parameterBlock) const;
 
-    struct ThreadResources
-    {
-        std::vector<ParameterBlockPtr> viewParameters;
-    };
-
     struct FrameResources
     {
         ParameterBlockPtr sceneParameters;
-        std::vector<ThreadResources> threadResources;
     };
 
     const FrameResources& GetCurrentFrame() const { return m_frameResources.at(m_frameNumber); }

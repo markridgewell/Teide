@@ -82,10 +82,6 @@ VulkanRenderer::VulkanRenderer(VulkanGraphicsDevice& device, const QueueFamilies
     std::ranges::generate(m_inFlightFences, [=] {
         return vkdevice.createFenceUnique({.flags = vk::FenceCreateFlagBits::eSignaled}, s_allocator);
     });
-
-    const auto numThreads = device.GetScheduler().GetThreadCount();
-    std::ranges::generate(
-        m_frameResources, [=] { return FrameResources{.threadResources = std::vector<ThreadResources>(numThreads)}; });
 }
 
 VulkanRenderer::~VulkanRenderer()
@@ -126,10 +122,6 @@ void VulkanRenderer::BeginFrame(ShaderParameters sceneParameters)
         .parameters = std::move(sceneParameters),
     };
     frameResources.sceneParameters = m_device.CreateParameterBlock(pblockData, "Scene");
-    for (auto& threadResources : frameResources.threadResources)
-    {
-        threadResources.viewParameters.clear();
-    }
 }
 
 void VulkanRenderer::EndFrame()
@@ -384,9 +376,9 @@ void VulkanRenderer::RecordRenderListCommands(
         .parameters = renderList.viewParameters,
     };
     const auto viewParamsName = fmt::format("{}:View", renderList.name);
-    const auto viewParameters = AddViewParameterBlock(
-        threadIndex,
-        m_device.CreateParameterBlock(viewParamsData, viewParamsName.c_str(), commandBufferWrapper, threadIndex));
+    const auto viewParameters
+        = m_device.CreateParameterBlock(viewParamsData, viewParamsName.c_str(), commandBufferWrapper, threadIndex);
+    commandBufferWrapper.AddParameterBlock(viewParameters);
 
     commandBuffer.beginRenderPass(renderPassBegin, vk::SubpassContents::eInline);
 
