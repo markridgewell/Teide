@@ -32,6 +32,20 @@ void CommandBuffer::Reset()
     m_ownedBuffers.clear();
 }
 
+std::string_view CommandBuffer::GetDebugName() const
+{
+    return m_debugName;
+}
+
+void CommandBuffer::SetDebugName(std::string_view name)
+{
+    if constexpr (IsDebugBuild)
+    {
+        m_debugName = std::string(name);
+        Teide::SetDebugName(m_cmdBuffer, m_debugName.c_str());
+    }
+}
+
 CommandBuffer::operator vk::CommandBuffer()
 {
     assert(m_cmdBuffer);
