@@ -24,7 +24,7 @@ public:
     void SetDebugName(std::string_view name);
 
     template <class... Args>
-    std::string SetDebugName(fmt::format_string<Args...> fmt [[maybe_unused]], Args&&... args [[maybe_unused]])
+    void SetDebugName(fmt::format_string<Args...> fmt [[maybe_unused]], Args&&... args [[maybe_unused]])
     {
         if constexpr (IsDebugBuild)
         {
