@@ -19,7 +19,7 @@ public:
 
     void TakeOwnership(vk::UniqueBuffer buffer);
     void Reset();
-    
+
     std::string_view GetDebugName() const;
     void SetDebugName(std::string_view name);
 
