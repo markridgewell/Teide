@@ -158,9 +158,7 @@ void VulkanRenderer::EndFrame()
 
     // Submit the surface command buffer(s)
     {
-        std::vector<vk::CommandBuffer> commandBuffers
-            = m_surfaceCommandBuffers.Lock([](auto& c) { return std::exchange(c, {}); });
-
+        std::vector<vk::CommandBuffer> commandBuffers;
         for (const auto& surfaceImage : images)
         {
             commandBuffers.push_back(surfaceImage.prePresentCommandBuffer);
@@ -280,9 +278,7 @@ void VulkanRenderer::RenderToSurface(Surface& surface, RenderList renderList)
 
         const auto framebuffer = surfaceImage.framebuffer;
 
-        m_device.GetScheduler().Schedule([=, this, renderList = std::move(renderList)](uint32 taskIndex) {
-            CommandBuffer& commandBuffer = m_device.GetScheduler().GetCommandBuffer(taskIndex);
-
+        ScheduleGpu([this, renderList = std::move(renderList), framebuffer](CommandBuffer& commandBuffer) {
             const RenderPassDesc renderPassDesc = {
                 .framebufferLayout = framebuffer.layout,
                 .renderOverrides = renderList.renderOverrides,
@@ -291,10 +287,6 @@ void VulkanRenderer::RenderToSurface(Surface& surface, RenderList renderList)
             const auto renderPass = m_device.CreateRenderPass(framebuffer.layout, renderList.clearState);
 
             RecordRenderListCommands(commandBuffer, renderList, renderPass, renderPassDesc, framebuffer);
-
-            commandBuffer.Get()->end();
-
-            m_surfaceCommandBuffers.Lock([&commandBuffer](auto& s) { s.push_back(commandBuffer); });
         });
     }
 }

@@ -41,7 +41,7 @@ public:
 
         m_cpuExecutor.LaunchTask(
             [this, sequenceIndex, f = std::forward<F>(f), promise = std::move(promise)](uint32 taskIndex) mutable {
-                CommandBuffer& commandBuffer = GetCommandBuffer(taskIndex);
+                CommandBuffer& commandBuffer = m_gpuExecutor.GetCommandBuffer(taskIndex);
 
                 if constexpr (std::is_void_v<FRet>)
                 {
@@ -77,8 +77,6 @@ public:
     void WaitForTasks() { m_cpuExecutor.WaitForTasks(); }
 
     uint32 GetThreadIndex() const { return m_cpuExecutor.GetThreadIndex(); }
-
-    CommandBuffer& GetCommandBuffer(uint32 threadIndex);
 
 private:
     CpuExecutor m_cpuExecutor;

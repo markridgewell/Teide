@@ -15,9 +15,4 @@ void Scheduler::NextFrame()
     m_gpuExecutor.NextFrame();
 }
 
-CommandBuffer& Scheduler::GetCommandBuffer(uint32 threadIndex)
-{
-    return m_gpuExecutor.GetCommandBuffer(threadIndex);
-}
-
 } // namespace Teide

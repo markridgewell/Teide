@@ -29,6 +29,9 @@ void CommandBuffer::TakeOwnership(vk::UniqueBuffer buffer)
 
 void CommandBuffer::Reset()
 {
+    m_referencedTextures.clear();
+    m_referencedBuffers.clear();
+    m_referencedParameterBlocks.clear();
     m_ownedBuffers.clear();
 }
 
