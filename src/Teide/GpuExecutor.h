@@ -1,6 +1,8 @@
 
 #pragma once
 
+#include "CommandBuffer.h"
+
 #include "Teide/BasicTypes.h"
 #include "Teide/VulkanConfig.h"
 
@@ -22,7 +24,7 @@ class GpuExecutor
 public:
     using OnCompleteFunction = fu2::unique_function<void()>;
 
-    GpuExecutor(vk::Device device, vk::Queue queue);
+    GpuExecutor(uint32 numThreads, vk::Device device, vk::Queue queue, uint32 queueFamilyIndex);
     ~GpuExecutor() noexcept;
 
     GpuExecutor(const GpuExecutor&) = delete;
@@ -30,12 +32,30 @@ public:
     GpuExecutor& operator=(const GpuExecutor&) = delete;
     GpuExecutor& operator=(GpuExecutor&&) = delete;
 
+    void NextFrame();
+
     uint32 AddCommandBufferSlot();
+    CommandBuffer& GetCommandBuffer(uint32 threadIndex);
     void SubmitCommandBuffer(uint32 index, vk::CommandBuffer commandBuffer, OnCompleteFunction func = nullptr);
 
 private:
+    static constexpr uint32 MaxFramesInFlight = 2;
+
+    struct ThreadResources
+    {
+        vk::UniqueCommandPool commandPool;
+        std::deque<CommandBuffer> commandBuffers;
+        uint32 numUsedCommandBuffers = 0;
+        uint32 threadIndex = 0;
+
+        void Reset(vk::Device device);
+    };
+
     vk::Device m_device;
     vk::Queue m_queue;
+
+    std::array<std::vector<ThreadResources>, MaxFramesInFlight> m_frameResources;
+    uint32 m_frameNumber = 0;
 
     std::mutex m_readyCommandBuffersMutex;
 

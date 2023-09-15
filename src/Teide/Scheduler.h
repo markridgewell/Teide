@@ -13,7 +13,7 @@ namespace Teide
 class Scheduler
 {
 public:
-    Scheduler(uint32 numThreads, vk::Device device, vk::Queue queue, uint32 queueFamily);
+    Scheduler(uint32 numThreads, vk::Device device, vk::Queue queue, uint32 queueFamilyIndex);
 
     void NextFrame();
 
@@ -81,27 +81,8 @@ public:
     CommandBuffer& GetCommandBuffer(uint32 threadIndex);
 
 private:
-    static constexpr uint32 MaxFramesInFlight = 2;
-
-    struct ThreadResources
-    {
-        vk::UniqueCommandPool commandPool;
-        std::deque<CommandBuffer> commandBuffers;
-        uint32 numUsedCommandBuffers = 0;
-        uint32 threadIndex = 0;
-
-        void Reset(vk::Device device);
-    };
-
-    static std::vector<ThreadResources> CreateThreadResources(vk::Device device, uint32 queueFamilyIndex, uint32 numThreads);
-
     CpuExecutor m_cpuExecutor;
     GpuExecutor m_gpuExecutor;
-
-    vk::Device m_device;
-    uint32 m_frameNumber = 0;
-
-    std::array<std::vector<ThreadResources>, MaxFramesInFlight> m_frameResources;
 };
 
 } // namespace Teide
