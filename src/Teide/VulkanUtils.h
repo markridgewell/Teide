@@ -8,13 +8,27 @@ class Array
 {
 public:
     Array() = default;
-    Array(std::ranges::sized_range auto&& range) :
-        m_size{static_cast<std::uint32_t>(range.size())}, m_data{new T[m_size]}
+
+    template <typename U>
+        requires(std::ranges::sized_range<U> && !std::same_as<U, Array<T>>)
+    Array(const U& range) : m_size{static_cast<std::uint32_t>(range.size())}, m_data{new T[m_size]}
     {
         std::ranges::copy(range, m_data.get());
     }
 
     template <typename U>
+        requires(std::ranges::sized_range<U> && !std::same_as<U, Array<T>>)
+    // clang-tidy thinks this might suppress the move constructor, but the requires clause takes care of that.
+    // NOLINTNEXTLINE(bugprone-forwarding-reference-overload)
+    Array(U&& range) : m_size{static_cast<std::uint32_t>(range.size())}, m_data{new T[m_size]}
+    {
+        std::ranges::move(range, m_data.get());
+    }
+
+    template <typename U>
+        requires(std::convertible_to<U, T> && !std::same_as<U, Array<T>>)
+    // See above.
+    // NOLINTNEXTLINE(bugprone-forwarding-reference-overload)
     Array(U&& singleElement) : m_size{1}, m_data{new T[1]}
     {
         *m_data.get() = std::forward<U>(singleElement);
@@ -27,7 +41,7 @@ public:
 
 private:
     std::uint32_t m_size = 0;
-    std::unique_ptr<T[]> m_data;
+    std::unique_ptr<T[]> m_data = nullptr;
 };
 
 struct SubmitInfo
