@@ -1,6 +1,11 @@
 
 #include "VulkanConfig.h"
 
+#include <concepts>
+#include <cstdint>
+#include <memory>
+#include <ranges>
+
 namespace vkex
 {
 template <typename T>
