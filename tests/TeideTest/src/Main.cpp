@@ -47,7 +47,12 @@ int main(int argc, char** argv)
         else if (arg == "-v" || arg == "--verbose")
         {
             spdlog::set_level(spdlog::level::debug);
-            spdlog::debug("Verbose logging enabled");
+            spdlog::info("Verbose logging enabled");
+        }
+        else if (arg == "--windowless")
+        {
+            g_windowless = true;
+            spdlog::info("Windowless environment indicated: skipping surface tests");
         }
     }
 
