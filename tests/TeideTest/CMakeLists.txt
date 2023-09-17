@@ -4,7 +4,7 @@ if(TEIDE_TEST_VERBOSE)
     list(APPEND extra_args --verbose)
 endif()
 if(TEIDE_TEST_WINDOWLESS)
-    list(APPEND extra_args --gtest_filter=-SurfaceTest.*)
+    list(APPEND extra_args --windowless)
 endif()
 
 if(TEIDE_UNIT_TEST_SW_RENDER)
