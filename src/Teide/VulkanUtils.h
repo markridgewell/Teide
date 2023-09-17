@@ -34,6 +34,12 @@ public:
         *m_data.get() = std::forward<U>(singleElement);
     }
 
+    void reset(std::uint32_t size)
+    {
+        m_size = size;
+        m_data.reset(new T[size]);
+    }
+
     const T* data() const { return m_data.get(); }
     T* data() { return m_data.get(); }
     std::uint32_t size() const { return m_size; }
@@ -46,15 +52,17 @@ private:
 
 struct SubmitInfo
 {
+    using MappedType = vk::SubmitInfo;
+
     Array<vk::Semaphore> waitSemaphores;
     Array<vk::PipelineStageFlags> waitDstStageMask;
     Array<vk::CommandBuffer> commandBuffers;
     Array<vk::Semaphore> signalSemaphores;
 
-    vk::SubmitInfo native() const
+    MappedType map() const
     {
         assert(waitDstStageMask.size() == waitSemaphores.size());
-        return {
+        const MappedType ret = {
             .waitSemaphoreCount = waitSemaphores.size(),
             .pWaitSemaphores = waitSemaphores.data(),
             .pWaitDstStageMask = waitDstStageMask.data(),
@@ -63,23 +71,29 @@ struct SubmitInfo
             .signalSemaphoreCount = signalSemaphores.size(),
             .pSignalSemaphores = signalSemaphores.data(),
         };
+        return ret;
     }
 
-    operator vk::SubmitInfo() const { return native(); }
+    operator MappedType() const { return map(); }
 };
 
 struct PresentInfoKHR
 {
+    using MappedType = vk::PresentInfoKHR;
+
     Array<vk::Semaphore> waitSemaphores;
     Array<vk::SwapchainKHR> swapchains;
     Array<std::uint32_t> imageIndices;
-    Array<vk::Result> results;
+    Array<vk::Result>* results = nullptr;
 
-    vk::PresentInfoKHR native() const
+    MappedType map() const
     {
         assert(imageIndices.size() == swapchains.size());
-        assert(results.empty() && "Results cannot be set on a const object!");
-        return {
+        if (results && results->size() != swapchains.size())
+        {
+            results->reset(swapchains.size());
+        }
+        const MappedType ret = {
             .waitSemaphoreCount = waitSemaphores.size(),
             .pWaitSemaphores = waitSemaphores.data(),
             .swapchainCount = swapchains.size(),
@@ -87,24 +101,9 @@ struct PresentInfoKHR
             .pImageIndices = imageIndices.data(),
             .pResults = nullptr,
         };
+        return ret;
     }
 
-    vk::PresentInfoKHR native()
-    {
-        assert(imageIndices.size() == swapchains.size());
-        assert(results.empty() || results.size() == swapchains.size());
-        return {
-            .waitSemaphoreCount = waitSemaphores.size(),
-            .pWaitSemaphores = waitSemaphores.data(),
-            .swapchainCount = swapchains.size(),
-            .pSwapchains = swapchains.data(),
-            .pImageIndices = imageIndices.data(),
-            .pResults = results.data(),
-        };
-    }
-
-    operator vk::PresentInfoKHR() const { return native(); }
-
-    operator vk::PresentInfoKHR() { return native(); }
+    operator MappedType() const { return map(); }
 };
 } // namespace vkex

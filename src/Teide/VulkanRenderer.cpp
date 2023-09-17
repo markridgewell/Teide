@@ -163,7 +163,7 @@ void VulkanRenderer::EndFrame()
         .commandBuffers = commandBuffers,
         .signalSemaphores = m_renderFinished[m_frameNumber].get(),
     };
-    m_graphicsQueue.submit(submitInfo.native(), fenceToSignal);
+    m_graphicsQueue.submit(submitInfo.map(), fenceToSignal);
 
     // Present
     const vkex::PresentInfoKHR presentInfo = {
