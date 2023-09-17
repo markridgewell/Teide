@@ -16,7 +16,7 @@ public:
 
     template <typename U>
         requires(std::ranges::sized_range<U> && !std::same_as<U, Array<T>>)
-    Array(const U& range) : m_size{static_cast<std::uint32_t>(range.size())}, m_data{new T[m_size]}
+    Array(const U& range) : m_size{static_cast<std::uint32_t>(range.size())}, m_data{std::make_unique<T[]>(m_size)}
     {
         std::ranges::copy(range, m_data.get());
     }
@@ -42,7 +42,7 @@ public:
     void reset(std::uint32_t size)
     {
         m_size = size;
-        m_data.reset(new T[size]);
+        m_data = std::make_unique<T[]>(size);
     }
 
     const T* data() const { return m_data.get(); }
