@@ -12,6 +12,12 @@ template <typename T>
 class Array
 {
 public:
+    using value_type = T;
+    using reference = T&;
+    using pointer = T*;
+    using iterator = T*;
+    using const_iterator = const T*;
+
     Array() = default;
 
     template <typename U>
@@ -50,6 +56,13 @@ public:
     std::uint32_t size() const { return m_size; }
     bool empty() const { return m_size == 0; }
 
+    const T* begin() const { return m_data.get(); }
+    const T* end() const { return m_data.get() + m_size; }
+    T* begin() { return m_data.get(); }
+    T* end() { return m_data.get() + m_size; }
+    const T* cbegin() const { return m_data.get(); }
+    const T* cend() const { return m_data.get() + m_size; }
+
 private:
     std::uint32_t m_size = 0;
     std::unique_ptr<T[]> m_data = nullptr;
@@ -67,7 +80,7 @@ struct SubmitInfo
     MappedType map() const
     {
         assert(waitDstStageMask.size() == waitSemaphores.size());
-        const MappedType ret = {
+        return {
             .waitSemaphoreCount = waitSemaphores.size(),
             .pWaitSemaphores = waitSemaphores.data(),
             .pWaitDstStageMask = waitDstStageMask.data(),
@@ -76,7 +89,6 @@ struct SubmitInfo
             .signalSemaphoreCount = signalSemaphores.size(),
             .pSignalSemaphores = signalSemaphores.data(),
         };
-        return ret;
     }
 
     operator MappedType() const { return map(); }
@@ -98,15 +110,14 @@ struct PresentInfoKHR
         {
             results->reset(swapchains.size());
         }
-        const MappedType ret = {
+        return {
             .waitSemaphoreCount = waitSemaphores.size(),
             .pWaitSemaphores = waitSemaphores.data(),
             .swapchainCount = swapchains.size(),
             .pSwapchains = swapchains.data(),
             .pImageIndices = imageIndices.data(),
-            .pResults = nullptr,
+            .pResults = results ? results->data() : nullptr,
         };
-        return ret;
     }
 
     operator MappedType() const { return map(); }
