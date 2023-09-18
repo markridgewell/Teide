@@ -14,7 +14,7 @@ env:
 
 jobs:
   cppcheck:
-    name: CppCheck
+    name: Cppcheck
     runs-on: windows-latest
 
     steps:
@@ -40,9 +40,12 @@ jobs:
       if: steps.get-changes.outputs.changed-files != ''
       run: cmake --preset msvc2022
 
-    - name: Run CppCheck
+    - name: Run Cppcheck
       if: steps.get-changes.outputs.changed-files != ''
-      run: python tools/cppcheck.py --build-dir=build/msvc2022 --show-code
+      env:
+        CPPCHECK_SOURCES: ${{steps.get-changes.outputs.changed-files}}
+      run: |
+        cmake --build --preset ${{env.preset}} --target Cppcheck
 
   clang-tidy:
     name: ClangTidy
