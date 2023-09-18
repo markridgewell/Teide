@@ -57,11 +57,11 @@ public:
     bool empty() const { return m_size == 0; }
 
     const T* begin() const { return m_data.get(); }
-    const T* end() const { return m_data.get() + m_size; }
+    const T* end() const { return begin() + m_size; }
     T* begin() { return m_data.get(); }
-    T* end() { return m_data.get() + m_size; }
+    T* end() { return begin() + m_size; }
     const T* cbegin() const { return m_data.get(); }
-    const T* cend() const { return m_data.get() + m_size; }
+    const T* cend() const { return cbegin() + m_size; }
 
 private:
     std::uint32_t m_size = 0;
