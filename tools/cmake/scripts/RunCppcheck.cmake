@@ -1,6 +1,14 @@
 cmake_minimum_required(VERSION 3.19)
 
-find_program(cppcheck "cppcheck" REQUIRED)
+find_program(
+    cppcheck "cppcheck"
+    HINTS ENV
+          "ProgramFiles"
+          ENV
+          "ProgramFiles(x86)"
+          ENV
+          "ProgramW6432"
+    PATH_SUFFIXES "Cppcheck" REQUIRED)
 mark_as_advanced(cppcheck)
 
 message("Running Cppcheck script")

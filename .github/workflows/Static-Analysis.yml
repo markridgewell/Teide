@@ -16,6 +16,7 @@ jobs:
   cppcheck:
     name: Cppcheck
     runs-on: windows-latest
+    env: { preset: msvc2022 }
 
     steps:
     - name: Checkout
@@ -38,14 +39,13 @@ jobs:
 
     - name: Configure CMake
       if: steps.get-changes.outputs.changed-files != ''
-      run: cmake --preset msvc2022
+      run: cmake --preset ${{env.preset}} -DTEIDE_CPPCHECK=ON
 
     - name: Run Cppcheck
       if: steps.get-changes.outputs.changed-files != ''
       env:
         CPPCHECK_SOURCES: ${{steps.get-changes.outputs.changed-files}}
-      run: |
-        cmake --build --preset ${{env.preset}} --target Cppcheck
+      run: cmake --build --preset ${{env.preset}} --target Cppcheck
 
   clang-tidy:
     name: ClangTidy
