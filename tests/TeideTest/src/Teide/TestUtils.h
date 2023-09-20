@@ -14,6 +14,8 @@
 #include <string_view>
 #include <vector>
 
+inline bool g_windowless = false;
+
 Teide::GraphicsDevicePtr CreateTestGraphicsDevice();
 
 std::optional<std::uint32_t> GetTransferQueueIndex(vk::PhysicalDevice physicalDevice);
