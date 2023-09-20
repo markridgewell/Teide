@@ -4,11 +4,11 @@ function(td_add_cppcheck)
     compile_commands()
 
     set(cppcheck_args
+        --quiet
+        --language=c++
         "--std=c++${CMAKE_CXX_STANDARD}"
         --enable=all
         --disable=unusedFunction
-        "--template={file}({line},{column}): {severity}: {message} [{id}]"
-        "--template-location={file}({line},{column}): note: {info}"
         --platform=native
         --library=googletest
         --library=sdl
@@ -22,6 +22,7 @@ function(td_add_cppcheck)
             ${CMAKE_COMMAND} #
             "-DSOURCES='${project_sources}'" #
             "-DINCLUDE_DIRS='${project_include_directories}'" #
+            "-DSYSTEM_INCLUDE_DIRS='${project_system_include_directories}'" #
             "-DDEFINITIONS='${project_compile_definitions}'" #
             "-DCPPCHECK_ARGS='${cppcheck_args}'" #
             -P "${SCRIPTS_DIR}/RunCppcheck.cmake"
