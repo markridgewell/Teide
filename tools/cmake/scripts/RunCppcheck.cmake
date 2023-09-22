@@ -8,9 +8,7 @@ find_program(
           "ProgramFiles(x86)"
           ENV
           "ProgramW6432"
-          PATH_SUFFIXES
-          "Cppcheck"
-          REQUIRED)
+    PATH_SUFFIXES "Cppcheck" REQUIRED)
 mark_as_advanced(cppcheck)
 
 message("Running Cppcheck script")
