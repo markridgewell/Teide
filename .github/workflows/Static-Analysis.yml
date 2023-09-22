@@ -39,7 +39,7 @@ jobs:
 
     - name: Configure CMake
       if: steps.get-changes.outputs.changed-files != ''
-      run: cmake --preset ${{env.preset}}
+      run: cmake --preset ${{env.preset}} -DTEIDE_CPPCHECK=ON
 
     - name: Run Cppcheck
       if: steps.get-changes.outputs.changed-files != ''
