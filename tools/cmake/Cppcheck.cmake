@@ -16,7 +16,7 @@ function(td_add_cppcheck)
         "--suppress-xml=${CMAKE_SOURCE_DIR}/tools/cppcheck_suppressions.xml"
         --inline-suppr
         "--cppcheck-build-dir=${CMAKE_BINARY_DIR}/cppcheck")
-        file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/cppcheck")
+    file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/cppcheck")
 
     add_custom_target(
         Cppcheck
