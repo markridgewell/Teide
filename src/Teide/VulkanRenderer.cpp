@@ -161,10 +161,7 @@ void VulkanRenderer::EndFrame()
         std::vector<vk::CommandBuffer> commandBuffers
             = m_surfaceCommandBuffers.Lock([](auto& c) { return std::exchange(c, {}); });
 
-        for (const auto& surfaceImage : images)
-        {
-            commandBuffers.push_back(surfaceImage.prePresentCommandBuffer);
-        }
+        std::ranges::transform(images, std::back_inserter(commandBuffers), &SurfaceImage::prePresentCommandBuffer);
 
         const vk::SubmitInfo submitInfo = {
             .waitSemaphoreCount = size32(waitSemaphores),
