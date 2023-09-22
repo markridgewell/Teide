@@ -1,6 +1,14 @@
 cmake_minimum_required(VERSION 3.19)
 
-find_program(cppcheck "cppcheck" REQUIRED)
+find_program(
+    cppcheck "cppcheck"
+    HINTS ENV
+          "ProgramFiles"
+          ENV
+          "ProgramFiles(x86)"
+          ENV
+          "ProgramW6432"
+    PATH_SUFFIXES "Cppcheck" REQUIRED)
 mark_as_advanced(cppcheck)
 
 message("Running Cppcheck script")
@@ -14,14 +22,7 @@ list(FILTER CPPCHECK_ARGS INCLUDE REGEX ".+")
 # cmake-format: on
 
 # Build cppcheck command
-if(DEFINED ENV{CPPCHECK_SOURCES})
-    # Add source files from environment variable
-    message(STATUS "Taking sources from CPPCHECK_SOURCES environment variable")
-    list(APPEND cppcheck_args $ENV{CPPCHECK_SOURCES})
-else()
-    # Add source files passed into script
-    list(APPEND cppcheck_args ${SOURCES})
-endif()
+list(APPEND cppcheck_args ${SOURCES})
 
 # Set the format for message output
 if(DEFINED ENV{CI})
