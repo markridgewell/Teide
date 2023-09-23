@@ -9,6 +9,7 @@ set(sources
     src/Teide/FormatTest.cpp
     src/Teide/GpuExecutorTest.cpp
     src/Teide/GraphicsDeviceTest.cpp
+    src/Teide/HashTest.cpp
     src/Teide/RendererTest.cpp
     src/Teide/SchedulerTest.cpp
     src/Teide/ShaderDataTest.cpp
