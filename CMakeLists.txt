@@ -4,6 +4,7 @@ include(CMakeParseArguments)
 include(CMakeDependentOption)
 include(tools/cmake/Build.cmake)
 include(tools/cmake/Cache.cmake)
+include(tools/cmake/CompileCommands.cmake)
 
 if(LINUX AND TEIDE_SANITIZER STREQUAL "UBSAN")
     set(VCPKG_TARGET_TRIPLET "x64-linux-ubsan")
@@ -97,3 +98,5 @@ if(TEIDE_CPPCHECK)
 endif()
 
 mark_as_advanced_pattern("[a-z0-9]+_DIR|VCPKG_|FETCHCONTENT_")
+
+dump_targets("${CMAKE_BINARY_DIR}/alltargets.txt")
