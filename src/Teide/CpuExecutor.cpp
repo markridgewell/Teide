@@ -1,8 +1,6 @@
 
 #include "CpuExecutor.h"
 
-using namespace std::chrono_literals;
-
 namespace Teide
 {
 class WorkerInterface : public ::tf::WorkerInterface
@@ -17,7 +15,7 @@ class WorkerInterface : public ::tf::WorkerInterface
 CpuExecutor::CpuExecutor(uint32 numThreads) : m_executor(numThreads, std::make_shared<WorkerInterface>())
 {
     m_schedulerThread = std::thread([this] {
-        constexpr auto timeout = 2ms;
+        constexpr auto timeout = std::chrono::milliseconds{2};
 
         while (!m_schedulerStop)
         {
@@ -60,7 +58,7 @@ void CpuExecutor::WaitForTasks()
     while (hasScheduledTasks())
     {
         // busy loop for now
-        std::this_thread::sleep_for(2ms);
+        std::this_thread::sleep_for(std::chrono::milliseconds{2});
         m_executor.wait_for_all();
     }
 
