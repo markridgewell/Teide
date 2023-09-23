@@ -12,12 +12,79 @@ import sys
 import copy
 import xml.etree.ElementTree as etree
 
-#sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), 'vulkan')))
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../build/dev/vcpkg_installed/x64-windows/share/vulkan/registry')))
+def get_args():
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument('-apiname', action='store',
+                        default=None,
+                        help='Specify API to generate (defaults to repository-specific conventions object value)')
+    parser.add_argument('-mergeApiNames', action='store',
+                        default=None,
+                        help='Specify a comma separated list of APIs to merge into the target API')
+    parser.add_argument('-extension', action='append',
+                        default=[],
+                        help='Specify an extension or extensions to add to targets')
+    parser.add_argument('-removeExtensions', action='append',
+                        default=[],
+                        help='Specify an extension or extensions to remove from targets')
+    parser.add_argument('-emitExtensions', action='append',
+                        default=[],
+                        help='Specify an extension or extensions to emit in targets')
+    parser.add_argument('-emitSpirv', action='append',
+                        default=[],
+                        help='Specify a SPIR-V extension or capability to emit in targets')
+    parser.add_argument('-emitFormats', action='append',
+                        default=[],
+                        help='Specify Vulkan Formats to emit in targets')
+    parser.add_argument('-feature', action='append',
+                        default=[],
+                        help='Specify a core API feature name or names to add to targets')
+    parser.add_argument('-debug', action='store_true',
+                        help='Enable debugging')
+    parser.add_argument('-dump', action='store_true',
+                        help='Enable dump to stderr')
+    parser.add_argument('-diagfile', action='store',
+                        default=None,
+                        help='Write diagnostics to specified file')
+    parser.add_argument('-errfile', action='store',
+                        default=None,
+                        help='Write errors and warnings to specified file instead of stderr')
+    parser.add_argument('-noprotect', dest='protect', action='store_false',
+                        help='Disable inclusion protection in output headers')
+    parser.add_argument('-profile', action='store_true',
+                        help='Enable profiling')
+    parser.add_argument('-registry', action='store',
+                        required=True,
+                        help='Use specified registry file')
+    parser.add_argument('-genpath', action='store', default='gen',
+                        help='Path to generated files')
+    parser.add_argument('-o', action='store', dest='directory',
+                        default='.',
+                        help='Create target and related files in specified directory')
+    parser.add_argument('target', metavar='target', nargs='?',
+                        help='Specify target')
+    parser.add_argument('-quiet', action='store_true', default=True,
+                        help='Suppress script output during normal execution.')
+    parser.add_argument('-verbose', action='store_false', dest='quiet', default=True,
+                        help='Enable script output during normal execution.')
+    parser.add_argument('--vulkanLayer', action='store_true', dest='vulkanLayer',
+                        help='Enable scripts to generate VK specific vulkan_json_data.hpp for json_gen_layer.')
+    parser.add_argument('-misracstyle', dest='misracstyle', action='store_true',
+                        help='generate MISRA C-friendly headers')
+    parser.add_argument('-misracppstyle', dest='misracppstyle', action='store_true',
+                        help='generate MISRA C++-friendly headers')
+    parser.add_argument('--iscts', action='store_true', dest='isCTS',
+                        help='Specify if this should generate CTS compatible code')
+
+    return parser.parse_args()
+
+
+sys.path.append(os.path.abspath(os.path.dirname(get_args().registry)))
+
+print(os.path.abspath(os.path.dirname(get_args().registry)))
 
 from vkexgenerator import VkexGeneratorOptions, VkexOutputGenerator
 from cgenerator import CGeneratorOptions, COutputGenerator
-#from reflib import logDiag, logWarn, logErr, setLogFile
 from generator import write
 from reg import Registry
 from apiconventions import APIConventions
@@ -42,7 +109,7 @@ def makeGenOpts(args):
     genOpts = {}
 
     # Default class of extensions to include, or None
-    defaultExtensions = args.defaultExtensions
+    defaultExtensions = APIConventions
 
     # Additional extensions to include (list of extensions)
     extensions = args.extension
@@ -587,73 +654,7 @@ def genTarget(args):
 # For both, "name" may be a single name, or a space-separated list
 # of names, or a regular expression.
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
-
-    parser.add_argument('-apiname', action='store',
-                        default=None,
-                        help='Specify API to generate (defaults to repository-specific conventions object value)')
-    parser.add_argument('-mergeApiNames', action='store',
-                        default=None,
-                        help='Specify a comma separated list of APIs to merge into the target API')
-    parser.add_argument('-defaultExtensions', action='store',
-                        default=APIConventions().xml_api_name,
-                        help='Specify a single class of extensions to add to targets')
-    parser.add_argument('-extension', action='append',
-                        default=[],
-                        help='Specify an extension or extensions to add to targets')
-    parser.add_argument('-removeExtensions', action='append',
-                        default=[],
-                        help='Specify an extension or extensions to remove from targets')
-    parser.add_argument('-emitExtensions', action='append',
-                        default=[],
-                        help='Specify an extension or extensions to emit in targets')
-    parser.add_argument('-emitSpirv', action='append',
-                        default=[],
-                        help='Specify a SPIR-V extension or capability to emit in targets')
-    parser.add_argument('-emitFormats', action='append',
-                        default=[],
-                        help='Specify Vulkan Formats to emit in targets')
-    parser.add_argument('-feature', action='append',
-                        default=[],
-                        help='Specify a core API feature name or names to add to targets')
-    parser.add_argument('-debug', action='store_true',
-                        help='Enable debugging')
-    parser.add_argument('-dump', action='store_true',
-                        help='Enable dump to stderr')
-    parser.add_argument('-diagfile', action='store',
-                        default=None,
-                        help='Write diagnostics to specified file')
-    parser.add_argument('-errfile', action='store',
-                        default=None,
-                        help='Write errors and warnings to specified file instead of stderr')
-    parser.add_argument('-noprotect', dest='protect', action='store_false',
-                        help='Disable inclusion protection in output headers')
-    parser.add_argument('-profile', action='store_true',
-                        help='Enable profiling')
-    parser.add_argument('-registry', action='store',
-                        default='vk.xml',
-                        help='Use specified registry file instead of vk.xml')
-    parser.add_argument('-genpath', action='store', default='gen',
-                        help='Path to generated files')
-    parser.add_argument('-o', action='store', dest='directory',
-                        default='.',
-                        help='Create target and related files in specified directory')
-    parser.add_argument('target', metavar='target', nargs='?',
-                        help='Specify target')
-    parser.add_argument('-quiet', action='store_true', default=True,
-                        help='Suppress script output during normal execution.')
-    parser.add_argument('-verbose', action='store_false', dest='quiet', default=True,
-                        help='Enable script output during normal execution.')
-    parser.add_argument('--vulkanLayer', action='store_true', dest='vulkanLayer',
-                        help='Enable scripts to generate VK specific vulkan_json_data.hpp for json_gen_layer.')
-    parser.add_argument('-misracstyle', dest='misracstyle', action='store_true',
-                        help='generate MISRA C-friendly headers')
-    parser.add_argument('-misracppstyle', dest='misracppstyle', action='store_true',
-                        help='generate MISRA C++-friendly headers')
-    parser.add_argument('--iscts', action='store_true', dest='isCTS',
-                        help='Specify if this should generate CTS compatible code')
-
-    args = parser.parse_args()
+    args = get_args()
 
     # This splits arguments which are space-separated lists
     args.feature = [name for arg in args.feature for name in arg.split()]
