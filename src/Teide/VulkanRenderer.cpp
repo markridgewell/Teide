@@ -146,11 +146,6 @@ void VulkanRenderer::EndFrame()
 
     device.resetFences(fenceToSignal);
 
-    // Submit the surface command buffer(s)
-    std::vector<vk::CommandBuffer> commandBuffers
-        = m_surfaceCommandBuffers.Lock([](auto& c) { return std::exchange(c, {}); });
-    std::ranges::transform(images, std::back_inserter(commandBuffers), &SurfaceImage::prePresentCommandBuffer);
-
     const auto waitStage = vk::PipelineStageFlagBits::eColorAttachmentOutput;
 
     const vkex::SubmitInfo submitInfo = {
