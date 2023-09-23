@@ -12,14 +12,14 @@ using namespace testing;
 
 TEST(VulkanUtilsTest, ArrayDefaultConstruct)
 {
-    Array<int> a;
+    const Array<int> a;
     EXPECT_THAT(a.size(), Eq(0u));
     EXPECT_THAT(a.data(), IsNull());
 }
 
 TEST(VulkanUtilsTest, ArrayConstructFromRange)
 {
-    Array<int> a = std::views::iota(0, 5);
+    const Array<int> a = std::views::iota(0, 5);
     EXPECT_THAT(a.size(), Eq(5u));
     EXPECT_THAT(a.data(), NotNull());
     EXPECT_THAT(a, ElementsAre(0, 1, 2, 3, 4));
@@ -27,7 +27,7 @@ TEST(VulkanUtilsTest, ArrayConstructFromRange)
 
 TEST(VulkanUtilsTest, ArrayConstructSingleElement)
 {
-    Array<int> a = 5;
+    const Array<int> a = 5;
     EXPECT_THAT(a.size(), Eq(1u));
     EXPECT_THAT(a.data(), NotNull());
     EXPECT_THAT(a, ElementsAre(5));
@@ -35,23 +35,23 @@ TEST(VulkanUtilsTest, ArrayConstructSingleElement)
 
 TEST(VulkanUtilsTest, ArrayBeginEnd)
 {
-    Array<int> a = std::views::iota(0, 5);
+    const Array<int> a = std::views::iota(0, 5);
     EXPECT_THAT(a.begin(), Eq(a.data()));
-    EXPECT_THAT(a.end(), Eq(a.data() + a.size()));
+    EXPECT_THAT(a.end(), Eq(std::next(a.data(), a.size())));
 }
 
 TEST(VulkanUtilsTest, ArrayConstBeginEnd)
 {
     const Array<int> a = std::views::iota(0, 5);
     EXPECT_THAT(a.begin(), Eq(a.data()));
-    EXPECT_THAT(a.end(), Eq(a.data() + a.size()));
+    EXPECT_THAT(a.end(), Eq(std::next(a.data(), a.size())));
 }
 
 TEST(VulkanUtilsTest, ArrayCbeginCend)
 {
     const Array<int> a = std::views::iota(0, 5);
     EXPECT_THAT(a.begin(), Eq(a.data()));
-    EXPECT_THAT(a.end(), Eq(a.data() + a.size()));
+    EXPECT_THAT(a.end(), Eq(std::next(a.data(), a.size())));
 }
 
 TEST(VulkanUtilsTest, ArrayMutableAlgorithm)
@@ -73,7 +73,7 @@ template <class T>
 T MakeHandle(std::uintptr_t value)
 {
     using NativeType = T::NativeType;
-    return T(NativeType(value));
+    return T(NativeType(value)); // NOLINT(performance-no-int-to-ptr)
 }
 
 MATCHER_P(Handle, v, "handle with value")
@@ -81,19 +81,19 @@ MATCHER_P(Handle, v, "handle with value")
     (void)result_listener;
     using T = std::remove_cvref_t<decltype(arg)>;
     using NativeType = T::NativeType;
-    return NativeType(arg) == NativeType(static_cast<std::uintptr_t>(v));
+    return NativeType(arg) == NativeType(static_cast<std::uintptr_t>(v)); // NOLINT(performance-no-int-to-ptr)
 }
 
 TEST(VulkanUtilsTest, ConvertSubmitInfo)
 {
-    SubmitInfo from = {
+    const SubmitInfo from = {
         .waitSemaphores = MakeHandle<vk::Semaphore>(1),
         .waitDstStageMask = vk::PipelineStageFlags{2},
         .commandBuffers = MakeHandle<vk::CommandBuffer>(3),
         .signalSemaphores = MakeHandle<vk::Semaphore>(4),
     };
 
-    vk::SubmitInfo to = from;
+    const vk::SubmitInfo to = from;
     EXPECT_THAT(to.waitSemaphoreCount, Eq(1u));
     EXPECT_THAT(to.pWaitSemaphores, Pointee(Handle(1)));
     EXPECT_THAT(to.pWaitDstStageMask, Pointee(vk::PipelineStageFlags{2}));
@@ -105,13 +105,13 @@ TEST(VulkanUtilsTest, ConvertSubmitInfo)
 
 TEST(VulkanUtilsTest, ConvertPresentInfoKHR)
 {
-    PresentInfoKHR from = {
+    const PresentInfoKHR from = {
         .waitSemaphores = MakeHandle<vk::Semaphore>(1),
         .swapchains = MakeHandle<vk::SwapchainKHR>(2),
         .imageIndices = 3u,
     };
 
-    vk::PresentInfoKHR to = from;
+    const vk::PresentInfoKHR to = from;
     EXPECT_THAT(to.waitSemaphoreCount, Eq(1u));
     EXPECT_THAT(to.pWaitSemaphores, Pointee(Handle(1)));
     EXPECT_THAT(to.swapchainCount, Eq(1u));
@@ -123,14 +123,14 @@ TEST(VulkanUtilsTest, ConvertPresentInfoKHR)
 TEST(VulkanUtilsTest, ConvertPresentInfoKHRWithResults)
 {
     Array<vk::Result> results;
-    PresentInfoKHR from = {
+    const PresentInfoKHR from = {
         .waitSemaphores = MakeHandle<vk::Semaphore>(1),
         .swapchains = MakeHandle<vk::SwapchainKHR>(2),
         .imageIndices = 3u,
         .results = &results,
     };
 
-    vk::PresentInfoKHR to = from;
+    const vk::PresentInfoKHR to = from;
     EXPECT_THAT(to.waitSemaphoreCount, Eq(1u));
     EXPECT_THAT(to.pWaitSemaphores, Pointee(Handle(1)));
     EXPECT_THAT(to.swapchainCount, Eq(1u));
