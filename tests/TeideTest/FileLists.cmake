@@ -19,4 +19,5 @@ set(sources
     src/Teide/TestUtils.h
     src/Teide/TextureDataTest.cpp
     src/Teide/TextureTest.cpp
-    src/Teide/VulkanTest.cpp)
+    src/Teide/VulkanTest.cpp
+    src/Teide/VulkanUtilsTest.cpp)
