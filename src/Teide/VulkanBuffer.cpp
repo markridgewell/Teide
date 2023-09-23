@@ -17,16 +17,16 @@ VulkanBuffer CreateBufferUninitialized(
     vk::DeviceSize size, vk::BufferUsageFlags usage, vma::AllocationCreateFlags allocationFlags,
     vma::MemoryUsage memoryUsage, vk::Device device, vma::Allocator& allocator)
 {
-    const vk::BufferCreateInfo bufferInfo = {
-        .size = size,
-        .usage = usage,
-        .sharingMode = vk::SharingMode::eExclusive,
-    };
-    const vma::AllocationCreateInfo allocInfo = {
-        .flags = allocationFlags,
-        .usage = memoryUsage,
-    };
-    auto [buffer, allocation] = allocator.createBufferUnique(bufferInfo, allocInfo);
+    auto [buffer, allocation] = allocator.createBufferUnique(
+        vk::BufferCreateInfo{
+            .size = size,
+            .usage = usage,
+            .sharingMode = vk::SharingMode::eExclusive,
+        },
+        vma::AllocationCreateInfo{
+            .flags = allocationFlags,
+            .usage = memoryUsage,
+        });
 
     std::span<byte> mappedData;
     if (allocationFlags & vma::AllocationCreateFlagBits::eMapped)
