@@ -4,6 +4,7 @@ include(CMakeParseArguments)
 include(CMakeDependentOption)
 include(tools/cmake/Build.cmake)
 include(tools/cmake/Cache.cmake)
+include(tools/cmake/CompileCommands.cmake)
 
 if(LINUX AND TEIDE_SANITIZER STREQUAL "UBSAN")
     set(VCPKG_TARGET_TRIPLET "x64-linux-ubsan")
@@ -23,6 +24,7 @@ option(TEIDE_TEST_WINDOWLESS "Disable tests requiring a windowing system" OFF)
 option(TEIDE_UNIT_TEST_SW_RENDER "Enable software rendering for Teide unit tests" OFF)
 option(TEIDE_RENDER_TEST_SW_RENDER "Enable software rendering for Teide render tests" ON)
 option(TEIDE_CLANG_TIDY "Enable static analysis with clang-tidy" OFF)
+option(TEIDE_CPPCHECK "Enable static analysis with Cppcheck" OFF)
 
 set(TEIDE_SANITIZER
     OFF
@@ -90,4 +92,11 @@ if(TEIDE_CLANG_TIDY)
     td_add_clang_tidy()
 endif()
 
+if(TEIDE_CPPCHECK)
+    include(tools/cmake/Cppcheck.cmake)
+    td_add_cppcheck()
+endif()
+
 mark_as_advanced_pattern("[a-z0-9]+_DIR|VCPKG_|FETCHCONTENT_")
+
+dump_targets("${CMAKE_BINARY_DIR}/alltargets.txt")

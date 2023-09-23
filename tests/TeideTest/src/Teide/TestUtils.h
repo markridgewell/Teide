@@ -14,6 +14,8 @@
 #include <string_view>
 #include <vector>
 
+inline bool g_windowless = false;
+
 Teide::GraphicsDevicePtr CreateTestGraphicsDevice();
 
 std::optional<std::uint32_t> GetTransferQueueIndex(vk::PhysicalDevice physicalDevice);
@@ -68,3 +70,11 @@ void PrintTo(const std::span<T, N>& span, std::ostream* os)
 #else
 #    define EXPECT_UNREACHABLE(statement) EXPECT_DEATH(statement, UnreachableMessage)
 #endif
+
+#define CONSTEXPR_EXPECT_EQ(a, b)                                                                                      \
+    static_assert((a) == (b));                                                                                         \
+    EXPECT_EQ(a, b);
+
+#define CONSTEXPR_EXPECT_NE(a, b)                                                                                      \
+    static_assert((a) != (b));                                                                                         \
+    EXPECT_NE(a, b);
