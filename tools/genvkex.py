@@ -1,8 +1,4 @@
 #!/usr/bin/python3
-#
-# Copyright 2013-2023 The Khronos Group Inc.
-#
-# SPDX-License-Identifier: Apache-2.0
 
 import argparse
 import os
@@ -128,19 +124,8 @@ def genTarget(args):
     emitExtensionsPat    = makeREstring(emitExtensions, allExtensions)
     featuresPat          = makeREstring(features, allFeatures)
 
-    # Copyright text prefixing all headers (list of strings).
-    # The SPDX formatting below works around constraints of the 'reuse' tool
-    prefixStrings = [
-        '/*',
-        '** Copyright 2015-2023 The Khronos Group Inc.',
-        '**',
-        '** SPDX-License-Identifier' + ': Apache-2.0',
-        '*/',
-        ''
-    ]
-
     # Text specific to Vulkan headers
-    vkPrefixStrings = [
+    prefixStrings = [
         '/*',
         '** This header is generated from the Khronos Vulkan XML API Registry.',
         '**',
@@ -179,7 +164,7 @@ def genTarget(args):
         addExtensions     = addExtensionsPat,
         removeExtensions  = removeExtensionsPat,
         emitExtensions    = emitExtensionsPat,
-        prefixText        = prefixStrings + vkPrefixStrings,
+        prefixText        = prefixStrings,
         genFuncPointers   = False,
         protectFile       = protectFile,
         protectFeature    = True,

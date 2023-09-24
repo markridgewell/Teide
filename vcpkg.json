@@ -3,6 +3,12 @@
   "version": "0.0.0",
   "dependencies": [
     {
+      "name": "vulkan"
+    },
+    {
+      "name": "vulkan-headers"
+    },
+    {
       "name": "sdl2",
       "features": [
         "vulkan"

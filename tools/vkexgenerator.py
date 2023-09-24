@@ -1,8 +1,3 @@
-#!/usr/bin/python3 -i
-#
-# Copyright 2013-2023 The Khronos Group Inc.
-#
-# SPDX-License-Identifier: Apache-2.0
 
 import os
 import re
@@ -45,11 +40,12 @@ def removePointer(decl):
         return decl[:-5].strip()
     if decl.startswith('const'):
         return decl[5:].strip()
+    return decl
 
 class Member:
     def __init__(self, elem):
         self.elem = elem
-        self.lengthOf = None
+        self.lengthOf = []
         self.isArray = False
 
 class VkexGeneratorOptions(GeneratorOptions):
@@ -220,11 +216,14 @@ class VkexOutputGenerator(OutputGenerator):
         #
         # Multiple inclusion protection & C++ wrappers.
         if self.genOpts.protectFile and self.genOpts.filename:
-            headerSym = re.sub(r'\.h', '_h_',
+            headerSym = re.sub(r'\.hpp', '_hpp_',
                                os.path.basename(self.genOpts.filename)).upper()
             write('#ifndef', headerSym, file=self.outFile)
-            write('#define', headerSym, '1', file=self.outFile)
+            write('#define', headerSym, file=self.outFile)
             self.newline()
+
+        write('#include "vkex_utils.hpp"', file=self.outFile)
+        self.newline()
 
         # User-supplied prefix text, if any (list of strings)
         if genOpts.prefixText:
@@ -287,17 +286,7 @@ class VkexOutputGenerator(OutputGenerator):
                 is_core = self.featureName and self.featureName.startswith(self.conventions.api_prefix + 'VERSION_')
                 if self.genOpts.conventions.writeFeature(self.featureExtraProtect, self.genOpts.filename):
                     self.newline()
-                    if self.genOpts.protectFeature:
-                        write('#ifndef', self.featureName, file=self.outFile)
-
-                    # If type declarations are needed by other features based on
-                    # this one, it may be necessary to suppress the ExtraProtect,
-                    # or move it below the 'for section...' loop.
-                    if self.featureExtraProtect is not None:
-                        write('#ifdef', self.featureExtraProtect, file=self.outFile)
-                    self.newline()
-
-                    write('#define', self.featureName, '1', file=self.outFile)
+                    write('#ifdef', self.featureName, file=self.outFile)
                     for section in self.TYPE_SECTIONS:
                         contents = self.sections[section]
                         if contents:
@@ -328,15 +317,9 @@ class VkexOutputGenerator(OutputGenerator):
                         else:
                             self.newline()
 
-                    if self.featureExtraProtect is not None:
-                        write('#endif' +
-                              self._endProtectComment(protect_str=self.featureExtraProtect),
-                              file=self.outFile)
-
-                    if self.genOpts.protectFeature:
-                        write('#endif' +
-                              self._endProtectComment(protect_str=self.featureName),
-                              file=self.outFile)
+                    write('#endif' +
+                        self._endProtectComment(protect_str=self.featureName),
+                        file=self.outFile)
         # Finish processing in superclass
         OutputGenerator.endFeature(self)
 
@@ -371,31 +354,6 @@ class VkexOutputGenerator(OutputGenerator):
             # If the type is a struct type, generate it using the
             # special-purpose generator.
             self.genStruct(typeinfo, name, alias)
-        else:
-            return
-            if self.genOpts is None:
-                raise MissingGeneratorOptionsError()
-            # OpenXR: this section was not under 'else:' previously, just fell through
-            if alias:
-                # If the type is an alias, just emit a typedef declaration
-                body = 'typedef ' + alias + ' ' + name + ';\n'
-            else:
-                # Replace <apientry /> tags with an APIENTRY-style string
-                # (from self.genOpts). Copy other text through unchanged.
-                # If the resulting text is an empty string, do not emit it.
-                body = noneStr(typeElem.text)
-                for elem in typeElem:
-                    if elem.tag == 'apientry':
-                        body += self.genOpts.apientry + noneStr(elem.tail)
-                    else:
-                        body += noneStr(elem.text) + noneStr(elem.tail)
-                if category == 'define' and self.misracppstyle():
-                    body = body.replace("(uint32_t)", "static_cast<uint32_t>")
-            if body:
-                # Add extra newline after multi-line entries.
-                if '\n' in body[0:-1]:
-                    body += '\n'
-                self.appendSection(section, body)
 
     def genProtectString(self, protect_str):
         """Generate protection string.
@@ -444,14 +402,19 @@ class VkexOutputGenerator(OutputGenerator):
         text = noneStr(elem.text).strip()
         tail = noneStr(elem.tail).strip()
         if elem.tag == 'type':
-            if text in self.emittedStructs:
+            if False and text in self.emittedStructs:
                 text = convertTypeDecl(text)
             else:
                 text = convertTypeRef(text)
             if toArray:
                 pointerType = concat(concat(prefix, text), tail)
                 elemType = removePointer(pointerType)
-                return f'Array<{elemType}>'
+                if elemType == 'void':
+                    elemType = 'std::byte'
+                arrayType = f'Array<{elemType}>'
+                if not prefix.startswith('const'):
+                    arrayType += '*'
+                return arrayType
         elif elem.tag == 'name' and toArray:
             text = removePrefix(text, 'p')
         return concat(concat(prefix, text), tail)
@@ -477,11 +440,18 @@ class VkexOutputGenerator(OutputGenerator):
             return
 
         if typeName not in [
-            'VkRenderPassCreateInfo',
+            'VkSubmitInfo'
+            #'VkRenderPassCreateInfo',
             #'VkSubmitInfo',
             #'VkPresentInfoKHR'
             ]:
             pass#return
+
+        # List of structs known to work with auto-generation, even though
+        # the detection mechanisms aren't able to confirm it.
+        autoGenerateableStructs = [
+            'VkBufferCreateInfo',
+        ]
 
         structType = 'trivial'
 
@@ -509,54 +479,75 @@ class VkexOutputGenerator(OutputGenerator):
 
         members = {}
 
-        targetLen = self.getMaxCParamTypeLength(typeinfo)
         for memberElem in typeElem.findall('.//member'):
-            name = memberElem.find('name').text
+            nameElem = memberElem.find('name')
+            name = nameElem.text
             if name in ['sType', 'pNext']:
                 continue
             members[name] = Member(memberElem)
-            if length := memberElem.get('len'):
+            if memberElem.get('altlen'):
+                structType = 'complex'
+            if noneStr(nameElem.tail).startswith('['):
+                structType = 'complex'
+            elif length := memberElem.get('len'):
+                if memberElem.get('noautovalidity') and typeName not in autoGenerateableStructs:
+                    structType = 'complex'
+                isConst = noneStr(memberElem.text).strip().startswith('const')
                 if ',' in length:
                     lengthElems = length.split(',')
                     if len(lengthElems) == 2 and lengthElems[1] == 'null-terminated':
                         length = lengthElems[0]
                 if length in members:
-                    if members[length].lengthOf:
-                        structType = 'complex'
-                    elif structType == 'trivial':
+                    if structType == 'trivial':
                         structType = 'straightforward'
-                    members[length].lengthOf = removePrefix(name, 'p')
+                    members[length].lengthOf += [name]
                     members[name].isArray = True
+                    members[name].isConst = isConst
                 elif length != 'null-terminated':
                     structType = 'complex'
 
         # Member declarations
         for member in members.values():
-            #body += '// ' + self.makeCParamDecl(member.elem, targetLen + 4) + ';\n'
+            #body += '// ' + self.makeCParamDecl(member.elem, 0) + ';\n'
             if member.lengthOf:
                 continue
             prefix = noneStr(member.elem.text).strip()
-            #if optional := member.elem.get('optional'):
-            #    body += f'    // optional: {optional}\n'
-            if noautovalidity := member.elem.get('noautovalidity'):
-                body += f'    // noautovalidity: {noautovalidity}\n'
             body += '    '
             for elem in member.elem:
                 elemStr = self.elementStr(prefix, elem, toArray=member.isArray)
                 body = concat(body, elemStr)
                 prefix = ''
-            body += ';\n'
+            body += ' = {};\n'
         body += '\n'
 
         # Conversion function
         body += '    MappedType map() const\n    {\n'
+        for name, member in members.items():
+            for m in member.lengthOf[1:]:
+                lengthMember = removePrefix(member.lengthOf[0], 'p')
+                equalLengthMember = removePrefix(m, 'p')
+                if members[m].isConst:
+                    body += f'        VKEX_ASSERT({equalLengthMember}.size() == {lengthMember}.size());\n'
+                else:
+                    body += f'        if ({equalLengthMember} && {equalLengthMember}->size() != {lengthMember}.size())\n'
+                    body += '        {\n'
+                    body += f'            {equalLengthMember}->reset({lengthMember}.size());\n'
+                    body += '        }\n'
         body += '        MappedType r;\n'
         for name, member in members.items():
             value = name
             if member.lengthOf:
-                value = f'{member.lengthOf}.size()'
+                arrayMemberName = removePrefix(member.lengthOf[0], 'p')
+                if members[member.lengthOf[0]].isConst:
+                    value = f'{arrayMemberName}.size()'
+                else:
+                    value = f'{arrayMemberName} ? {arrayMemberName}->size() : 0'
             elif member.isArray:
-                value = removePrefix(name, 'p') + '.data()'
+                arrayMemberName = removePrefix(name, 'p')
+                if member.isConst:
+                    value = f'{arrayMemberName}.data()'
+                else:
+                    value = f'{arrayMemberName} ? {arrayMemberName}->data() : nullptr'
             body += f'        r.{name} = {value};\n'
         body += '        return r;\n'
         body += '    }\n\n'
@@ -567,71 +558,14 @@ class VkexOutputGenerator(OutputGenerator):
         if protect_end:
             body += protect_end
 
-        body = f'// {structType} struct\n{body}'
+        if structType == 'complex':
+            body = f'/*\n{body}*/\n'
+        #body = f'// {structType} struct\n{body}'
         self.structTypeCounts[structType] += 1
 
         if structType != 'trivial':
             self.appendSection('struct', body)
             self.emittedStructs += [typeName]
-
-    def genGroup(self, groupinfo, groupName, alias=None):
-        return
-        """Generate groups (e.g. C "enum" type).
-
-        These are concatenated together with other types.
-
-        If alias is not None, it is the name of another group type
-        which aliases this type; just generate that alias."""
-        OutputGenerator.genGroup(self, groupinfo, groupName, alias)
-        groupElem = groupinfo.elem
-
-        # After either enumerated type or alias paths, add the declaration
-        # to the appropriate section for the group being defined.
-        if groupElem.get('type') == 'bitmask':
-            section = 'bitmask'
-        else:
-            section = 'group'
-
-        if alias:
-            # If the group name is aliased, just emit a typedef declaration
-            # for the alias.
-            body = 'typedef ' + alias + ' ' + groupName + ';\n'
-            self.appendSection(section, body)
-        else:
-            if self.genOpts is None:
-                raise MissingGeneratorOptionsError()
-            (section, body) = self.buildEnumCDecl(self.genOpts.genEnumBeginEndRange, groupinfo, groupName)
-            self.appendSection(section, '\n' + body)
-
-    def genEnum(self, enuminfo, name, alias):
-        return
-        """Generate the C declaration for a constant (a single <enum> value).
-
-        <enum> tags may specify their values in several ways, but are usually
-        just integers."""
-
-        OutputGenerator.genEnum(self, enuminfo, name, alias)
-
-        body = self.buildConstantCDecl(enuminfo, name, alias)
-        self.appendSection('enum', body)
-
-    def genCmd(self, cmdinfo, name, alias):
-        return
-        "Command generation"
-        OutputGenerator.genCmd(self, cmdinfo, name, alias)
-
-        # if alias:
-        #     prefix = '// ' + name + ' is an alias of command ' + alias + '\n'
-        # else:
-        #     prefix = ''
-        if self.genOpts is None:
-            raise MissingGeneratorOptionsError()
-
-        prefix = ''
-        decls = self.makeCDecls(cmdinfo.elem)
-        self.appendSection('command', prefix + decls[0] + '\n')
-        if self.genOpts.genFuncPointers:
-            self.appendSection('commandPointer', decls[1])
 
     def misracstyle(self):
         return self.genOpts.misracstyle;
