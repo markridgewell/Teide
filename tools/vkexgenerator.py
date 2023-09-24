@@ -11,14 +11,14 @@ from generator import (GeneratorOptions,
                        MissingGeneratorOptionsConventionsError,
                        MissingGeneratorOptionsError, MissingRegistryError,
                        OutputGenerator, noneStr, regSortFeatures, write)
-    
+
 def convertTypeRef(name):
     if name == 'VkBool32':
         return 'bool';
     if name.startswith('Vk'):
         return 'vk::' + name[2:]
     return name
-    
+
 def convertTypeDecl(name):
     if name.startswith('Vk'):
         return name[2:]
@@ -235,10 +235,10 @@ class VkexOutputGenerator(OutputGenerator):
         if self.genOpts.protectFile and self.genOpts.filename:
             self.newline()
             write('#endif', file=self.outFile)
-        
+
         for type, count in self.structTypeCounts.items():
             print(f'Total {type} structs: {count}')
-        
+
         # Finish processing in superclass
         OutputGenerator.endFile(self)
 
@@ -428,7 +428,7 @@ class VkexOutputGenerator(OutputGenerator):
             self.may_alias.update(set(x for x in polymorphic_bases
                                       if x is not None))
         return typeName in self.may_alias
-    
+
     def elementStr(self, prefix, elem, toArray=False):
         text = noneStr(elem.text).strip()
         tail = noneStr(elem.tail).strip()
@@ -460,17 +460,17 @@ class VkexOutputGenerator(OutputGenerator):
 
         if self.genOpts is None:
             raise MissingGeneratorOptionsError()
-        
+
         if alias:
             return
-        
+
         if typeName not in [
             'VkRenderPassCreateInfo',
             #'VkSubmitInfo',
             #'VkPresentInfoKHR'
             ]:
             pass#return
-        
+
         structType = 'trivial'
 
         typeElem = typeinfo.elem
@@ -494,7 +494,7 @@ class VkexOutputGenerator(OutputGenerator):
 
         body += ' ' + convertTypeDecl(typeName) + '\n{\n'
         body += '    using MappedType = ' + convertTypeRef(typeName) + ';\n\n'
-        
+
         members = {}
 
         targetLen = self.getMaxCParamTypeLength(typeinfo)
@@ -536,7 +536,7 @@ class VkexOutputGenerator(OutputGenerator):
                 prefix = ''
             body += ';\n'
         body += '\n'
-        
+
         # Conversion function
         body += '    MappedType map() const\n    {\n'
         body += '        MappedType r;\n'
@@ -549,13 +549,13 @@ class VkexOutputGenerator(OutputGenerator):
             body += f'        r.{name} = {value};\n'
         body += '        return r;\n'
         body += '    }\n\n'
-        
+
         body += '    operator MappedType() const { return map(); }\n'
 
         body += '};\n'
         if protect_end:
             body += protect_end
-        
+
         body = f'// {structType} struct\n{body}'
         self.structTypeCounts[structType] += 1
 
