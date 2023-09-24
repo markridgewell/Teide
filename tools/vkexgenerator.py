@@ -12,6 +12,13 @@ from generator import (GeneratorOptions,
                        MissingGeneratorOptionsError, MissingRegistryError,
                        OutputGenerator, noneStr, regSortFeatures, write)
 
+def concat(a, b):
+    if len(a) == 0: return b
+    if len(b) == 0: return a
+    if (not a[-1].isspace()) and b[0].isalnum():
+        return a + ' ' + b
+    return a + b
+
 def convertTypeRef(name):
     if name == 'VkBool32':
         return 'bool';
@@ -31,9 +38,13 @@ def removePrefix(name, prefix):
 
 def removePointer(decl):
     decl = decl.strip()
-    if decl[-1] == '*':
-        return decl[:-1].strip()
-    raise RuntimeError("Expected '*'")
+    if decl[-1] != '*':
+        raise RuntimeError("Expected '*'")
+    decl = decl[:-1].strip()
+    if decl.endswith('const'):
+        return decl[:-5].strip()
+    if decl.startswith('const'):
+        return decl[5:].strip()
 
 class Member:
     def __init__(self, elem):
@@ -438,11 +449,12 @@ class VkexOutputGenerator(OutputGenerator):
             else:
                 text = convertTypeRef(text)
             if toArray:
-                tail = removePointer(elem.tail)
-                return f'Array<{prefix + text + tail}>'
+                pointerType = concat(concat(prefix, text), tail)
+                elemType = removePointer(pointerType)
+                return f'Array<{elemType}>'
         elif elem.tag == 'name' and toArray:
             text = removePrefix(text, 'p')
-        return prefix + text + tail
+        return concat(concat(prefix, text), tail)
 
     def genStruct(self, typeinfo, typeName, alias):
         """Generate struct (e.g. C "struct" type).
@@ -528,11 +540,10 @@ class VkexOutputGenerator(OutputGenerator):
             #    body += f'    // optional: {optional}\n'
             if noautovalidity := member.elem.get('noautovalidity'):
                 body += f'    // noautovalidity: {noautovalidity}\n'
-            body += '    ' + prefix
+            body += '    '
             for elem in member.elem:
                 elemStr = self.elementStr(prefix, elem, toArray=member.isArray)
-                if (not body[-1].isspace()) and elemStr[0].isalnum(): body += ' '
-                body += elemStr
+                body = concat(body, elemStr)
                 prefix = ''
             body += ';\n'
         body += '\n'
