@@ -62,17 +62,9 @@ public:
     const T* begin() const { return m_data.get(); }
     const T* end() const { return std::next(begin(), m_size); }
     T* begin() { return m_data.get(); }
-    T* end()
-    {
-        return std::next(begin(), m_size);
-        ;
-    }
+    T* end() { return std::next(begin(), m_size); }
     const T* cbegin() const { return m_data.get(); }
-    const T* cend() const
-    {
-        return std::next(cbegin(), m_size);
-        ;
-    }
+    const T* cend() const { return std::next(cbegin(), m_size); }
 
 private:
     std::uint32_t m_size = 0;

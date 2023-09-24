@@ -11,6 +11,35 @@ from generator import (GeneratorOptions,
                        MissingGeneratorOptionsConventionsError,
                        MissingGeneratorOptionsError, MissingRegistryError,
                        OutputGenerator, noneStr, regSortFeatures, write)
+    
+def convertTypeRef(name):
+    if name == 'VkBool32':
+        return 'bool';
+    if name.startswith('Vk'):
+        return 'vk::' + name[2:]
+    return name
+    
+def convertTypeDecl(name):
+    if name.startswith('Vk'):
+        return name[2:]
+    return name
+
+def removePrefix(name, prefix):
+    if name.startswith(prefix):
+        return name[len(prefix)].lower() + name[len(prefix)+1:]
+    return name
+
+def removePointer(decl):
+    decl = decl.strip()
+    if decl[-1] == '*':
+        return decl[:-1].strip()
+    raise RuntimeError("Expected '*'")
+
+class Member:
+    def __init__(self, elem):
+        self.elem = elem
+        self.lengthOf = None
+        self.isArray = False
 
 class VkexGeneratorOptions(GeneratorOptions):
     """VkexGeneratorOptions - subclass of GeneratorOptions.
@@ -169,6 +198,8 @@ class VkexOutputGenerator(OutputGenerator):
         self.sections = {section: [] for section in self.ALL_SECTIONS}
         self.feature_not_empty = False
         self.may_alias = None
+        self.emittedStructs = []
+        self.structTypeCounts = {'trivial': 0, 'straightforward': 0, 'complex': 0}
 
     def beginFile(self, genOpts):
         OutputGenerator.beginFile(self, genOpts)
@@ -191,9 +222,7 @@ class VkexOutputGenerator(OutputGenerator):
 
         # C++ extern wrapper - after prefix lines so they can add includes.
         self.newline()
-        write('#ifdef __cplusplus', file=self.outFile)
-        write('extern "C" {', file=self.outFile)
-        write('#endif', file=self.outFile)
+        write('namespace vkex {', file=self.outFile)
         self.newline()
 
     def endFile(self):
@@ -202,12 +231,14 @@ class VkexOutputGenerator(OutputGenerator):
         if self.genOpts is None:
             raise MissingGeneratorOptionsError()
         self.newline()
-        write('#ifdef __cplusplus', file=self.outFile)
         write('}', file=self.outFile)
-        write('#endif', file=self.outFile)
         if self.genOpts.protectFile and self.genOpts.filename:
             self.newline()
             write('#endif', file=self.outFile)
+        
+        for type, count in self.structTypeCounts.items():
+            print(f'Total {type} structs: {count}')
+        
         # Finish processing in superclass
         OutputGenerator.endFile(self)
 
@@ -397,6 +428,21 @@ class VkexOutputGenerator(OutputGenerator):
             self.may_alias.update(set(x for x in polymorphic_bases
                                       if x is not None))
         return typeName in self.may_alias
+    
+    def elementStr(self, prefix, elem, toArray=False):
+        text = noneStr(elem.text).strip()
+        tail = noneStr(elem.tail).strip()
+        if elem.tag == 'type':
+            if text in self.emittedStructs:
+                text = convertTypeDecl(text)
+            else:
+                text = convertTypeRef(text)
+            if toArray:
+                tail = removePointer(elem.tail)
+                return f'Array<{prefix + text + tail}>'
+        elif elem.tag == 'name' and toArray:
+            text = removePrefix(text, 'p')
+        return prefix + text + tail
 
     def genStruct(self, typeinfo, typeName, alias):
         """Generate struct (e.g. C "struct" type).
@@ -414,40 +460,108 @@ class VkexOutputGenerator(OutputGenerator):
 
         if self.genOpts is None:
             raise MissingGeneratorOptionsError()
+        
+        if alias:
+            return
+        
+        if typeName not in [
+            'VkRenderPassCreateInfo',
+            #'VkSubmitInfo',
+            #'VkPresentInfoKHR'
+            ]:
+            pass#return
+        
+        structType = 'trivial'
 
         typeElem = typeinfo.elem
 
-        if alias:
-            body = 'typedef ' + alias + ' ' + typeName + ';\n'
-        else:
-            body = ''
-            (protect_begin, protect_end) = self.genProtectString(typeElem.get('protect'))
-            if protect_begin:
-                body += protect_begin
+        body = ''
+        (protect_begin, protect_end) = self.genProtectString(typeElem.get('protect'))
+        if protect_begin:
+            body += protect_begin
 
-            if self.genOpts.genStructExtendsComment:
-                structextends = typeElem.get('structextends')
-                body += '// ' + typeName + ' extends ' + structextends + '\n' if structextends else ''
+        if self.genOpts.genStructExtendsComment:
+            structextends = typeElem.get('structextends')
+            body += '// ' + typeName + ' extends ' + structextends + '\n' if structextends else ''
 
-            body += 'typedef ' + typeElem.get('category')
+        body += typeElem.get('category')
 
-            # This is an OpenXR-specific alternative where aliasing refers
-            # to an inheritance hierarchy of types rather than C-level type
-            # aliases.
-            if self.genOpts.genAliasMacro and self.typeMayAlias(typeName):
-                body += ' ' + self.genOpts.aliasMacro
+        # This is an OpenXR-specific alternative where aliasing refers
+        # to an inheritance hierarchy of types rather than C-level type
+        # aliases.
+        if self.genOpts.genAliasMacro and self.typeMayAlias(typeName):
+            body += ' ' + self.genOpts.aliasMacro
 
-            body += ' ' + typeName + ' {\n'
+        body += ' ' + convertTypeDecl(typeName) + '\n{\n'
+        body += '    using MappedType = ' + convertTypeRef(typeName) + ';\n\n'
+        
+        members = {}
 
-            targetLen = self.getMaxCParamTypeLength(typeinfo)
-            for member in typeElem.findall('.//member'):
-                body += self.makeCParamDecl(member, targetLen + 4)
-                body += ';\n'
-            body += '} ' + typeName + ';\n'
-            if protect_end:
-                body += protect_end
+        targetLen = self.getMaxCParamTypeLength(typeinfo)
+        for memberElem in typeElem.findall('.//member'):
+            name = memberElem.find('name').text
+            if name in ['sType', 'pNext']:
+                continue
+            members[name] = Member(memberElem)
+            if length := memberElem.get('len'):
+                if ',' in length:
+                    lengthElems = length.split(',')
+                    if len(lengthElems) == 2 and lengthElems[1] == 'null-terminated':
+                        length = lengthElems[0]
+                if length in members:
+                    if members[length].lengthOf:
+                        structType = 'complex'
+                    elif structType == 'trivial':
+                        structType = 'straightforward'
+                    members[length].lengthOf = removePrefix(name, 'p')
+                    members[name].isArray = True
+                elif length != 'null-terminated':
+                    structType = 'complex'
 
-        self.appendSection('struct', body)
+        # Member declarations
+        for member in members.values():
+            #body += '// ' + self.makeCParamDecl(member.elem, targetLen + 4) + ';\n'
+            if member.lengthOf:
+                continue
+            prefix = noneStr(member.elem.text).strip()
+            #if optional := member.elem.get('optional'):
+            #    body += f'    // optional: {optional}\n'
+            if noautovalidity := member.elem.get('noautovalidity'):
+                body += f'    // noautovalidity: {noautovalidity}\n'
+            body += '    ' + prefix
+            for elem in member.elem:
+                elemStr = self.elementStr(prefix, elem, toArray=member.isArray)
+                if (not body[-1].isspace()) and elemStr[0].isalnum(): body += ' '
+                body += elemStr
+                prefix = ''
+            body += ';\n'
+        body += '\n'
+        
+        # Conversion function
+        body += '    MappedType map() const\n    {\n'
+        body += '        MappedType r;\n'
+        for name, member in members.items():
+            value = name
+            if member.lengthOf:
+                value = f'{member.lengthOf}.size()'
+            elif member.isArray:
+                value = removePrefix(name, 'p') + '.data()'
+            body += f'        r.{name} = {value};\n'
+        body += '        return r;\n'
+        body += '    }\n\n'
+        
+        body += '    operator MappedType() const { return map(); }\n'
+
+        body += '};\n'
+        if protect_end:
+            body += protect_end
+        
+        body = f'// {structType} struct\n{body}'
+        self.structTypeCounts[structType] += 1
+
+        if structType != 'trivial':
+            self.appendSection('struct', body)
+            self.emittedStructs += [typeName]
 
     def genGroup(self, groupinfo, groupName, alias=None):
         return
