@@ -15,8 +15,6 @@ def concat(a, b):
     return a + b
 
 def convertTypeRef(name):
-    if name == 'VkBool32':
-        return 'bool';
     if name.startswith('Vk'):
         return 'vk::' + name[2:]
     return name
@@ -232,7 +230,7 @@ class VkexOutputGenerator(OutputGenerator):
 
         # C++ extern wrapper - after prefix lines so they can add includes.
         self.newline()
-        write('namespace vkex {', file=self.outFile)
+        write('namespace vkex\n{', file=self.outFile)
         self.newline()
 
     def endFile(self):
@@ -241,7 +239,7 @@ class VkexOutputGenerator(OutputGenerator):
         if self.genOpts is None:
             raise MissingGeneratorOptionsError()
         self.newline()
-        write('}', file=self.outFile)
+        write('} // namespace vkex', file=self.outFile)
         if self.genOpts.protectFile and self.genOpts.filename:
             self.newline()
             write('#endif', file=self.outFile)
@@ -451,6 +449,7 @@ class VkexOutputGenerator(OutputGenerator):
         # the detection mechanisms aren't able to confirm it.
         autoGenerateableStructs = [
             'VkBufferCreateInfo',
+            'VkRenderPassBeginInfo',
         ]
 
         structType = 'trivial'

@@ -119,7 +119,7 @@ def genTarget(args):
     allFeatures = allExtensions = r'.*'
 
     # Turn lists of names/patterns into matching regular expressions
-    addExtensionsPat     = makeREstring(extensions, None)
+    addExtensionsPat     = r'.*'#makeREstring(extensions, None)
     removeExtensionsPat  = makeREstring(removeExtensions, None)
     emitExtensionsPat    = makeREstring(emitExtensions, allExtensions)
     featuresPat          = makeREstring(features, allFeatures)

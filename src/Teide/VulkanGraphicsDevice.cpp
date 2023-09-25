@@ -15,6 +15,7 @@
 
 #include "Teide/ShaderData.h"
 #include "Teide/TextureData.h"
+#include "vkex/vkex.hpp"
 
 #include <SDL.h>
 #include <SDL_vulkan.h>
@@ -418,9 +419,8 @@ namespace
             return {};
         }
 
-        const vk::DescriptorSetLayoutCreateInfo createInfo = {
-            .bindingCount = size32(layoutBindings),
-            .pBindings = data(layoutBindings),
+        const vkex::DescriptorSetLayoutCreateInfo createInfo = {
+            .bindings = layoutBindings,
         };
 
         return device.createDescriptorSetLayoutUnique(createInfo, s_allocator);
@@ -436,14 +436,12 @@ namespace
         };
         std::erase(setLayouts, vk::DescriptorSetLayout{});
 
-        vk::PipelineLayoutCreateInfo createInfo = {
-            .setLayoutCount = size32(setLayouts),
-            .pSetLayouts = data(setLayouts),
+        vkex::PipelineLayoutCreateInfo createInfo = {
+            .setLayouts = setLayouts,
         };
         if (const auto pushConstantRange = shader.objectPblockLayout->pushConstantRange)
         {
-            createInfo.pushConstantRangeCount = 1;
-            createInfo.pPushConstantRanges = &*pushConstantRange;
+            createInfo.pushConstantRanges = *pushConstantRange;
         }
 
         return device.createPipelineLayoutUnique(createInfo, s_allocator);
