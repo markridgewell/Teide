@@ -198,7 +198,14 @@ jobs:
     runs-on: ubuntu-latest
     needs: [windows, linux]
     if: ${{always()}}
+    env:
+      GH_TOKEN: ${{github.token}}
+
     steps:
-    - name: Print message
+    - name: Get workflow run data
       run: |
         echo "Build-and-Test workflow completed, run_id: ${{github.run_id}}"
+        gh api \
+          -H "Accept: application/vnd.github+json" \
+          -H "X-GitHub-Api-Version: 2022-11-28" \
+          /repos/${{github.repository}}/actions/runs/${{github.run_id}}
