@@ -36,6 +36,9 @@ jobs:
       CMAKE_BUILD_TYPE: ${{matrix.buildtype}}
 
     steps:
+    - name: Print job ID
+      run: echo "${{github.job}}"
+
     - name: Checkout
       uses: actions/checkout@v3
       with:
@@ -133,6 +136,9 @@ jobs:
       job_name: Linux-${{matrix.buildtype}}-${{matrix.compiler}}${{matrix.name-suffix}}
 
     steps:
+    - name: Print job ID
+      run: echo "${{github.job}}"
+
     - name: Checkout
       uses: actions/checkout@v3
       with:
