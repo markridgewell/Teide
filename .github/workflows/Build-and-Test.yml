@@ -211,19 +211,19 @@ jobs:
     - name: Get workflow run data
       run: |
         echo "Build-and-Test workflow completed, run_id: ${{github.run_id}}"
-        echo '{"run_data":' > ${{github.sha}}.json
+        echo -n '{"run_data":' > ${{github.sha}}.json
         gh api \
           -H "Accept: application/vnd.github+json" \
           -H "X-GitHub-Api-Version: 2022-11-28" \
           /repos/${{github.repository}}/actions/runs/${{github.run_id}} \
           >> ${{github.sha}}.json
-        echo ', "job_data":' >> ${{github.sha}}.json
+        echo -n ', "job_data":' >> ${{github.sha}}.json
         gh api \
           -H "Accept: application/vnd.github+json" \
           -H "X-GitHub-Api-Version: 2022-11-28" \
           /repos/${{github.repository}}/actions/runs/${{github.run_id}}/jobs \
           >> ${{github.sha}}.json
-        echo '}' >> ${{github.sha}}.json
+        echo -n '}' >> ${{github.sha}}.json
 
     - name: Push workflow run data
       uses: dmnemec/copy_file_to_another_repo_action@v1.1.1
