@@ -27,9 +27,15 @@ void CommandBuffer::TakeOwnership(vk::UniqueBuffer buffer)
     m_ownedBuffers.push_back(std::move(buffer));
 }
 
+void CommandBuffer::TakeOwnership(vma::UniqueAllocation allocation)
+{
+    m_ownedAllocations.push_back(std::move(allocation));
+}
+
 void CommandBuffer::Reset()
 {
     m_ownedBuffers.clear();
+    m_ownedAllocations.clear();
     m_referencedTextures.clear();
     m_referencedBuffers.clear();
     m_referencedParameterBlocks.clear();

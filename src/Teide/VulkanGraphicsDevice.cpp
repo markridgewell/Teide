@@ -647,6 +647,7 @@ auto VulkanGraphicsDevice::CreateTextureImpl(
         CopyBufferToImage(cmdBuffer, stagingBuffer.buffer.get(), image.get(), data.format, imageExtent);
 
         cmdBuffer.TakeOwnership(std::move(stagingBuffer.buffer));
+        cmdBuffer.TakeOwnership(std::move(stagingBuffer.allocation));
     }
 
     // Create image view

@@ -32,7 +32,7 @@ VulkanBuffer CreateBufferUninitialized(
     if (allocationFlags & vma::AllocationCreateFlagBits::eMapped)
     {
         const vma::AllocationInfo allocInfo = allocator.getAllocationInfo(allocation.get());
-        mappedData = {static_cast<std::byte*>(allocInfo.pMappedData), allocInfo.size};
+        mappedData = {static_cast<std::byte*>(allocInfo.pMappedData), size};
     }
 
     return VulkanBuffer({
