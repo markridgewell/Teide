@@ -30,6 +30,9 @@ void CommandBuffer::TakeOwnership(vk::UniqueBuffer buffer)
 void CommandBuffer::Reset()
 {
     m_ownedBuffers.clear();
+    m_referencedTextures.clear();
+    m_referencedBuffers.clear();
+    m_referencedParameterBlocks.clear();
 }
 
 std::string_view CommandBuffer::GetDebugName() const
