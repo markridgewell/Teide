@@ -240,11 +240,6 @@ namespace
     vk::UniqueDescriptorSetLayout
     CreateDescriptorSetLayout(vk::Device device, std::span<const vk::DescriptorSetLayoutBinding> layoutBindings)
     {
-        if (layoutBindings.empty())
-        {
-            return {};
-        }
-
         const vk::DescriptorSetLayoutCreateInfo createInfo = {
             .bindingCount = size32(layoutBindings),
             .pBindings = data(layoutBindings),
@@ -261,7 +256,6 @@ namespace
             shader.materialPblockLayout->setLayout.get(),
             shader.objectPblockLayout->setLayout.get(),
         };
-        std::erase(setLayouts, vk::DescriptorSetLayout{});
 
         vk::PipelineLayoutCreateInfo createInfo = {
             .setLayoutCount = size32(setLayouts),
