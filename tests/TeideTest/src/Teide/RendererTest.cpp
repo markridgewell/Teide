@@ -155,4 +155,55 @@ TEST_F(RendererTest, RenderWithViewParameters)
     EXPECT_THAT(outputData.pixels, ContainerEq(expectedPixels));
 }
 
+TEST_F(RendererTest, RenderMultiplePassesWithViewParameters)
+{
+    const auto renderTarget = CreateRenderTargetInfo({2, 2}, Format::Byte4Norm);
+
+    const auto vertices = MakeBytes<float>({-1.0f, -1.0f, 3.0f, -1.0f, -1.0f, 3.0f});
+    const auto mesh = m_device->CreateMesh({.vertexData = vertices, .vertexCount = 3}, "Mesh");
+    const VertexLayout vertexLayout
+        = {.topology = PrimitiveTopology::TriangleList,
+           .bufferBindings = {{.stride = sizeof(float) * 2}},
+           .attributes = {{.name = "inPosition", .format = Format::Float2, .bufferIndex = 0, .offset = 0}}};
+
+    const auto shaderData = CompileShader(ViewTextureShader);
+    CreateRenderer(ViewTextureEnvironment);
+    const auto shader = m_device->CreateShader(shaderData, "ViewTextureShader");
+
+    const auto pipeline = m_device->CreatePipeline({
+        .shader = shader,
+        .vertexLayout = vertexLayout,
+        .renderPasses = {{.framebufferLayout = renderTarget.framebufferLayout}},
+    });
+
+    const TextureData textureData = {
+        .size = {2, 2},
+        .format = Format::Byte4Norm,
+        .pixels = MakeBytes<uint8>({20, 20, 20, 255, 20, 20, 20, 255, 20, 20, 20, 255, 20, 20, 20, 255}),
+    };
+    TexturePtr texture = m_device->CreateTexture(textureData, "initialTexture");
+
+    constexpr int numPasses = 100;
+    for (int i = 0; i < numPasses; i++)
+    {
+        const RenderList renderList = {
+            .clearState = {.colorValue = Color{1.0f, 0.0f, 0.0f, 1.0f}},
+            .viewParameters = {.textures = {texture}},
+            .objects = {RenderObject{.mesh = mesh, .pipeline = pipeline}},
+        };
+
+        texture = m_renderer->RenderToTexture(renderTarget, renderList).colorTexture;
+    }
+
+    const TextureData outputData = m_renderer->CopyTextureData(texture).get();
+
+    EXPECT_THAT(outputData.size, Eq(Geo::Size2i{2, 2}));
+    EXPECT_THAT(outputData.format, Eq(Format::Byte4Norm));
+    EXPECT_THAT(outputData.mipLevelCount, Eq(1u));
+    EXPECT_THAT(outputData.sampleCount, Eq(1u));
+
+    const auto expectedPixels = HexToBytes("78 78 78 ff 78 78 78 ff 78 78 78 ff 78 78 78 ff");
+    EXPECT_THAT(outputData.pixels, ContainerEq(expectedPixels));
+}
+
 } // namespace
