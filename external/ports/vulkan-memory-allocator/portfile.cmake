@@ -1,10 +1,11 @@
 vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator
-    REF 2f382df218d7e8516dee3b3caccb819a62b571a2
+    REF 2a28bc4b39b9b80dad909036442f629f570d7ae1
     SHA512
-        689c7d48687c1ebdba86850310ff95d7d5fae79455af90e88aed2a6702968e1b48923fab39f2fee0f4725b255033b3efc135e8c17d2369d930db2737aaf28943
-    HEAD_REF master)
+        cd83efc357171a5fd1ac65a566d1bf828f7de2b4c97adec92aaaf9cdfedf5a5525de3bd6eb84c453d1cd952c10c3542e6502ad4307a55b61690ce92b80dc4e2f
+    HEAD_REF master
+    PATCHES fixub.patch)
 
 set(VCPKG_BUILD_TYPE release) # header-only port
 vcpkg_cmake_configure(SOURCE_PATH "${SOURCE_PATH}")
