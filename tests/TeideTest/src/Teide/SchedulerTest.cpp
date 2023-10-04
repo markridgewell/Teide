@@ -56,6 +56,11 @@ protected:
             vma::MemoryUsage::eAuto, m_device.get(), m_allocator.get());
     }
 
+    void InvalidateAllocation(const vma::UniqueAllocation& allocation) const
+    {
+        m_allocator->invalidateAllocation(allocation.get(), 0, VK_WHOLE_SIZE);
+    }
+
 private:
     VulkanLoader m_loader;
     vk::UniqueInstance m_instance;
@@ -129,6 +134,7 @@ TEST_F(SchedulerTest, ScheduleGpu)
     task.wait();
     EXPECT_THAT(task.wait_for(0s), Eq(std::future_status::ready));
 
+    InvalidateAllocation(buffer.allocation);
     EXPECT_THAT(buffer.mappedData, Each(Eq(std::byte{1})));
 }
 
@@ -144,6 +150,7 @@ TEST_F(SchedulerTest, ScheduleGpuWithReturn)
     const auto& result = task.get();
     const auto& buffer = *result;
 
+    InvalidateAllocation(buffer.allocation);
     EXPECT_THAT(buffer.mappedData, Each(Eq(byte{1})));
 }
 
@@ -151,7 +158,7 @@ TEST_F(SchedulerTest, ScheduleGpuAcrossMultipleFrames)
 {
     auto scheduler = CreateScheduler();
 
-    constexpr uint32 numFrames = 3;
+    constexpr uint32 numFrames = 10;
     for (uint32 i = 0; i < numFrames; i++)
     {
         auto buffer = CreateHostVisibleBuffer(4);
@@ -162,6 +169,7 @@ TEST_F(SchedulerTest, ScheduleGpuAcrossMultipleFrames)
 
         task.wait();
 
+        InvalidateAllocation(buffer.allocation);
         EXPECT_THAT(buffer.mappedData, Each(Eq(static_cast<byte>(i))));
 
         scheduler.NextFrame();
