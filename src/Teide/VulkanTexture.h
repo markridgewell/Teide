@@ -1,7 +1,6 @@
 
 #pragma once
 
-#include "MemoryAllocator.h"
 #include "Vulkan.h"
 
 #include "GeoLib/Vector.h"
@@ -19,7 +18,6 @@ struct TextureState
 struct VulkanTextureData
 {
     vk::UniqueImage image;
-    MemoryAllocation memory;
     vma::UniqueAllocation allocation;
     vk::UniqueImageView imageView;
     vk::UniqueSampler sampler;

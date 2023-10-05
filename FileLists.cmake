@@ -39,8 +39,6 @@ set(sources
     src/Teide/Format.cpp
     src/Teide/GpuExecutor.cpp
     src/Teide/GpuExecutor.h
-    src/Teide/MemoryAllocator.cpp
-    src/Teide/MemoryAllocator.h
     src/Teide/Scheduler.cpp
     src/Teide/Scheduler.h
     src/Teide/ShaderData.cpp
