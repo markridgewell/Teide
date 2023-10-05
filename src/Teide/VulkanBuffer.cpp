@@ -1,8 +1,6 @@
 
 #include "VulkanBuffer.h"
 
-#include "MemoryAllocator.h"
-
 #include <cassert>
 
 namespace Teide
@@ -14,26 +12,33 @@ namespace
 }
 
 VulkanBuffer CreateBufferUninitialized(
-    vk::DeviceSize size, vk::BufferUsageFlags usage, vk::MemoryPropertyFlags memoryFlags, vk::Device device,
-    MemoryAllocator& allocator)
+    vk::DeviceSize size, vk::BufferUsageFlags usage, vma::AllocationCreateFlags allocationFlags,
+    vma::MemoryUsage memoryUsage, vk::Device device, vma::Allocator& allocator)
 {
-    VulkanBuffer ret{};
+    auto [buffer, allocation] = allocator.createBufferUnique(
+        vk::BufferCreateInfo{
+            .size = size,
+            .usage = usage,
+            .sharingMode = vk::SharingMode::eExclusive,
+        },
+        vma::AllocationCreateInfo{
+            .flags = allocationFlags,
+            .usage = memoryUsage,
+        });
 
-    const vk::BufferCreateInfo createInfo = {
-        .size = size,
-        .usage = usage,
-        .sharingMode = vk::SharingMode::eExclusive,
-    };
-    ret.size = size;
-    ret.buffer = device.createBufferUnique(createInfo, s_allocator);
-    const auto allocation = allocator.Allocate(device.getBufferMemoryRequirements(ret.buffer.get()), memoryFlags);
-    device.bindBufferMemory(ret.buffer.get(), allocation.memory, allocation.offset);
-    if (!allocation.mappedData.empty())
+    std::span<byte> mappedData;
+    if (allocationFlags & vma::AllocationCreateFlagBits::eMapped)
     {
-        ret.mappedData = allocation.mappedData.subspan(0, size);
+        const vma::AllocationInfo allocInfo = allocator.getAllocationInfo(allocation.get());
+        mappedData = {static_cast<std::byte*>(allocInfo.pMappedData), size};
     }
 
-    return ret;
+    return VulkanBuffer({
+        .size = size,
+        .buffer = vk::UniqueBuffer(buffer.release(), device),
+        .allocation = std::move(allocation),
+        .mappedData = mappedData,
+    });
 }
 
 vk::BufferUsageFlags GetBufferUsageFlags(BufferUsage usage)

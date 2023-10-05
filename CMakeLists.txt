@@ -37,6 +37,8 @@ list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/tools/cmake/modules)
 set(SCRIPTS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/tools/cmake/scripts)
 
 find_package(Vulkan REQUIRED)
+find_package(VulkanMemoryAllocator REQUIRED)
+find_package(VulkanMemoryAllocator-Hpp REQUIRED)
 find_package(SDL2 REQUIRED)
 find_package(SDL2_image REQUIRED)
 find_package(fmt REQUIRED)
@@ -68,6 +70,7 @@ td_add_library(
     PUBLIC_DEPS spdlog::spdlog
     PRIVATE_DEPS
         Vulkan::Vulkan
+        VulkanMemoryAllocator-Hpp::VulkanMemoryAllocator-Hpp
         SDL2::SDL2
         fmt::fmt
         Taskflow::Taskflow
