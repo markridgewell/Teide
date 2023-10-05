@@ -49,7 +49,7 @@ jobs:
     - name: Install dependencies
       uses: ./.github/actions/install-dependencies
       with:
-        extra-packages: OpenCppCoverage
+        extra-packages: ${{matrix.coverage == 'ON' && 'OpenCppCoverage' || ''}}
 
     - name: Configure CMake
       run: cmake --preset ${{matrix.preset}} -DTEIDE_TEST_VERBOSE=ON -DTEIDE_UNIT_TEST_SW_RENDER=ON -DTEIDE_TEST_COVERAGE=${{matrix.coverage}} --trace --trace-format=json-v1 --trace-redirect=CMakeTrace.txt
