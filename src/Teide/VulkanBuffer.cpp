@@ -1,8 +1,6 @@
 
 #include "VulkanBuffer.h"
 
-#include "MemoryAllocator.h"
-
 #include <cassert>
 
 namespace Teide

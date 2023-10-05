@@ -490,8 +490,7 @@ VulkanGraphicsDevice::VulkanGraphicsDevice(
     m_setupCommandPool{CreateCommandPool(m_physicalDevice.queueFamilies.graphicsFamily, m_device.get(), "SetupCommandPool")},
     m_surfaceCommandPool{
         CreateCommandPool(m_physicalDevice.queueFamilies.graphicsFamily, m_device.get(), "SurfaceCommandPool")},
-    m_allocator(m_device.get(), m_physicalDevice.physicalDevice),
-    m_allocator2{CreateAllocator(m_loader, m_instance.get(), m_device.get(), m_physicalDevice.physicalDevice)},
+    m_allocator{CreateAllocator(m_loader, m_instance.get(), m_device.get(), m_physicalDevice.physicalDevice)},
     m_scheduler(m_settings.numThreads, m_device.get(), m_graphicsQueue, m_physicalDevice.queueFamilies.graphicsFamily)
 {
     if constexpr (IsDebugBuild)
@@ -541,7 +540,7 @@ VulkanGraphicsDevice::~VulkanGraphicsDevice()
 VulkanBuffer VulkanGraphicsDevice::CreateBufferUninitialized(
     vk::DeviceSize size, vk::BufferUsageFlags usage, vma::AllocationCreateFlags allocationFlags, vma::MemoryUsage memoryUsage)
 {
-    return Teide::CreateBufferUninitialized(size, usage, allocationFlags, memoryUsage, m_device.get(), m_allocator2.get());
+    return Teide::CreateBufferUninitialized(size, usage, allocationFlags, memoryUsage, m_device.get(), m_allocator.get());
 }
 
 VulkanBuffer
@@ -625,7 +624,7 @@ auto VulkanGraphicsDevice::CreateTextureImpl(
     const vma::AllocationCreateInfo allocInfo = {
         .usage = vma::MemoryUsage::eAuto,
     };
-    auto [image, allocation] = m_allocator2->createImageUnique(imageInfo, allocInfo);
+    auto [image, allocation] = m_allocator->createImageUnique(imageInfo, allocInfo);
 
     if (!data.pixels.empty())
     {
@@ -704,13 +703,13 @@ auto VulkanGraphicsDevice::CreateTextureImpl(
 void VulkanGraphicsDevice::SetBufferData(VulkanBuffer& buffer, BytesView data)
 {
     const auto allocation = buffer.allocation.get();
-    assert(m_allocator2->getAllocationInfo(allocation).size >= data.size());
+    assert(m_allocator->getAllocationInfo(allocation).size >= data.size());
 
-    void* const mappedData = m_allocator2->mapMemory(allocation);
+    void* const mappedData = m_allocator->mapMemory(allocation);
 
     std::memcpy(mappedData, data.data(), data.size());
 
-    m_allocator2->unmapMemory(allocation);
+    m_allocator->unmapMemory(allocation);
 }
 
 SurfacePtr VulkanGraphicsDevice::CreateSurface(SDL_Window* window, bool multisampled)
@@ -739,8 +738,8 @@ SurfacePtr VulkanGraphicsDevice::CreateSurface(vk::UniqueSurfaceKHR surface, SDL
     assert(m_physicalDevice.queueFamilies.presentFamily.has_value());
 
     return std::make_unique<VulkanSurface>(
-        window, std::move(surface), m_device.get(), m_physicalDevice.physicalDevice,
-        m_physicalDevice.queueFamilyIndices, m_surfaceCommandPool.get(), m_graphicsQueue, multisampled);
+        window, std::move(surface), m_device.get(), m_physicalDevice.physicalDevice, m_physicalDevice.queueFamilyIndices,
+        m_surfaceCommandPool.get(), m_allocator.get(), m_graphicsQueue, multisampled);
 }
 
 BufferPtr VulkanGraphicsDevice::CreateBuffer(const BufferData& data, const char* name, CommandBuffer& cmdBuffer)

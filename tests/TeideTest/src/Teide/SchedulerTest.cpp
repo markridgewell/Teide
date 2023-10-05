@@ -1,7 +1,6 @@
 
 #include "Teide/Scheduler.h"
 
-#include "Teide/MemoryAllocator.h"
 #include "Teide/TestUtils.h"
 #include "Teide/Vulkan.h"
 #include "Teide/VulkanBuffer.h"

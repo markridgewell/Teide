@@ -3,7 +3,6 @@
 
 #include "TestUtils.h"
 
-#include "Teide/MemoryAllocator.h"
 #include "Teide/TestUtils.h"
 #include "Teide/Vulkan.h"
 #include "Teide/VulkanBuffer.h"

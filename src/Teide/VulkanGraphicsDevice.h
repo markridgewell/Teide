@@ -2,7 +2,6 @@
 #pragma once
 
 #include "CommandBuffer.h"
-#include "MemoryAllocator.h"
 #include "Scheduler.h"
 #include "Vulkan.h"
 #include "VulkanBuffer.h"
@@ -62,7 +61,7 @@ public:
 
     // Internal
     vk::Device GetVulkanDevice() { return m_device.get(); }
-    vma::Allocator& GetAllocator() { return m_allocator2.get(); }
+    vma::Allocator& GetAllocator() { return m_allocator.get(); }
     Scheduler& GetScheduler() { return m_scheduler; }
 
     template <class T>
@@ -153,8 +152,7 @@ private:
     vk::UniqueCommandPool m_setupCommandPool;
     vk::UniqueCommandPool m_surfaceCommandPool;
 
-    MemoryAllocator m_allocator;
-    vma::UniqueAllocator m_allocator2;
+    vma::UniqueAllocator m_allocator;
 
     Scheduler m_scheduler;
 };
