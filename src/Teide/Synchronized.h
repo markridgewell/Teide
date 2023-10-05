@@ -10,8 +10,8 @@ class Synchronized
 public:
     Synchronized() = default;
 
-    Synchronized(const T& object) : m_object{object} {}
-    Synchronized(T&& object) : m_object{std::move(object)} {}
+    explicit Synchronized(const T& object) : m_object{object} {}
+    explicit Synchronized(T&& object) : m_object{std::move(object)} {}
 
     template <class F>
     auto Lock(const F& callable)

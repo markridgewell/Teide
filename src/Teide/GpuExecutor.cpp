@@ -89,7 +89,7 @@ void GpuExecutor::Queue::Flush()
         if (m_device.waitForFences(fence.get(), false, 0) == vk::Result::eSuccess)
         {
             // Found one, call the attached callbacks (if any)
-            for (auto& callback : std::exchange(callbacks, {}))
+            for (auto&& callback : std::exchange(callbacks, {}))
             {
                 callback();
             }

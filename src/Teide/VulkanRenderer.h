@@ -20,7 +20,7 @@
 namespace Teide
 {
 
-class VulkanRenderer : public Renderer
+class VulkanRenderer final : public Renderer
 {
 public:
     explicit VulkanRenderer(VulkanGraphicsDevice& device, const QueueFamilies& queueFamilies, ShaderEnvironmentPtr shaderEnvironment);
