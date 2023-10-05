@@ -80,7 +80,6 @@ private:
 
     ShaderEnvironmentPtr m_shaderEnvironment;
 
-    Synchronized<std::vector<vk::CommandBuffer>> m_surfaceCommandBuffers;
     Synchronized<std::vector<SurfaceImage>> m_surfacesToPresent;
 
     std::array<FrameResources, MaxFramesInFlight> m_frameResources;

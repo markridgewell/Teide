@@ -10,10 +10,10 @@
 namespace Teide
 {
 
-class Scheduler // NOLINT(clang-analyzer-optin.performance.Padding)
+class Scheduler
 {
 public:
-    Scheduler(uint32 numThreads, vk::Device device, vk::Queue queue, uint32 queueFamily);
+    Scheduler(uint32 numThreads, vk::Device device, vk::Queue queue, uint32 queueFamilyIndex);
 
     void NextFrame();
 
@@ -44,7 +44,7 @@ public:
                 // TODO: This is dangerous as we're passing references to an asynchronous callback.
                 // If the GPU executor is destroyed while this task is still alive it will crash.
                 // Try to refactor so this isn't possible!
-                CommandBuffer& commandBuffer = GetCommandBuffer(taskIndex);
+                CommandBuffer& commandBuffer = m_gpuExecutor.GetCommandBuffer(taskIndex);
 
                 if constexpr (std::is_void_v<FRet>)
                 {
@@ -82,29 +82,9 @@ public:
 
     uint32 GetThreadIndex() const { return m_cpuExecutor.GetThreadIndex(); }
 
-    CommandBuffer& GetCommandBuffer(uint32 threadIndex);
-
 private:
-    static constexpr uint32 MaxFramesInFlight = 2;
-
-    struct ThreadResources
-    {
-        vk::UniqueCommandPool commandPool;
-        std::deque<CommandBuffer> commandBuffers;
-        uint32 numUsedCommandBuffers = 0;
-        uint32 threadIndex = 0;
-
-        void Reset(vk::Device device);
-    };
-
-    static std::vector<ThreadResources> CreateThreadResources(vk::Device device, uint32 queueFamilyIndex, uint32 numThreads);
-
-    vk::Device m_device;
-    uint32 m_frameNumber = 0;
-
     CpuExecutor m_cpuExecutor;
     GpuExecutor m_gpuExecutor;
-    std::array<std::vector<ThreadResources>, MaxFramesInFlight> m_frameResources;
 };
 
 } // namespace Teide

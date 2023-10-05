@@ -44,6 +44,9 @@ void CommandBuffer::TakeOwnership(vma::UniqueAllocation allocation)
 
 void CommandBuffer::Reset()
 {
+    m_referencedTextures.clear();
+    m_referencedBuffers.clear();
+    m_referencedParameterBlocks.clear();
     m_ownedBuffers.clear();
     m_ownedAllocations.clear();
     m_referencedTextures.clear();

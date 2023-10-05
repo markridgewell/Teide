@@ -45,6 +45,11 @@ protected:
     vk::Device GetDevice() const { return m_device.get(); }
     vk::Queue GetQueue() const { return m_queue; }
 
+    GpuExecutor CreateGpuExecutor()
+    {
+        return {2, GetDevice(), GetQueue(), m_physicalDevice.queueFamilies.transferFamily};
+    }
+
     vk::UniqueCommandBuffer CreateCommandBuffer()
     {
         auto list = m_device->allocateCommandBuffersUnique({.commandPool = m_commandPool.get(), .commandBufferCount = 1});
@@ -86,7 +91,7 @@ private:
 
 TEST_F(GpuExecutorTest, OneCommandBuffer)
 {
-    auto executor = GpuExecutor(GetDevice(), GetQueue());
+    auto executor = CreateGpuExecutor();
     auto cmdBuffer = CreateCommandBuffer();
     auto buffer = CreateHostVisibleBuffer(12);
 
@@ -107,7 +112,7 @@ TEST_F(GpuExecutorTest, OneCommandBuffer)
 
 TEST_F(GpuExecutorTest, TwoCommandBuffers)
 {
-    auto executor = GpuExecutor(GetDevice(), GetQueue());
+    auto executor = CreateGpuExecutor();
     auto cmdBuffer1 = CreateCommandBuffer();
     auto cmdBuffer2 = CreateCommandBuffer();
     auto buffer = CreateHostVisibleBuffer(12);
@@ -135,7 +140,7 @@ TEST_F(GpuExecutorTest, TwoCommandBuffers)
 
 TEST_F(GpuExecutorTest, TwoCommandBuffersOutOfOrder)
 {
-    auto executor = GpuExecutor(GetDevice(), GetQueue());
+    auto executor = CreateGpuExecutor();
     auto cmdBuffer1 = CreateCommandBuffer();
     auto cmdBuffer2 = CreateCommandBuffer();
     auto buffer = CreateHostVisibleBuffer(12);
@@ -166,7 +171,7 @@ TEST_F(GpuExecutorTest, DontWait)
     auto buffer = CreateHostVisibleBuffer(12);
     auto cmdBuffer = CreateCommandBuffer();
     {
-        auto executor = GpuExecutor(GetDevice(), GetQueue());
+        auto executor = CreateGpuExecutor();
 
         cmdBuffer->begin(vk::CommandBufferBeginInfo{});
         cmdBuffer->fillBuffer(buffer.buffer.get(), 0, 12, 0x01010101);
@@ -179,7 +184,7 @@ TEST_F(GpuExecutorTest, DontWait)
 
 TEST_F(GpuExecutorTest, SubmitMultipleCommandBuffers)
 {
-    auto executor = GpuExecutor(GetDevice(), GetQueue());
+    auto executor = CreateGpuExecutor();
     for (int i = 0; i < 10; i++)
     {
         auto cmdBuffer = CreateCommandBuffer();

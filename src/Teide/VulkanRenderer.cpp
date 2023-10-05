@@ -172,17 +172,12 @@ void VulkanRenderer::EndFrame()
 
     device.resetFences(fenceToSignal);
 
-    // Submit the surface command buffer(s)
-    std::vector<vk::CommandBuffer> commandBuffers
-        = m_surfaceCommandBuffers.Lock([](auto& c) { return std::exchange(c, {}); });
-    std::ranges::transform(images, std::back_inserter(commandBuffers), &SurfaceImage::prePresentCommandBuffer);
-
     const auto waitStage = vk::PipelineStageFlagBits::eColorAttachmentOutput;
 
     const vkex::SubmitInfo submitInfo = {
         .waitSemaphores = transform(images, &SurfaceImage::imageAvailable),
         .waitDstStageMask = transform(images, [=](auto&&) { return waitStage; }),
-        .commandBuffers = commandBuffers,
+        .commandBuffers = transform(images, &SurfaceImage::prePresentCommandBuffer),
         .signalSemaphores = m_renderFinished[m_frameNumber].get(),
     };
     m_graphicsQueue.submit(submitInfo.map(), fenceToSignal);
@@ -297,9 +292,7 @@ void VulkanRenderer::RenderToSurface(Surface& surface, RenderList renderList)
 
         const auto framebuffer = surfaceImage.framebuffer;
 
-        m_device.GetScheduler().Schedule([=, this, renderList = std::move(renderList)](uint32 taskIndex) {
-            CommandBuffer& commandBuffer = m_device.GetScheduler().GetCommandBuffer(taskIndex);
-
+        ScheduleGpu([this, renderList = std::move(renderList), framebuffer](CommandBuffer& commandBuffer) {
             const RenderPassDesc renderPassDesc = {
                 .framebufferLayout = framebuffer.layout,
                 .renderOverrides = renderList.renderOverrides,
@@ -308,10 +301,6 @@ void VulkanRenderer::RenderToSurface(Surface& surface, RenderList renderList)
             const auto renderPass = m_device.CreateRenderPass(framebuffer.layout, renderList.clearState);
 
             RecordRenderListCommands(commandBuffer, renderList, renderPass, renderPassDesc, framebuffer);
-
-            commandBuffer.Get()->end();
-
-            m_surfaceCommandBuffers.Lock([&commandBuffer](auto& s) { s.push_back(commandBuffer); });
         });
     }
 }
