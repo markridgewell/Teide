@@ -45,7 +45,7 @@ protected:
         };
     }
 
-    const RenderObject CreateFullscreenTri(const Teide::RenderTargetInfo& renderTarget)
+    RenderObject CreateFullscreenTri(const Teide::RenderTargetInfo& renderTarget)
     {
         const auto vertices = MakeBytes<float>({-1.0f, -1.0f, 3.0f, -1.0f, -1.0f, 3.0f});
         const auto mesh = m_device->CreateMesh({.vertexData = vertices, .vertexCount = 3}, "Mesh");

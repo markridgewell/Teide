@@ -10,7 +10,7 @@
 namespace Teide
 {
 
-class Scheduler
+class Scheduler // NOLINT(clang-analyzer-optin.performance.Padding)
 {
 public:
     Scheduler(uint32 numThreads, vk::Device device, vk::Queue queue, uint32 queueFamily);
