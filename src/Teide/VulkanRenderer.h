@@ -20,7 +20,7 @@
 namespace Teide
 {
 
-class VulkanRenderer : public Renderer
+class VulkanRenderer final : public Renderer
 {
 public:
     explicit VulkanRenderer(VulkanGraphicsDevice& device, const QueueFamilies& queueFamilies, ShaderEnvironmentPtr shaderEnvironment);
@@ -35,6 +35,9 @@ public:
     uint32 GetFrameNumber() const override;
     void BeginFrame(ShaderParameters sceneParameters) override;
     void EndFrame() override;
+
+    void WaitForCpu() override;
+    void WaitForGpu() override;
 
     RenderToTextureResult RenderToTexture(const RenderTargetInfo& renderTarget, RenderList renderList) override;
     void RenderToSurface(Surface& surface, RenderList renderList) override;

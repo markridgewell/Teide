@@ -18,6 +18,7 @@ project(
 
 option(TEIDE_BUILD_EXAMPLES "Build examples for Teide" ON)
 option(TEIDE_BUILD_TESTS "Build tests for Teide" ON)
+option(TEIDE_BUILD_BENCHMARKS "Build benchmarks for Teide" ON)
 option(TEIDE_TEST_VERBOSE "Enable verbose logging for Teide tests" OFF)
 option(TEIDE_TEST_COVERAGE "Enable code coverage reporting when running tests" OFF)
 option(TEIDE_TEST_WINDOWLESS "Disable tests requiring a windowing system" OFF)
@@ -53,11 +54,6 @@ if(NOT TARGET SDL2_image::SDL2_image)
     add_library(SDL2_image::SDL2_image ALIAS SDL2_image::SDL2_image-static)
 endif()
 
-if(TEIDE_BUILD_TESTS)
-    find_package(GTest REQUIRED)
-    find_package(SwiftShader REQUIRED)
-endif()
-
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
 set(CMAKE_CXX_STANDARD 20)
@@ -78,16 +74,22 @@ td_add_library(
         glslang::SPIRV
         glslang::glslang)
 
-if(TEIDE_BUILD_TESTS)
-    add_subdirectory(tests)
-    if(TEIDE_TEST_COVERAGE)
-        setup_coverage()
-    endif()
-endif()
-
 if(TEIDE_BUILD_EXAMPLES)
     add_subdirectory(examples)
     set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT Application)
+endif()
+
+if(TEIDE_BUILD_TESTS)
+    find_package(GTest REQUIRED)
+    find_package(SwiftShader REQUIRED)
+
+    add_subdirectory(tests)
+endif()
+
+if(TEIDE_BUILD_BENCHMARKS)
+    find_package(benchmark REQUIRED)
+
+    add_subdirectory(benchmarks)
 endif()
 
 if(TEIDE_CLANG_TIDY)

@@ -15,4 +15,15 @@ void Scheduler::NextFrame()
     m_gpuExecutor.NextFrame();
 }
 
+void Scheduler::WaitForCpu()
+{
+    m_cpuExecutor.WaitForTasks();
+}
+
+void Scheduler::WaitForGpu()
+{
+    WaitForCpu();
+    m_gpuExecutor.WaitForTasks();
+}
+
 } // namespace Teide

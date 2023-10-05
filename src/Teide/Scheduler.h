@@ -41,6 +41,9 @@ public:
 
         m_cpuExecutor.LaunchTask(
             [this, sequenceIndex, f = std::forward<F>(f), promise = std::move(promise)](uint32 taskIndex) mutable {
+                // TODO: This is dangerous as we're passing references to an asynchronous callback.
+                // If the GPU executor is destroyed while this task is still alive it will crash.
+                // Try to refactor so this isn't possible!
                 CommandBuffer& commandBuffer = m_gpuExecutor.GetCommandBuffer(taskIndex);
 
                 if constexpr (std::is_void_v<FRet>)
@@ -74,7 +77,8 @@ public:
         return m_cpuExecutor.LaunchTask(std::forward<F>(f), std::move(dependency));
     }
 
-    void WaitForTasks() { m_cpuExecutor.WaitForTasks(); }
+    void WaitForCpu();
+    void WaitForGpu();
 
     uint32 GetThreadIndex() const { return m_cpuExecutor.GetThreadIndex(); }
 

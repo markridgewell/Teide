@@ -560,7 +560,7 @@ VulkanGraphicsDevice::CreateBufferWithData(BytesView data, BufferUsage usage, Re
     // Create staging buffer
     auto stagingBuffer = std::make_shared<VulkanBuffer>(CreateBufferUninitialized(
         data.size(), vk::BufferUsageFlagBits::eTransferSrc, vma::AllocationCreateFlagBits::eHostAccessSequentialWrite));
-    cmdBuffer.AddBuffer(stagingBuffer);
+    cmdBuffer.AddReference(stagingBuffer);
     SetBufferData(*stagingBuffer, data);
 
     // Create device-local buffer
