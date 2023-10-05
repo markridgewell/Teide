@@ -3,7 +3,6 @@
 
 #include "TestUtils.h"
 
-#include "Teide/MemoryAllocator.h"
 #include "Teide/TestUtils.h"
 #include "Teide/Vulkan.h"
 #include "Teide/VulkanBuffer.h"
@@ -37,7 +36,7 @@ public:
             = m_device->createCommandPoolUnique({.queueFamilyIndex = m_physicalDevice.queueFamilies.transferFamily});
         ASSERT_TRUE(m_commandPool);
 
-        m_allocator = std::make_unique<MemoryAllocator>(m_device.get(), m_physicalDevice.physicalDevice);
+        m_allocator = CreateAllocator(m_loader, m_instance.get(), m_device.get(), m_physicalDevice.physicalDevice);
     }
 
 protected:
@@ -61,8 +60,8 @@ protected:
     {
         return CreateBufferUninitialized(
             size, vk::BufferUsageFlagBits::eTransferDst,
-            vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent, m_device.get(),
-            *m_allocator);
+            vma::AllocationCreateFlagBits::eMapped | vma::AllocationCreateFlagBits::eHostAccessRandom,
+            vma::MemoryUsage::eAutoPreferHost, m_device.get(), m_allocator.get());
     }
 
     static std::future<void> SubmitCommandBuffer(GpuExecutor& executor, std::uint32_t index, vk::CommandBuffer commandBuffer)
@@ -74,6 +73,11 @@ protected:
         return future;
     }
 
+    void InvalidateAllocation(const vma::UniqueAllocation& allocation) const
+    {
+        m_allocator->invalidateAllocation(allocation.get(), 0, VK_WHOLE_SIZE);
+    }
+
 private:
     VulkanLoader m_loader;
     vk::UniqueInstance m_instance;
@@ -81,7 +85,7 @@ private:
     vk::UniqueDevice m_device;
     vk::Queue m_queue;
     vk::UniqueCommandPool m_commandPool;
-    std::unique_ptr<MemoryAllocator> m_allocator;
+    vma::UniqueAllocator m_allocator;
 };
 
 
@@ -100,6 +104,7 @@ TEST_F(GpuExecutorTest, OneCommandBuffer)
     future.wait();
     EXPECT_THAT(future.wait_for(0s), Eq(std::future_status::ready));
 
+    InvalidateAllocation(buffer.allocation);
     const auto result = std::vector(buffer.mappedData.begin(), buffer.mappedData.end());
     const auto expected = HexToBytes("01 01 01 01 01 01 01 01 01 01 01 01");
     EXPECT_THAT(result, Eq(expected));
@@ -126,8 +131,8 @@ TEST_F(GpuExecutorTest, TwoCommandBuffers)
     future2.wait();
     EXPECT_THAT(future1.wait_for(0s), Eq(std::future_status::ready));
     EXPECT_THAT(future2.wait_for(0s), Eq(std::future_status::ready));
-    future1.wait(); // just in case
 
+    InvalidateAllocation(buffer.allocation);
     const auto result = std::vector(buffer.mappedData.begin(), buffer.mappedData.end());
     const auto expected = HexToBytes("01 01 01 01 02 02 02 02 02 02 02 02");
     EXPECT_THAT(result, Eq(expected));
@@ -154,8 +159,8 @@ TEST_F(GpuExecutorTest, TwoCommandBuffersOutOfOrder)
     future2.wait();
     EXPECT_THAT(future1.wait_for(0s), Eq(std::future_status::ready));
     EXPECT_THAT(future2.wait_for(0s), Eq(std::future_status::ready));
-    future1.wait(); // just in case
 
+    InvalidateAllocation(buffer.allocation);
     const auto result = std::vector(buffer.mappedData.begin(), buffer.mappedData.end());
     const auto expected = HexToBytes("01 01 01 01 02 02 02 02 02 02 02 02");
     EXPECT_THAT(result, Eq(expected));
@@ -180,11 +185,10 @@ TEST_F(GpuExecutorTest, DontWait)
 TEST_F(GpuExecutorTest, SubmitMultipleCommandBuffers)
 {
     auto executor = CreateGpuExecutor();
-    for (int i = 0; i < 2; i++)
+    for (int i = 0; i < 10; i++)
     {
         auto cmdBuffer = CreateCommandBuffer();
         auto buffer = CreateHostVisibleBuffer(12);
-
         cmdBuffer->begin(vk::CommandBufferBeginInfo{});
         cmdBuffer->fillBuffer(buffer.buffer.get(), 0, 12, 0x01010101);
 
@@ -194,6 +198,7 @@ TEST_F(GpuExecutorTest, SubmitMultipleCommandBuffers)
         future.wait();
         EXPECT_THAT(future.wait_for(0s), Eq(std::future_status::ready));
 
+        InvalidateAllocation(buffer.allocation);
         const auto result = std::vector(buffer.mappedData.begin(), buffer.mappedData.end());
         const auto expected = HexToBytes("01 01 01 01 01 01 01 01 01 01 01 01");
         EXPECT_THAT(result, Eq(expected));

@@ -283,9 +283,9 @@ Task<TextureData> VulkanRenderer::CopyTextureData(TexturePtr texture)
     const auto bufferSize = GetByteSize(textureData);
 
     auto task = ScheduleGpu([this, texture = std::move(texture), bufferSize](CommandBuffer& commandBuffer) {
-        auto buffer = CreateBufferUninitialized(
-            bufferSize, vk::BufferUsageFlagBits::eTransferDst, vk::MemoryPropertyFlagBits::eHostVisible,
-            m_device.GetVulkanDevice(), m_device.GetMemoryAllocator());
+        auto buffer = m_device.CreateBufferUninitialized(
+            bufferSize, vk::BufferUsageFlagBits::eTransferDst,
+            vma::AllocationCreateFlagBits::eMapped | vma::AllocationCreateFlagBits::eHostAccessRandom);
 
         const auto& textureImpl = m_device.GetImpl(*texture);
 

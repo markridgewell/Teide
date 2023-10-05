@@ -36,6 +36,20 @@
         "COMMAND": "*",
         "OUTPUT_FILE": "1"
       }
+    },
+    "vcpkg_from_github": {
+      "pargs": 0,
+      "kwargs": {
+        "OUT_SOURCE_PATH": "1",
+        "REPO": "1",
+        "REF": "1",
+        "SHA512": "1",
+        "HEAD_REF": "1",
+        "PATCHES": "*",
+        "GITHUB_HOST": "1",
+        "AUTHORIZATION_TOKEN": "1",
+        "FILE_DISAMBIGUATOR": "1"
+      }
     }
   },
   "format": {
