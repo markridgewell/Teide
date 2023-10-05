@@ -16,7 +16,7 @@ namespace
 } // namespace
 
 Scheduler::Scheduler(uint32 numThreads, vk::Device device, vk::Queue queue, uint32 queueFamily) :
-    m_cpuExecutor(numThreads), m_gpuExecutor(device, queue), m_device{device}
+    m_device{device}, m_cpuExecutor(numThreads), m_gpuExecutor(device, queue)
 {
     std::ranges::generate(m_frameResources, [=] { return CreateThreadResources(device, queueFamily, numThreads); });
 }
@@ -30,6 +30,17 @@ void Scheduler::NextFrame()
     {
         threadResources.Reset(m_device);
     }
+}
+
+void Scheduler::WaitForCpu()
+{
+    m_cpuExecutor.WaitForTasks();
+}
+
+void Scheduler::WaitForGpu()
+{
+    WaitForCpu();
+    m_gpuExecutor.WaitForTasks();
 }
 
 void Scheduler::ThreadResources::Reset(vk::Device device)

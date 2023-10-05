@@ -15,6 +15,7 @@
 #include "Teide/Renderer.h"
 #include "Teide/TextureData.h"
 
+#include <fmt/chrono.h>
 #include <spdlog/spdlog.h>
 
 #include <algorithm>
@@ -68,6 +69,31 @@ namespace
 
 } // namespace
 
+/*
+This is how CPU-GPU synchronisation works, using an example where the application is GPU-bound.
+The frame number is modded with the MaxFramesInFlight (2 in this example).
+
+ 1. The CPU processes frame 0 and submits it to the GPU
+ 2. The CPU immediately moves on to frame 1 while the GPU starts processing frame 0
+    (NOTE: the GPU might actually start before the CPU is finished with the frame, since command buffers
+    can be submitted to the Vulkan queue at any point in the frame)
+ 3. The CPU finishes processing frame 1 and the work is queued for execution on the GPU
+ 4. The CPU waits for the GPU to finish frame 0, and then begins frame 0
+ 5. The CPU starts work on the new frame 0 while the GPU starts work on frame 1
+ 6. The CPU finishes processing frame 0 and the work is queued for execution on the GPU
+ 7. The CPU waits for the GPU to finish frame 1, and then begins frame 1
+ 8. The CPU starts work on the new frame 1 while the GPU starts work on frame 0
+ 9. Repeat steps 3-8 ad infinitum
+
+    +-------+-------+              +-------+              +-------+              +-------+
+CPU |   0   |   1   |              |   0   |              |   1   |              |   0   |
+    +-------+-------+--------------+-------+--------------+-------+--------------+-------+--------------+
+GPU         |          0           |           1          |          0           |           1          |
+            +----------------------+----------------------+----------------------+----------------------+
+
+This allows the CPU and GPU to work concurrently, while ensuring they never work on the same frame at the same time.
+*/
+
 VulkanRenderer::VulkanRenderer(VulkanGraphicsDevice& device, const QueueFamilies& queueFamilies, ShaderEnvironmentPtr shaderEnvironment) :
     m_device{device},
     m_graphicsQueue{device.GetVulkanDevice().getQueue(queueFamilies.graphicsFamily, 0)},
@@ -88,15 +114,15 @@ VulkanRenderer::VulkanRenderer(VulkanGraphicsDevice& device, const QueueFamilies
 
 VulkanRenderer::~VulkanRenderer()
 {
-    auto fences = std::vector<vk::Fence>();
-    std::ranges::transform(m_inFlightFences, std::back_inserter(fences), [](const auto& f) { return f.get(); });
-    if (!fences.empty())
+    WaitForGpu();
+
+    std::array<vk::Fence, std::tuple_size_v<decltype(m_inFlightFences)>> fences;
+    std::ranges::transform(m_inFlightFences, fences.begin(), [](const auto& f) { return f.get(); });
+
+    constexpr auto timeout = std::chrono::seconds{1};
+    if (m_device.GetVulkanDevice().waitForFences(fences, true, Timeout(timeout)) == vk::Result::eTimeout)
     {
-        constexpr auto timeout = Timeout(std::chrono::seconds{1});
-        if (m_device.GetVulkanDevice().waitForFences(fences, true, timeout) == vk::Result::eTimeout)
-        {
-            spdlog::error("Timeout while waiting for command buffer execution to complete!");
-        }
+        spdlog::error("Timeout (>{}) while waiting for all in-flight command buffers to complete!", timeout);
     }
 }
 
@@ -107,9 +133,9 @@ uint32 VulkanRenderer::GetFrameNumber() const
 
 void VulkanRenderer::BeginFrame(ShaderParameters sceneParameters)
 {
-    constexpr uint64_t timeout = std::numeric_limits<uint64_t>::max();
-
     m_frameNumber = (m_frameNumber + 1) % MaxFramesInFlight;
+
+    constexpr uint64_t timeout = std::numeric_limits<uint64_t>::max();
 
     [[maybe_unused]] const auto waitResult
         = m_device.GetVulkanDevice().waitForFences(m_inFlightFences[m_frameNumber].get(), true, timeout);
@@ -132,7 +158,7 @@ void VulkanRenderer::EndFrame()
 
     const auto device = m_device.GetVulkanDevice();
 
-    m_device.GetScheduler().WaitForTasks();
+    WaitForCpu();
 
     std::vector<SurfaceImage> images = m_surfacesToPresent.Lock([&](auto& s) { return std::exchange(s, {}); });
     if (images.empty())
@@ -175,6 +201,16 @@ void VulkanRenderer::EndFrame()
     }
 }
 
+void VulkanRenderer::WaitForCpu()
+{
+    m_device.GetScheduler().WaitForCpu();
+}
+
+void VulkanRenderer::WaitForGpu()
+{
+    m_device.GetScheduler().WaitForGpu();
+}
+
 RenderToTextureResult VulkanRenderer::RenderToTexture(const RenderTargetInfo& renderTarget, RenderList renderList)
 {
     assert((renderTarget.captureColor || renderTarget.captureDepthStencil) && "Nothing to capture in RTT pass");
@@ -202,7 +238,7 @@ RenderToTextureResult VulkanRenderer::RenderToTexture(const RenderTargetInfo& re
     const auto depthStencil = CreateRenderableTexture(fb.depthStencilFormat, "depthStencil");
 
     ScheduleGpu([this, renderList = std::move(renderList), renderTarget, color, depthStencil](CommandBuffer& commandBuffer) {
-        commandBuffer.AddTexture(depthStencil);
+        commandBuffer.AddReference(depthStencil);
 
         std::vector<vk::ImageView> attachments;
 
@@ -211,7 +247,7 @@ RenderToTextureResult VulkanRenderer::RenderToTexture(const RenderTargetInfo& re
 
         const auto addAttachment = [&](const TexturePtr& texture, TextureState& textureState) {
             const auto& textureImpl = m_device.GetImpl(*texture);
-            commandBuffer.AddTexture(texture);
+            commandBuffer.AddReference(texture);
             textureImpl.TransitionToRenderTarget(textureState, commandBuffer);
             attachments.push_back(textureImpl.imageView.get());
         };
@@ -300,7 +336,7 @@ Task<TextureData> VulkanRenderer::CopyTextureData(TexturePtr texture)
 
         const auto& textureImpl = m_device.GetImpl(*texture);
 
-        commandBuffer.AddTexture(texture);
+        commandBuffer.AddReference(texture);
 
         TextureState textureState = {
             .layout = vk::ImageLayout::eShaderReadOnlyOptimal,
@@ -359,7 +395,7 @@ void VulkanRenderer::RecordRenderListCommands(
     const auto viewParamsName = fmt::format("{}:View", renderList.name);
     const auto viewParameters
         = m_device.CreateParameterBlock(viewParamsData, viewParamsName.c_str(), commandBufferWrapper, threadIndex);
-    commandBufferWrapper.AddParameterBlock(viewParameters);
+    commandBufferWrapper.AddReference(viewParameters);
 
     commandBuffer.beginRenderPass(renderPassBegin, vk::SubpassContents::eInline);
 
@@ -395,7 +431,9 @@ void VulkanRenderer::RecordRenderObjectCommands(
     const vk::CommandBuffer commandBuffer = commandBufferWrapper;
     const auto& pipeline = m_device.GetImpl(*obj.pipeline);
 
-    commandBufferWrapper.AddParameterBlock(obj.materialParameters);
+    commandBufferWrapper.AddReference(obj.mesh);
+    commandBufferWrapper.AddReference(obj.materialParameters);
+    commandBufferWrapper.AddReference(obj.pipeline);
 
     if (obj.materialParameters)
     {

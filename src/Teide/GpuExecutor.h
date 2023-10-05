@@ -2,21 +2,20 @@
 #pragma once
 
 #include "Teide/BasicTypes.h"
+#include "Teide/Synchronized.h"
 #include "Teide/VulkanConfig.h"
 
 #include <function2/function2.hpp>
 
 #include <atomic>
 #include <future>
-#include <mutex>
 #include <queue>
+#include <ranges>
 #include <thread>
-#include <unordered_map>
 #include <vector>
 
 namespace Teide
 {
-
 class GpuExecutor
 {
 public:
@@ -33,30 +32,54 @@ public:
     uint32 AddCommandBufferSlot();
     void SubmitCommandBuffer(uint32 index, vk::CommandBuffer commandBuffer, OnCompleteFunction func = nullptr);
 
+    void WaitForTasks();
+
 private:
-    vk::Device m_device;
-    vk::Queue m_queue;
-
-    std::mutex m_readyCommandBuffersMutex;
-
-    std::vector<vk::CommandBuffer> m_readyCommandBuffers;
-    std::vector<OnCompleteFunction> m_completionHandlers;
-    std::queue<vk::UniqueFence> m_unusedSubmitFences;
-    usize m_numSubmittedCommandBuffers = 0;
-
-    struct InFlightSubmit
+    class Queue
     {
-        InFlightSubmit() = default;
-        InFlightSubmit(vk::UniqueFence f, std::vector<OnCompleteFunction> c) :
-            fence{std::move(f)}, callbacks{std::move(c)}
-        {}
+    public:
+        explicit Queue(vk::Device device, vk::Queue queue) : m_device{device}, m_queue{queue} {}
 
-        vk::UniqueFence fence;
-        std::vector<OnCompleteFunction> callbacks;
+        auto GetInFlightFences() const { return m_inFlightSubmits | std::views::transform(&InFlightSubmit::GetFence); }
+
+        void Flush();
+        uint32 AddCommandBufferSlot();
+        void Submit(uint32 index, vk::CommandBuffer commandBuffer, OnCompleteFunction func);
+
+    private:
+        vk::UniqueFence GetFence();
+
+        struct InFlightSubmit
+        {
+            InFlightSubmit() = default;
+            InFlightSubmit(vk::UniqueFence f, std::vector<OnCompleteFunction> c) :
+                fence{std::move(f)}, callbacks{std::move(c)}
+            {}
+
+            vk::Fence GetFence() const { return fence.get(); }
+
+            vk::UniqueFence fence;
+            std::vector<OnCompleteFunction> callbacks;
+        };
+
+        vk::Device m_device;
+        vk::Queue m_queue;
+
+        std::vector<vk::CommandBuffer> m_readyCommandBuffers;
+        std::vector<OnCompleteFunction> m_completionHandlers;
+        std::queue<vk::UniqueFence> m_unusedSubmitFences;
+        usize m_numSubmittedCommandBuffers = 0;
+
+        std::vector<InFlightSubmit> m_inFlightSubmits;
     };
-    std::vector<InFlightSubmit> m_inFlightSubmits;
+
+    const std::thread::id m_mainThread = std::this_thread::get_id();
+
+    vk::Device m_device;
     std::thread m_schedulerThread;
     std::atomic_bool m_schedulerStop = false;
+
+    Synchronized<Queue> m_queue;
 };
 
 } // namespace Teide

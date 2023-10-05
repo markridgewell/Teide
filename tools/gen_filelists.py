@@ -136,7 +136,7 @@ def find_project_dirs(root_dir):
     if os.path.isfile(os.path.join(root_dir, "CMakeLists.txt")):
         yield root_dir
 
-    for subdir in ["tests", "examples", "tools", "libs", "extras"]:
+    for subdir in ["tests", "examples", "benchmarks", "tools", "libs", "extras"]:
         for root, dirs, files in os.walk(os.path.join(root_dir, subdir)):
             if "CMakeLists.txt" in files and ("src" in dirs or "include" in dirs):
                 yield root
