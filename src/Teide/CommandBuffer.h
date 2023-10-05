@@ -18,6 +18,7 @@ public:
     void AddParameterBlock(const ParameterBlockPtr& parameterBlock);
 
     void TakeOwnership(vk::UniqueBuffer buffer);
+    void TakeOwnership(vma::UniqueAllocation allocation);
     void Reset();
 
     std::string_view GetDebugName() const;
@@ -47,6 +48,7 @@ private:
     std::unordered_set<BufferPtr> m_referencedBuffers;
     std::unordered_set<ParameterBlockPtr> m_referencedParameterBlocks;
     std::vector<vk::UniqueBuffer> m_ownedBuffers;
+    std::vector<vma::UniqueAllocation> m_ownedAllocations;
 
     std::string m_debugName = "Unnamed";
 };

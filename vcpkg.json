@@ -31,6 +31,9 @@
     },
     {
       "name": "function2"
+    },
+    {
+      "name": "vulkan-memory-allocator-hpp"
     }
   ],
   "builtin-baseline": "ced4b6dbc1fcae4a30b39d004ba67242a79434a5",

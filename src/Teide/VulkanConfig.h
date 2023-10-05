@@ -6,3 +6,12 @@
 #define VULKAN_HPP_NO_SPACESHIP_OPERATOR
 
 #include <vulkan/vulkan.hpp>
+
+#define VMA_STATIC_VULKAN_FUNCTIONS 0
+#if !defined(NDEBUG)
+#    define VMA_DEBUG_INITIALIZE_ALLOCATIONS 1
+#    define VMA_DEBUG_MARGIN 16
+#    define VMA_DEBUG_DETECT_CORRUPTION 1
+#endif
+
+#include <vk_mem_alloc.hpp>
