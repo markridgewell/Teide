@@ -44,7 +44,7 @@ jobs:
       uses: actions/checkout@v3
       with:
         lfs: true
-        submodules: recursive
+        submodules: false
 
     - name: Install dependencies
       uses: ./.github/actions/install-dependencies
@@ -144,7 +144,7 @@ jobs:
       uses: actions/checkout@v3
       with:
         lfs: true
-        submodules: recursive
+        submodules: false
 
     - name: Install dependencies
       uses: ./.github/actions/install-dependencies
