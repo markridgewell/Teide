@@ -20,7 +20,19 @@ struct SDLWindowDeleter
 
 using UniqueSDLWindow = std::unique_ptr<SDL_Window, SDLWindowDeleter>;
 
-TEST(SurfaceTest, CreateSurface)
+class SurfaceTest : public Test
+{
+public:
+    void SetUp() override
+    {
+        if (g_windowless)
+        {
+            GTEST_SKIP();
+        }
+    }
+};
+
+TEST_F(SurfaceTest, CreateSurface)
 {
     const auto window = UniqueSDLWindow(SDL_CreateWindow("Test", 0, 0, 800, 600, SDL_WINDOW_VULKAN | SDL_WINDOW_HIDDEN));
     ASSERT_THAT(window, NotNull()) << SDL_GetError();
@@ -29,7 +41,7 @@ TEST(SurfaceTest, CreateSurface)
     EXPECT_THAT(surface->GetExtent(), Eq(Geo::Size2i{800, 600}));
 }
 
-TEST(SurfaceTest, CreateSurfaceMultisampled)
+TEST_F(SurfaceTest, CreateSurfaceMultisampled)
 {
     auto window = UniqueSDLWindow(SDL_CreateWindow("Test", 0, 0, 800, 600, SDL_WINDOW_VULKAN | SDL_WINDOW_HIDDEN));
     ASSERT_THAT(window, NotNull()) << SDL_GetError();
@@ -38,7 +50,7 @@ TEST(SurfaceTest, CreateSurfaceMultisampled)
     EXPECT_THAT(surface->GetExtent(), Eq(Geo::Size2i{800, 600}));
 }
 
-TEST(SurfaceTest, CreatePipelineForSurface)
+TEST_F(SurfaceTest, CreatePipelineForSurface)
 {
     const auto window = UniqueSDLWindow(SDL_CreateWindow("Test", 0, 0, 800, 600, SDL_WINDOW_VULKAN | SDL_WINDOW_HIDDEN));
     ASSERT_THAT(window, NotNull()) << SDL_GetError();
@@ -64,7 +76,7 @@ TEST(SurfaceTest, CreatePipelineForSurface)
     EXPECT_THAT(pipeline.get(), NotNull());
 }
 
-TEST(SurfaceTest, RenderToSurface)
+TEST_F(SurfaceTest, RenderToSurface)
 {
     auto window = UniqueSDLWindow(SDL_CreateWindow("Test", 0, 0, 800, 600, SDL_WINDOW_VULKAN | SDL_WINDOW_HIDDEN));
     ASSERT_THAT(window, NotNull()) << SDL_GetError();
@@ -80,7 +92,7 @@ TEST(SurfaceTest, RenderToSurface)
     renderer->EndFrame();
 }
 
-TEST(SurfaceTest, RenderToSurfaceWithoutClear)
+TEST_F(SurfaceTest, RenderToSurfaceWithoutClear)
 {
     auto window = UniqueSDLWindow(SDL_CreateWindow("Test", 0, 0, 800, 600, SDL_WINDOW_VULKAN | SDL_WINDOW_HIDDEN));
     ASSERT_THAT(window, NotNull()) << SDL_GetError();
@@ -94,7 +106,7 @@ TEST(SurfaceTest, RenderToSurfaceWithoutClear)
     renderer->EndFrame();
 }
 
-TEST(SurfaceTest, RenderToSurfaceTwice)
+TEST_F(SurfaceTest, RenderToSurfaceTwice)
 {
     auto window = UniqueSDLWindow(SDL_CreateWindow("Test", 0, 0, 800, 600, SDL_WINDOW_VULKAN | SDL_WINDOW_HIDDEN));
     ASSERT_THAT(window, NotNull()) << SDL_GetError();

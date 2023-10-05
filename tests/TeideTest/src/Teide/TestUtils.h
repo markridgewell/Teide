@@ -14,6 +14,8 @@
 #include <string_view>
 #include <vector>
 
+inline bool g_windowless = false;
+
 Teide::GraphicsDevicePtr CreateTestGraphicsDevice();
 
 std::optional<std::uint32_t> GetTransferQueueIndex(vk::PhysicalDevice physicalDevice);
@@ -34,6 +36,31 @@ void PrintTo(const Visitable auto& obj, std::ostream* os)
 }
 } // namespace Teide
 
+namespace std
+{
+inline void PrintTo(std::byte b, std::ostream* os)
+{
+    fmt::format_to(std::ostream_iterator<char>(*os), "0x{:02x}", static_cast<std::uint8_t>(b));
+}
+
+template <class T, std::size_t N>
+void PrintTo(const std::span<T, N>& span, std::ostream* os)
+{
+    *os << "{";
+    bool firstElem = true;
+    for (const auto& elem : span)
+    {
+        if (!firstElem)
+        {
+            *os << ",";
+        }
+        firstElem = false;
+        testing::internal::UniversalPrint(elem, os);
+    }
+    *os << "}";
+}
+} // namespace std
+
 #ifdef NDEBUG
 #    define EXPECT_UNREACHABLE(statement)                                                                              \
         if (false)                                                                                                     \
@@ -43,3 +70,11 @@ void PrintTo(const Visitable auto& obj, std::ostream* os)
 #else
 #    define EXPECT_UNREACHABLE(statement) EXPECT_DEATH(statement, UnreachableMessage)
 #endif
+
+#define CONSTEXPR_EXPECT_EQ(a, b)                                                                                      \
+    static_assert((a) == (b));                                                                                         \
+    EXPECT_EQ(a, b);
+
+#define CONSTEXPR_EXPECT_NE(a, b)                                                                                      \
+    static_assert((a) != (b));                                                                                         \
+    EXPECT_NE(a, b);

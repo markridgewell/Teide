@@ -10,6 +10,7 @@
 #include "VulkanShader.h"
 #include "VulkanShaderEnvironment.h"
 #include "VulkanTexture.h"
+#include "VulkanUtils.h"
 
 #include "Teide/Renderer.h"
 #include "Teide/TextureData.h"
@@ -19,6 +20,7 @@
 
 #include <algorithm>
 #include <array>
+#include <ranges>
 
 namespace Teide
 {
@@ -108,10 +110,6 @@ VulkanRenderer::VulkanRenderer(VulkanGraphicsDevice& device, const QueueFamilies
     std::ranges::generate(m_inFlightFences, [=] {
         return vkdevice.createFenceUnique({.flags = vk::FenceCreateFlagBits::eSignaled}, s_allocator);
     });
-
-    const auto numThreads = device.GetScheduler().GetThreadCount();
-    std::ranges::generate(
-        m_frameResources, [=] { return FrameResources{.threadResources = std::vector<ThreadResources>(numThreads)}; });
 }
 
 VulkanRenderer::~VulkanRenderer()
@@ -152,14 +150,12 @@ void VulkanRenderer::BeginFrame(ShaderParameters sceneParameters)
         .parameters = std::move(sceneParameters),
     };
     frameResources.sceneParameters = m_device.CreateParameterBlock(pblockData, "Scene");
-    for (auto& threadResources : frameResources.threadResources)
-    {
-        threadResources.viewParameters.clear();
-    }
 }
 
 void VulkanRenderer::EndFrame()
 {
+    using std::views::transform;
+
     const auto device = m_device.GetVulkanDevice();
 
     WaitForCpu();
@@ -172,53 +168,30 @@ void VulkanRenderer::EndFrame()
 
     assert(m_presentQueue && "Can't present without a present queue");
 
-    auto swapchains = std::vector<vk::SwapchainKHR>(images.size());
-    auto imageIndices = std::vector<uint32_t>(images.size());
-    auto waitSemaphores = std::vector<vk::Semaphore>(images.size());
-    auto waitStages = std::vector<vk::PipelineStageFlags>(images.size());
-
-    for (size_t i = 0; i < images.size(); i++)
-    {
-        swapchains[i] = images[i].swapchain;
-        imageIndices[i] = images[i].imageIndex;
-        waitSemaphores[i] = images[i].imageAvailable;
-        waitStages[i] = vk::PipelineStageFlagBits::eColorAttachmentOutput;
-    }
-
-    auto signalSemaphores = std::span(&m_renderFinished[m_frameNumber].get(), 1);
     auto fenceToSignal = m_inFlightFences[m_frameNumber].get();
 
     device.resetFences(fenceToSignal);
 
     // Submit the surface command buffer(s)
-    {
-        std::vector<vk::CommandBuffer> commandBuffers
-            = m_surfaceCommandBuffers.Lock([](auto& c) { return std::exchange(c, {}); });
+    std::vector<vk::CommandBuffer> commandBuffers
+        = m_surfaceCommandBuffers.Lock([](auto& c) { return std::exchange(c, {}); });
+    std::ranges::transform(images, std::back_inserter(commandBuffers), &SurfaceImage::prePresentCommandBuffer);
 
-        for (const auto& surfaceImage : images)
-        {
-            commandBuffers.push_back(surfaceImage.prePresentCommandBuffer);
-        }
+    const auto waitStage = vk::PipelineStageFlagBits::eColorAttachmentOutput;
 
-        const vk::SubmitInfo submitInfo = {
-            .waitSemaphoreCount = size32(waitSemaphores),
-            .pWaitSemaphores = data(waitSemaphores),
-            .pWaitDstStageMask = data(waitStages),
-            .commandBufferCount = size32(commandBuffers),
-            .pCommandBuffers = data(commandBuffers),
-            .signalSemaphoreCount = size32(signalSemaphores),
-            .pSignalSemaphores = data(signalSemaphores),
-        };
-        m_graphicsQueue.submit(submitInfo, fenceToSignal);
-    }
+    const vkex::SubmitInfo submitInfo = {
+        .waitSemaphores = transform(images, &SurfaceImage::imageAvailable),
+        .waitDstStageMask = transform(images, [=](auto&&) { return waitStage; }),
+        .commandBuffers = commandBuffers,
+        .signalSemaphores = m_renderFinished[m_frameNumber].get(),
+    };
+    m_graphicsQueue.submit(submitInfo.map(), fenceToSignal);
 
     // Present
-    const vk::PresentInfoKHR presentInfo = {
-        .waitSemaphoreCount = 1,
-        .pWaitSemaphores = &m_renderFinished[m_frameNumber].get(),
-        .swapchainCount = size32(swapchains),
-        .pSwapchains = data(swapchains),
-        .pImageIndices = data(imageIndices),
+    const vkex::PresentInfoKHR presentInfo = {
+        .waitSemaphores = m_renderFinished[m_frameNumber].get(),
+        .swapchains = transform(images, &SurfaceImage::swapchain),
+        .imageIndices = transform(images, &SurfaceImage::imageIndex),
     };
 
     const auto presentResult = m_presentQueue.presentKHR(presentInfo);
@@ -357,9 +330,9 @@ Task<TextureData> VulkanRenderer::CopyTextureData(TexturePtr texture)
     const auto bufferSize = GetByteSize(textureData);
 
     auto task = ScheduleGpu([this, texture = std::move(texture), bufferSize](CommandBuffer& commandBuffer) {
-        auto buffer = CreateBufferUninitialized(
-            bufferSize, vk::BufferUsageFlagBits::eTransferDst, vk::MemoryPropertyFlagBits::eHostVisible,
-            m_device.GetVulkanDevice(), m_device.GetMemoryAllocator());
+        auto buffer = m_device.CreateBufferUninitialized(
+            bufferSize, vk::BufferUsageFlagBits::eTransferDst,
+            vma::AllocationCreateFlagBits::eMapped | vma::AllocationCreateFlagBits::eHostAccessRandom);
 
         const auto& textureImpl = m_device.GetImpl(*texture);
 
@@ -420,9 +393,9 @@ void VulkanRenderer::RecordRenderListCommands(
         .parameters = renderList.viewParameters,
     };
     const auto viewParamsName = fmt::format("{}:View", renderList.name);
-    const auto viewParameters = AddViewParameterBlock(
-        threadIndex,
-        m_device.CreateParameterBlock(viewParamsData, viewParamsName.c_str(), commandBufferWrapper, threadIndex));
+    const auto viewParameters
+        = m_device.CreateParameterBlock(viewParamsData, viewParamsName.c_str(), commandBufferWrapper, threadIndex);
+    commandBufferWrapper.AddReference(viewParameters);
 
     commandBuffer.beginRenderPass(renderPassBegin, vk::SubpassContents::eInline);
 

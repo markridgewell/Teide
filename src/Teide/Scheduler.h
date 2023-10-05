@@ -80,7 +80,6 @@ public:
     void WaitForCpu();
     void WaitForGpu();
 
-    uint32 GetThreadCount() const { return static_cast<uint32>(m_frameResources.front().size()); }
     uint32 GetThreadIndex() const { return m_cpuExecutor.GetThreadIndex(); }
 
     CommandBuffer& GetCommandBuffer(uint32 threadIndex);
