@@ -88,3 +88,10 @@ jobs:
       with:
         github_token: ${{secrets.GITHUB_TOKEN}}
         clang_tidy_fixes: ${{github.workspace}}/build/${{env.preset}}/clang-tidy-fixes.yaml
+
+    - name: Save fixes as build artifact
+      if: failure()
+      uses: actions/upload-artifact@v3
+      with:
+        name: clang-tidy-fixes
+        path: ${{github.workspace}}/build/${{env.preset}}/clang-tidy-fixes.yaml
