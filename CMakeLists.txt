@@ -26,6 +26,7 @@ option(TEIDE_UNIT_TEST_SW_RENDER "Enable software rendering for Teide unit tests
 option(TEIDE_RENDER_TEST_SW_RENDER "Enable software rendering for Teide render tests" ON)
 option(TEIDE_CLANG_TIDY "Enable static analysis with clang-tidy" OFF)
 option(TEIDE_CPPCHECK "Enable static analysis with Cppcheck" OFF)
+option(TEIDE_PRECOMPILED_HEADERS "Enable precompiled headers when building" OFF)
 
 set(TEIDE_SANITIZER
     OFF
@@ -73,6 +74,18 @@ td_add_library(
         function2::function2
         glslang::SPIRV
         glslang::glslang)
+
+if(TEIDE_PRECOMPILED_HEADERS)
+target_precompile_headers(
+    Teide
+    PRIVATE
+    src/Teide/VulkanConfig.h
+    <algorithm>
+    <ranges>
+    <string>
+    <vector>)
+set_source_files_properties(src/Teide/VmaImpl.cpp PROPERTIES SKIP_PRECOMPILE_HEADERS TRUE)
+endif()
 
 if(TEIDE_BUILD_EXAMPLES)
     add_subdirectory(examples)
