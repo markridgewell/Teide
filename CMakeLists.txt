@@ -76,15 +76,15 @@ td_add_library(
         glslang::glslang)
 
 if(TEIDE_PRECOMPILED_HEADERS)
-target_precompile_headers(
-    Teide
-    PRIVATE
-    src/Teide/VulkanConfig.h
-    <algorithm>
-    <ranges>
-    <string>
-    <vector>)
-set_source_files_properties(src/Teide/VmaImpl.cpp PROPERTIES SKIP_PRECOMPILE_HEADERS TRUE)
+    target_precompile_headers(
+        Teide
+        PRIVATE
+        src/Teide/VulkanConfig.h
+        <algorithm>
+        <ranges>
+        <string>
+        <vector>)
+    set_source_files_properties(src/Teide/VmaImpl.cpp PROPERTIES SKIP_PRECOMPILE_HEADERS TRUE)
 endif()
 
 if(TEIDE_BUILD_EXAMPLES)
