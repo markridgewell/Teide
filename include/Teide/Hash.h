@@ -6,7 +6,6 @@
 
 #include <cstddef>
 #include <functional>
-#include <ranges>
 #include <utility>
 
 namespace Teide
