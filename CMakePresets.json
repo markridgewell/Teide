@@ -77,10 +77,6 @@
   ],
   "buildPresets": [
     {
-      "name": "msvc2019",
-      "configurePreset": "msvc2019"
-    },
-    {
       "name": "msvc2022",
       "configurePreset": "msvc2022"
     },
@@ -102,10 +98,6 @@
     }
   ],
   "testPresets": [
-    {
-      "name": "msvc2019",
-      "configurePreset": "msvc2019"
-    },
     {
       "name": "msvc2022",
       "configurePreset": "msvc2022"
