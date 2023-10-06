@@ -8,7 +8,7 @@ function(td_add_clang_tidy)
         list(APPEND compiler_args "-D${def}")
     endforeach()
 
-    set(clang_tidy_args "--fix-notes" "--fix-errors" "--export-fixes=${CMAKE_BINARY_DIR}/clang-tidy-fixes.yaml")
+    set(clang_tidy_args "--fix" "--export-fixes=${CMAKE_BINARY_DIR}/clang-tidy-fixes.yaml")
 
     add_custom_target(
         ClangTidy
