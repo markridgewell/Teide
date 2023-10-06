@@ -28,13 +28,6 @@
       }
     },
     {
-      "name": "msvc2019",
-      "inherits": "_msvc-common",
-      "displayName": "Visual Studio 2019",
-      "generator": "Visual Studio 16 2019",
-      "architecture": "x64"
-    },
-    {
       "name": "msvc2022",
       "inherits": "_msvc-common",
       "displayName": "Visual Studio 2022",
