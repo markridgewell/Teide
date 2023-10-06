@@ -105,22 +105,22 @@ jobs:
     strategy:
       matrix:
         buildtype: [Debug, Release]
-        compiler: [g++-11, clang++-16]
+        compiler: [g++-12, clang++-17]
         sanitizer: [OFF]
         include:
         - preset: ninja
         - coverage: OFF
         - buildtype: Debug
-          compiler: clang++-16
+          compiler: clang++-17
           coverage: ON
         - buildtype: Debug
-          compiler: clang++-16
+          compiler: clang++-17
           sanitizer: ASAN
           preset: ninja
           coverage: OFF
           name-suffix: -asan
         - buildtype: Debug
-          compiler: clang++-16
+          compiler: clang++-17
           sanitizer: UBSAN
           preset: ninja
           coverage: OFF
