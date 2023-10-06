@@ -154,6 +154,7 @@ void VulkanRenderer::BeginFrame(ShaderParameters sceneParameters)
 
 void VulkanRenderer::EndFrame()
 {
+    using std::views::repeat;
     using std::views::transform;
 
     const auto device = m_device.GetVulkanDevice();
@@ -176,7 +177,7 @@ void VulkanRenderer::EndFrame()
 
     const vkex::SubmitInfo submitInfo = {
         .waitSemaphores = transform(images, &SurfaceImage::imageAvailable),
-        .waitDstStageMask = transform(images, [=](auto&&) { return waitStage; }),
+        .waitDstStageMask = repeat(waitStage, images.size()),
         .commandBuffers = transform(images, &SurfaceImage::prePresentCommandBuffer),
         .signalSemaphores = m_renderFinished[m_frameNumber].get(),
     };

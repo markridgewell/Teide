@@ -39,7 +39,7 @@ def gen_filelist(dir):
         f.write("\n    ")
         f.write("\n    ".join(source_files) + ")\n")
 
-    subprocess.run(["cmake-format", "-i", tempfilename], shell=True)
+    subprocess.run(["cmake-format", "-i", tempfilename])
 
     if os.path.exists(outfilename) and filecmp.cmp(outfilename, tempfilename, shallow=False):
         os.remove(tempfilename)

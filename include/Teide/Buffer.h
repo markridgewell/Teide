@@ -6,6 +6,7 @@
 #include "Teide/BytesView.h"
 #include "Teide/ForwardDeclare.h"
 
+#include <algorithm>
 #include <cstring>
 #include <initializer_list>
 #include <vector>

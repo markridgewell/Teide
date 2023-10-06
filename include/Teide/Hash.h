@@ -7,6 +7,7 @@
 #include <cstddef>
 #include <functional>
 #include <ranges>
+#include <utility>
 
 namespace Teide
 {
@@ -49,10 +50,7 @@ template <typename T>
     requires std::is_enum_v<T>
 struct HashAppender<T>
 {
-    constexpr void operator()(usize& seed, T value) noexcept
-    {
-        HashAppend(seed, static_cast<std::underlying_type_t<T>>(value));
-    }
+    constexpr void operator()(usize& seed, T value) noexcept { HashAppend(seed, std::to_underlying<T>(value)); }
 };
 
 template <typename T>
