@@ -5,6 +5,16 @@ on:
     branches: [ main ]
   pull_request:
     branches: [ main ]
+    paths-ignore:
+    - 'README.md'
+    - '.github/Check-Readme.yml'
+    - '.github/Static-Analysis.yml'
+    - '.gitignore'
+    - '.clang-format'
+    - '.clang-tidy'
+    - '.cmake-format.json'
+    - '.pre-commit-config.yaml'
+    - '**.py'
   workflow_dispatch:
 
 env:
