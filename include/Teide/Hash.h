@@ -7,63 +7,86 @@
 #include <cstddef>
 #include <functional>
 #include <ranges>
+#include <utility>
 
 namespace Teide
 {
-
 template <typename T>
-struct Hash : std::hash<T>
+struct HashAppender
 {
-    using Base = std::hash<T>;
-    usize operator()(const T& val, usize seed = 0)
+    constexpr void operator()(usize& seed, const T& value) noexcept
     {
         // hash_combine function from P0814R0
-        return seed ^ (Base::operator()(val) + 0x9e3779b9 + (seed << 6) + (seed >> 2));
+        seed ^= std::hash<T>()(value) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
     }
 };
 
 template <typename T>
-void HashCombineSingle(usize& seed, const T& val)
+constexpr void HashAppend(usize& seed, const T& value) noexcept
 {
-    // hash_combine function from P0814R0
-    seed ^= Hash<T>()(val, seed) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+    HashAppender<T>{}(seed, value);
 }
 
-struct HashCombiner
+constexpr void HashAppend(usize& seed, std::byte b) noexcept
 {
-    usize value;
+    seed = ((seed << 5) + seed) + static_cast<usize>(b);
+}
 
-    template <typename... Types>
-    void operator()(const Types&... args)
+template <typename T>
+    requires std::integral<T>
+struct HashAppender<T>
+{
+    constexpr void operator()(usize& seed, T value) noexcept
     {
-        (HashCombineSingle(value, args), ...);
+        for (std::size_t i = 0; i < sizeof(T); i++)
+        {
+            const auto b = value >> (i * 8);
+            HashAppend(seed, static_cast<std::byte>(b & 0xFF));
+        }
     }
+};
+
+template <typename T>
+    requires std::is_enum_v<T>
+struct HashAppender<T>
+{
+    constexpr void operator()(usize& seed, T value) noexcept { HashAppend(seed, std::to_underlying<T>(value)); }
 };
 
 template <typename T>
     requires Visitable<T>
-struct Hash<T>
+struct HashAppender<T>
 {
-    usize operator()(const T& val, usize seed = 0) const
+    constexpr void operator()(usize& seed, const T& value) const
     {
-        HashCombiner h{seed};
-        val.Visit(h);
-        return h.value;
+        value.Visit([&seed](const auto&... args) { (HashAppend(seed, args), ...); });
     }
 };
 
 template <typename T>
     requires std::ranges::range<T>
-struct Hash<T>
+struct HashAppender<T>
 {
-    usize operator()(const T& val, usize seed = 0) const
+    constexpr void operator()(usize& seed, const T& range) const
     {
-        Hash<std::ranges::range_value_t<T>> hash;
-        for (auto&& elem : val)
+        for (const auto& elem : range)
         {
-            seed = hash(elem, seed);
+            HashAppend(seed, elem);
         }
+    }
+};
+
+constexpr usize HashInitialSeed = 5381;
+
+template <typename T>
+struct Hash
+{
+    constexpr usize operator()(const T& value) const
+    {
+        usize seed = HashInitialSeed;
+        HashAppend(seed, value);
         return seed;
     }
 };
+
 } // namespace Teide

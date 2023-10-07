@@ -1,7 +1,6 @@
 
 #pragma once
 
-#include "MemoryAllocator.h"
 #include "Vulkan.h"
 
 #include "GeoLib/Vector.h"
@@ -34,7 +33,8 @@ class VulkanSurface : public Surface
 public:
     VulkanSurface(
         SDL_Window* window, vk::UniqueSurfaceKHR surface, vk::Device device, vk::PhysicalDevice physicalDevice,
-        std::vector<uint32_t> queueFamilyIndices, vk::CommandPool commandPool, vk::Queue queue, bool multisampled);
+        std::vector<uint32_t> queueFamilyIndices, vk::CommandPool commandPool, vma::Allocator allocator,
+        vk::Queue queue, bool multisampled);
 
     Geo::Size2i GetExtent() const override { return m_surfaceExtent; }
     Format GetColorFormat() const override { return m_colorFormat; }
@@ -60,12 +60,12 @@ private:
     vk::PhysicalDevice m_physicalDevice;
     std::vector<uint32_t> m_queueFamilyIndices;
     vk::CommandPool m_commandPool;
+    vma::Allocator m_allocator;
     vk::Queue m_queue;
 
     SDL_Window* m_window;
     vk::UniqueSurfaceKHR m_surface;
     Geo::Size2i m_surfaceExtent;
-    MemoryAllocator m_swapchainAllocator;
     vk::UniqueSwapchainKHR m_swapchain;
     std::vector<vk::Image> m_swapchainImages;
     std::vector<vk::UniqueImageView> m_swapchainImageViews;
@@ -73,11 +73,11 @@ private:
     uint32 m_msaaSampleCount = 1;
     Format m_colorFormat = Format::Unknown;
     vk::UniqueImage m_colorImage;
-    MemoryAllocation m_colorMemory;
+    vma::UniqueAllocation m_colorMemory;
     vk::UniqueImageView m_colorImageView;
     Format m_depthFormat = Format::Unknown;
     vk::UniqueImage m_depthImage;
-    MemoryAllocation m_depthMemory;
+    vma::UniqueAllocation m_depthMemory;
     vk::UniqueImageView m_depthImageView;
     std::vector<vk::UniqueFramebuffer> m_swapchainFramebuffers;
     vk::UniqueRenderPass m_renderPass;

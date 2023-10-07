@@ -89,6 +89,9 @@ public:
     virtual void BeginFrame(ShaderParameters sceneParameters) = 0;
     virtual void EndFrame() = 0;
 
+    virtual void WaitForCpu() = 0;
+    virtual void WaitForGpu() = 0;
+
     virtual RenderToTextureResult RenderToTexture(const RenderTargetInfo& renderTarget, RenderList renderList) = 0;
     virtual void RenderToSurface(Surface& surface, RenderList renderList) = 0;
 

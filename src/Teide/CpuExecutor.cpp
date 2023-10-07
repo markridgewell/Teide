@@ -1,7 +1,7 @@
 
 #include "CpuExecutor.h"
 
-using namespace std::chrono_literals;
+#include <spdlog/spdlog.h>
 
 namespace Teide
 {
@@ -10,14 +10,25 @@ class WorkerInterface : public ::tf::WorkerInterface
     void scheduler_prologue(tf::Worker& worker [[maybe_unused]]) override {}
     void scheduler_epilogue(tf::Worker& worker [[maybe_unused]], std::exception_ptr ptr [[maybe_unused]]) override
     {
-        assert(ptr == nullptr);
+        if (ptr)
+        {
+            try
+            {
+                std::rethrow_exception(ptr);
+            }
+            catch (const std::exception& e)
+            {
+                spdlog::critical("Unhandled exception in worker thread: {}", e.what());
+                assert(false);
+            }
+        }
     }
 };
 
 CpuExecutor::CpuExecutor(uint32 numThreads) : m_executor(numThreads, std::make_shared<WorkerInterface>())
 {
     m_schedulerThread = std::thread([this] {
-        constexpr auto timeout = 2ms;
+        constexpr auto timeout = std::chrono::milliseconds{2};
 
         while (!m_schedulerStop)
         {
@@ -60,7 +71,7 @@ void CpuExecutor::WaitForTasks()
     while (hasScheduledTasks())
     {
         // busy loop for now
-        std::this_thread::sleep_for(2ms);
+        std::this_thread::sleep_for(std::chrono::milliseconds{2});
         m_executor.wait_for_all();
     }
 

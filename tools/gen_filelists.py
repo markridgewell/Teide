@@ -39,7 +39,7 @@ def gen_filelist(dir):
         f.write("\n    ")
         f.write("\n    ".join(source_files) + ")\n")
 
-    subprocess.run(["cmake-format", "-i", tempfilename], shell=True)
+    subprocess.run(["cmake-format", "-i", tempfilename])
 
     if os.path.exists(outfilename) and filecmp.cmp(outfilename, tempfilename, shallow=False):
         os.remove(tempfilename)
@@ -136,7 +136,7 @@ def find_project_dirs(root_dir):
     if os.path.isfile(os.path.join(root_dir, "CMakeLists.txt")):
         yield root_dir
 
-    for subdir in ["tests", "examples", "tools", "libs", "extras"]:
+    for subdir in ["tests", "examples", "benchmarks", "tools", "libs", "extras"]:
         for root, dirs, files in os.walk(os.path.join(root_dir, subdir)):
             if "CMakeLists.txt" in files and ("src" in dirs or "include" in dirs):
                 yield root

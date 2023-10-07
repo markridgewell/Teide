@@ -9,13 +9,14 @@ on:
   workflow_dispatch:
 
 env:
-  clang_tidy_version: 16
+  clang_tidy_version: 17
   pattern: '\.\(c\|cpp\|cc\|cxx\|h\|hpp\)$'
 
 jobs:
   cppcheck:
-    name: CppCheck
+    name: Cppcheck
     runs-on: windows-latest
+    env: { preset: msvc2022 }
 
     steps:
     - name: Checkout
@@ -38,11 +39,12 @@ jobs:
 
     - name: Configure CMake
       if: steps.get-changes.outputs.changed-files != ''
-      run: cmake --preset msvc2022
+      run: cmake --preset ${{env.preset}} -DTEIDE_CPPCHECK=ON
 
-    - name: Run CppCheck
+    - name: Run Cppcheck
       if: steps.get-changes.outputs.changed-files != ''
-      run: python tools/cppcheck.py --build-dir=build/msvc2022 --show-code
+      run: |
+        cmake --build --preset ${{env.preset}} --target Cppcheck
 
   clang-tidy:
     name: ClangTidy
@@ -86,3 +88,10 @@ jobs:
       with:
         github_token: ${{secrets.GITHUB_TOKEN}}
         clang_tidy_fixes: ${{github.workspace}}/build/${{env.preset}}/clang-tidy-fixes.yaml
+
+    - name: Save fixes as build artifact
+      if: failure()
+      uses: actions/upload-artifact@v3
+      with:
+        name: clang-tidy-fixes
+        path: ${{github.workspace}}/build/${{env.preset}}/clang-tidy-fixes.yaml
