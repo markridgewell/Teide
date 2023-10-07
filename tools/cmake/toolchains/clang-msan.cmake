@@ -7,9 +7,8 @@ if(DEFINED ENV{LIBCXX_INCLUDE_DIR})
     set(LIBCXX_INCLUDE_DIR $ENV{LIBCXX_INCLUDE_DIR})
 else()
     # Environment variable is not set.
-    if (LIBCXX_INCLUDE_DIR)
-        # But CMake variable is set.
-        # Store it into the environment and use it.
+    if(LIBCXX_INCLUDE_DIR)
+        # But CMake variable is set. Store it into the environment and use it.
         set(ENV{LIBCXX_INCLUDE_DIR} ${LIBCXX_INCLUDE_DIR})
     else()
         # Neither environment nor CMake variable is set.
@@ -22,9 +21,8 @@ if(DEFINED ENV{LIBCXX_LIB_DIR})
     set(LIBCXX_LIB_DIR $ENV{LIBCXX_LIB_DIR})
 else()
     # Environment variable is not set.
-    if (LIBCXX_LIB_DIR)
-        # But CMake variable is set.
-        # Store it into the environment and use it.
+    if(LIBCXX_LIB_DIR)
+        # But CMake variable is set. Store it into the environment and use it.
         set(ENV{LIBCXX_LIB_DIR} ${LIBCXX_LIB_DIR})
     else()
         # Neither environment nor CMake variable is set.
