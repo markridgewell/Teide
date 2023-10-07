@@ -22,6 +22,7 @@ Checks: >-
   portability-*,
   misc-*,
   -misc-non-private-member-variables-in-classes,
+  -misc-include-cleaner,
   concurrency-*,
   readability-*,
   -readability-magic-numbers,
