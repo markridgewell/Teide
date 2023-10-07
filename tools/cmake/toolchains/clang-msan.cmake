@@ -13,5 +13,5 @@ string(APPEND CMAKE_CXX_FLAGS " -nostdinc++ -nostdlib++ -isystem \"${LIBCXX_INCL
 string(
     APPEND
     CMAKE_LINKER_FLAGS
-    " -nostdinc++ -nostdlib++ -L \"${LIBCXX_LIB_DIR}\" \"-Wl,-rpath,${LIBCXX_LIB_DIR}\" -lc++ -Wno-unused-command-line-argument"
+    " -nostdinc++ -nostdlib++ -L \"${LIBCXX_LIB_DIR}\" \"-Wl,-rpath,${LIBCXX_LIB_DIR}\" -lc++ -lc++abi -lunwind -Wno-unused-command-line-argument"
 )

@@ -12,18 +12,12 @@ FetchContent_Declare(
     GIT_REPOSITORY https://github.com/llvm/llvm-project
     GIT_TAG llvmorg-17.0.2
     GIT_SHALLOW TRUE
-    PREFIX
-    "${PREFIX}"
-    SOURCE_SUBDIR
-    runtimes
-    CMAKE_ARGS
-    "-DLLVM_ENABLE_RUNTIMES=libcxx;libcxxabi;libunwind"
-    BUILD_COMMAND
-    ${BUILD_COMMAND}
-    TEST_COMMAND
-    ${TEST_COMMAND}
-    INSTALL_COMMAND
-    ${INSTALL_COMMAND})
+    PREFIX "${PREFIX}"
+    SOURCE_SUBDIR runtimes
+    CMAKE_ARGS "-DLLVM_ENABLE_RUNTIMES=libcxx;libcxxabi;libunwind"
+    BUILD_COMMAND ${BUILD_COMMAND}
+    TEST_COMMAND ${TEST_COMMAND}
+    INSTALL_COMMAND ${INSTALL_COMMAND})
 
 FetchContent_MakeAvailable(libcxx)
 
