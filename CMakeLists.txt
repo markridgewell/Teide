@@ -13,6 +13,8 @@ elseif(
     AND CMAKE_CXX_COMPILER MATCHES "clang"
     AND TEIDE_SANITIZER STREQUAL "MSAN")
     find_package(libcxx REQUIRED)
+    set(ENV{LIBCXX_INCLUDE_DIR} ${LIBCXX_INCLUDE_DIR})
+    set(ENV{LIBCXX_LIB_DIR} ${LIBCXX_LIB_DIR})
     set(VCPKG_TARGET_TRIPLET "x64-linux-msan")
 endif()
 
