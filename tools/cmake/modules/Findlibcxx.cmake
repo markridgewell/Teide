@@ -10,7 +10,7 @@ set(PREFIX "${CMAKE_BINARY_DIR}/libcxx")
 FetchContent_Declare(
     libcxx
     GIT_REPOSITORY https://github.com/llvm/llvm-project
-    GIT_TAG llvmorg-16.0.4
+    GIT_TAG llvmorg-17.0.2
     GIT_SHALLOW TRUE
     PREFIX
     "${PREFIX}"
