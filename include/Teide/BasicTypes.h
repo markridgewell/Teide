@@ -4,10 +4,7 @@
 #include <cstddef>
 #include <cstdint>
 
-namespace Teide
-{
-
-inline namespace BasicTypes
+namespace Teide::inline BasicTypes
 {
     using int8 = std::int8_t;
     using int16 = std::int16_t;
@@ -21,6 +18,4 @@ inline namespace BasicTypes
     using usize = std::size_t;
 
     using byte = std::byte;
-} // namespace BasicTypes
-
-} // namespace Teide
+    } // namespace Teide::inline BasicTypes

@@ -48,7 +48,7 @@ namespace
         {
             if (clearState.colorValue.has_value())
             {
-                clearValues.push_back(vk::ClearColorValue{*clearState.colorValue});
+                clearValues.emplace_back(vk::ClearColorValue{*clearState.colorValue});
             }
             else
             {
