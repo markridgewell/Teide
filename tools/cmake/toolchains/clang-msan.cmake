@@ -2,6 +2,7 @@ set(CMAKE_ASM_COMPILER clang-17)
 set(CMAKE_C_COMPILER clang-17)
 set(CMAKE_CXX_COMPILER clang++-17)
 
+find_package(libcxx REQUIRED)
 message("LIBCXX_INCLUDE_DIR: ${LIBCXX_INCLUDE_DIR}")
 message("LIBCXX_LIB_DIR: ${LIBCXX_LIB_DIR}")
 

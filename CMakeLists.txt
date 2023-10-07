@@ -12,9 +12,7 @@ elseif(
     LINUX
     AND CMAKE_CXX_COMPILER MATCHES "clang"
     AND TEIDE_SANITIZER STREQUAL "MSAN")
-    find_package(libcxx REQUIRED)
-    set(LIBCXX_INCLUDE_DIR "${CMAKE_BINARY_DIR}/libcxx/include")
-    set(LIBCXX_LIB_DIR "${CMAKE_BINARY_DIR}/libcxx/lib")
+    #find_package(libcxx REQUIRED)
     set(VCPKG_TARGET_TRIPLET "x64-linux-msan")
 endif()
 
