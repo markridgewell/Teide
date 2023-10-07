@@ -725,7 +725,7 @@ RendererPtr VulkanGraphicsDevice::CreateRenderer(ShaderEnvironmentPtr shaderEnvi
 BufferPtr VulkanGraphicsDevice::CreateBuffer(const BufferData& data, const char* name)
 {
     spdlog::debug("Creating buffer '{}' of size {}", name, data.data.size());
-    auto task = m_scheduler.ScheduleGpu([=, this](CommandBuffer& cmdBuffer) { //
+    auto task = m_scheduler.ScheduleGpu([data, name, this](CommandBuffer& cmdBuffer) { //
         return CreateBuffer(data, name, cmdBuffer);
     });
     return task.get();
@@ -798,7 +798,7 @@ ShaderPtr VulkanGraphicsDevice::CreateShader(const ShaderData& data, const char*
 TexturePtr VulkanGraphicsDevice::CreateTexture(const TextureData& data, const char* name)
 {
     spdlog::debug("Creating texture '{}' of size {}x{}", name, data.size.x, data.size.y);
-    auto task = m_scheduler.ScheduleGpu([=, this](CommandBuffer& cmdBuffer) { //
+    auto task = m_scheduler.ScheduleGpu([data, name, this](CommandBuffer& cmdBuffer) { //
         return CreateTexture(data, name, cmdBuffer);
     });
     return task.get();
@@ -827,7 +827,7 @@ TexturePtr VulkanGraphicsDevice::CreateTexture(const TextureData& data, const ch
 TexturePtr VulkanGraphicsDevice::CreateRenderableTexture(const TextureData& data, const char* name)
 {
     spdlog::debug("Creating renderable texture '{}' of size {}x{}", name, data.size.x, data.size.y);
-    auto task = m_scheduler.ScheduleGpu([=, this](CommandBuffer& cmdBuffer) { //
+    auto task = m_scheduler.ScheduleGpu([data, name, this](CommandBuffer& cmdBuffer) { //
         return CreateRenderableTexture(data, name, cmdBuffer);
     });
     return task.get();
@@ -1083,7 +1083,7 @@ Framebuffer VulkanGraphicsDevice::CreateFramebuffer(
 ParameterBlockPtr VulkanGraphicsDevice::CreateParameterBlock(const ParameterBlockData& data, const char* name)
 {
     spdlog::debug("Creating parameter block '{}'", name);
-    auto task = m_scheduler.ScheduleGpu([=, this](CommandBuffer& cmdBuffer) {
+    auto task = m_scheduler.ScheduleGpu([data, name, this](CommandBuffer& cmdBuffer) {
         return CreateParameterBlock(data, name, cmdBuffer, m_mainDescriptorPool.get());
     });
     return task.get();
