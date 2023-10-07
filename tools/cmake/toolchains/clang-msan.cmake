@@ -2,12 +2,12 @@ set(CMAKE_ASM_COMPILER clang-17)
 set(CMAKE_C_COMPILER clang-17)
 set(CMAKE_CXX_COMPILER clang++-17)
 
+message("LIBCXX_INCLUDE_DIR: ${LIBCXX_INCLUDE_DIR}")
+message("LIBCXX_LIB_DIR: ${LIBCXX_LIB_DIR}")
+
 string(APPEND CMAKE_C_FLAGS " -fsanitize=memory -ggdb -fno-omit-frame-pointer")
 string(APPEND CMAKE_CXX_FLAGS " -fsanitize=memory -ggdb -fno-omit-frame-pointer")
 string(APPEND CMAKE_LINKER_FLAGS " -fsanitize=memory")
-
-set(LIBCXX_INCLUDE_DIR "${CMAKE_BINARY_DIR}/libcxx/include")
-set(LIBCXX_LIB_DIR "${CMAKE_BINARY_DIR}/libcxx/lib")
 
 string(
     APPEND
