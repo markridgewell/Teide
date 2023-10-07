@@ -13,7 +13,8 @@
       "toolchainFile": "${sourceDir}/external/vcpkg/scripts/buildsystems/vcpkg.cmake",
       "cacheVariables": {
         "VCPKG_INSTALL_OPTIONS": "--no-print-usage",
-        "CMAKE_OPTIMIZE_DEPENDENCIES": "ON"
+        "CMAKE_OPTIMIZE_DEPENDENCIES": "ON",
+        "CMAKE_MODULE_PATH": "${sourceDir}/tools/cmake/modules"
       }
     },
     {
