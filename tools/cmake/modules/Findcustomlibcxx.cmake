@@ -1,6 +1,7 @@
 include(FetchContent)
 include(FindPackageHandleStandardArgs)
 
+message("Finding custom build of libc++...")
 if(LIBCXX_DIR)
     message(STATUS "libc++ found at ${LIBCXX_DIR} (cached)")
 else()
@@ -11,7 +12,7 @@ else()
     set(PREFIX "${CMAKE_BINARY_DIR}/libcxx")
 
     FetchContent_Declare(
-        libcxx
+        customlibcxx
         GIT_REPOSITORY https://github.com/llvm/llvm-project
         GIT_TAG llvmorg-17.0.2
         GIT_SHALLOW TRUE
@@ -22,11 +23,11 @@ else()
         TEST_COMMAND ${TEST_COMMAND}
         INSTALL_COMMAND ${INSTALL_COMMAND})
 
-    FetchContent_MakeAvailable(libcxx)
+    FetchContent_MakeAvailable(customlibcxx)
 
-    find_package_handle_standard_args(libcxx DEFAULT_MSG libcxx_POPULATED)
+    find_package_handle_standard_args(customlibcxx DEFAULT_MSG customlibcxx_POPULATED)
 
-    if(libcxx_POPULATED
+    if(customlibcxx_POPULATED
        AND EXISTS "${PREFIX}/include"
        AND EXISTS "${PREFIX}/lib")
         message(STATUS "libc++ found at ${PREFIX}")
