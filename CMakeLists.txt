@@ -12,7 +12,7 @@ elseif(
     LINUX
     AND CMAKE_CXX_COMPILER MATCHES "clang"
     AND TEIDE_SANITIZER STREQUAL "MSAN")
-    find_package(libcxx-msan REQUIRED)
+    find_package(libcxx REQUIRED)
 
     if(NOT LIBCXX_DIR)
         message(SEND_ERROR "LIBCXX_DIR not set!")
