@@ -148,6 +148,9 @@ jobs:
 
     env:
       job_name: Linux-${{matrix.buildtype}}-${{matrix.compiler}}${{matrix.name-suffix}}
+      LIBCXX_DIR: ${{github.workspace}}/build/${{matrix.preset}}/libcxx
+      LIBCXX_INCLUDE_DIR: ${{github.workspace}}/build/${{matrix.preset}}/libcxx/include
+      LIBCXX_LIB_DIR: ${{github.workspace}}/build/${{matrix.preset}}/libcxx/lib
 
     steps:
     - name: Print job ID
