@@ -27,6 +27,18 @@ else()
 
     find_package_handle_standard_args(customlibcxx DEFAULT_MSG customlibcxx_POPULATED)
 
+    message(STATUS "customlibcxx_POPULATED: ${customlibcxx_POPULATED}")
+    if(EXISTS "${PREFIX}/include")
+        message(STATUS "EXISTS \"${PREFIX}/include\": True")
+    else()
+        message(STATUS "EXISTS \"${PREFIX}/include\": False")
+    endif()
+    if(EXISTS "${PREFIX}/lib")
+        message(STATUS "EXISTS \"${PREFIX}/lib\": True")
+    else()
+        message(STATUS "EXISTS \"${PREFIX}/lib\": False")
+    endif()
+
     if(customlibcxx_POPULATED
        AND EXISTS "${PREFIX}/include"
        AND EXISTS "${PREFIX}/lib")
@@ -41,5 +53,7 @@ else()
         set(LIBCXX_LIB_DIR
             "${PREFIX}/lib"
             PARENT_SCOPE)
+    else()
+        message(STATUS "libc++ not found or not bu0lt successfully!")
     endif()
 endif()
