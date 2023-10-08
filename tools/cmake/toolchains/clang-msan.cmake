@@ -3,12 +3,11 @@ set(CMAKE_C_COMPILER clang-17)
 set(CMAKE_CXX_COMPILER clang++-17)
 
 if(DEFINED ENV{LIBCXX_INCLUDE_DIR})
-    # Environment variable is set.
+    message("Environment variable LIBCXX_INCLUDE_DIR is set.")
     set(LIBCXX_INCLUDE_DIR $ENV{LIBCXX_INCLUDE_DIR})
 else()
-    # Environment variable is not set.
     if(LIBCXX_INCLUDE_DIR)
-        # But CMake variable is set. Store it into the environment and use it.
+        message("Environment variable LIBCXX_INCLUDE_DIR is not set, but CMake variable is set.")
         set(ENV{LIBCXX_INCLUDE_DIR} ${LIBCXX_INCLUDE_DIR})
     else()
         # Neither environment nor CMake variable is set.
@@ -17,12 +16,11 @@ else()
 endif()
 
 if(DEFINED ENV{LIBCXX_LIB_DIR})
-    # Environment variable is set.
+    message("Environment variable LIBCXX_LIB_DIR is set.")
     set(LIBCXX_LIB_DIR $ENV{LIBCXX_LIB_DIR})
 else()
-    # Environment variable is not set.
     if(LIBCXX_LIB_DIR)
-        # But CMake variable is set. Store it into the environment and use it.
+        message("Environment variable LIBCXX_LIB_DIR is not set, but CMake variable is set.")
         set(ENV{LIBCXX_LIB_DIR} ${LIBCXX_LIB_DIR})
     else()
         # Neither environment nor CMake variable is set.
