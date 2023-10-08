@@ -14,16 +14,20 @@ elseif(
     AND TEIDE_SANITIZER STREQUAL "MSAN")
     find_package(libcxx REQUIRED)
 
-    set(ENV{LIBCXX_INCLUDE_DIR} ${LIBCXX_INCLUDE_DIR})
-    set(ENV{LIBCXX_LIB_DIR} ${LIBCXX_LIB_DIR})
+    if(NOT LIBCXX_DIR)
+        message(SEND_ERROR "LIBCXX_DIR not set!")
+    endif()
+
+    set(ENV{LIBCXX_INCLUDE_DIR} "${LIBCXX_DIR}/include")
+    set(ENV{LIBCXX_LIB_DIR} "${LIBCXX_DIR}/lib")
     message("Setting env var LIBCXX_INCLUDE_DIR to $ENV{LIBCXX_INCLUDE_DIR}")
     message("Setting env var LIBCXX_LIB_DIR to $ENV{LIBCXX_LIB_DIR}")
 
     set(LIBCXX_INCLUDE_DIR
-        ${LIBCXX_INCLUDE_DIR}
+        "${LIBCXX_DIR}/include"
         CACHE PATH)
     set(LIBCXX_LIB_DIR
-        ${LIBCXX_LIB_DIR}
+        "${LIBCXX_DIR}/lib"
         CACHE PATH)
     message("Setting cache var LIBCXX_INCLUDE_DIR to ${LIBCXX_INCLUDE_DIR}")
     message("Setting cache var LIBCXX_LIB_DIR to ${LIBCXX_LIB_DIR}")
