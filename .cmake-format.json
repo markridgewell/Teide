@@ -67,6 +67,15 @@
         "TEST_COMMAND": "*",
         "INSTALL_COMMAND": "*"
       }
+    },
+    "execute_process": {
+      "pargs": 0,
+      "kwargs": {
+        "COMMAND": "*",
+        "OUTPUT_FILE": "1",
+        "COMMAND_ECHO": "1",
+        "COMMAND_ERROR_IS_FATAL": "1"
+      }
     }
   },
   "format": {

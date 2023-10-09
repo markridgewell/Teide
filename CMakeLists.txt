@@ -23,15 +23,6 @@ elseif(
     message("Setting env var LIBCXX_INCLUDE_DIR to $ENV{LIBCXX_INCLUDE_DIR}")
     message("Setting env var LIBCXX_LIB_DIR to $ENV{LIBCXX_LIB_DIR}")
 
-    set(LIBCXX_INCLUDE_DIR
-        "${LIBCXX_DIR}/include"
-        CACHE PATH)
-    set(LIBCXX_LIB_DIR
-        "${LIBCXX_DIR}/lib"
-        CACHE PATH)
-    message("Setting cache var LIBCXX_INCLUDE_DIR to ${LIBCXX_INCLUDE_DIR}")
-    message("Setting cache var LIBCXX_LIB_DIR to ${LIBCXX_LIB_DIR}")
-
     set(VCPKG_TARGET_TRIPLET "x64-linux-msan")
 endif()
 

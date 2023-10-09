@@ -2,6 +2,8 @@ set(CMAKE_ASM_COMPILER clang-17)
 set(CMAKE_C_COMPILER clang-17)
 set(CMAKE_CXX_COMPILER clang++-17)
 
+message("Using clang-msan toolchain")
+
 if(DEFINED ENV{LIBCXX_INCLUDE_DIR})
     message("Environment variable LIBCXX_INCLUDE_DIR is set.")
     set(LIBCXX_INCLUDE_DIR $ENV{LIBCXX_INCLUDE_DIR})
