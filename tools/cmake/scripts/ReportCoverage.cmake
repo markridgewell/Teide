@@ -1,10 +1,8 @@
 function(exec)
     execute_process(
         ${ARGV}
-        COMMAND_ECHO
-        STDERR
-        COMMAND_ERROR_IS_FATAL
-        ANY)
+        COMMAND_ECHO STDERR
+        COMMAND_ERROR_IS_FATAL ANY)
 endfunction()
 
 if(COMPILER STREQUAL "MSVC")

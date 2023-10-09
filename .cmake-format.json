@@ -69,7 +69,7 @@
       }
     },
     "execute_process": {
-      "pargs": 0,
+      "pargs": "*",
       "kwargs": {
         "COMMAND": "*",
         "OUTPUT_FILE": "1",
