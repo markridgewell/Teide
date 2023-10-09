@@ -32,7 +32,7 @@ if(NOT customlibcxx_POPULATED)
         COMMAND
             "${CMAKE_COMMAND}" -G Ninja -S "${srcDirVar}/runtimes" -B "${binDirVar}"
             "-DLLVM_ENABLE_RUNTIMES=libcxx;libcxxabi;libunwind" "-DCMAKE_INSTALL_PREFIX=${PREFIX}"
-            -DCMAKE_CXX_COMPILER=clang++
+            "-DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}"
         COMMAND_ERROR_IS_FATAL ANY)
     message("## BUILD ##")
     execute_process(COMMAND ninja -C "${binDirVar}" cxx cxxabi unwind COMMAND_ERROR_IS_FATAL ANY)
