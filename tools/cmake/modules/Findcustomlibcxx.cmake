@@ -1,5 +1,6 @@
 include(FetchContent)
 include(FindPackageHandleStandardArgs)
+include(CMakePrintHelpers)
 
 message("Finding custom build of libc++...")
 set(PREFIX "${CMAKE_BINARY_DIR}/libcxx")
@@ -11,6 +12,13 @@ FetchContent_Declare(
     GIT_TAG llvmorg-17.0.2
     GIT_SHALLOW TRUE GIT_PROGRESS TRUE)
 FetchContent_GetProperties(customlibcxx)
+
+cmake_print_variables(CMAKE_CXX_COMPILER)
+cmake_print_variables(CMAKE_CXX_COMPILER_ID)
+cmake_print_variables(CMAKE_CXX_COMPILER_VERSION)
+cmake_print_variables(CMAKE_C_COMPILER)
+cmake_print_variables(CMAKE_C_COMPILER_ID)
+cmake_print_variables(CMAKE_C_COMPILER_VERSION)
 
 if(NOT customlibcxx_POPULATED)
     # Fetch the content using previously declared details
