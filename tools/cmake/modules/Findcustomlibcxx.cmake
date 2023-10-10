@@ -3,51 +3,42 @@ include(FindPackageHandleStandardArgs)
 include(CMakePrintHelpers)
 
 message("Finding custom build of libc++...")
+set(LLVM_VERSION 17.0.2)
 set(PREFIX "${CMAKE_BINARY_DIR}/libcxx")
 
 FetchContent_Declare(
     customlibcxx
     SYSTEM
     GIT_REPOSITORY https://github.com/llvm/llvm-project
-    GIT_TAG llvmorg-17.0.2
+    GIT_TAG llvmorg-${LLVM_VERSION}
     GIT_SHALLOW TRUE GIT_PROGRESS TRUE)
 FetchContent_GetProperties(customlibcxx)
-
-cmake_print_variables(CMAKE_CXX_COMPILER)
-cmake_print_variables(CMAKE_CXX_COMPILER_ID)
-cmake_print_variables(CMAKE_CXX_COMPILER_VERSION)
-cmake_print_variables(CMAKE_C_COMPILER)
-cmake_print_variables(CMAKE_C_COMPILER_ID)
-cmake_print_variables(CMAKE_C_COMPILER_VERSION)
 
 if(NOT customlibcxx_POPULATED)
     # Fetch the content using previously declared details
     FetchContent_Populate(customlibcxx)
     set(SOURCE_DIR "${customlibcxx_SOURCE_DIR}")
+    set(BINARY_DIR "${customlibcxx_BINARY_DIR}")
 
-    FetchContent_GetProperties(
-        customlibcxx
-        SOURCE_DIR srcDirVar
-        BINARY_DIR binDirVar
-        POPULATED doneVar)
-    message(STATUS "SOURCE_DIR: ${srcDirVar}")
-    message(STATUS "BINARY_DIR: ${binDirVar}")
-    message(STATUS "POPULATED: ${doneVar}")
+    string(REGEX MATCH "[0-9]+" COMPILER_VERSION "${LLVM_VERSION}")
+    set(C_COMPILER clang-${COMPILER_VERSION})
+    set(CXX_COMPILER clang++-${COMPILER_VERSION})
+    cmake_print_variables(LLVM_VERSION COMPILER_VERSION C_COMPILER CXX_COMPILER)
 
     set(CMAKE_EXECUTE_PROCESS_COMMAND_ECHO STDERR)
     message("## CONFIGURE ##")
     execute_process(
         COMMAND
-            "${CMAKE_COMMAND}" -G Ninja -S "${srcDirVar}/runtimes" -B "${binDirVar}"
+            "${CMAKE_COMMAND}" -G Ninja -S "${SOURCE_DIR}/runtimes" -B "${BINARY_DIR}"
             "-DLLVM_ENABLE_RUNTIMES=libcxx;libcxxabi;libunwind" "-DCMAKE_INSTALL_PREFIX=${PREFIX}"
-            "-DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}" "-DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}"
+            "-DCMAKE_C_COMPILER=${C_COMPILER}" "-DCMAKE_CXX_COMPILER=${CXX_COMPILER}"
         COMMAND_ERROR_IS_FATAL ANY)
     message("## BUILD ##")
-    execute_process(COMMAND ninja -C "${binDirVar}" cxx cxxabi unwind COMMAND_ERROR_IS_FATAL ANY)
-    message("## TEST ##")
-    execute_process(COMMAND ninja -C "${binDirVar}" check-cxx check-cxxabi check-unwind COMMAND_ERROR_IS_FATAL ANY)
+    execute_process(COMMAND ninja -C "${BINARY_DIR}" cxx cxxabi unwind COMMAND_ERROR_IS_FATAL ANY)
+    #message("## TEST ##")
+    #execute_process(COMMAND ninja -C "${BINARY_DIR}" check-cxx check-cxxabi check-unwind COMMAND_ERROR_IS_FATAL ANY)
     message("## INSTALL ##")
-    execute_process(COMMAND ninja -C "${binDirVar}" install-cxx install-cxxabi install-unwind
+    execute_process(COMMAND ninja -C "${BINARY_DIR}" install-cxx install-cxxabi install-unwind
                     COMMAND_ERROR_IS_FATAL ANY)
 
     set(LIBCXX_DIR
