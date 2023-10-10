@@ -67,7 +67,8 @@ execute_process(
     COMMAND
         "${PYTHON_EXECUTABLE}" "${CMAKE_SOURCE_DIR}/tools/genvkex.py" -registry
         "${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/share/vulkan/registry/vk.xml" -o
-        "${GENERATED_INCLUDE_DIR}/vkex")
+        "${GENERATED_INCLUDE_DIR}/vkex"
+    COMMAND_ERROR_IS_FATAL ANY)
 
 include(FileLists.cmake)
 td_add_library(
