@@ -3,7 +3,12 @@ include(FindPackageHandleStandardArgs)
 include(CMakePrintHelpers)
 
 message("Finding custom build of libc++...")
-set(LLVM_VERSION 17.0.2)
+
+# Determine LLVM version by running clang++ --version
+execute_process(COMMAND "${CMAKE_CXX_COMPILER}" --version OUTPUT_VARIABLE VERSION_OUTPUT)
+string(REGEX MATCH "version ([0-9.]+)" VERSION_STR "${VERSION_OUTPUT}")
+string(REPLACE "version " "" LLVM_VERSION "${VERSION_STR}")
+message("Version: ${LLVM_VERSION}")
 set(PREFIX "${CMAKE_BINARY_DIR}/libcxx")
 
 FetchContent_Declare(
