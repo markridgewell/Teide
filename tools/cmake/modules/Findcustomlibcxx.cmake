@@ -35,8 +35,8 @@ if(NOT customlibcxx_POPULATED)
         COMMAND_ERROR_IS_FATAL ANY)
     message("## BUILD ##")
     execute_process(COMMAND ninja -C "${BINARY_DIR}" cxx cxxabi unwind COMMAND_ERROR_IS_FATAL ANY)
-    #message("## TEST ##")
-    #execute_process(COMMAND ninja -C "${BINARY_DIR}" check-cxx check-cxxabi check-unwind COMMAND_ERROR_IS_FATAL ANY)
+    # message("## TEST ##") execute_process(COMMAND ninja -C "${BINARY_DIR}" check-cxx check-cxxabi check-unwind
+    # COMMAND_ERROR_IS_FATAL ANY)
     message("## INSTALL ##")
     execute_process(COMMAND ninja -C "${BINARY_DIR}" install-cxx install-cxxabi install-unwind
                     COMMAND_ERROR_IS_FATAL ANY)
