@@ -228,12 +228,6 @@ namespace
         return ret;
     }
 
-    void SetBufferData(VulkanBuffer& buffer, BytesView data)
-    {
-        assert(buffer.mappedData.size() >= data.size());
-        std::memcpy(buffer.mappedData.data(), data.data(), data.size());
-    }
-
     void CopyBuffer(vk::CommandBuffer cmdBuffer, vk::Buffer source, vk::Buffer destination, vk::DeviceSize size)
     {
         const vk::BufferCopy copyRegion = {
@@ -244,188 +238,6 @@ namespace
         cmdBuffer.copyBuffer(source, destination, copyRegion);
     }
 
-    VulkanBuffer CreateBufferWithData(
-        BytesView data, BufferUsage usage, ResourceLifetime lifetime, vk::Device device, MemoryAllocator& allocator,
-        CommandBuffer& cmdBuffer)
-    {
-        const vk::BufferUsageFlags usageFlags = GetBufferUsageFlags(usage);
-
-        if (lifetime == ResourceLifetime::Transient)
-        {
-            VulkanBuffer ret = CreateBufferUninitialized(
-                data.size(), usageFlags | vk::BufferUsageFlagBits::eTransferDst,
-                vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent, device, allocator);
-            SetBufferData(ret, data);
-            return ret;
-        }
-
-        // Create staging buffer
-        auto stagingBuffer = std::make_shared<VulkanBuffer>(CreateBufferUninitialized(
-            data.size(), vk::BufferUsageFlagBits::eTransferSrc,
-            vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent, device, allocator));
-        cmdBuffer.AddBuffer(stagingBuffer);
-        SetBufferData(*stagingBuffer, data);
-
-        // Create device-local buffer
-        VulkanBuffer ret = CreateBufferUninitialized(
-            data.size(), usageFlags | vk::BufferUsageFlagBits::eTransferDst, vk::MemoryPropertyFlagBits::eDeviceLocal,
-            device, allocator);
-        CopyBuffer(cmdBuffer, stagingBuffer->buffer.get(), ret.buffer.get(), data.size());
-
-        // Add pipeline barrier to make the buffer usable in shader
-        cmdBuffer->pipelineBarrier(
-            vk::PipelineStageFlagBits::eTransfer, vk::PipelineStageFlagBits::eVertexShader, {}, {},
-            vk::BufferMemoryBarrier{
-                .srcAccessMask = vk::AccessFlagBits::eTransferWrite,
-                .dstAccessMask = vk::AccessFlagBits::eShaderRead,
-                .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-                .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-                .buffer = ret.buffer.get(),
-                .offset = 0,
-                .size = VK_WHOLE_SIZE,
-            },
-            {});
-        return ret;
-    }
-
-    struct TextureAndState
-    {
-        VulkanTexture texture;
-        TextureState state;
-    };
-
-    TextureAndState CreateTextureImpl(
-        const TextureData& data, vk::Device device, MemoryAllocator& allocator, vk::ImageUsageFlags usage,
-        CommandBuffer& cmdBuffer, const char* debugName)
-    {
-        // For now, all textures will be created with TransferSrc so they can be copied from
-        usage |= vk::ImageUsageFlagBits::eTransferSrc;
-
-        if (!data.pixels.empty())
-        {
-            // Need to transfer image data into image
-            usage |= vk::ImageUsageFlagBits::eTransferDst;
-        }
-
-        if (data.mipLevelCount > 1)
-        {
-            // Need to transfer pixels between mip levels in order to generate mipmaps
-            usage |= vk::ImageUsageFlagBits::eTransferSrc | vk::ImageUsageFlagBits::eTransferDst;
-        }
-
-        auto initialState = TextureState{
-            .layout = vk::ImageLayout::eUndefined,
-            .lastPipelineStageUsage = vk::PipelineStageFlagBits::eTopOfPipe,
-        };
-
-        // Create image
-        const auto imageExtent = vk::Extent3D{data.size.x, data.size.y, 1};
-        const vk::ImageCreateInfo imageInfo = {
-            .imageType = vk::ImageType::e2D,
-            .format = ToVulkan(data.format),
-            .extent = imageExtent,
-            .mipLevels = data.mipLevelCount,
-            .arrayLayers = 1,
-            .samples = vk::SampleCountFlagBits{data.sampleCount},
-            .tiling = vk::ImageTiling::eOptimal,
-            .usage = usage,
-            .sharingMode = vk::SharingMode::eExclusive,
-            .initialLayout = initialState.layout,
-        };
-
-        auto image = device.createImageUnique(imageInfo, s_allocator);
-        const auto memory
-            = allocator.Allocate(device.getImageMemoryRequirements(image.get()), vk::MemoryPropertyFlagBits::eDeviceLocal);
-        device.bindImageMemory(image.get(), memory.memory, memory.offset);
-
-        if (!data.pixels.empty())
-        {
-            // Create staging buffer
-            auto stagingBuffer = CreateBufferUninitialized(
-                data.pixels.size(), vk::BufferUsageFlagBits::eTransferSrc,
-                vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent, device, allocator);
-            SetBufferData(stagingBuffer, data.pixels);
-
-            // Copy staging buffer to image
-            TransitionImageLayout(
-                cmdBuffer, image.get(), data.format, data.mipLevelCount, imageInfo.initialLayout,
-                vk::ImageLayout::eTransferDstOptimal, vk::PipelineStageFlagBits::eTopOfPipe,
-                vk::PipelineStageFlagBits::eTransfer);
-            initialState = {
-                .layout = vk::ImageLayout::eTransferDstOptimal,
-                .lastPipelineStageUsage = vk::PipelineStageFlagBits::eTransfer,
-            };
-            CopyBufferToImage(cmdBuffer, stagingBuffer.buffer.get(), image.get(), data.format, imageExtent);
-
-            cmdBuffer.TakeOwnership(std::move(stagingBuffer.buffer));
-        }
-
-        // Create image view
-        const vk::ImageViewCreateInfo viewInfo = {
-        .image = image.get(),
-        .viewType = vk::ImageViewType::e2D,
-        .format = imageInfo.format,
-        .subresourceRange = {
-            .aspectMask =  GetImageAspect(data.format),
-            .baseMipLevel = 0,
-            .levelCount = data.mipLevelCount,
-            .baseArrayLayer = 0,
-            .layerCount = 1,
-            },
-        };
-        auto imageView = device.createImageViewUnique(viewInfo, s_allocator);
-
-        const auto& ss = data.samplerState;
-        const vk::SamplerCreateInfo samplerInfo = {
-            .magFilter = ToVulkan(ss.magFilter),
-            .minFilter = ToVulkan(ss.minFilter),
-            .mipmapMode = ToVulkan(ss.mipmapMode),
-            .addressModeU = ToVulkan(ss.addressModeU),
-            .addressModeV = ToVulkan(ss.addressModeV),
-            .addressModeW = ToVulkan(ss.addressModeW),
-            .anisotropyEnable = ss.maxAnisotropy.has_value(),
-            .maxAnisotropy = ss.maxAnisotropy.value_or(0.0f),
-            .compareEnable = ss.compareOp.has_value(),
-            .compareOp = ToVulkan(ss.compareOp.value_or(CompareOp::Never)),
-        };
-        auto sampler = device.createSamplerUnique(samplerInfo, s_allocator);
-
-        auto ret = VulkanTextureData{
-            .image = std::move(image),
-            .memory = memory,
-            .imageView = std::move(imageView),
-            .sampler = std::move(sampler),
-            .size = {imageExtent.width, imageExtent.height},
-            .format = data.format,
-            .mipLevelCount = data.mipLevelCount,
-            .sampleCount = data.sampleCount,
-        };
-
-        if (debugName)
-        {
-            SetDebugName(ret.image, debugName);
-            SetDebugName(ret.imageView, "{}:View", debugName);
-            SetDebugName(ret.sampler, "{}:Sampler", debugName);
-        }
-
-        return {VulkanTexture(std::move(ret)), initialState};
-    }
-
-    vk::UniqueDescriptorSetLayout
-    CreateDescriptorSetLayout(vk::Device device, std::span<const vk::DescriptorSetLayoutBinding> layoutBindings)
-    {
-        if (layoutBindings.empty())
-        {
-            return {};
-        }
-
-        const vkex::DescriptorSetLayoutCreateInfo createInfo = {
-            .bindings = layoutBindings,
-        };
-
-        return device.createDescriptorSetLayoutUnique(createInfo, s_allocator);
-    }
-
     vk::UniquePipelineLayout CreateGraphicsPipelineLayout(vk::Device device, const VulkanShaderBase& shader)
     {
         std::vector<vk::DescriptorSetLayout> setLayouts = {
@@ -434,7 +246,6 @@ namespace
             shader.materialPblockLayout->setLayout.get(),
             shader.objectPblockLayout->setLayout.get(),
         };
-        std::erase(setLayouts, vk::DescriptorSetLayout{});
 
         vkex::PipelineLayoutCreateInfo createInfo = {
             .setLayouts = setLayouts,
@@ -667,7 +478,7 @@ VulkanGraphicsDevice::VulkanGraphicsDevice(
     m_setupCommandPool{CreateCommandPool(m_physicalDevice.queueFamilies.graphicsFamily, m_device.get(), "SetupCommandPool")},
     m_surfaceCommandPool{
         CreateCommandPool(m_physicalDevice.queueFamilies.graphicsFamily, m_device.get(), "SurfaceCommandPool")},
-    m_allocator(m_device.get(), m_physicalDevice.physicalDevice),
+    m_allocator{CreateAllocator(m_loader, m_instance.get(), m_device.get(), m_physicalDevice.physicalDevice)},
     m_scheduler(m_settings.numThreads, m_device.get(), m_graphicsQueue, m_physicalDevice.queueFamilies.graphicsFamily)
 {
     if constexpr (IsDebugBuild)
@@ -714,6 +525,181 @@ VulkanGraphicsDevice::~VulkanGraphicsDevice()
     m_device->waitIdle();
 }
 
+VulkanBuffer VulkanGraphicsDevice::CreateBufferUninitialized(
+    vk::DeviceSize size, vk::BufferUsageFlags usage, vma::AllocationCreateFlags allocationFlags, vma::MemoryUsage memoryUsage)
+{
+    return Teide::CreateBufferUninitialized(size, usage, allocationFlags, memoryUsage, m_device.get(), m_allocator.get());
+}
+
+VulkanBuffer
+VulkanGraphicsDevice::CreateBufferWithData(BytesView data, BufferUsage usage, ResourceLifetime lifetime, CommandBuffer& cmdBuffer)
+{
+    const vk::BufferUsageFlags usageFlags = GetBufferUsageFlags(usage);
+
+    if (lifetime == ResourceLifetime::Transient)
+    {
+        VulkanBuffer ret = CreateBufferUninitialized(
+            data.size(), usageFlags | vk::BufferUsageFlagBits::eTransferDst,
+            vma::AllocationCreateFlagBits::eHostAccessSequentialWrite);
+        SetBufferData(ret, data);
+        return ret;
+    }
+
+    // Create staging buffer
+    auto stagingBuffer = std::make_shared<VulkanBuffer>(CreateBufferUninitialized(
+        data.size(), vk::BufferUsageFlagBits::eTransferSrc, vma::AllocationCreateFlagBits::eHostAccessSequentialWrite));
+    cmdBuffer.AddReference(stagingBuffer);
+    SetBufferData(*stagingBuffer, data);
+
+    // Create device-local buffer
+    VulkanBuffer ret = CreateBufferUninitialized(data.size(), usageFlags | vk::BufferUsageFlagBits::eTransferDst);
+    CopyBuffer(cmdBuffer, stagingBuffer->buffer.get(), ret.buffer.get(), data.size());
+
+    // Add pipeline barrier to make the buffer usable in shader
+    cmdBuffer->pipelineBarrier(
+        vk::PipelineStageFlagBits::eTransfer, vk::PipelineStageFlagBits::eVertexShader, {}, {},
+        vk::BufferMemoryBarrier{
+            .srcAccessMask = vk::AccessFlagBits::eTransferWrite,
+            .dstAccessMask = vk::AccessFlagBits::eShaderRead,
+            .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            .buffer = ret.buffer.get(),
+            .offset = 0,
+            .size = VK_WHOLE_SIZE,
+        },
+        {});
+    return ret;
+}
+
+auto VulkanGraphicsDevice::CreateTextureImpl(
+    const TextureData& data, vk::ImageUsageFlags usage, CommandBuffer& cmdBuffer, const char* debugName) -> TextureAndState
+{
+    // For now, all textures will be created with TransferSrc so they can be copied from
+    usage |= vk::ImageUsageFlagBits::eTransferSrc;
+
+    if (!data.pixels.empty())
+    {
+        // Need to transfer image data into image
+        usage |= vk::ImageUsageFlagBits::eTransferDst;
+    }
+
+    if (data.mipLevelCount > 1)
+    {
+        // Need to transfer pixels between mip levels in order to generate mipmaps
+        usage |= vk::ImageUsageFlagBits::eTransferSrc | vk::ImageUsageFlagBits::eTransferDst;
+    }
+
+    auto initialState = TextureState{
+        .layout = vk::ImageLayout::eUndefined,
+        .lastPipelineStageUsage = vk::PipelineStageFlagBits::eTopOfPipe,
+    };
+
+    // Create image
+    const auto imageExtent = vk::Extent3D{data.size.x, data.size.y, 1};
+    const vk::ImageCreateInfo imageInfo = {
+        .imageType = vk::ImageType::e2D,
+        .format = ToVulkan(data.format),
+        .extent = imageExtent,
+        .mipLevels = data.mipLevelCount,
+        .arrayLayers = 1,
+        .samples = vk::SampleCountFlagBits{data.sampleCount},
+        .tiling = vk::ImageTiling::eOptimal,
+        .usage = usage,
+        .sharingMode = vk::SharingMode::eExclusive,
+        .initialLayout = initialState.layout,
+    };
+
+    const vma::AllocationCreateInfo allocInfo = {
+        .usage = vma::MemoryUsage::eAuto,
+    };
+    auto [image, allocation] = m_allocator->createImageUnique(imageInfo, allocInfo);
+
+    if (!data.pixels.empty())
+    {
+        // Create staging buffer
+        auto stagingBuffer = CreateBufferUninitialized(
+            data.pixels.size(), vk::BufferUsageFlagBits::eTransferSrc,
+            vma::AllocationCreateFlagBits::eHostAccessSequentialWrite);
+        SetBufferData(stagingBuffer, data.pixels);
+
+        // Copy staging buffer to image
+        TransitionImageLayout(
+            cmdBuffer, image.get(), data.format, data.mipLevelCount, imageInfo.initialLayout,
+            vk::ImageLayout::eTransferDstOptimal, vk::PipelineStageFlagBits::eTopOfPipe,
+            vk::PipelineStageFlagBits::eTransfer);
+        initialState = {
+            .layout = vk::ImageLayout::eTransferDstOptimal,
+            .lastPipelineStageUsage = vk::PipelineStageFlagBits::eTransfer,
+        };
+        CopyBufferToImage(cmdBuffer, stagingBuffer.buffer.get(), image.get(), data.format, imageExtent);
+
+        cmdBuffer.TakeOwnership(std::move(stagingBuffer.buffer));
+        cmdBuffer.TakeOwnership(std::move(stagingBuffer.allocation));
+    }
+
+    // Create image view
+    const vk::ImageViewCreateInfo viewInfo = {
+        .image = image.get(),
+        .viewType = vk::ImageViewType::e2D,
+        .format = imageInfo.format,
+        .subresourceRange = {
+            .aspectMask =  GetImageAspect(data.format),
+            .baseMipLevel = 0,
+            .levelCount = data.mipLevelCount,
+            .baseArrayLayer = 0,
+            .layerCount = 1,
+            },
+        };
+    auto imageView = m_device->createImageViewUnique(viewInfo, s_allocator);
+
+    const auto& ss = data.samplerState;
+    const vk::SamplerCreateInfo samplerInfo = {
+        .magFilter = ToVulkan(ss.magFilter),
+        .minFilter = ToVulkan(ss.minFilter),
+        .mipmapMode = ToVulkan(ss.mipmapMode),
+        .addressModeU = ToVulkan(ss.addressModeU),
+        .addressModeV = ToVulkan(ss.addressModeV),
+        .addressModeW = ToVulkan(ss.addressModeW),
+        .anisotropyEnable = ss.maxAnisotropy.has_value(),
+        .maxAnisotropy = ss.maxAnisotropy.value_or(0.0f),
+        .compareEnable = ss.compareOp.has_value(),
+        .compareOp = ToVulkan(ss.compareOp.value_or(CompareOp::Never)),
+    };
+    auto sampler = m_device->createSamplerUnique(samplerInfo, s_allocator);
+
+    auto ret = VulkanTextureData{
+        .image = vk::UniqueImage(image.release(), m_device.get()),
+        .allocation = std::move(allocation),
+        .imageView = std::move(imageView),
+        .sampler = std::move(sampler),
+        .size = {imageExtent.width, imageExtent.height},
+        .format = data.format,
+        .mipLevelCount = data.mipLevelCount,
+        .sampleCount = data.sampleCount,
+    };
+
+    if (debugName)
+    {
+        SetDebugName(ret.image, debugName);
+        SetDebugName(ret.imageView, "{}:View", debugName);
+        SetDebugName(ret.sampler, "{}:Sampler", debugName);
+    }
+
+    return {VulkanTexture(std::move(ret)), initialState};
+}
+
+void VulkanGraphicsDevice::SetBufferData(VulkanBuffer& buffer, BytesView data)
+{
+    const auto allocation = buffer.allocation.get();
+    assert(m_allocator->getAllocationInfo(allocation).size >= data.size());
+
+    void* const mappedData = m_allocator->mapMemory(allocation);
+
+    std::memcpy(mappedData, data.data(), data.size());
+
+    m_allocator->unmapMemory(allocation);
+}
+
 SurfacePtr VulkanGraphicsDevice::CreateSurface(SDL_Window* window, bool multisampled)
 {
     return CreateSurface(CreateVulkanSurface(window, m_instance.get()), window, multisampled);
@@ -727,7 +713,7 @@ RendererPtr VulkanGraphicsDevice::CreateRenderer(ShaderEnvironmentPtr shaderEnvi
 BufferPtr VulkanGraphicsDevice::CreateBuffer(const BufferData& data, const char* name)
 {
     spdlog::debug("Creating buffer '{}' of size {}", name, data.data.size());
-    auto task = m_scheduler.ScheduleGpu([=, this](CommandBuffer& cmdBuffer) { //
+    auto task = m_scheduler.ScheduleGpu([data, name, this](CommandBuffer& cmdBuffer) { //
         return CreateBuffer(data, name, cmdBuffer);
     });
     return task.get();
@@ -740,13 +726,13 @@ SurfacePtr VulkanGraphicsDevice::CreateSurface(vk::UniqueSurfaceKHR surface, SDL
     assert(m_physicalDevice.queueFamilies.presentFamily.has_value());
 
     return std::make_unique<VulkanSurface>(
-        window, std::move(surface), m_device.get(), m_physicalDevice.physicalDevice,
-        m_physicalDevice.queueFamilyIndices, m_surfaceCommandPool.get(), m_graphicsQueue, multisampled);
+        window, std::move(surface), m_device.get(), m_physicalDevice.physicalDevice, m_physicalDevice.queueFamilyIndices,
+        m_surfaceCommandPool.get(), m_allocator.get(), m_graphicsQueue, multisampled);
 }
 
 BufferPtr VulkanGraphicsDevice::CreateBuffer(const BufferData& data, const char* name, CommandBuffer& cmdBuffer)
 {
-    auto ret = CreateBufferWithData(data.data, data.usage, data.lifetime, m_device.get(), m_allocator, cmdBuffer);
+    auto ret = CreateBufferWithData(data.data, data.usage, data.lifetime, cmdBuffer);
     SetDebugName(ret.buffer, name);
     return std::make_shared<const VulkanBuffer>(std::move(ret));
 }
@@ -800,7 +786,7 @@ ShaderPtr VulkanGraphicsDevice::CreateShader(const ShaderData& data, const char*
 TexturePtr VulkanGraphicsDevice::CreateTexture(const TextureData& data, const char* name)
 {
     spdlog::debug("Creating texture '{}' of size {}x{}", name, data.size.x, data.size.y);
-    auto task = m_scheduler.ScheduleGpu([=, this](CommandBuffer& cmdBuffer) { //
+    auto task = m_scheduler.ScheduleGpu([data, name, this](CommandBuffer& cmdBuffer) { //
         return CreateTexture(data, name, cmdBuffer);
     });
     return task.get();
@@ -810,7 +796,7 @@ TexturePtr VulkanGraphicsDevice::CreateTexture(const TextureData& data, const ch
 {
     const auto usage = vk::ImageUsageFlagBits::eSampled;
 
-    auto [texture, state] = CreateTextureImpl(data, m_device.get(), m_allocator, usage, cmdBuffer, name);
+    auto [texture, state] = CreateTextureImpl(data, usage, cmdBuffer, name);
 
     if (data.mipLevelCount > 1)
     {
@@ -829,7 +815,7 @@ TexturePtr VulkanGraphicsDevice::CreateTexture(const TextureData& data, const ch
 TexturePtr VulkanGraphicsDevice::CreateRenderableTexture(const TextureData& data, const char* name)
 {
     spdlog::debug("Creating renderable texture '{}' of size {}x{}", name, data.size.x, data.size.y);
-    auto task = m_scheduler.ScheduleGpu([=, this](CommandBuffer& cmdBuffer) { //
+    auto task = m_scheduler.ScheduleGpu([data, name, this](CommandBuffer& cmdBuffer) { //
         return CreateRenderableTexture(data, name, cmdBuffer);
     });
     return task.get();
@@ -843,7 +829,7 @@ TexturePtr VulkanGraphicsDevice::CreateRenderableTexture(const TextureData& data
 
     const auto usage = renderUsage | vk::ImageUsageFlagBits::eSampled;
 
-    auto [texture, state] = CreateTextureImpl(data, m_device.get(), m_allocator, usage, cmdBuffer, name);
+    auto [texture, state] = CreateTextureImpl(data, usage, cmdBuffer, name);
 
     if (isColorTarget)
     {
@@ -873,7 +859,7 @@ MeshPtr VulkanGraphicsDevice::CreateMesh(const MeshData& data, const char* name,
     mesh.vertexLayout = data.vertexLayout;
 
     mesh.vertexBuffer = std::make_shared<VulkanBuffer>(
-        CreateBufferWithData(data.vertexData, BufferUsage::Vertex, data.lifetime, m_device.get(), m_allocator, cmdBuffer));
+        CreateBufferWithData(data.vertexData, BufferUsage::Vertex, data.lifetime, cmdBuffer));
     if (name)
     {
         SetDebugName(mesh.vertexBuffer->buffer, "{}:vbuffer", name);
@@ -882,8 +868,8 @@ MeshPtr VulkanGraphicsDevice::CreateMesh(const MeshData& data, const char* name,
 
     if (!data.indexData.empty())
     {
-        mesh.indexBuffer = std::make_shared<VulkanBuffer>(CreateBufferWithData(
-            data.indexData, BufferUsage::Index, data.lifetime, m_device.get(), m_allocator, cmdBuffer));
+        mesh.indexBuffer = std::make_shared<VulkanBuffer>(
+            CreateBufferWithData(data.indexData, BufferUsage::Index, data.lifetime, cmdBuffer));
         if (name)
         {
             SetDebugName(mesh.indexBuffer->buffer, "{}:ibuffer", name);
@@ -1027,7 +1013,11 @@ VulkanParameterBlockLayoutPtr VulkanGraphicsDevice::CreateParameterBlockLayout(c
         });
     }
 
-    ret.setLayout = CreateDescriptorSetLayout(m_device.get(), bindings);
+    ret.setLayout = m_device->createDescriptorSetLayoutUnique(
+        vkex::DescriptorSetLayoutCreateInfo{
+            .bindings = bindings,
+        },
+        s_allocator);
     ret.uniformsStages = GetShaderStageFlags(layout.uniformsStages);
     return std::make_shared<const VulkanParameterBlockLayout>(std::move(ret));
 }
@@ -1085,7 +1075,7 @@ Framebuffer VulkanGraphicsDevice::CreateFramebuffer(
 ParameterBlockPtr VulkanGraphicsDevice::CreateParameterBlock(const ParameterBlockData& data, const char* name)
 {
     spdlog::debug("Creating parameter block '{}'", name);
-    auto task = m_scheduler.ScheduleGpu([=, this](CommandBuffer& cmdBuffer) {
+    auto task = m_scheduler.ScheduleGpu([data, name, this](CommandBuffer& cmdBuffer) {
         return CreateParameterBlock(data, name, cmdBuffer, m_mainDescriptorPool.get());
     });
     return task.get();

@@ -17,6 +17,7 @@ namespace Teide
 
 namespace
 {
+    constexpr auto VulkanApiVersion = VK_API_VERSION_1_0;
     constexpr bool BreakOnVulkanWarning = false;
     constexpr bool BreakOnVulkanError = true;
 
@@ -252,7 +253,7 @@ vk::UniqueInstance CreateInstance(VulkanLoader& loader, SDL_Window* window)
     }
 
     const vk::ApplicationInfo applicationInfo{
-        .apiVersion = VK_API_VERSION_1_0,
+        .apiVersion = VulkanApiVersion,
     };
 
     const auto availableLayers = vk::enumerateInstanceLayerProperties();
@@ -342,6 +343,18 @@ vk::UniqueDevice CreateDevice(VulkanLoader& loader, const PhysicalDevice& physic
     auto ret = physicalDevice.physicalDevice.createDeviceUnique(deviceCreateInfo, s_allocator);
     loader.LoadDeviceFunctions(ret.get());
     return ret;
+}
+
+vma::UniqueAllocator CreateAllocator(VulkanLoader& loader, vk::Instance instance, vk::Device device, vk::PhysicalDevice physicalDevice)
+{
+    return vma::createAllocatorUnique({
+        .physicalDevice = physicalDevice,
+        .device = device,
+        .pAllocationCallbacks = s_allocator,
+        .pVulkanFunctions = &loader.GetAllocatorFunctions(),
+        .instance = instance,
+        .vulkanApiVersion = VulkanApiVersion,
+    });
 }
 
 void TransitionImageLayout(

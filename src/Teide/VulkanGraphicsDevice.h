@@ -2,10 +2,11 @@
 #pragma once
 
 #include "CommandBuffer.h"
-#include "MemoryAllocator.h"
 #include "Scheduler.h"
 #include "Vulkan.h"
+#include "VulkanBuffer.h"
 #include "VulkanLoader.h"
+#include "VulkanTexture.h"
 
 #include "Teide/BasicTypes.h"
 #include "Teide/GraphicsDevice.h"
@@ -60,7 +61,7 @@ public:
 
     // Internal
     vk::Device GetVulkanDevice() { return m_device.get(); }
-    MemoryAllocator& GetMemoryAllocator() { return m_allocator; }
+    vma::Allocator& GetAllocator() { return m_allocator.get(); }
     Scheduler& GetScheduler() { return m_scheduler; }
 
     template <class T>
@@ -74,6 +75,21 @@ public:
     {
         return std::dynamic_pointer_cast<const typename VulkanImpl<std::remove_const_t<T>>::type>(ptr);
     }
+
+    struct TextureAndState
+    {
+        VulkanTexture texture;
+        TextureState state;
+    };
+
+    TextureAndState
+    CreateTextureImpl(const TextureData& data, vk::ImageUsageFlags usage, CommandBuffer& cmdBuffer, const char* debugName);
+
+    VulkanBuffer CreateBufferUninitialized(
+        vk::DeviceSize size, vk::BufferUsageFlags usage, vma::AllocationCreateFlags allocationFlags = {},
+        vma::MemoryUsage memoryUsage = vma::MemoryUsage::eAuto);
+    VulkanBuffer CreateBufferWithData(BytesView data, BufferUsage usage, ResourceLifetime lifetime, CommandBuffer& cmdBuffer);
+    void SetBufferData(VulkanBuffer& buffer, BytesView data);
 
     SurfacePtr CreateSurface(vk::UniqueSurfaceKHR surface, SDL_Window* window, bool multisampled);
     BufferPtr CreateBuffer(const BufferData& data, const char* name, CommandBuffer& cmdBuffer);
@@ -136,7 +152,7 @@ private:
     vk::UniqueCommandPool m_setupCommandPool;
     vk::UniqueCommandPool m_surfaceCommandPool;
 
-    MemoryAllocator m_allocator;
+    vma::UniqueAllocator m_allocator;
 
     Scheduler m_scheduler;
 };

@@ -1,7 +1,9 @@
 
 #pragma once
 
+#include <cstdlib>
 #include <iostream>
+#include <utility>
 
 namespace Teide
 {
@@ -15,7 +17,7 @@ constexpr bool IsDebugBuild = true;
 
 [[noreturn]] inline void Unreachable()
 {
-    std::cerr << UnreachableMessage << std::endl;
+    std::cerr << UnreachableMessage << '\n';
     std::exit(1); // NOLINT(concurrency-mt-unsafe)
 }
 
@@ -26,11 +28,7 @@ constexpr bool IsDebugBuild = false;
 
 [[noreturn]] inline void Unreachable()
 {
-#    ifdef __GNUC__         // GCC 4.8+, Clang, Intel and other compilers compatible with GCC (-std=c++0x or above)
-    __builtin_unreachable();
-#    elif defined(_MSC_VER) // MSVC
-    __assume(false);
-#    endif
+    std::unreachable();
 }
 
 #endif

@@ -13,11 +13,14 @@ class CommandBuffer
 public:
     explicit CommandBuffer(vk::UniqueCommandBuffer commandBuffer);
 
-    void AddTexture(const TexturePtr& texture);
-    void AddBuffer(const BufferPtr& buffer);
-    void AddParameterBlock(const ParameterBlockPtr& parameterBlock);
+    void AddReference(const TexturePtr& p);
+    void AddReference(const BufferPtr& p);
+    void AddReference(const MeshPtr& p);
+    void AddReference(const ParameterBlockPtr& p);
+    void AddReference(const PipelinePtr& p);
 
     void TakeOwnership(vk::UniqueBuffer buffer);
+    void TakeOwnership(vma::UniqueAllocation allocation);
     void Reset();
 
     std::string_view GetDebugName() const;
@@ -45,8 +48,11 @@ private:
 
     std::unordered_set<TexturePtr> m_referencedTextures;
     std::unordered_set<BufferPtr> m_referencedBuffers;
+    std::unordered_set<MeshPtr> m_referencedMeshes;
     std::unordered_set<ParameterBlockPtr> m_referencedParameterBlocks;
+    std::unordered_set<PipelinePtr> m_referencedPipelines;
     std::vector<vk::UniqueBuffer> m_ownedBuffers;
+    std::vector<vma::UniqueAllocation> m_ownedAllocations;
 
     std::string m_debugName = "Unnamed";
 };

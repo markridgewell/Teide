@@ -6,8 +6,9 @@
 #include "Teide/BytesView.h"
 #include "Teide/ForwardDeclare.h"
 
-#include <cstring>
+#include <algorithm>
 #include <initializer_list>
+#include <span>
 #include <vector>
 
 namespace Teide

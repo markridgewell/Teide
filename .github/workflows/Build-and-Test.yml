@@ -9,6 +9,7 @@ on:
 
 env:
   VULKAN_SDK: ./VULKAN_SDK
+  VCPKG_OVERLAY_PORTS: ./external/ports
 
 jobs:
   windows:
@@ -16,11 +17,8 @@ jobs:
       fail-fast: false
       matrix:
         buildtype: [Debug, Release]
-        preset: [msvc2019, msvc2022, msvc2022-clang]
+        preset: [msvc2022, msvc2022-clang]
         include:
-        - preset: msvc2019
-          runner: windows-2019
-          coverage: ON
         - preset: msvc2022
           runner: windows-2022
           coverage: ON
@@ -36,6 +34,9 @@ jobs:
       CMAKE_BUILD_TYPE: ${{matrix.buildtype}}
 
     steps:
+    - name: Print job ID
+      run: echo "${{github.job}}"
+
     - name: Checkout
       uses: actions/checkout@v3
       with:
@@ -45,10 +46,10 @@ jobs:
     - name: Install dependencies
       uses: ./.github/actions/install-dependencies
       with:
-        extra-packages: OpenCppCoverage
+        extra-packages: ${{matrix.coverage == 'ON' && 'OpenCppCoverage' || ''}}
 
     - name: Configure CMake
-      run: cmake --preset ${{matrix.preset}} -DTEIDE_TEST_VERBOSE=ON -DTEIDE_UNIT_TEST_SW_RENDER=ON -DTEIDE_TEST_COVERAGE=${{matrix.coverage}} --trace --trace-format=json-v1 --trace-redirect=CMakeTrace.txt
+      run: cmake --preset ${{matrix.preset}} -DTEIDE_PRECOMPILED_HEADERS=ON -DTEIDE_TEST_VERBOSE=ON -DTEIDE_UNIT_TEST_SW_RENDER=ON -DTEIDE_TEST_COVERAGE=${{matrix.coverage}} --trace --trace-format=json-v1 --trace-redirect=CMakeTrace.txt
 
     - name: Save CMake trace
       uses: actions/upload-artifact@v3
@@ -104,22 +105,22 @@ jobs:
     strategy:
       matrix:
         buildtype: [Debug, Release]
-        compiler: [g++-11, clang++-16]
+        compiler: [g++-12, clang++-17]
         sanitizer: [OFF]
         include:
         - preset: ninja
         - coverage: OFF
         - buildtype: Debug
-          compiler: clang++-16
+          compiler: clang++-17
           coverage: ON
         - buildtype: Debug
-          compiler: clang++-16
+          compiler: clang++-17
           sanitizer: ASAN
           preset: ninja
           coverage: OFF
           name-suffix: -asan
         - buildtype: Debug
-          compiler: clang++-16
+          compiler: clang++-17
           sanitizer: UBSAN
           preset: ninja
           coverage: OFF
@@ -133,6 +134,9 @@ jobs:
       job_name: Linux-${{matrix.buildtype}}-${{matrix.compiler}}${{matrix.name-suffix}}
 
     steps:
+    - name: Print job ID
+      run: echo "${{github.job}}"
+
     - name: Checkout
       uses: actions/checkout@v3
       with:
@@ -145,7 +149,7 @@ jobs:
         extra-packages: ninja-build ${{matrix.compiler}}
 
     - name: Configure CMake
-      run: cmake --preset ${{matrix.preset}} -DCMAKE_CXX_COMPILER=${{matrix.compiler}} -DTEIDE_TEST_VERBOSE=ON -DTEIDE_UNIT_TEST_SW_RENDER=ON -DTEIDE_TEST_WINDOWLESS=ON -DTEIDE_TEST_COVERAGE=${{matrix.coverage}} -DTEIDE_SANITIZER=${{matrix.sanitizer}}
+      run: cmake --preset ${{matrix.preset}} -DCMAKE_CXX_COMPILER=${{matrix.compiler}} -DTEIDE_PRECOMPILED_HEADERS=ON -DTEIDE_TEST_VERBOSE=ON -DTEIDE_UNIT_TEST_SW_RENDER=ON -DTEIDE_TEST_WINDOWLESS=ON -DTEIDE_TEST_COVERAGE=${{matrix.coverage}} -DTEIDE_SANITIZER=${{matrix.sanitizer}}
 
     - name: Build
       run: cmake --build --preset ${{matrix.preset}} --config ${{matrix.buildtype}}
@@ -192,3 +196,41 @@ jobs:
       with:
         name: CoverageReport-${{env.job_name}}
         path: build/${{matrix.preset}}/coverage/output
+
+  time-report:
+    name: Time-Report
+    runs-on: ubuntu-latest
+    needs: [windows, linux]
+    if: ${{ github.event_name == 'push' }}
+    env:
+      GH_TOKEN: ${{github.token}}
+
+    steps:
+    - name: Get workflow run data
+      run: |
+        echo "Build-and-Test workflow completed, run_id: ${{github.run_id}}"
+        echo -n '{"run_data":' > ${{github.sha}}.json
+        gh api \
+          -H "Accept: application/vnd.github+json" \
+          -H "X-GitHub-Api-Version: 2022-11-28" \
+          /repos/${{github.repository}}/actions/runs/${{github.run_id}} \
+          >> ${{github.sha}}.json
+        echo -n ', "job_data":' >> ${{github.sha}}.json
+        gh api \
+          -H "Accept: application/vnd.github+json" \
+          -H "X-GitHub-Api-Version: 2022-11-28" \
+          /repos/${{github.repository}}/actions/runs/${{github.run_id}}/jobs \
+          >> ${{github.sha}}.json
+        echo -n '}' >> ${{github.sha}}.json
+
+    - name: Push workflow run data
+      uses: dmnemec/copy_file_to_another_repo_action@v1.1.1
+      env:
+        API_TOKEN_GITHUB: ${{secrets.API_TOKEN_GITHUB}}
+      with:
+        source_file: '${{github.sha}}.json'
+        destination_repo: '${{github.repository}}Stats'
+        destination_folder: 'build_times'
+        user_email: '${{github.actor_id}}+${{github.actor}}@users.noreply.github.com'
+        user_name: '${{github.actor}}'
+        commit_message: 'Add workflow run for commit ${{github.sha}}'
