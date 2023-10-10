@@ -24,6 +24,7 @@ elseif(
     message("Setting env var LIBCXX_LIB_DIR to $ENV{LIBCXX_LIB_DIR}")
 
     set(VCPKG_TARGET_TRIPLET "x64-linux-msan")
+    set(VCPKG_CHAINLOAD_TOOLCHAIN_FILE "${CMAKE_CURRENT_SOURCE_DIR}/tools/cmake/toolchains/clang-msan.cmake")
 endif()
 
 project(
