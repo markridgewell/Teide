@@ -228,16 +228,14 @@ class VkexOutputGenerator(OutputGenerator):
             for s in genOpts.prefixText:
                 write(s, file=self.outFile)
 
-        # C++ extern wrapper - after prefix lines so they can add includes.
         self.newline()
         write('namespace vkex\n{', file=self.outFile)
         self.newline()
 
     def endFile(self):
-        # C-specific
-        # Finish C++ wrapper and multiple inclusion protection
         if self.genOpts is None:
             raise MissingGeneratorOptionsError()
+
         self.newline()
         write('} // namespace vkex', file=self.outFile)
         if self.genOpts.protectFile and self.genOpts.filename:
@@ -400,10 +398,7 @@ class VkexOutputGenerator(OutputGenerator):
         text = noneStr(elem.text).strip()
         tail = noneStr(elem.tail).strip()
         if elem.tag == 'type':
-            if False and text in self.emittedStructs:
-                text = convertTypeDecl(text)
-            else:
-                text = convertTypeRef(text)
+            text = convertTypeRef(text)
             if toArray:
                 pointerType = concat(concat(prefix, text), tail)
                 elemType = removePointer(pointerType)
