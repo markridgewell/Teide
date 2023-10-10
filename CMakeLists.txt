@@ -60,6 +60,15 @@ set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# Generate vkex headers
+set(GENERATED_INCLUDE_DIR "${CMAKE_BINARY_DIR}/GENERATED/include")
+find_package(PythonInterp REQUIRED)
+execute_process(
+    COMMAND
+        "${PYTHON_EXECUTABLE}" "${CMAKE_SOURCE_DIR}/tools/genvkex.py" -registry
+        "${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/share/vulkan/registry/vk.xml" -o
+        "${GENERATED_INCLUDE_DIR}/vkex")
+
 include(FileLists.cmake)
 td_add_library(
     Teide
@@ -74,6 +83,7 @@ td_add_library(
         function2::function2
         glslang::SPIRV
         glslang::glslang)
+target_include_directories(Teide PRIVATE "${GENERATED_INCLUDE_DIR}")
 
 if(TEIDE_PRECOMPILED_HEADERS)
     target_precompile_headers(

@@ -68,5 +68,4 @@ set(sources
     src/Teide/VulkanTexture.cpp
     src/Teide/VulkanTexture.h
     src/Vulkan.natvis
-    src/vkex/vkex.hpp
     src/vkex/vkex_utils.hpp)

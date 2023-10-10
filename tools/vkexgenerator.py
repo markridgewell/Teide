@@ -220,7 +220,7 @@ class VkexOutputGenerator(OutputGenerator):
             write('#define', headerSym, file=self.outFile)
             self.newline()
 
-        write('#include "vkex_utils.hpp"', file=self.outFile)
+        write('#include "vkex/vkex_utils.hpp"', file=self.outFile)
         self.newline()
 
         # User-supplied prefix text, if any (list of strings)
@@ -451,6 +451,14 @@ class VkexOutputGenerator(OutputGenerator):
             'VkBufferCreateInfo',
             'VkRenderPassBeginInfo',
         ]
+
+        # List of structs known to NOT work
+        brokenStructs = [
+            'VkVideoDecodeH265PictureInfoKHR'
+        ]
+
+        if typeName in brokenStructs:
+            return
 
         structType = 'trivial'
 
