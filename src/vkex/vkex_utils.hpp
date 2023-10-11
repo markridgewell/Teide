@@ -111,8 +111,12 @@ public:
             m_first{!(m_iterators.first == m_sentinels.first)}
         {}
 
-        const T& operator*() const { return m_first ? *m_iterators.first : *m_iterators.second; }
-        const T* operator->() const { return std::addressof(operator*()); }
+        const T& operator*() const { return *operator->(); }
+        const T* operator->() const
+        {
+            const T& ref = m_first ? m_iterators.first.operator*() : m_iterators.second.operator*();
+            return std::addressof(ref);
+        }
 
         Iterator& operator++()
         {

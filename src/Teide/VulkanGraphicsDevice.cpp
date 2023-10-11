@@ -978,7 +978,7 @@ vk::UniqueDescriptorSet VulkanGraphicsDevice::CreateDescriptorSet(
 VulkanParameterBlockLayoutPtr VulkanGraphicsDevice::CreateParameterBlockLayout(const ParameterBlockDesc& desc, int set)
 {
     VulkanParameterBlockLayout ret;
-    std::vector<vk::DescriptorSetLayoutBinding> bindings;
+    std::optional<vk::DescriptorSetLayoutBinding> uniformBinding;
 
     const ParameterBlockLayoutData layout = BuildParameterBlockLayout(desc, set);
 
@@ -994,28 +994,27 @@ VulkanParameterBlockLayoutPtr VulkanGraphicsDevice::CreateParameterBlockLayout(c
         }
         else
         {
-            bindings.push_back({
+            uniformBinding = {
                 .binding = 0,
                 .descriptorType = vk::DescriptorType::eUniformBuffer,
                 .descriptorCount = 1,
                 .stageFlags = GetShaderStageFlags(layout.uniformsStages),
-            });
+            };
         }
     }
 
-    for (uint32 i = 0; i < layout.textureCount; i++)
-    {
-        bindings.push_back({
+    const auto textureBindings = std::views::transform(std::views::iota(0u, layout.textureCount), [](uint32 i) {
+        return vk::DescriptorSetLayoutBinding{
             .binding = i + 1,
             .descriptorType = vk::DescriptorType::eCombinedImageSampler,
             .descriptorCount = 1,
             .stageFlags = vk::ShaderStageFlagBits::eAllGraphics,
-        });
-    }
+        };
+    });
 
     ret.setLayout = m_device->createDescriptorSetLayoutUnique(
         vkex::DescriptorSetLayoutCreateInfo{
-            .bindings = bindings,
+            .bindings = vkex::Join(uniformBinding, textureBindings),
         },
         s_allocator);
     ret.uniformsStages = GetShaderStageFlags(layout.uniformsStages);
