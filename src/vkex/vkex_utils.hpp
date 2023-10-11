@@ -41,7 +41,7 @@ public:
     Array(U&& range) : // cppcheck-suppress noExplicitConstructor
         m_size{static_cast<std::uint32_t>(range.size())}, m_data{new T[m_size]}
     {
-        std::ranges::move(range, m_data.get());
+        std::ranges::move(std::forward<U>(range), m_data.get());
     }
 
     template <typename U>
@@ -77,11 +77,22 @@ private:
     std::unique_ptr<T[]> m_data = nullptr;
 };
 
+template <class T>
+concept SizedView = std::ranges::sized_range<T> && std::ranges::view<T>;
+
 template <typename Range, typename T>
 concept SizedRangeOf = std::ranges::sized_range<Range> && std::same_as<std::ranges::range_value_t<Range>, T>;
 
 template <typename Range, typename T>
 concept SizedViewOf = SizedRangeOf<Range, T> && std::ranges::view<Range>;
+
+// clang-format off
+template <class T>
+concept SizedViewable = requires(T obj)
+{
+    { MakeRefView(obj) } -> SizedView;
+};
+// clang-format on
 
 template <typename T, typename View1, typename View2>
     requires(SizedViewOf<View1, T> && SizedViewOf<View2, T>)
@@ -104,8 +115,7 @@ public:
 
         explicit Iterator(const std::pair<View1, View2>& views) :
             m_iterators{views.first.begin(), views.second.begin()}, //
-            m_sentinels{views.first.end(), views.second.end()},
-            m_size{std::ranges::size(views.first) + std::ranges::size(views.second)}
+            m_sentinels{views.first.end(), views.second.end()}
         {}
 
         const T& operator*() const { return m_first ? *m_iterators.first : *m_iterators.second; }
@@ -141,24 +151,91 @@ public:
         std::pair<std::ranges::iterator_t<View1>, std::ranges::iterator_t<View2>> m_iterators;
         std::pair<std::ranges::sentinel_t<View1>, std::ranges::sentinel_t<View2>> m_sentinels;
         bool m_first = true;
-        std::size_t m_size = 0;
     };
 
-    explicit JoinView(View1 view1, View2 view2) : m_views{view1, view2} {}
+    explicit JoinView(View1 view1, View2 view2) :
+        m_views{view1, view2}, m_size{std::ranges::size(view1) + std::ranges::size(view2)}
+    {}
 
     auto begin() const { return Iterator(m_views); }
     auto end() const { return Sentinel(); }
+    auto size() const { return m_size; }
 
 private:
     std::pair<View1, View2> m_views;
+    std::size_t m_size = 0;
 };
+
+template <typename T>
+class OptionalView : public std::ranges::view_interface<OptionalView<T>>
+{
+public:
+    using value_type = T;
+
+    class Sentinel
+    {};
+
+    class Iterator
+    {
+    public:
+        using iterator_category = std::forward_iterator_tag;
+        using difference_type = std::ptrdiff_t;
+        using value_type = T;
+        using pointer = T*;
+        using reference = T&;
+
+        explicit Iterator(const std::optional<T>* opt) : m_value{opt} {}
+
+        const T& operator*() const { return m_value->value(); }
+        const T* operator->() const { return std::addressof(operator*()); }
+
+        Iterator& operator++()
+        {
+            m_atStart = false;
+            return *this;
+        }
+
+        Iterator operator++(int)
+        {
+            Iterator tmp = *this;
+            operator++();
+            return tmp;
+        }
+
+        friend bool operator==(const Iterator& a, const Sentinel) { return !(a.m_atStart && a.m_value->has_value()); };
+
+    private:
+        const std::optional<T>* m_value;
+        bool m_atStart = true;
+    };
+
+    explicit OptionalView(const std::optional<T>& opt) : m_value{&opt} {}
+
+    auto begin() const { return Iterator(m_value); }
+    auto end() const { return Sentinel(); }
+    auto size() const { return m_value->has_value() ? 1u : 0u; }
+
+private:
+    const std::optional<T>* m_value;
+};
+
+auto MakeRefView(const std::ranges::range auto& range)
+{
+    return std::ranges::ref_view(range);
+}
+
+template <typename T>
+auto MakeRefView(const std::optional<T>& opt)
+{
+    return OptionalView(opt);
+}
 
 template <typename... Ranges>
     requires((std::ranges::sized_range<Ranges>) && ...)
 auto Join(const Ranges&... ranges)
 {
     using T = std::common_type_t<std::ranges::range_value_t<Ranges>...>;
-    return JoinView<T, decltype(std::ranges::ref_view(ranges))...>(std::ranges::ref_view(ranges)...);
+    return JoinView<T, decltype(MakeRefView(ranges))...>(std::ranges::ref_view(ranges)...);
 }
 
 } // namespace vkex
