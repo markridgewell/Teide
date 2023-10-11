@@ -139,7 +139,7 @@ public:
             return tmp;
         }
 
-        friend bool operator==(const Iterator& a, const Sentinel)
+        friend bool operator==(const Iterator& a, const Sentinel s [[maybe_unused]])
         {
             return !a.m_first && a.m_iterators.second == a.m_sentinels.second;
         };
@@ -199,7 +199,10 @@ public:
             return tmp;
         }
 
-        friend bool operator==(const Iterator& a, const Sentinel) { return !(a.m_atStart && a.m_value->has_value()); };
+        friend bool operator==(const Iterator& a, const Sentinel s [[maybe_unused]])
+        {
+            return !(a.m_atStart && a.m_value->has_value());
+        };
 
     private:
         const std::optional<T>* m_value;
