@@ -86,14 +86,6 @@ concept SizedRangeOf = std::ranges::sized_range<Range> && std::same_as<std::rang
 template <typename Range, typename T>
 concept SizedViewOf = SizedRangeOf<Range, T> && std::ranges::view<Range>;
 
-// clang-format off
-template <class T>
-concept SizedViewable = requires(T obj)
-{
-    { MakeRefView(obj) } -> SizedView;
-};
-// clang-format on
-
 template <typename T, typename View1, typename View2>
     requires(SizedViewOf<View1, T> && SizedViewOf<View2, T>)
 class JoinView : public std::ranges::view_interface<JoinView<T, View1, View2>>
@@ -114,8 +106,9 @@ public:
         using reference = T&;
 
         explicit Iterator(const std::pair<View1, View2>& views) :
-            m_iterators{views.first.begin(), views.second.begin()}, //
-            m_sentinels{views.first.end(), views.second.end()}
+            m_iterators{std::ranges::begin(views.first), std::ranges::begin(views.second)}, //
+            m_sentinels{std::ranges::end(views.first), std::ranges::end(views.second)},
+            m_first{!(m_iterators.first == m_sentinels.first)}
         {}
 
         const T& operator*() const { return m_first ? *m_iterators.first : *m_iterators.second; }
@@ -230,12 +223,27 @@ auto MakeRefView(const std::optional<T>& opt)
     return OptionalView(opt);
 }
 
+// clang-format off
+template <class T>
+concept SizedViewable = requires(const T& obj)
+{
+    { MakeRefView(obj) } -> SizedView;
+};
+// clang-format on
+
+template <typename... Views>
+    requires((SizedView<Views>) && ...)
+auto JoinViews(const Views&... ranges)
+{
+    using T = std::common_type_t<std::ranges::range_value_t<Views>...>;
+    return JoinView<T, Views...>(ranges...);
+}
+
 template <typename... Ranges>
-    requires((std::ranges::sized_range<Ranges>) && ...)
+    requires((SizedViewable<Ranges>) && ...)
 auto Join(const Ranges&... ranges)
 {
-    using T = std::common_type_t<std::ranges::range_value_t<Ranges>...>;
-    return JoinView<T, decltype(MakeRefView(ranges))...>(std::ranges::ref_view(ranges)...);
+    return JoinViews(MakeRefView(ranges)...);
 }
 
 } // namespace vkex

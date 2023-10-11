@@ -83,7 +83,7 @@ TEST(VkexUtilsTest, JoinTwoEngagedOptionals)
 {
     const auto a = std::optional<int>{1};
     const auto b = std::optional<int>{5};
-    const auto ab = Join(OptionalView(a), OptionalView(b));
+    const auto ab = Join(a, b);
     EXPECT_THAT(ab, ElementsAre(1, 5));
     EXPECT_THAT(ab.size(), Eq(2u));
 }
@@ -92,7 +92,7 @@ TEST(VkexUtilsTest, JoinTwoDisengagedOptionals)
 {
     const auto a = std::optional<int>{};
     const auto b = std::optional<int>{};
-    const auto ab = Join(OptionalView(a), OptionalView(b));
+    const auto ab = Join(a, b);
     EXPECT_THAT(ab, ElementsAre());
     EXPECT_THAT(ab.size(), Eq(0u));
 }
@@ -101,7 +101,7 @@ TEST(VkexUtilsTest, JoinEngagedToDisengagedOptional)
 {
     const auto a = std::optional<int>{1};
     const auto b = std::optional<int>{};
-    const auto ab = Join(OptionalView(a), OptionalView(b));
+    const auto ab = Join(a, b);
     EXPECT_THAT(ab, ElementsAre(1));
     EXPECT_THAT(ab.size(), Eq(1u));
 }
@@ -110,9 +110,27 @@ TEST(VkexUtilsTest, JoinDisengagedToEngagedOptional)
 {
     const auto a = std::optional<int>{};
     const auto b = std::optional<int>{5};
-    const auto ab = Join(OptionalView(a), OptionalView(b));
+    const auto ab = Join(a, b);
     EXPECT_THAT(ab, ElementsAre(5));
     EXPECT_THAT(ab.size(), Eq(1u));
+}
+
+TEST(VkexUtilsTest, JoinEngagedOptionalToVector)
+{
+    const auto a = std::optional<int>{1};
+    const auto b = std::vector<int>{4, 5};
+    const auto ab = Join(a, b);
+    EXPECT_THAT(ab, ElementsAre(1, 4, 5));
+    EXPECT_THAT(ab.size(), Eq(3u));
+}
+
+TEST(VkexUtilsTest, JoinDisengagedOptionalToVector)
+{
+    const auto a = std::optional<int>{};
+    const auto b = std::vector<int>{4, 5};
+    const auto ab = Join(a, b);
+    EXPECT_THAT(ab, ElementsAre(4, 5));
+    EXPECT_THAT(ab.size(), Eq(2u));
 }
 
 
