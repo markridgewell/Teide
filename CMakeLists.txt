@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.19)
 
 include(CMakeParseArguments)
 include(CMakeDependentOption)
+include(CMakePrintHelpers)
 include(tools/cmake/Build.cmake)
 include(tools/cmake/Cache.cmake)
 include(tools/cmake/CompileCommands.cmake)
@@ -51,6 +52,9 @@ find_package(Taskflow REQUIRED)
 find_package(function2 REQUIRED)
 find_package(RenderDoc)
 
+cmake_print_properties(TARGETS Vulkan::Headers
+                       PROPERTIES BINARY_DIR IMPORTED_LOCATION INCLUDE_DIRECTORIES LINK_DIRECTORIES INTERFACE_INCLUDE_DIRECTORIES INTERFACE_LINK_DIRECTORIES)
+
 if(NOT TARGET SDL2_image::SDL2_image)
     add_library(SDL2_image::SDL2_image ALIAS SDL2_image::SDL2_image-static)
 endif()
@@ -62,11 +66,11 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Generate vkex headers
 set(GENERATED_INCLUDE_DIR "${CMAKE_BINARY_DIR}/GENERATED/include")
-find_package(Python REQUIRED COMPONENTS Interpreter)
+find_package(Python REQUIRED)
 execute_process(
     COMMAND
-        "${PYTHON_EXECUTABLE}" "${CMAKE_SOURCE_DIR}/tools/genvkex.py" -registry
-        "${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/share/vulkan/registry/vk.xml" -o
+        "${Python_EXECUTABLE}" "${CMAKE_SOURCE_DIR}/tools/genvkex.py" -registry
+        "${Vulkan_INCLUDE_DIR}/../share/vulkan/registry/vk.xml" -o
         "${GENERATED_INCLUDE_DIR}/vkex" COMMAND_ERROR_IS_FATAL ANY)
 
 include(FileLists.cmake)
