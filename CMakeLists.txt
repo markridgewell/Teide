@@ -72,7 +72,7 @@ execute_process(
 include(FileLists.cmake)
 td_add_library(
     Teide
-    SOURCES "${sources}"
+    SOURCES "${sources}" "${GENERATED_INCLUDE_DIR}/vkex/vkex.hpp"
     PUBLIC_DEPS spdlog::spdlog
     PRIVATE_DEPS
         Vulkan::Vulkan

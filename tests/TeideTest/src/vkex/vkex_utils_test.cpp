@@ -10,14 +10,14 @@
 using namespace vkex;
 using namespace testing;
 
-TEST(VulkanUtilsTest, ArrayDefaultConstruct)
+TEST(VkexUtilsTest, ArrayDefaultConstruct)
 {
     const Array<int> a;
     EXPECT_THAT(a.size(), Eq(0u));
     EXPECT_THAT(a.data(), IsNull());
 }
 
-TEST(VulkanUtilsTest, ArrayConstructFromRange)
+TEST(VkexUtilsTest, ArrayConstructFromRange)
 {
     const Array<int> a = std::views::iota(0, 5);
     EXPECT_THAT(a.size(), Eq(5u));
@@ -25,7 +25,7 @@ TEST(VulkanUtilsTest, ArrayConstructFromRange)
     EXPECT_THAT(a, ElementsAre(0, 1, 2, 3, 4));
 }
 
-TEST(VulkanUtilsTest, ArrayConstructSingleElement)
+TEST(VkexUtilsTest, ArrayConstructSingleElement)
 {
     const Array<int> a = 5;
     EXPECT_THAT(a.size(), Eq(1u));
@@ -33,41 +33,51 @@ TEST(VulkanUtilsTest, ArrayConstructSingleElement)
     EXPECT_THAT(a, ElementsAre(5));
 }
 
-TEST(VulkanUtilsTest, ArrayBeginEnd)
+TEST(VkexUtilsTest, ArrayBeginEnd)
 {
     const Array<int> a = std::views::iota(0, 5);
     EXPECT_THAT(a.begin(), Eq(a.data()));
     EXPECT_THAT(a.end(), Eq(std::next(a.data(), a.size())));
 }
 
-TEST(VulkanUtilsTest, ArrayConstBeginEnd)
+TEST(VkexUtilsTest, ArrayConstBeginEnd)
 {
     const Array<int> a = std::views::iota(0, 5);
     EXPECT_THAT(a.begin(), Eq(a.data()));
     EXPECT_THAT(a.end(), Eq(std::next(a.data(), a.size())));
 }
 
-TEST(VulkanUtilsTest, ArrayCbeginCend)
+TEST(VkexUtilsTest, ArrayCbeginCend)
 {
     const Array<int> a = std::views::iota(0, 5);
     EXPECT_THAT(a.begin(), Eq(a.data()));
     EXPECT_THAT(a.end(), Eq(std::next(a.data(), a.size())));
 }
 
-TEST(VulkanUtilsTest, ArrayMutableAlgorithm)
+TEST(VkexUtilsTest, ArrayMutableAlgorithm)
 {
     Array<int> a = std::views::iota(0, 5);
     std::ranges::fill(a, 42);
     EXPECT_THAT(a, ElementsAre(42, 42, 42, 42, 42));
 }
 
-TEST(VulkanUtilsTest, ArrayReset)
+TEST(VkexUtilsTest, ArrayReset)
 {
     Array<int> a;
     a.reset(10);
     EXPECT_THAT(a.size(), Eq(10u));
     EXPECT_THAT(a.data(), NotNull());
 }
+
+
+TEST(VkexUtilsTest, JoinTwoVectors)
+{
+    const auto a = std::vector<int>{1, 2, 3};
+    const auto b = std::vector<int>{4, 5};
+    const auto ab = Join(a, b);
+    EXPECT_THAT(ab, ElementsAre(1, 2, 3, 4, 5));
+}
+
 
 template <class T>
 T MakeHandle(std::uintptr_t value)
@@ -84,7 +94,7 @@ MATCHER_P(Handle, v, "handle with value")
     return NativeType(arg) == NativeType(static_cast<std::uintptr_t>(v)); // NOLINT(performance-no-int-to-ptr)
 }
 
-TEST(VulkanUtilsTest, ConvertSubmitInfo)
+TEST(VkexUtilsTest, ConvertSubmitInfo)
 {
     const SubmitInfo from = {
         .waitSemaphores = MakeHandle<vk::Semaphore>(1),
@@ -103,7 +113,7 @@ TEST(VulkanUtilsTest, ConvertSubmitInfo)
     EXPECT_THAT(to.pSignalSemaphores, Pointee(Handle(4)));
 }
 
-TEST(VulkanUtilsTest, ConvertPresentInfoKHR)
+TEST(VkexUtilsTest, ConvertPresentInfoKHR)
 {
     const PresentInfoKHR from = {
         .waitSemaphores = MakeHandle<vk::Semaphore>(1),
@@ -120,7 +130,7 @@ TEST(VulkanUtilsTest, ConvertPresentInfoKHR)
     EXPECT_THAT(to.pResults, IsNull());
 }
 
-TEST(VulkanUtilsTest, ConvertPresentInfoKHRWithResults)
+TEST(VkexUtilsTest, ConvertPresentInfoKHRWithResults)
 {
     Array<vk::Result> results;
     const PresentInfoKHR from = {
