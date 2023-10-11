@@ -150,7 +150,7 @@ def genTarget(args):
     removeExtensionsPat = makeREstring(
         removeExtensions, None, strings_are_regex=True)
 
-    os.makedirs(directory)
+    os.makedirs(directory, exist_ok=True)
 
     options = VkexGeneratorOptions(
         conventions       = conventions,
