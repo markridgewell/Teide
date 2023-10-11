@@ -52,8 +52,14 @@ find_package(Taskflow REQUIRED)
 find_package(function2 REQUIRED)
 find_package(RenderDoc)
 
-cmake_print_properties(TARGETS Vulkan::Headers
-                       PROPERTIES BINARY_DIR IMPORTED_LOCATION INCLUDE_DIRECTORIES LINK_DIRECTORIES INTERFACE_INCLUDE_DIRECTORIES INTERFACE_LINK_DIRECTORIES)
+cmake_print_properties(
+    TARGETS Vulkan::Headers
+    PROPERTIES BINARY_DIR
+               IMPORTED_LOCATION
+               INCLUDE_DIRECTORIES
+               LINK_DIRECTORIES
+               INTERFACE_INCLUDE_DIRECTORIES
+               INTERFACE_LINK_DIRECTORIES)
 
 if(NOT TARGET SDL2_image::SDL2_image)
     add_library(SDL2_image::SDL2_image ALIAS SDL2_image::SDL2_image-static)
@@ -70,8 +76,8 @@ find_package(Python REQUIRED)
 execute_process(
     COMMAND
         "${Python_EXECUTABLE}" "${CMAKE_SOURCE_DIR}/tools/genvkex.py" -registry
-        "${Vulkan_INCLUDE_DIR}/../share/vulkan/registry/vk.xml" -o
-        "${GENERATED_INCLUDE_DIR}/vkex" COMMAND_ERROR_IS_FATAL ANY)
+        "${Vulkan_INCLUDE_DIR}/../share/vulkan/registry/vk.xml" -o "${GENERATED_INCLUDE_DIR}/vkex"
+        COMMAND_ERROR_IS_FATAL ANY)
 
 include(FileLists.cmake)
 td_add_library(
