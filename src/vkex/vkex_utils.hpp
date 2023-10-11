@@ -117,10 +117,7 @@ public:
             {
                 return m_iterators.first.operator*();
             }
-            else
-            {
-                return m_iterators.second.operator*();
-            }
+            return m_iterators.second.operator*();
         }
 
         Iterator& operator++()

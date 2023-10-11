@@ -52,15 +52,6 @@ find_package(Taskflow REQUIRED)
 find_package(function2 REQUIRED)
 find_package(RenderDoc)
 
-cmake_print_properties(
-    TARGETS Vulkan::Headers
-    PROPERTIES BINARY_DIR
-               IMPORTED_LOCATION
-               INCLUDE_DIRECTORIES
-               LINK_DIRECTORIES
-               INTERFACE_INCLUDE_DIRECTORIES
-               INTERFACE_LINK_DIRECTORIES)
-
 if(NOT TARGET SDL2_image::SDL2_image)
     add_library(SDL2_image::SDL2_image ALIAS SDL2_image::SDL2_image-static)
 endif()
@@ -93,7 +84,7 @@ td_add_library(
         function2::function2
         glslang::SPIRV
         glslang::glslang)
-target_include_directories(Teide PRIVATE "${GENERATED_INCLUDE_DIR}")
+target_include_directories(Teide SYSTEM PRIVATE "${GENERATED_INCLUDE_DIR}")
 
 if(TEIDE_PRECOMPILED_HEADERS)
     target_precompile_headers(
