@@ -9,7 +9,7 @@ import filecmp
 pause_updating = False
 
 def is_source_file(filename):
-    return os.path.splitext(filename)[1] in [".h", ".cpp", ".natvis"]
+    return os.path.splitext(filename)[1] in [".h", ".hpp", ".cpp", ".natvis"]
 
 
 def add_source_files(source_files, dir, subdir):

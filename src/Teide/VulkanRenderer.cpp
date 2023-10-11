@@ -10,10 +10,10 @@
 #include "VulkanShader.h"
 #include "VulkanShaderEnvironment.h"
 #include "VulkanTexture.h"
-#include "VulkanUtils.h"
 
 #include "Teide/Renderer.h"
 #include "Teide/TextureData.h"
+#include "vkex/vkex.hpp"
 
 #include <fmt/chrono.h>
 #include <spdlog/spdlog.h>
@@ -355,18 +355,13 @@ void VulkanRenderer::RecordRenderListCommands(
     CommandBuffer& commandBufferWrapper, const RenderList& renderList, vk::RenderPass renderPass,
     const RenderPassDesc& renderPassDesc, const Framebuffer& framebuffer)
 {
-    using std::data;
-
     const vk::CommandBuffer commandBuffer = commandBufferWrapper;
 
-    const auto clearValues = MakeClearValues(framebuffer, renderList.clearState);
-
-    const vk::RenderPassBeginInfo renderPassBegin = {
+    const vkex::RenderPassBeginInfo renderPassBegin = {
         .renderPass = renderPass,
         .framebuffer = framebuffer.framebuffer,
         .renderArea = {.offset = {0, 0}, .extent = {framebuffer.size.x, framebuffer.size.y}},
-        .clearValueCount = size32(clearValues),
-        .pClearValues = data(clearValues),
+        .clearValues = MakeClearValues(framebuffer, renderList.clearState),
     };
 
     const auto viewport = MakeViewport(framebuffer.size, renderList.viewportRegion);
