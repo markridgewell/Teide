@@ -62,7 +62,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Generate vkex headers
 set(GENERATED_INCLUDE_DIR "${CMAKE_BINARY_DIR}/GENERATED/include")
-find_package(PythonInterp REQUIRED)
+find_package(Python REQUIRED COMPONENTS Interpreter)
 execute_process(
     COMMAND
         "${PYTHON_EXECUTABLE}" "${CMAKE_SOURCE_DIR}/tools/genvkex.py" -registry

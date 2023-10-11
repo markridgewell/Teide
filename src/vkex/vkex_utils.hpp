@@ -103,7 +103,7 @@ public:
         using difference_type = std::ptrdiff_t;
         using value_type = T;
         using pointer = T*;
-        using reference = T&;
+        using reference = std::common_type_t<std::ranges::range_reference_t<View1>, std::ranges::range_reference_t<View2>>;
 
         explicit Iterator(const std::pair<View1, View2>& views) :
             m_iterators{std::ranges::begin(views.first), std::ranges::begin(views.second)}, //
@@ -111,11 +111,16 @@ public:
             m_first{!(m_iterators.first == m_sentinels.first)}
         {}
 
-        const T& operator*() const { return *operator->(); }
-        const T* operator->() const
+        reference operator*() const
         {
-            const T& ref = m_first ? m_iterators.first.operator*() : m_iterators.second.operator*();
-            return std::addressof(ref);
+            if (m_first)
+            {
+                return m_iterators.first.operator*();
+            }
+            else
+            {
+                return m_iterators.second.operator*();
+            }
         }
 
         Iterator& operator++()
