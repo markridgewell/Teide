@@ -15,6 +15,7 @@
 
 #include "Teide/ShaderData.h"
 #include "Teide/TextureData.h"
+#include "vkex/vkex.hpp"
 
 #include <SDL.h>
 #include <SDL_vulkan.h>
@@ -237,17 +238,6 @@ namespace
         cmdBuffer.copyBuffer(source, destination, copyRegion);
     }
 
-    vk::UniqueDescriptorSetLayout
-    CreateDescriptorSetLayout(vk::Device device, std::span<const vk::DescriptorSetLayoutBinding> layoutBindings)
-    {
-        const vk::DescriptorSetLayoutCreateInfo createInfo = {
-            .bindingCount = size32(layoutBindings),
-            .pBindings = data(layoutBindings),
-        };
-
-        return device.createDescriptorSetLayoutUnique(createInfo, s_allocator);
-    }
-
     vk::UniquePipelineLayout CreateGraphicsPipelineLayout(vk::Device device, const VulkanShaderBase& shader)
     {
         std::vector<vk::DescriptorSetLayout> setLayouts = {
@@ -257,14 +247,12 @@ namespace
             shader.objectPblockLayout->setLayout.get(),
         };
 
-        vk::PipelineLayoutCreateInfo createInfo = {
-            .setLayoutCount = size32(setLayouts),
-            .pSetLayouts = data(setLayouts),
+        vkex::PipelineLayoutCreateInfo createInfo = {
+            .setLayouts = setLayouts,
         };
         if (const auto pushConstantRange = shader.objectPblockLayout->pushConstantRange)
         {
-            createInfo.pushConstantRangeCount = 1;
-            createInfo.pPushConstantRanges = &*pushConstantRange;
+            createInfo.pushConstantRanges = *pushConstantRange;
         }
 
         return device.createPipelineLayoutUnique(createInfo, s_allocator);
@@ -990,7 +978,7 @@ vk::UniqueDescriptorSet VulkanGraphicsDevice::CreateDescriptorSet(
 VulkanParameterBlockLayoutPtr VulkanGraphicsDevice::CreateParameterBlockLayout(const ParameterBlockDesc& desc, int set)
 {
     VulkanParameterBlockLayout ret;
-    std::vector<vk::DescriptorSetLayoutBinding> bindings;
+    std::optional<vk::DescriptorSetLayoutBinding> uniformBinding;
 
     const ParameterBlockLayoutData layout = BuildParameterBlockLayout(desc, set);
 
@@ -1006,26 +994,29 @@ VulkanParameterBlockLayoutPtr VulkanGraphicsDevice::CreateParameterBlockLayout(c
         }
         else
         {
-            bindings.push_back({
+            uniformBinding = {
                 .binding = 0,
                 .descriptorType = vk::DescriptorType::eUniformBuffer,
                 .descriptorCount = 1,
                 .stageFlags = GetShaderStageFlags(layout.uniformsStages),
-            });
+            };
         }
     }
 
-    for (uint32 i = 0; i < layout.textureCount; i++)
-    {
-        bindings.push_back({
+    const auto textureBindings = std::views::transform(std::views::iota(0u, layout.textureCount), [](uint32 i) {
+        return vk::DescriptorSetLayoutBinding{
             .binding = i + 1,
             .descriptorType = vk::DescriptorType::eCombinedImageSampler,
             .descriptorCount = 1,
             .stageFlags = vk::ShaderStageFlagBits::eAllGraphics,
-        });
-    }
+        };
+    });
 
-    ret.setLayout = CreateDescriptorSetLayout(m_device.get(), bindings);
+    ret.setLayout = m_device->createDescriptorSetLayoutUnique(
+        vkex::DescriptorSetLayoutCreateInfo{
+            .bindings = vkex::Join(uniformBinding, textureBindings),
+        },
+        s_allocator);
     ret.uniformsStages = GetShaderStageFlags(layout.uniformsStages);
     return std::make_shared<const VulkanParameterBlockLayout>(std::move(ret));
 }

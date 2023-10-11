@@ -20,4 +20,4 @@ set(sources
     src/Teide/TextureDataTest.cpp
     src/Teide/TextureTest.cpp
     src/Teide/VulkanTest.cpp
-    src/Teide/VulkanUtilsTest.cpp)
+    src/vkex/vkex_utils_test.cpp)
