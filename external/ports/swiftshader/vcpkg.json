@@ -4,7 +4,7 @@
   "port-version": 1,
   "description": "A high-performance CPU-based implementation of the Vulkan graphics API",
   "homepage": "https://swiftshader.googlesource.com/SwiftShader",
-  "license": "Apache 2.0",
+  "license": "Apache-2.0",
   "supports": "!uwp & !xbox",
   "dependencies": [
     {
