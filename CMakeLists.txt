@@ -6,20 +6,11 @@ include(CMakePrintHelpers)
 include(tools/cmake/Build.cmake)
 include(tools/cmake/Cache.cmake)
 include(tools/cmake/CompileCommands.cmake)
+include(tools/cmake/Option.cmake)
 
-if(LINUX AND TEIDE_SANITIZER STREQUAL "UBSAN")
-    set(VCPKG_TARGET_TRIPLET "x64-linux-ubsan")
-endif()
-
-project(
-    Teide
-    VERSION 0.0.0
-    DESCRIPTION "Vulkan-based 3D renderer"
-    LANGUAGES CXX)
-
-option(TEIDE_BUILD_EXAMPLES "Build examples for Teide" ON)
-option(TEIDE_BUILD_TESTS "Build tests for Teide" ON)
-option(TEIDE_BUILD_BENCHMARKS "Build benchmarks for Teide" ON)
+option_feature(TEIDE_BUILD_EXAMPLES examples "Build examples for Teide" ON)
+option_feature(TEIDE_BUILD_TESTS tests "Build tests for Teide" ON)
+option_feature(TEIDE_BUILD_BENCHMARKS benchmarks "Build benchmarks for Teide" ON)
 option(TEIDE_TEST_VERBOSE "Enable verbose logging for Teide tests" OFF)
 option(TEIDE_TEST_COVERAGE "Enable code coverage reporting when running tests" OFF)
 option(TEIDE_TEST_WINDOWLESS "Disable tests requiring a windowing system" OFF)
@@ -28,11 +19,21 @@ option(TEIDE_RENDER_TEST_SW_RENDER "Enable software rendering for Teide render t
 option(TEIDE_CLANG_TIDY "Enable static analysis with clang-tidy" OFF)
 option(TEIDE_CPPCHECK "Enable static analysis with Cppcheck" OFF)
 option(TEIDE_PRECOMPILED_HEADERS "Enable precompiled headers when building" OFF)
+option_enum(TEIDE_SANITIZER "Name of a sanitizer to enable, or OFF to disable" "OFF;ASAN;UBSAN")
 
-set(TEIDE_SANITIZER
-    OFF
-    CACHE STRING "Name of a sanitizer to enable, or OFF to disable")
-set_property(CACHE TEIDE_SANITIZER PROPERTY STRINGS "OFF;ASAN;UBSAN")
+if(LINUX AND TEIDE_SANITIZER STREQUAL "UBSAN")
+    set(VCPKG_TARGET_TRIPLET "x64-linux-ubsan")
+endif()
+
+if(TEIDE_BUILD_TESTS)
+    list(APPEND VCPKG_MANIFEST_FEATURES "tests")
+endif()
+
+project(
+    Teide
+    VERSION 0.0.0
+    DESCRIPTION "Vulkan-based 3D renderer"
+    LANGUAGES CXX)
 
 enable_testing()
 
