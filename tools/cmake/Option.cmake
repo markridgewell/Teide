@@ -1,4 +1,3 @@
-
 function(
     option_feature
     name
@@ -11,11 +10,7 @@ function(
     endif()
 endfunction()
 
-function(
-    option_enum
-    name
-    description
-    values)
+function(option_enum name description values)
     list(GET values 0 first_value)
     set(${name}
         "${first_value}"
