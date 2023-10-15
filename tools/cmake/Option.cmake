@@ -1,4 +1,4 @@
-function(
+macro(
     option_feature
     name
     feature_name
@@ -8,12 +8,12 @@ function(
     if(${name})
         list(APPEND VCPKG_MANIFEST_FEATURES "${feature_name}")
     endif()
-endfunction()
+endmacro()
 
-function(option_enum name description values)
+macro(option_enum name description values)
     list(GET values 0 first_value)
     set(${name}
         "${first_value}"
         CACHE STRING "${description}")
     set_property(CACHE ${name} PROPERTY STRINGS "${values}")
-endfunction()
+endmacro()
