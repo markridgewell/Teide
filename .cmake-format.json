@@ -50,6 +50,21 @@
         "AUTHORIZATION_TOKEN": "1",
         "FILE_DISAMBIGUATOR": "1"
       }
+    },
+    "vcpkg_cmake_configure": {
+      "pargs": 0,
+      "kwargs": {
+        "SOURCE_PATH": "1",
+        "DISABLE_PARALLEL_CONFIGURE": "0",
+        "NO_CHARSET_FLAG": "0",
+        "WINDOWS_USE_MSBUILD": "0",
+        "GENERATOR": "1",
+        "LOGFILE_BASE": "1",
+        "OPTIONS": "*",
+        "OPTIONS_RELEASE": "*",
+        "OPTIONS_DEBUG": "*",
+        "MAYBE_UNUSED_VARIABLES": "*"
+      }
     }
   },
   "format": {
