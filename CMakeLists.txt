@@ -25,10 +25,6 @@ if(LINUX AND TEIDE_SANITIZER STREQUAL "UBSAN")
     set(VCPKG_TARGET_TRIPLET "x64-linux-ubsan")
 endif()
 
-if(TEIDE_BUILD_TESTS)
-    list(APPEND VCPKG_MANIFEST_FEATURES "tests")
-endif()
-
 project(
     Teide
     VERSION 0.0.0
@@ -48,7 +44,6 @@ find_package(SDL2_image REQUIRED)
 find_package(fmt REQUIRED)
 find_package(spdlog REQUIRED)
 find_package(glslang REQUIRED)
-find_package(assimp REQUIRED)
 find_package(Taskflow REQUIRED)
 find_package(function2 REQUIRED)
 find_package(RenderDoc)
@@ -100,6 +95,8 @@ if(TEIDE_PRECOMPILED_HEADERS)
 endif()
 
 if(TEIDE_BUILD_EXAMPLES)
+    find_package(assimp REQUIRED)
+
     add_subdirectory(examples)
     set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT Application)
 endif()
