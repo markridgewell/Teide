@@ -80,6 +80,7 @@ public:
     void WaitForCpu();
     void WaitForGpu();
 
+    uint32 GetThreadCount() const { return m_cpuExecutor.GetThreadCount(); }
     uint32 GetThreadIndex() const { return m_cpuExecutor.GetThreadIndex(); }
 
 private:

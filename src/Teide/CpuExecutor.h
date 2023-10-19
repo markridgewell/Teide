@@ -86,6 +86,7 @@ public:
         return future;
     }
 
+    uint32 GetThreadCount() const { return static_cast<uint32>(m_executor.num_workers()); }
     uint32 GetThreadIndex() const { return static_cast<uint32>(m_executor.this_worker_id()); }
 
     void WaitForTasks();
