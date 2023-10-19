@@ -3,6 +3,7 @@
 
 #include "Vulkan.h"
 
+#include <fmt/chrono.h>
 #include <spdlog/spdlog.h>
 
 #include <ranges>
@@ -11,8 +12,34 @@
 namespace Teide
 {
 
-GpuExecutor::GpuExecutor(vk::Device device, vk::Queue queue) : m_device{device}, m_queue{queue}
+namespace
 {
+    void SetCommandBufferDebugName(vk::UniqueCommandBuffer& commandBuffer, uint32 threadIndex, uint32 cbIndex)
+    {
+        SetDebugName(commandBuffer, "RenderThread{}:CommandBuffer{}", threadIndex, cbIndex);
+    }
+
+} // namespace
+
+GpuExecutor::GpuExecutor(uint32 numThreads, vk::Device device, vk::Queue queue, uint32 queueFamilyIndex) :
+    m_device{device}, m_queue{Queue(device, queue)}
+{
+    std::ranges::generate(m_frameResources, [&]() {
+        std::vector<ThreadResources> ret;
+        ret.resize(numThreads);
+        uint32 i = 0;
+        std::ranges::generate(ret, [&] {
+            ThreadResources res;
+            res.commandPool = CreateCommandPool(queueFamilyIndex, device);
+            SetDebugName(res.commandPool, "RenderThread{}:CommandPool", i);
+            res.threadIndex = i;
+            i++;
+            return res;
+        });
+
+        return ret;
+    });
+
     m_schedulerThread = std::thread([this] {
         constexpr auto timeout = std::chrono::milliseconds{2};
 
@@ -20,46 +47,23 @@ GpuExecutor::GpuExecutor(vk::Device device, vk::Queue queue) : m_device{device},
 
         while (!m_schedulerStop)
         {
-            fences.clear();
-            {
-                auto lock = std::scoped_lock(m_readyCommandBuffersMutex);
+            const auto fencesRange = m_queue.Lock(&Queue::GetInFlightFences);
+            fences.assign(fencesRange.begin(), fencesRange.end());
+            // TODO C++23: Replace previous 2 lines with:
+            // fences.assign_range(m_queue.Lock(&Queue::GetInFlightFences));
 
-                // Make a list of fence handles of all scheduled tasks
-                std::ranges::transform(
-                    m_inFlightSubmits, std::back_inserter(fences), [](const auto& s) { return s.fence.get(); });
-            }
-
-            // If there are no fences to wait on, sleep for a bit and try again
             if (fences.empty())
             {
+                // If there are no fences to wait on, sleep for a bit and try again
                 std::this_thread::sleep_for(timeout);
-                continue;
             }
-
-            // If there are fences, wait on them and see if any are signalled
-            if (m_device.waitForFences(fences, false, Timeout(timeout)) == vk::Result::eSuccess)
+            else
             {
-                auto lock = std::scoped_lock(m_readyCommandBuffersMutex);
-
-                // A fence was signalled, but we don't know which one yet, iterate them to find out
-                for (auto& [fence, callbacks] : m_inFlightSubmits)
+                // If there are fences, wait on them and see if any are signalled
+                if (m_device.waitForFences(fences, false, Timeout(timeout)) == vk::Result::eSuccess)
                 {
-                    if (m_device.waitForFences(fence.get(), false, 0) == vk::Result::eSuccess)
-                    {
-                        // Found one, call the attached callbacks (if any)
-                        for (auto&& callback : std::exchange(callbacks, {}))
-                        {
-                            callback();
-                        }
-
-                        // Reuse the fence for later and mark the task as done
-                        m_device.resetFences(fence.get());
-                        m_unusedSubmitFences.push(std::exchange(fence, {}));
-                    }
+                    m_queue.Lock(&Queue::Flush);
                 }
-
-                // Remove done tasks
-                std::erase_if(m_inFlightSubmits, [](const auto& entry) { return !entry.fence; });
             }
         }
     });
@@ -67,46 +71,127 @@ GpuExecutor::GpuExecutor(vk::Device device, vk::Queue queue) : m_device{device},
 
 GpuExecutor::~GpuExecutor() noexcept
 {
+    assert(m_mainThread == std::this_thread::get_id());
+
     m_schedulerStop = true;
     m_schedulerThread.join();
 
-    auto lock = std::scoped_lock(m_readyCommandBuffersMutex);
-    auto fences = std::vector<vk::Fence>();
-    std::ranges::transform(m_inFlightSubmits, std::back_inserter(fences), [](const auto& s) { return s.fence.get(); });
+    WaitForTasks();
+}
+
+void GpuExecutor::WaitForTasks()
+{
+    const auto fencesRange = m_queue.Lock(&Queue::GetInFlightFences);
+    const std::vector<vk::Fence> fences(fencesRange.begin(), fencesRange.end());
+    // TODO C++23: Replace previous 2 lines with:
+    // const auto fences = m_queue.Lock(&Queue::GetInFlightFences) | std::ranges::to<std::vector>();
+
     if (!fences.empty())
     {
-        constexpr auto timeout = Timeout(std::chrono::seconds{1});
-        if (m_device.waitForFences(fences, true, timeout) == vk::Result::eTimeout)
+        constexpr auto timeout = std::chrono::seconds{4};
+        if (m_device.waitForFences(fences, true, Timeout(timeout)) == vk::Result::eTimeout)
         {
-            spdlog::error("Timeout while waiting for command buffer execution to complete!");
+            spdlog::error("Timeout (>{}) while waiting for command buffer execution to complete!", timeout);
         }
     }
 }
 
+void GpuExecutor::NextFrame()
+{
+    m_frameNumber = (m_frameNumber + 1) % MaxFramesInFlight;
+
+    auto& frameResources = m_frameResources[m_frameNumber];
+    for (auto& threadResources : frameResources)
+    {
+        threadResources.Reset(m_device);
+    }
+}
+
+void GpuExecutor::ThreadResources::Reset(vk::Device device)
+{
+    device.resetCommandPool(commandPool.get());
+    numUsedCommandBuffers = 0;
+
+    // Resetting also resets the command buffers' debug names
+    for (uint32 i = 0; i < commandBuffers.size(); i++)
+    {
+        commandBuffers[i].Reset();
+        SetCommandBufferDebugName(commandBuffers[i].Get(), threadIndex, i);
+    }
+}
+
+CommandBuffer& GpuExecutor::GetCommandBuffer(uint32 threadIndex)
+{
+    auto& threadResources = m_frameResources[m_frameNumber][threadIndex];
+
+    if (threadResources.numUsedCommandBuffers == threadResources.commandBuffers.size())
+    {
+        const vk::CommandBufferAllocateInfo allocateInfo = {
+            .commandPool = threadResources.commandPool.get(),
+            .level = vk::CommandBufferLevel::ePrimary,
+            .commandBufferCount = std::max(1u, static_cast<uint32>(threadResources.commandBuffers.size())),
+        };
+
+        auto newCommandBuffers = m_device.allocateCommandBuffersUnique(allocateInfo);
+        const auto numCBs = static_cast<uint32>(threadResources.commandBuffers.size());
+        for (uint32 i = 0; i < newCommandBuffers.size(); i++)
+        {
+            SetCommandBufferDebugName(newCommandBuffers[i], threadIndex, i + numCBs);
+            threadResources.commandBuffers.emplace_back(std::move(newCommandBuffers[i]));
+        }
+    }
+
+    const auto commandBufferIndex = threadResources.numUsedCommandBuffers++;
+    CommandBuffer& commandBuffer = threadResources.commandBuffers.at(commandBufferIndex);
+    commandBuffer.Get()->begin(vk::CommandBufferBeginInfo{});
+
+    return commandBuffer;
+}
+
 uint32 GpuExecutor::AddCommandBufferSlot()
 {
-    const auto lock = std::scoped_lock(m_readyCommandBuffersMutex);
+    return m_queue.Lock(&Queue::AddCommandBufferSlot);
+}
 
+void GpuExecutor::SubmitCommandBuffer(uint32 index, vk::CommandBuffer commandBuffer, OnCompleteFunction func)
+{
+    m_queue.Lock([&](Queue& queue) { queue.Submit(index, commandBuffer, std::move(func)); });
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+
+void GpuExecutor::Queue::Flush()
+{
+    // Iterate the fences to find out which have been signalled
+    for (auto& [fence, callbacks] : m_inFlightSubmits)
+    {
+        if (m_device.waitForFences(fence.get(), false, 0) == vk::Result::eSuccess)
+        {
+            // Found one, call the attached callbacks (if any)
+            for (auto&& callback : std::exchange(callbacks, {}))
+            {
+                callback();
+            }
+
+            // Reuse the fence for later and mark the task as done
+            m_device.resetFences(fence.get());
+            m_unusedSubmitFences.push(std::exchange(fence, {}));
+        }
+    }
+
+    // Remove done tasks
+    std::erase_if(m_inFlightSubmits, [](const auto& entry) { return !entry.fence; });
+}
+
+uint32 GpuExecutor::Queue::AddCommandBufferSlot()
+{
     m_readyCommandBuffers.emplace_back();
     m_completionHandlers.emplace_back();
     return static_cast<uint32>(m_readyCommandBuffers.size() - 1);
 }
 
-void GpuExecutor::SubmitCommandBuffer(uint32 index, vk::CommandBuffer commandBuffer, OnCompleteFunction func)
+void GpuExecutor::Queue::Submit(uint32 index, vk::CommandBuffer commandBuffer, OnCompleteFunction func)
 {
-    const auto getFence = [this] {
-        if (m_unusedSubmitFences.empty())
-        {
-            return m_device.createFenceUnique({});
-        }
-
-        auto nextFence = std::move(m_unusedSubmitFences.front());
-        m_unusedSubmitFences.pop();
-        return nextFence;
-    };
-
-    const auto lock = std::scoped_lock(m_readyCommandBuffersMutex);
-
     commandBuffer.end();
     m_readyCommandBuffers.at(index) = commandBuffer;
     m_completionHandlers.at(index) = std::move(func);
@@ -119,7 +204,7 @@ void GpuExecutor::SubmitCommandBuffer(uint32 index, vk::CommandBuffer commandBuf
 
     if (!commandBuffersToSubmit.empty())
     {
-        auto fence = getFence();
+        auto fence = GetFence();
         m_numSubmittedCommandBuffers += commandBuffersToSubmit.size();
 
         const vk::SubmitInfo submitInfo = {
@@ -135,5 +220,17 @@ void GpuExecutor::SubmitCommandBuffer(uint32 index, vk::CommandBuffer commandBuf
         m_inFlightSubmits.emplace_back(std::move(fence), std::move(callbacks));
     }
 }
+
+vk::UniqueFence GpuExecutor::Queue::GetFence()
+{
+    if (m_unusedSubmitFences.empty())
+    {
+        return m_device.createFenceUnique({});
+    }
+
+    auto nextFence = std::move(m_unusedSubmitFences.front());
+    m_unusedSubmitFences.pop();
+    return nextFence;
+};
 
 } // namespace Teide

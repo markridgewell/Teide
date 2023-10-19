@@ -8,7 +8,7 @@
 #include "Teide/PipelineData.h"
 #include "Teide/TextureData.h"
 
-#include <fmt/core.h>
+#include <fmt/format.h>
 
 #include <chrono>
 #include <span>
@@ -91,6 +91,8 @@ vk::DebugUtilsMessengerCreateInfoEXT GetDebugCreateInfo();
 
 vk::UniqueInstance CreateInstance(VulkanLoader& loader, SDL_Window* window = nullptr);
 vk::UniqueDevice CreateDevice(VulkanLoader& loader, const PhysicalDevice& physicalDevice);
+vma::UniqueAllocator
+CreateAllocator(VulkanLoader& loader, vk::Instance instance, vk::Device device, vk::PhysicalDevice physicalDevice);
 
 template <class T>
 inline uint32_t size32(const T& cont)

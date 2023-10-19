@@ -9,6 +9,7 @@ on:
 
 env:
   VULKAN_SDK: ./VULKAN_SDK
+  VCPKG_OVERLAY_PORTS: ./external/ports
 
 jobs:
   windows:
@@ -16,11 +17,8 @@ jobs:
       fail-fast: false
       matrix:
         buildtype: [Debug, Release]
-        preset: [msvc2019, msvc2022, msvc2022-clang]
+        preset: [msvc2022, msvc2022-clang]
         include:
-        - preset: msvc2019
-          runner: windows-2019
-          coverage: ON
         - preset: msvc2022
           runner: windows-2022
           coverage: ON
@@ -48,10 +46,10 @@ jobs:
     - name: Install dependencies
       uses: ./.github/actions/install-dependencies
       with:
-        extra-packages: OpenCppCoverage
+        extra-packages: ${{matrix.coverage == 'ON' && 'OpenCppCoverage' || ''}}
 
     - name: Configure CMake
-      run: cmake --preset ${{matrix.preset}} -DTEIDE_TEST_VERBOSE=ON -DTEIDE_UNIT_TEST_SW_RENDER=ON -DTEIDE_TEST_COVERAGE=${{matrix.coverage}} --trace --trace-format=json-v1 --trace-redirect=CMakeTrace.txt
+      run: cmake --preset ${{matrix.preset}} -DTEIDE_PRECOMPILED_HEADERS=ON -DTEIDE_TEST_VERBOSE=ON -DTEIDE_UNIT_TEST_SW_RENDER=ON -DTEIDE_TEST_COVERAGE=${{matrix.coverage}} --trace --trace-format=json-v1 --trace-redirect=CMakeTrace.txt
 
     - name: Save CMake trace
       uses: actions/upload-artifact@v3
@@ -107,22 +105,22 @@ jobs:
     strategy:
       matrix:
         buildtype: [Debug, Release]
-        compiler: [g++-11, clang++-16]
+        compiler: [g++-12, clang++-17]
         sanitizer: [OFF]
         include:
         - preset: ninja
         - coverage: OFF
         - buildtype: Debug
-          compiler: clang++-16
+          compiler: clang++-17
           coverage: ON
         - buildtype: Debug
-          compiler: clang++-16
+          compiler: clang++-17
           sanitizer: ASAN
           preset: ninja
           coverage: OFF
           name-suffix: -asan
         - buildtype: Debug
-          compiler: clang++-16
+          compiler: clang++-17
           sanitizer: UBSAN
           preset: ninja
           coverage: OFF
@@ -151,7 +149,7 @@ jobs:
         extra-packages: ninja-build ${{matrix.compiler}}
 
     - name: Configure CMake
-      run: cmake --preset ${{matrix.preset}} -DCMAKE_CXX_COMPILER=${{matrix.compiler}} -DTEIDE_TEST_VERBOSE=ON -DTEIDE_UNIT_TEST_SW_RENDER=ON -DTEIDE_TEST_WINDOWLESS=ON -DTEIDE_TEST_COVERAGE=${{matrix.coverage}} -DTEIDE_SANITIZER=${{matrix.sanitizer}}
+      run: cmake --preset ${{matrix.preset}} -DCMAKE_CXX_COMPILER=${{matrix.compiler}} -DTEIDE_PRECOMPILED_HEADERS=ON -DTEIDE_TEST_VERBOSE=ON -DTEIDE_UNIT_TEST_SW_RENDER=ON -DTEIDE_TEST_WINDOWLESS=ON -DTEIDE_TEST_COVERAGE=${{matrix.coverage}} -DTEIDE_SANITIZER=${{matrix.sanitizer}}
 
     - name: Build
       run: cmake --build --preset ${{matrix.preset}} --config ${{matrix.buildtype}}

@@ -3,6 +3,12 @@
   "version": "0.0.0",
   "dependencies": [
     {
+      "name": "vulkan"
+    },
+    {
+      "name": "vulkan-headers"
+    },
+    {
       "name": "sdl2",
       "features": [
         "vulkan"
@@ -27,10 +33,16 @@
       "name": "gtest"
     },
     {
+      "name": "benchmark"
+    },
+    {
       "name": "taskflow"
     },
     {
       "name": "function2"
+    },
+    {
+      "name": "vulkan-memory-allocator-hpp"
     }
   ],
   "builtin-baseline": "080bf4d78f31ff6f2fe302951edc9d777be7e3a4",

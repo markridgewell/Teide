@@ -39,14 +39,13 @@ set(sources
     src/Teide/Format.cpp
     src/Teide/GpuExecutor.cpp
     src/Teide/GpuExecutor.h
-    src/Teide/MemoryAllocator.cpp
-    src/Teide/MemoryAllocator.h
     src/Teide/Scheduler.cpp
     src/Teide/Scheduler.h
     src/Teide/ShaderData.cpp
     src/Teide/StaticMap.h
     src/Teide/Synchronized.h
     src/Teide/TextureData.cpp
+    src/Teide/VmaImpl.cpp
     src/Teide/Vulkan.cpp
     src/Teide/Vulkan.h
     src/Teide/VulkanBuffer.cpp
@@ -68,5 +67,5 @@ set(sources
     src/Teide/VulkanSurface.h
     src/Teide/VulkanTexture.cpp
     src/Teide/VulkanTexture.h
-    src/Teide/VulkanUtils.h
-    src/Vulkan.natvis)
+    src/Vulkan.natvis
+    src/vkex/vkex_utils.hpp)

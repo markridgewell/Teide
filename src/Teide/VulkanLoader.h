@@ -15,10 +15,12 @@ public:
 
     void LoadInstanceFunctions(vk::Instance instance);
     void LoadDeviceFunctions(vk::Device device);
+    const vma::VulkanFunctions& GetAllocatorFunctions() const;
 
 private:
     vk::DynamicLoader m_loader;
     vk::DispatchLoaderDynamic& m_dispatch;
+    vma::VulkanFunctions m_allocatorFunctions;
 };
 
 bool IsSoftwareRenderingEnabled();

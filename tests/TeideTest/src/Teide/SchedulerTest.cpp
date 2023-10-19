@@ -1,7 +1,6 @@
 
 #include "Teide/Scheduler.h"
 
-#include "Teide/MemoryAllocator.h"
 #include "Teide/TestUtils.h"
 #include "Teide/Vulkan.h"
 #include "Teide/VulkanBuffer.h"
@@ -36,7 +35,7 @@ public:
             = m_device->createCommandPoolUnique({.queueFamilyIndex = m_physicalDevice.queueFamilies.transferFamily});
         ASSERT_TRUE(m_commandPool);
 
-        m_allocator = std::make_unique<MemoryAllocator>(m_device.get(), m_physicalDevice.physicalDevice);
+        m_allocator = CreateAllocator(m_loader, m_instance.get(), m_device.get(), m_physicalDevice.physicalDevice);
     }
 
 protected:
@@ -44,6 +43,7 @@ protected:
     vk::PhysicalDevice GetPhysicalDevice() const { return m_physicalDevice.physicalDevice; }
     vk::Device GetDevice() const { return m_device.get(); }
     vk::Queue GetQueue() const { return m_queue; }
+    vma::Allocator GetAllocator() const { return m_allocator.get(); }
 
     Scheduler CreateScheduler() { return {2, GetDevice(), GetQueue(), m_physicalDevice.queueFamilies.transferFamily}; }
 
@@ -51,8 +51,13 @@ protected:
     {
         return CreateBufferUninitialized(
             size, vk::BufferUsageFlagBits::eTransferDst,
-            vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent, m_device.get(),
-            *m_allocator);
+            vma::AllocationCreateFlagBits::eMapped | vma::AllocationCreateFlagBits::eHostAccessRandom,
+            vma::MemoryUsage::eAuto, m_device.get(), m_allocator.get());
+    }
+
+    void InvalidateAllocation(const vma::UniqueAllocation& allocation) const
+    {
+        m_allocator->invalidateAllocation(allocation.get(), 0, VK_WHOLE_SIZE);
     }
 
 private:
@@ -62,7 +67,7 @@ private:
     vk::UniqueDevice m_device;
     vk::Queue m_queue;
     vk::UniqueCommandPool m_commandPool;
-    std::unique_ptr<MemoryAllocator> m_allocator;
+    vma::UniqueAllocator m_allocator;
 };
 
 
@@ -109,7 +114,7 @@ TEST_F(SchedulerTest, ScheduleChain)
     const auto task2 = scheduler.ScheduleAfter(task1, [&] { return interm[2] = interm[1] * 4; });
     const auto task3 = scheduler.ScheduleAfter(task2, [&](int prev) { return prev - 60; });
 
-    scheduler.WaitForTasks();
+    scheduler.WaitForCpu();
 
     const auto result = task3.get();
     EXPECT_THAT(result, Eq(24));
@@ -128,6 +133,7 @@ TEST_F(SchedulerTest, ScheduleGpu)
     task.wait();
     EXPECT_THAT(task.wait_for(0s), Eq(std::future_status::ready));
 
+    InvalidateAllocation(buffer.allocation);
     EXPECT_THAT(buffer.mappedData, Each(Eq(std::byte{1})));
 }
 
@@ -143,6 +149,7 @@ TEST_F(SchedulerTest, ScheduleGpuWithReturn)
     const auto& result = task.get();
     const auto& buffer = *result;
 
+    InvalidateAllocation(buffer.allocation);
     EXPECT_THAT(buffer.mappedData, Each(Eq(byte{1})));
 }
 
@@ -150,7 +157,7 @@ TEST_F(SchedulerTest, ScheduleGpuAcrossMultipleFrames)
 {
     auto scheduler = CreateScheduler();
 
-    constexpr uint32 numFrames = 3;
+    constexpr uint32 numFrames = 10;
     for (uint32 i = 0; i < numFrames; i++)
     {
         auto buffer = CreateHostVisibleBuffer(4);
@@ -161,6 +168,7 @@ TEST_F(SchedulerTest, ScheduleGpuAcrossMultipleFrames)
 
         task.wait();
 
+        InvalidateAllocation(buffer.allocation);
         EXPECT_THAT(buffer.mappedData, Each(Eq(static_cast<byte>(i))));
 
         scheduler.NextFrame();

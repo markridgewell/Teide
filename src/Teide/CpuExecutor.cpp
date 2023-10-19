@@ -1,6 +1,8 @@
 
 #include "CpuExecutor.h"
 
+#include <spdlog/spdlog.h>
+
 namespace Teide
 {
 class WorkerInterface : public ::tf::WorkerInterface
@@ -8,7 +10,18 @@ class WorkerInterface : public ::tf::WorkerInterface
     void scheduler_prologue(tf::Worker& worker [[maybe_unused]]) override {}
     void scheduler_epilogue(tf::Worker& worker [[maybe_unused]], std::exception_ptr ptr [[maybe_unused]]) override
     {
-        assert(ptr == nullptr);
+        if (ptr)
+        {
+            try
+            {
+                std::rethrow_exception(ptr);
+            }
+            catch (const std::exception& e)
+            {
+                spdlog::critical("Unhandled exception in worker thread: {}", e.what());
+                assert(false);
+            }
+        }
     }
 };
 

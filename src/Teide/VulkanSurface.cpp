@@ -181,15 +181,16 @@ namespace
 
 VulkanSurface::VulkanSurface(
     SDL_Window* window, vk::UniqueSurfaceKHR surface, vk::Device device, vk::PhysicalDevice physicalDevice,
-    std::vector<uint32> queueFamilyIndices, vk::CommandPool commandPool, vk::Queue queue, bool multisampled) :
+    std::vector<uint32> queueFamilyIndices, vk::CommandPool commandPool, vma::Allocator allocator, vk::Queue queue,
+    bool multisampled) :
     m_device{device},
     m_physicalDevice{physicalDevice},
     m_queueFamilyIndices{std::move(queueFamilyIndices)},
     m_commandPool{commandPool},
+    m_allocator{allocator},
     m_queue{queue},
     m_window{window},
-    m_surface{std::move(surface)},
-    m_swapchainAllocator(device, physicalDevice)
+    m_surface{std::move(surface)}
 {
     std::ranges::generate(m_imageAvailable, [=] { return device.createSemaphoreUnique({}, s_allocator); });
 
@@ -274,39 +275,40 @@ vk::Semaphore VulkanSurface::GetNextSemaphore()
 void VulkanSurface::CreateColorBuffer(vk::Format format)
 {
     // Create image
-    const vk::ImageCreateInfo imageInfo = {
-        .imageType = vk::ImageType::e2D,
-        .format = format,
-        .extent = {m_surfaceExtent.x, m_surfaceExtent.y, 1},
-        .mipLevels = 1,
-        .arrayLayers = 1,
-        .samples = vk::SampleCountFlagBits{m_msaaSampleCount},
-        .tiling = vk::ImageTiling::eOptimal,
-        .usage = vk::ImageUsageFlagBits::eTransientAttachment | vk::ImageUsageFlagBits::eColorAttachment,
-        .sharingMode = vk::SharingMode::eExclusive,
-        .initialLayout = vk::ImageLayout::eUndefined,
-    };
-
-    m_colorImage = m_device.createImageUnique(imageInfo, s_allocator);
+    auto [image, allocation] = m_allocator.createImageUnique(
+        vk::ImageCreateInfo{
+            .imageType = vk::ImageType::e2D,
+            .format = format,
+            .extent = {m_surfaceExtent.x, m_surfaceExtent.y, 1},
+            .mipLevels = 1,
+            .arrayLayers = 1,
+            .samples = vk::SampleCountFlagBits{m_msaaSampleCount},
+            .tiling = vk::ImageTiling::eOptimal,
+            .usage = vk::ImageUsageFlagBits::eTransientAttachment | vk::ImageUsageFlagBits::eColorAttachment,
+            .sharingMode = vk::SharingMode::eExclusive,
+            .initialLayout = vk::ImageLayout::eUndefined,
+        },
+        vma::AllocationCreateInfo{
+            .usage = vma::MemoryUsage::eAutoPreferDevice,
+        });
+    m_colorImage = vk::UniqueImage(image.release(), m_device);
+    m_colorMemory = std::move(allocation);
     SetDebugName(m_colorImage, "ColorImage");
-    const auto allocation = m_swapchainAllocator.Allocate(
-        m_device.getImageMemoryRequirements(m_colorImage.get()), vk::MemoryPropertyFlagBits::eDeviceLocal);
-    m_device.bindImageMemory(m_colorImage.get(), allocation.memory, allocation.offset);
 
     // Create image view
-    const vk::ImageViewCreateInfo viewInfo = {
-        .image = m_colorImage.get(),
-        .viewType = vk::ImageViewType::e2D,
-        .format = imageInfo.format,
-        .subresourceRange = {
-            .aspectMask = vk::ImageAspectFlagBits::eColor,
-            .baseMipLevel = 0,
-            .levelCount = 1,
-            .baseArrayLayer = 0,
-            .layerCount = 1,
-        },
-    };
-    m_colorImageView = m_device.createImageViewUnique(viewInfo, s_allocator);
+    m_colorImageView = m_device.createImageViewUnique(
+        vk::ImageViewCreateInfo {
+            .image = m_colorImage.get(),
+            .viewType = vk::ImageViewType::e2D,
+            .format = format,
+            .subresourceRange = {
+                .aspectMask = vk::ImageAspectFlagBits::eColor,
+                .baseMipLevel = 0,
+                .levelCount = 1,
+                .baseArrayLayer = 0,
+                .layerCount = 1,
+            },
+        }, s_allocator);
     SetDebugName(m_colorImageView, "ColorImageView");
 }
 
@@ -315,41 +317,43 @@ void VulkanSurface::CreateDepthBuffer()
     const auto formatCandidates = std::array{Format::Depth32, Format::Depth32Stencil8, Format::Depth24Stencil8};
     m_depthFormat = FindSupportedFormat(
         m_physicalDevice, formatCandidates, vk::ImageTiling::eOptimal, vk::FormatFeatureFlagBits::eDepthStencilAttachment);
+    const auto format = ToVulkan(m_depthFormat);
 
     // Create image
-    const vk::ImageCreateInfo imageInfo = {
-        .imageType = vk::ImageType::e2D,
-        .format = ToVulkan(m_depthFormat),
-        .extent = {m_surfaceExtent.x, m_surfaceExtent.y, 1},
-        .mipLevels = 1,
-        .arrayLayers = 1,
-        .samples = vk::SampleCountFlagBits{m_msaaSampleCount},
-        .tiling = vk::ImageTiling::eOptimal,
-        .usage = vk::ImageUsageFlagBits::eDepthStencilAttachment,
-        .sharingMode = vk::SharingMode::eExclusive,
-        .initialLayout = vk::ImageLayout::eUndefined,
-    };
-
-    m_depthImage = m_device.createImageUnique(imageInfo, s_allocator);
+    auto [image, allocation] = m_allocator.createImageUnique(
+        vk::ImageCreateInfo{
+            .imageType = vk::ImageType::e2D,
+            .format = format,
+            .extent = {m_surfaceExtent.x, m_surfaceExtent.y, 1},
+            .mipLevels = 1,
+            .arrayLayers = 1,
+            .samples = vk::SampleCountFlagBits{m_msaaSampleCount},
+            .tiling = vk::ImageTiling::eOptimal,
+            .usage = vk::ImageUsageFlagBits::eDepthStencilAttachment,
+            .sharingMode = vk::SharingMode::eExclusive,
+            .initialLayout = vk::ImageLayout::eUndefined,
+        },
+        vma::AllocationCreateInfo{
+            .usage = vma::MemoryUsage::eAutoPreferDevice,
+        });
+    m_depthImage = vk::UniqueImage(image.release(), m_device);
+    m_colorMemory = std::move(allocation);
     SetDebugName(m_depthImage, "DepthImage");
-    const auto allocation = m_swapchainAllocator.Allocate(
-        m_device.getImageMemoryRequirements(m_depthImage.get()), vk::MemoryPropertyFlagBits::eDeviceLocal);
-    m_device.bindImageMemory(m_depthImage.get(), allocation.memory, allocation.offset);
 
     // Create image view
-    const vk::ImageViewCreateInfo viewInfo = {
-        .image = m_depthImage.get(),
-        .viewType = vk::ImageViewType::e2D,
-        .format = imageInfo.format,
-        .subresourceRange = {
-            .aspectMask = vk::ImageAspectFlagBits::eDepth,
-            .baseMipLevel = 0,
-            .levelCount = 1,
-            .baseArrayLayer = 0,
-            .layerCount = 1,
-        },
-    };
-    m_depthImageView = m_device.createImageViewUnique(viewInfo, s_allocator);
+    m_depthImageView = m_device.createImageViewUnique(
+        vk::ImageViewCreateInfo {
+            .image = m_depthImage.get(),
+            .viewType = vk::ImageViewType::e2D,
+            .format = format,
+            .subresourceRange = {
+                .aspectMask = vk::ImageAspectFlagBits::eDepth,
+                .baseMipLevel = 0,
+                .levelCount = 1,
+                .baseArrayLayer = 0,
+                .layerCount = 1,
+            },
+        }, s_allocator);
     SetDebugName(m_depthImageView, "DepthImageView");
 }
 
@@ -403,8 +407,6 @@ void VulkanSurface::CreateSwapchainAndImages()
 
 void VulkanSurface::RecreateSwapchain()
 {
-    m_swapchainAllocator.DeallocateAll();
-
     m_device.waitIdle();
     CreateSwapchainAndImages();
 }
