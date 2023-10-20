@@ -33,6 +33,14 @@ TEST(VkexUtilsTest, ArrayConstructSingleElement)
     EXPECT_THAT(a, ElementsAre(5));
 }
 
+TEST(VkexUtilsTest, ArrayConstructFromInitializerList)
+{
+    const Array<int> a = {2, 4, 6, 8};
+    EXPECT_THAT(a.size(), Eq(4u));
+    EXPECT_THAT(a.data(), NotNull());
+    EXPECT_THAT(a, ElementsAre(2, 4, 6, 8));
+}
+
 TEST(VkexUtilsTest, ArrayBeginEnd)
 {
     const Array<int> a = std::views::iota(0, 5);
