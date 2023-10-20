@@ -5,8 +5,12 @@ import os
 import pdb
 import re
 import sys
-import copy
 import xml.etree.ElementTree as etree
+
+from vkexgenerator import VkexGeneratorOptions, VkexOutputGenerator
+from reg import Registry
+from apiconventions import APIConventions
+
 
 def get_args():
     parser = argparse.ArgumentParser()
@@ -59,16 +63,6 @@ def get_args():
                         help='generate MISRA C++-friendly headers')
 
     return parser.parse_args()
-
-
-sys.path.append(os.path.abspath(os.path.dirname(get_args().registry)))
-
-print(os.path.abspath(os.path.dirname(get_args().registry)))
-
-from vkexgenerator import VkexGeneratorOptions, VkexOutputGenerator
-from reg import Registry
-from apiconventions import APIConventions
-
 
 def makeREstring(strings, default=None, strings_are_regex=False):
     """Turn a list of strings into a regexp string matching exactly those strings."""
