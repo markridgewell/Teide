@@ -66,7 +66,7 @@ set(GENERATED_INCLUDE_DIR "${CMAKE_BINARY_DIR}/GENERATED/include")
 find_package(Python REQUIRED)
 execute_process(
     COMMAND
-        "${Python_EXECUTABLE}" "${CMAKE_SOURCE_DIR}/tools/genvkex.py" -registry
+        "${Python_EXECUTABLE}" "${CMAKE_SOURCE_DIR}/tools/vkex/genvkex.py" -registry
         "${Vulkan_INCLUDE_DIR}/../share/vulkan/registry/vk.xml" -o "${GENERATED_INCLUDE_DIR}/vkex"
         COMMAND_ERROR_IS_FATAL ANY)
 
