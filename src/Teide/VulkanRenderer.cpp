@@ -65,6 +65,21 @@ namespace
         return clearValues;
     }
 
+    vk::UniqueDescriptorPool CreateDescriptorPool(vk::Device device, const VulkanParameterBlockLayout& layout, uint32 maxSets)
+    {
+        return device.createDescriptorPoolUnique(vkex::DescriptorPoolCreateInfo{
+            .maxSets = maxSets,
+            .poolSizes = std::views::transform(
+                layout.descriptorTypeCounts,
+                [maxSets](const auto& typeCount) {
+                    return vk::DescriptorPoolSize{
+                        .type = typeCount.type,
+                        .descriptorCount = typeCount.count * maxSets,
+                    };
+                }),
+        });
+    }
+
     constexpr auto NotNull = [](const auto& handle) { return static_cast<bool>(handle); };
 
 } // namespace
@@ -99,6 +114,8 @@ VulkanRenderer::VulkanRenderer(VulkanGraphicsDevice& device, const QueueFamilies
     m_graphicsQueue{device.GetVulkanDevice().getQueue(queueFamilies.graphicsFamily, 0)},
     m_shaderEnvironment{std::move(shaderEnvironment)}
 {
+    using std::ranges::generate;
+
     const auto vkdevice = device.GetVulkanDevice();
 
     if (queueFamilies.presentFamily)
@@ -106,14 +123,25 @@ VulkanRenderer::VulkanRenderer(VulkanGraphicsDevice& device, const QueueFamilies
         m_presentQueue = vkdevice.getQueue(*queueFamilies.presentFamily, 0);
     }
 
-    std::ranges::generate(m_renderFinished, [=] { return vkdevice.createSemaphoreUnique({}, s_allocator); });
-    std::ranges::generate(m_inFlightFences, [=] {
+    generate(m_renderFinished, [=] { return vkdevice.createSemaphoreUnique({}, s_allocator); });
+    generate(m_inFlightFences, [=] {
         return vkdevice.createFenceUnique({.flags = vk::FenceCreateFlagBits::eSignaled}, s_allocator);
     });
 
-    const auto numThreads = device.GetScheduler().GetThreadCount();
-    std::ranges::generate(
-        m_frameResources, [=] { return FrameResources{.threadResources = std::vector<ThreadResources>(numThreads)}; });
+    if (m_shaderEnvironment)
+    {
+        constexpr uint32 ViewDescriptorPoolSize = 100;
+        const auto& viewPblockLayout = device.GetImpl(*m_shaderEnvironment->GetViewPblockLayout());
+        const auto numThreads = device.GetScheduler().GetThreadCount();
+        generate(m_frameResources, [&] {
+            FrameResources ret = {.threadResources = std::vector<ThreadResources>(numThreads)};
+            generate(ret.threadResources, [&] {
+                return ThreadResources{
+                    .viewDescriptorPool = CreateDescriptorPool(vkdevice, viewPblockLayout, ViewDescriptorPoolSize)};
+            });
+            return ret;
+        });
+    }
 }
 
 VulkanRenderer::~VulkanRenderer()
@@ -378,16 +406,13 @@ void VulkanRenderer::RecordRenderListCommands(
                                             : vk::Rect2D{.extent = {framebuffer.size.x, framebuffer.size.y}};
     commandBuffer.setScissor(0, scissor);
 
-    const auto threadIndex = m_device.GetScheduler().GetThreadIndex();
     const ParameterBlockData viewParamsData = {
         .layout = m_shaderEnvironment ? m_shaderEnvironment->GetViewPblockLayout() : nullptr,
         .lifetime = ResourceLifetime::Transient,
         .parameters = renderList.viewParameters,
     };
     const auto viewParamsName = fmt::format("{}:View", renderList.name);
-    const auto viewParameters = AddViewParameterBlock(
-        threadIndex,
-        m_device.CreateParameterBlock(viewParamsData, viewParamsName.c_str(), commandBufferWrapper, threadIndex));
+    const auto viewParameters = CreateViewParameterBlock(viewParamsData, viewParamsName.c_str(), commandBufferWrapper);
 
     commandBuffer.beginRenderPass(renderPassBegin, vk::SubpassContents::eInline);
 

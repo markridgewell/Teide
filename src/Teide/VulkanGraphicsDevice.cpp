@@ -1012,11 +1012,13 @@ VulkanParameterBlockLayoutPtr VulkanGraphicsDevice::CreateParameterBlockLayout(c
         };
     });
 
-    ret.setLayout = m_device->createDescriptorSetLayoutUnique(
-        vkex::DescriptorSetLayoutCreateInfo{
-            .bindings = vkex::Join(uniformBinding, textureBindings),
-        },
-        s_allocator);
+    const vkex::DescriptorSetLayoutCreateInfo layoutInfo = {
+        .bindings = vkex::Join(uniformBinding, textureBindings),
+    };
+    std::ranges::transform(layoutInfo.bindings, std::back_inserter(ret.descriptorTypeCounts), [](const auto& binding) {
+        return DescriptorTypeCount{binding.descriptorType, binding.descriptorCount};
+    });
+    ret.setLayout = m_device->createDescriptorSetLayoutUnique(layoutInfo, s_allocator);
     ret.uniformsStages = GetShaderStageFlags(layout.uniformsStages);
     return std::make_shared<const VulkanParameterBlockLayout>(std::move(ret));
 }

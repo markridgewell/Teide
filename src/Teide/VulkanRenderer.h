@@ -51,10 +51,19 @@ private:
         return m_device.GetScheduler().ScheduleGpu(std::forward<F>(f));
     }
 
-    const ParameterBlockPtr& GetSceneParameterBlock() const { return GetCurrentFrame().sceneParameters; }
-    const ParameterBlockPtr& AddViewParameterBlock(uint32 threadIndex, ParameterBlockPtr p)
+    ParameterBlockPtr GetSceneParameterBlock() const { return GetCurrentFrame().sceneParameters; }
+
+    ParameterBlockPtr CreateViewParameterBlock(const ParameterBlockData& data, const char* name, CommandBuffer& cmdBuffer)
     {
-        return GetCurrentFrame().threadResources.at(threadIndex).viewParameters.emplace_back(std::move(p));
+        if (m_shaderEnvironment == nullptr)
+        {
+            return nullptr;
+        }
+
+        auto& threadResources = GetCurrentFrame().threadResources.at(threadIndex);
+        const auto threadIndex = m_device.GetScheduler().GetThreadIndex();
+        auto p = m_device.CreateParameterBlock(data, name, cmdBuffer, threadResources.viewDescriptorPool.get());
+        return threadResources.viewParameters.emplace_back(std::move(p));
     }
 
     void RecordRenderListCommands(
@@ -69,6 +78,7 @@ private:
 
     struct ThreadResources
     {
+        vk::UniqueDescriptorPool viewDescriptorPool;
         std::vector<ParameterBlockPtr> viewParameters;
     };
 
