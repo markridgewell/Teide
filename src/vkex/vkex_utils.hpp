@@ -54,6 +54,12 @@ public:
         *m_data.get() = std::forward<U>(singleElement);
     }
 
+    Array(std::initializer_list<T> init) : // cppcheck-suppress noExplicitConstructor
+        m_size{init.size()}, m_data{std::make_unique<T[]>(m_size)}
+    {
+        std::ranges::copy(init, begin());
+    }
+
     void reset(std::uint32_t size)
     {
         m_size = size;
