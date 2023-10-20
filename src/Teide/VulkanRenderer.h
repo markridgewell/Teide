@@ -60,8 +60,8 @@ private:
             return nullptr;
         }
 
-        auto& threadResources = GetCurrentFrame().threadResources.at(threadIndex);
         const auto threadIndex = m_device.GetScheduler().GetThreadIndex();
+        auto& threadResources = GetCurrentFrame().threadResources.at(threadIndex);
         auto p = m_device.CreateParameterBlock(data, name, cmdBuffer, threadResources.viewDescriptorPool.get());
         return threadResources.viewParameters.emplace_back(std::move(p));
     }
