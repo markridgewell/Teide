@@ -55,7 +55,7 @@ public:
     }
 
     Array(std::initializer_list<T> init) : // cppcheck-suppress noExplicitConstructor
-        m_size{init.size()}, m_data{std::make_unique<T[]>(m_size)}
+        m_size{static_cast<std::uint32_t>(init.size())}, m_data{std::make_unique<T[]>(m_size)}
     {
         std::ranges::copy(init, begin());
     }
