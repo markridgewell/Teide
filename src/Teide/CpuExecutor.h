@@ -58,9 +58,9 @@ public:
     template <std::invocable<uint32> F>
     auto LaunchTask(F&& f) -> TaskForCallable<F, uint32>
     {
-        return LaunchTaskImpl([this, f = std::forward<F>(f)]() mutable {
+        return LaunchTaskImpl([this, ff = std::forward<F>(f)]() mutable {
             const auto taskIndex = static_cast<uint32>(m_executor.this_worker_id());
-            return std::forward<F>(f)(taskIndex);
+            return std::forward<F>(ff)(taskIndex);
         });
     }
 
