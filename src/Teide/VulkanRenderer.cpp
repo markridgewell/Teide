@@ -122,8 +122,7 @@ VulkanRenderer::VulkanRenderer(VulkanGraphicsDevice& device, const QueueFamilies
             FrameResources ret;
             for (uint32 i = 0; i < numThreads; i++)
             {
-                ret.threadResources.emplace_back(ThreadResources{
-                    .viewDescriptorPool = DescriptorPool(vkdevice, viewPblockLayout, ViewDescriptorPoolSize)});
+                ret.threadResources.emplace_back(DescriptorPool(vkdevice, viewPblockLayout, ViewDescriptorPoolSize));
             }
             return ret;
         });
