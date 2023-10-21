@@ -184,6 +184,7 @@ void VulkanRenderer::BeginFrame(ShaderParameters sceneParameters)
     frameResources.sceneParameters = m_device.CreateParameterBlock(pblockData, "Scene");
     for (auto& threadResources : frameResources.threadResources)
     {
+        m_device.GetVulkanDevice().resetDescriptorPool(threadResources.viewDescriptorPool.get());
         threadResources.viewParameters.clear();
     }
 }
