@@ -2,9 +2,11 @@
 #pragma once
 
 #include "CommandBuffer.h"
+#include "DescriptorPool.h"
 #include "Synchronized.h"
 #include "Vulkan.h"
 #include "VulkanGraphicsDevice.h"
+#include "VulkanParameterBlock.h"
 #include "VulkanSurface.h"
 
 #include "Teide/BasicTypes.h"
@@ -51,7 +53,20 @@ private:
         return m_device.GetScheduler().ScheduleGpu(std::forward<F>(f));
     }
 
-    const ParameterBlockPtr& GetSceneParameterBlock() const { return GetCurrentFrame().sceneParameters; }
+    ParameterBlockPtr GetSceneParameterBlock() const { return GetCurrentFrame().sceneParameters; }
+
+    TransientParameterBlock* CreateViewParameterBlock(const ParameterBlockData& data, const char* name, CommandBuffer& cmdBuffer)
+    {
+        if (m_shaderEnvironment == nullptr)
+        {
+            return nullptr;
+        }
+
+        const auto threadIndex = m_device.GetScheduler().GetThreadIndex();
+        auto& threadResources = GetCurrentFrame().threadResources.at(threadIndex);
+        auto p = m_device.CreateTransientParameterBlock(data, name, cmdBuffer, threadResources.viewDescriptorPool);
+        return &threadResources.viewParameters.emplace_back(std::move(p));
+    }
 
     void RecordRenderListCommands(
         CommandBuffer& commandBuffer, const RenderList& renderList, vk::RenderPass renderPass,
@@ -63,9 +78,16 @@ private:
 
     vk::DescriptorSet GetDescriptorSet(const ParameterBlock* parameterBlock) const;
 
+    struct ThreadResources
+    {
+        DescriptorPool viewDescriptorPool;
+        std::vector<TransientParameterBlock> viewParameters;
+    };
+
     struct FrameResources
     {
         ParameterBlockPtr sceneParameters;
+        std::vector<ThreadResources> threadResources;
     };
 
     const FrameResources& GetCurrentFrame() const { return m_frameResources.at(m_frameNumber); }

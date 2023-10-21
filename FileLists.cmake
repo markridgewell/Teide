@@ -36,6 +36,8 @@ set(sources
     src/Teide/CommandBuffer.h
     src/Teide/CpuExecutor.cpp
     src/Teide/CpuExecutor.h
+    src/Teide/DescriptorPool.cpp
+    src/Teide/DescriptorPool.h
     src/Teide/Format.cpp
     src/Teide/GpuExecutor.cpp
     src/Teide/GpuExecutor.h
