@@ -5,6 +5,8 @@
 
 #include "Teide/BasicTypes.h"
 
+#include <vector>
+
 namespace Teide
 {
 struct DescriptorTypeCount;
@@ -20,12 +22,13 @@ public:
     void Reset();
 
 private:
-    vk::UniqueDescriptorPool CreatePool(vk::Device device, const std::vector<DescriptorTypeCount>& typeCounts, uint32 maxSets);
+    void AddPool();
 
     vk::Device m_device;
     vk::DescriptorSetLayout m_layout;
     std::vector<DescriptorTypeCount> m_descriptorTypeCounts;
+    std::vector<vk::UniqueDescriptorPool> m_pools;
     uint32 m_maxSets;
-    vk::UniqueDescriptorPool m_pool;
+    uint32 m_numAllocatedSets = 0;
 };
 } // namespace Teide

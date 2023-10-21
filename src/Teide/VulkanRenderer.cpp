@@ -115,15 +115,15 @@ VulkanRenderer::VulkanRenderer(VulkanGraphicsDevice& device, const QueueFamilies
 
     if (m_shaderEnvironment)
     {
-        constexpr uint32 ViewDescriptorPoolSize = 100;
+        constexpr uint32 ViewDescriptorPoolSize = 8;
         const auto& viewPblockLayout = device.GetImpl(*m_shaderEnvironment->GetViewPblockLayout());
         const auto numThreads = device.GetScheduler().GetThreadCount();
         generate(m_frameResources, [&] {
             FrameResources ret;
             for (uint32 i = 0; i < numThreads; i++)
             {
-                ret.threadResources.push_back(
-                    {.viewDescriptorPool = DescriptorPool(vkdevice, viewPblockLayout, ViewDescriptorPoolSize)});
+                ret.threadResources.emplace_back(ThreadResources{
+                    .viewDescriptorPool = DescriptorPool(vkdevice, viewPblockLayout, ViewDescriptorPoolSize)});
             }
             return ret;
         });
