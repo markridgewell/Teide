@@ -65,21 +65,6 @@ namespace
         return clearValues;
     }
 
-    vk::UniqueDescriptorPool CreateDescriptorPool(vk::Device device, const VulkanParameterBlockLayout& layout, uint32 maxSets)
-    {
-        return device.createDescriptorPoolUnique(vkex::DescriptorPoolCreateInfo{
-            .maxSets = maxSets,
-            .poolSizes = std::views::transform(
-                layout.descriptorTypeCounts,
-                [maxSets](const auto& typeCount) {
-                    return vk::DescriptorPoolSize{
-                        .type = typeCount.type,
-                        .descriptorCount = typeCount.count * maxSets,
-                    };
-                }),
-        });
-    }
-
     constexpr auto NotNull = [](const auto& handle) { return static_cast<bool>(handle); };
 
 } // namespace
@@ -134,11 +119,12 @@ VulkanRenderer::VulkanRenderer(VulkanGraphicsDevice& device, const QueueFamilies
         const auto& viewPblockLayout = device.GetImpl(*m_shaderEnvironment->GetViewPblockLayout());
         const auto numThreads = device.GetScheduler().GetThreadCount();
         generate(m_frameResources, [&] {
-            FrameResources ret = {.threadResources = std::vector<ThreadResources>(numThreads)};
-            generate(ret.threadResources, [&] {
-                return ThreadResources{
-                    .viewDescriptorPool = CreateDescriptorPool(vkdevice, viewPblockLayout, ViewDescriptorPoolSize)};
-            });
+            FrameResources ret;
+            for (uint32 i = 0; i < numThreads; i++)
+            {
+                ret.threadResources.push_back(
+                    {.viewDescriptorPool = DescriptorPool(vkdevice, viewPblockLayout, ViewDescriptorPoolSize)});
+            }
             return ret;
         });
     }
@@ -184,7 +170,7 @@ void VulkanRenderer::BeginFrame(ShaderParameters sceneParameters)
     frameResources.sceneParameters = m_device.CreateParameterBlock(pblockData, "Scene");
     for (auto& threadResources : frameResources.threadResources)
     {
-        m_device.GetVulkanDevice().resetDescriptorPool(threadResources.viewDescriptorPool.get());
+        threadResources.viewDescriptorPool.Reset();
         threadResources.viewParameters.clear();
     }
 }

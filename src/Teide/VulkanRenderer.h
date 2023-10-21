@@ -2,6 +2,7 @@
 #pragma once
 
 #include "CommandBuffer.h"
+#include "DescriptorPool.h"
 #include "Synchronized.h"
 #include "Vulkan.h"
 #include "VulkanGraphicsDevice.h"
@@ -63,7 +64,7 @@ private:
 
         const auto threadIndex = m_device.GetScheduler().GetThreadIndex();
         auto& threadResources = GetCurrentFrame().threadResources.at(threadIndex);
-        auto p = m_device.CreateTransientParameterBlock(data, name, cmdBuffer, threadResources.viewDescriptorPool.get());
+        auto p = m_device.CreateTransientParameterBlock(data, name, cmdBuffer, threadResources.viewDescriptorPool);
         return &threadResources.viewParameters.emplace_back(std::move(p));
     }
 
@@ -79,7 +80,7 @@ private:
 
     struct ThreadResources
     {
-        vk::UniqueDescriptorPool viewDescriptorPool;
+        DescriptorPool viewDescriptorPool;
         std::vector<TransientParameterBlock> viewParameters;
     };
 

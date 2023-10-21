@@ -29,6 +29,7 @@ namespace Teide
 
 struct ParameterBlockDesc;
 struct VulkanParameterBlockLayout;
+class DescriptorPool;
 
 using VulkanParameterBlockLayoutPtr = std::shared_ptr<const VulkanParameterBlockLayout>;
 
@@ -103,7 +104,7 @@ public:
     ParameterBlockPtr CreateParameterBlock(
         const ParameterBlockData& data, const char* name, CommandBuffer& cmdBuffer, vk::DescriptorPool descriptorPool);
     TransientParameterBlock CreateTransientParameterBlock(
-        const ParameterBlockData& data, const char* name, CommandBuffer& cmdBuffer, vk::DescriptorPool descriptorPool);
+        const ParameterBlockData& data, const char* name, CommandBuffer& cmdBuffer, DescriptorPool& descriptorPool);
 
     vk::RenderPass CreateRenderPassLayout(const FramebufferLayout& framebufferLayout);
     vk::RenderPass CreateRenderPass(const FramebufferLayout& framebufferLayout, const ClearState& clearState);

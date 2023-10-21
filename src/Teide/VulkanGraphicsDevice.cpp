@@ -2,6 +2,7 @@
 #include "VulkanGraphicsDevice.h"
 
 #include "CommandBuffer.h"
+#include "DescriptorPool.h"
 #include "VulkanBuffer.h"
 #include "VulkanLoader.h"
 #include "VulkanMesh.h"
@@ -916,24 +917,6 @@ vk::UniqueDescriptorSet VulkanGraphicsDevice::CreateUniqueDescriptorSet(
     return descriptorSet;
 }
 
-vk::DescriptorSet VulkanGraphicsDevice::CreateDescriptorSet(
-    vk::DescriptorPool pool, vk::DescriptorSetLayout layout, const Buffer* uniformBuffer,
-    std::span<const TexturePtr> textures, const char* name)
-{
-    const vk::DescriptorSetAllocateInfo allocInfo = {
-        .descriptorPool = pool,
-        .descriptorSetCount = 1,
-        .pSetLayouts = &layout,
-    };
-
-    auto descriptorSet = std::move(m_device->allocateDescriptorSets(allocInfo).front());
-    SetDebugName(m_device.get(), descriptorSet, name);
-
-    WriteDescriptorSet(descriptorSet, uniformBuffer, textures);
-
-    return descriptorSet;
-}
-
 void VulkanGraphicsDevice::WriteDescriptorSet(
     vk::DescriptorSet descriptorSet, const Buffer* uniformBuffer, std::span<const TexturePtr> textures)
 {
@@ -1156,7 +1139,7 @@ ParameterBlockPtr VulkanGraphicsDevice::CreateParameterBlock(
 }
 
 TransientParameterBlock VulkanGraphicsDevice::CreateTransientParameterBlock(
-    const ParameterBlockData& data, const char* name, CommandBuffer& cmdBuffer, vk::DescriptorPool descriptorPool)
+    const ParameterBlockData& data, const char* name, CommandBuffer& cmdBuffer, DescriptorPool& descriptorPool)
 {
     assert(data.layout);
 
@@ -1183,8 +1166,8 @@ TransientParameterBlock VulkanGraphicsDevice::CreateTransientParameterBlock(
                 },
                 uniformBufferName.c_str(), cmdBuffer);
         }
-        ret.descriptorSet = CreateDescriptorSet(
-            descriptorPool, setLayout, ret.uniformBuffer.get(), data.parameters.textures, descriptorSetName.c_str());
+        ret.descriptorSet = descriptorPool.Allocate(descriptorSetName.c_str());
+        WriteDescriptorSet(ret.descriptorSet, ret.uniformBuffer.get(), ret.textures);
     }
 
     return ret;
