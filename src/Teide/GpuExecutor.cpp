@@ -43,14 +43,9 @@ GpuExecutor::GpuExecutor(uint32 numThreads, vk::Device device, vk::Queue queue, 
     m_schedulerThread = std::thread([this] {
         constexpr auto timeout = std::chrono::milliseconds{2};
 
-        std::vector<vk::Fence> fences;
-
         while (!m_schedulerStop)
         {
-            const auto fencesRange = m_queue.Lock(&Queue::GetInFlightFences);
-            fences.assign(fencesRange.begin(), fencesRange.end());
-            // TODO C++23: Replace previous 2 lines with:
-            // fences.assign_range(m_queue.Lock(&Queue::GetInFlightFences));
+            const auto fences = m_queue.Lock(&Queue::GetInFlightFences);
 
             if (fences.empty())
             {
@@ -159,6 +154,12 @@ void GpuExecutor::SubmitCommandBuffer(uint32 index, vk::CommandBuffer commandBuf
 }
 
 //---------------------------------------------------------------------------------------------------------------------
+
+std::vector<vk::Fence> GpuExecutor::Queue::GetInFlightFences() const
+{
+    const auto range = m_inFlightSubmits | std::views::transform(&InFlightSubmit::GetFence);
+    return std::vector(range.begin(), range.end());
+}
 
 void GpuExecutor::Queue::Flush()
 {
