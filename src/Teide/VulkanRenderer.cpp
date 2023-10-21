@@ -399,7 +399,7 @@ void VulkanRenderer::RecordRenderListCommands(
         .parameters = renderList.viewParameters,
     };
     const auto viewParamsName = fmt::format("{}:View", renderList.name);
-    const auto viewParameters = CreateViewParameterBlock(viewParamsData, viewParamsName.c_str(), commandBufferWrapper);
+    const auto* viewParameters = CreateViewParameterBlock(viewParamsData, viewParamsName.c_str(), commandBufferWrapper);
 
     commandBuffer.beginRenderPass(renderPassBegin, vk::SubpassContents::eInline);
 

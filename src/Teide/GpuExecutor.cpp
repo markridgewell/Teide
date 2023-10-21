@@ -158,7 +158,7 @@ void GpuExecutor::SubmitCommandBuffer(uint32 index, vk::CommandBuffer commandBuf
 std::vector<vk::Fence> GpuExecutor::Queue::GetInFlightFences() const
 {
     const auto range = m_inFlightSubmits | std::views::transform(&InFlightSubmit::GetFence);
-    return std::vector(range.begin(), range.end());
+    return {range.begin(), range.end()};
 }
 
 void GpuExecutor::Queue::Flush()

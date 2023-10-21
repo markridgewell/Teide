@@ -139,7 +139,7 @@ void SetDebugName(
 {
     if constexpr (IsDebugBuild)
     {
-        const auto string = fmt::vformat(format, fmt::make_format_args(fmtArgs...));
+        const auto string = fmt::vformat(format, fmt::make_format_args(std::forward<FormatArgs>(fmtArgs)...));
         SetDebugName(handle, string.c_str());
     }
 }
