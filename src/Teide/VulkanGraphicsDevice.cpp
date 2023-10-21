@@ -898,13 +898,10 @@ PipelinePtr VulkanGraphicsDevice::CreatePipeline(const PipelineData& data)
     return pipeline;
 }
 
-vk::UniqueDescriptorSet VulkanGraphicsDevice::CreateDescriptorSet(
+vk::UniqueDescriptorSet VulkanGraphicsDevice::CreateUniqueDescriptorSet(
     vk::DescriptorPool pool, vk::DescriptorSetLayout layout, const Buffer* uniformBuffer,
     std::span<const TexturePtr> textures, const char* name)
 {
-    // TODO support multiple textures in descriptor sets
-    assert(textures.size() <= 1 && "Multiple textures not yet supported!");
-
     const vk::DescriptorSetAllocateInfo allocInfo = {
         .descriptorPool = pool,
         .descriptorSetCount = 1,
@@ -914,6 +911,32 @@ vk::UniqueDescriptorSet VulkanGraphicsDevice::CreateDescriptorSet(
     auto descriptorSet = std::move(m_device->allocateDescriptorSetsUnique(allocInfo).front());
     SetDebugName(descriptorSet, name);
 
+    WriteDescriptorSet(descriptorSet.get(), uniformBuffer, textures);
+
+    return descriptorSet;
+}
+
+vk::DescriptorSet VulkanGraphicsDevice::CreateDescriptorSet(
+    vk::DescriptorPool pool, vk::DescriptorSetLayout layout, const Buffer* uniformBuffer,
+    std::span<const TexturePtr> textures, const char* name)
+{
+    const vk::DescriptorSetAllocateInfo allocInfo = {
+        .descriptorPool = pool,
+        .descriptorSetCount = 1,
+        .pSetLayouts = &layout,
+    };
+
+    auto descriptorSet = std::move(m_device->allocateDescriptorSets(allocInfo).front());
+    SetDebugName(m_device.get(), descriptorSet, name);
+
+    WriteDescriptorSet(descriptorSet, uniformBuffer, textures);
+
+    return descriptorSet;
+}
+
+void VulkanGraphicsDevice::WriteDescriptorSet(
+    vk::DescriptorSet descriptorSet, const Buffer* uniformBuffer, std::span<const TexturePtr> textures)
+{
     const auto numUniformBuffers = uniformBuffer ? 1 : 0;
 
     std::vector<vk::WriteDescriptorSet> descriptorWrites;
@@ -932,7 +955,7 @@ vk::UniqueDescriptorSet VulkanGraphicsDevice::CreateDescriptorSet(
         if (uniformBufferImpl.size > 0)
         {
             descriptorWrites.push_back({
-                .dstSet = descriptorSet.get(),
+                .dstSet = descriptorSet,
                 .dstBinding = 0,
                 .dstArrayElement = 0,
                 .descriptorCount = 1,
@@ -961,7 +984,7 @@ vk::UniqueDescriptorSet VulkanGraphicsDevice::CreateDescriptorSet(
         });
 
         descriptorWrites.push_back({
-            .dstSet = descriptorSet.get(),
+            .dstSet = descriptorSet,
             .dstBinding = 1,
             .dstArrayElement = 0,
             .descriptorCount = 1,
@@ -971,8 +994,6 @@ vk::UniqueDescriptorSet VulkanGraphicsDevice::CreateDescriptorSet(
     }
 
     m_device->updateDescriptorSets(descriptorWrites, {});
-
-    return descriptorSet;
 }
 
 VulkanParameterBlockLayoutPtr VulkanGraphicsDevice::CreateParameterBlockLayout(const ParameterBlockDesc& desc, int set)
@@ -1122,7 +1143,7 @@ ParameterBlockPtr VulkanGraphicsDevice::CreateParameterBlock(
                 },
                 uniformBufferName.c_str(), cmdBuffer);
         }
-        ret.descriptorSet = CreateDescriptorSet(
+        ret.descriptorSet = CreateUniqueDescriptorSet(
             descriptorPool, setLayout, ret.uniformBuffer.get(), data.parameters.textures, descriptorSetName.c_str());
     }
 
@@ -1132,6 +1153,41 @@ ParameterBlockPtr VulkanGraphicsDevice::CreateParameterBlock(
     }
 
     return std::make_unique<VulkanParameterBlock>(std::move(ret));
+}
+
+TransientParameterBlock VulkanGraphicsDevice::CreateTransientParameterBlock(
+    const ParameterBlockData& data, const char* name, CommandBuffer& cmdBuffer, vk::DescriptorPool descriptorPool)
+{
+    assert(data.layout);
+
+    const auto& layout = GetImpl(*data.layout);
+    assert(!layout.pushConstantRange.has_value());
+
+    const auto setLayout = layout.setLayout.get();
+    assert(setLayout);
+
+    const auto descriptorSetName = DebugFormat("{}DescriptorSet", name);
+
+    TransientParameterBlock ret;
+    ret.textures = data.parameters.textures;
+    if (setLayout)
+    {
+        if (!data.parameters.uniformData.empty())
+        {
+            const auto uniformBufferName = DebugFormat("{}UniformBuffer", name);
+            ret.uniformBuffer = CreateBuffer(
+                BufferData{
+                    .usage = BufferUsage::Uniform,
+                    .lifetime = data.lifetime,
+                    .data = data.parameters.uniformData,
+                },
+                uniformBufferName.c_str(), cmdBuffer);
+        }
+        ret.descriptorSet = CreateDescriptorSet(
+            descriptorPool, setLayout, ret.uniformBuffer.get(), data.parameters.textures, descriptorSetName.c_str());
+    }
+
+    return ret;
 }
 
 } // namespace Teide

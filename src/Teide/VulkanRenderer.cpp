@@ -420,7 +420,7 @@ void VulkanRenderer::RecordRenderListCommands(
     {
         const auto descriptorSets = std::array{
             GetDescriptorSet(GetSceneParameterBlock().get()),
-            GetDescriptorSet(viewParameters.get()),
+            viewParameters ? viewParameters->descriptorSet : nullptr,
         };
         const auto firstActiveSet
             = static_cast<uint32>(std::distance(descriptorSets.begin(), std::ranges::find_if(descriptorSets, NotNull)));

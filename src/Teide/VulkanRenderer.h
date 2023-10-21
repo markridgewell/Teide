@@ -5,6 +5,7 @@
 #include "Synchronized.h"
 #include "Vulkan.h"
 #include "VulkanGraphicsDevice.h"
+#include "VulkanParameterBlock.h"
 #include "VulkanSurface.h"
 
 #include "Teide/BasicTypes.h"
@@ -53,7 +54,7 @@ private:
 
     ParameterBlockPtr GetSceneParameterBlock() const { return GetCurrentFrame().sceneParameters; }
 
-    ParameterBlockPtr CreateViewParameterBlock(const ParameterBlockData& data, const char* name, CommandBuffer& cmdBuffer)
+    TransientParameterBlock* CreateViewParameterBlock(const ParameterBlockData& data, const char* name, CommandBuffer& cmdBuffer)
     {
         if (m_shaderEnvironment == nullptr)
         {
@@ -62,8 +63,8 @@ private:
 
         const auto threadIndex = m_device.GetScheduler().GetThreadIndex();
         auto& threadResources = GetCurrentFrame().threadResources.at(threadIndex);
-        auto p = m_device.CreateParameterBlock(data, name, cmdBuffer, threadResources.viewDescriptorPool.get());
-        return threadResources.viewParameters.emplace_back(std::move(p));
+        auto p = m_device.CreateTransientParameterBlock(data, name, cmdBuffer, threadResources.viewDescriptorPool.get());
+        return &threadResources.viewParameters.emplace_back(std::move(p));
     }
 
     void RecordRenderListCommands(
@@ -79,7 +80,7 @@ private:
     struct ThreadResources
     {
         vk::UniqueDescriptorPool viewDescriptorPool;
-        std::vector<ParameterBlockPtr> viewParameters;
+        std::vector<TransientParameterBlock> viewParameters;
     };
 
     struct FrameResources

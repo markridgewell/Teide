@@ -6,6 +6,7 @@
 #include "Vulkan.h"
 #include "VulkanBuffer.h"
 #include "VulkanLoader.h"
+#include "VulkanParameterBlock.h"
 #include "VulkanTexture.h"
 
 #include "Teide/BasicTypes.h"
@@ -101,6 +102,8 @@ public:
     CreateParameterBlock(const ParameterBlockData& data, const char* name, CommandBuffer& cmdBuffer, uint32 threadIndex);
     ParameterBlockPtr CreateParameterBlock(
         const ParameterBlockData& data, const char* name, CommandBuffer& cmdBuffer, vk::DescriptorPool descriptorPool);
+    TransientParameterBlock CreateTransientParameterBlock(
+        const ParameterBlockData& data, const char* name, CommandBuffer& cmdBuffer, vk::DescriptorPool descriptorPool);
 
     vk::RenderPass CreateRenderPassLayout(const FramebufferLayout& framebufferLayout);
     vk::RenderPass CreateRenderPass(const FramebufferLayout& framebufferLayout, const ClearState& clearState);
@@ -127,9 +130,13 @@ private:
         void Visit(auto f) const { return f(renderPass, size, attachments); }
     };
 
-    vk::UniqueDescriptorSet CreateDescriptorSet(
+    vk::UniqueDescriptorSet CreateUniqueDescriptorSet(
         vk::DescriptorPool pool, vk::DescriptorSetLayout layout, const Buffer* uniformBuffer,
         std::span<const TexturePtr> textures, const char* name);
+    vk::DescriptorSet CreateDescriptorSet(
+        vk::DescriptorPool pool, vk::DescriptorSetLayout layout, const Buffer* uniformBuffer,
+        std::span<const TexturePtr> textures, const char* name);
+    void WriteDescriptorSet(vk::DescriptorSet descriptorSet, const Buffer* uniformBuffer, std::span<const TexturePtr> textures);
 
     VulkanParameterBlockLayoutPtr CreateParameterBlockLayout(const ParameterBlockDesc& desc, int set);
 

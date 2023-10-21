@@ -47,6 +47,13 @@ struct VulkanParameterBlock : public ParameterBlock
     usize GetPushConstantSize() const override;
 };
 
+struct TransientParameterBlock
+{
+    BufferPtr uniformBuffer;
+    std::vector<TexturePtr> textures;
+    vk::DescriptorSet descriptorSet;
+};
+
 template <>
 struct VulkanImpl<ParameterBlock>
 {

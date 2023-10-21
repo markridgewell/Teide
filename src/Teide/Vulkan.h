@@ -107,19 +107,28 @@ void TransitionImageLayout(
 
 vk::UniqueCommandPool CreateCommandPool(uint32_t queueFamilyIndex, vk::Device device, const char* debugName = "");
 
-template <class Type, class Dispatch>
-void SetDebugName(vk::UniqueHandle<Type, Dispatch>& handle [[maybe_unused]], const char* debugName [[maybe_unused]])
+template <class Handle>
+void SetDebugName(vk::Device device [[maybe_unused]], Handle handle [[maybe_unused]], const char* debugName [[maybe_unused]])
 {
     if constexpr (IsDebugBuild)
     {
         if (VULKAN_HPP_DEFAULT_DISPATCHER.vkSetDebugUtilsObjectNameEXT != nullptr)
         {
-            handle.getOwner().setDebugUtilsObjectNameEXT({
-                .objectType = handle->objectType,
-                .objectHandle = std::bit_cast<uint64_t>(handle.get()),
+            device.setDebugUtilsObjectNameEXT({
+                .objectType = handle.objectType,
+                .objectHandle = std::bit_cast<uint64_t>(handle),
                 .pObjectName = debugName,
             });
         }
+    }
+}
+
+template <class Type, class Dispatch>
+void SetDebugName(vk::UniqueHandle<Type, Dispatch>& handle [[maybe_unused]], const char* debugName [[maybe_unused]])
+{
+    if constexpr (IsDebugBuild)
+    {
+        SetDebugName(handle.getOwner(), handle.get(), debugName);
     }
 }
 
