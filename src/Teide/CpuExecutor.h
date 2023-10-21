@@ -56,11 +56,11 @@ public:
     }
 
     template <std::invocable<uint32> F>
-    auto LaunchTask(F&& f) -> TaskForCallable<F, uint32>
+    auto LaunchTask(F&& f) -> TaskForCallable<F, uint32> // NOLINT(cppcoreguidelines-missing-std-forward)
     {
-        return LaunchTaskImpl([this, ff = std::forward<F>(f)]() mutable {
+        return LaunchTaskImpl([this, f = std::forward<F>(f)]() mutable {
             const auto taskIndex = static_cast<uint32>(m_executor.this_worker_id());
-            return std::forward<F>(ff)(taskIndex);
+            return std::forward<F>(f)(taskIndex);
         });
     }
 
@@ -95,11 +95,10 @@ private:
     template <class Ret, class Arg>
     using UnaryFunction = typename detail::UnaryFunctionHelper<Ret, Arg>::type;
 
-    template <class F, class... Args>
-        requires std::invocable<F, Args...>
-    auto LaunchTaskImpl(F&& f, Args&&... args)
+    template <std::invocable<> F>
+    auto LaunchTaskImpl(F&& f)
     {
-        return m_executor.async(std::forward<F>(f), std::forward<Args>(args)...);
+        return m_executor.async(std::forward<F>(f));
     }
 
     struct AbstractScheduledTask : AbstractBase

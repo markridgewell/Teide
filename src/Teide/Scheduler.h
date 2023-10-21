@@ -30,7 +30,7 @@ public:
     }
 
     template <std::invocable<CommandBuffer&> F>
-    auto ScheduleGpu(F&& f) -> TaskForCallable<F, CommandBuffer&>
+    auto ScheduleGpu(F&& f) -> TaskForCallable<F, CommandBuffer&> // NOLINT(cppcoreguidelines-missing-std-forward)
     {
         const uint32 sequenceIndex = m_gpuExecutor.AddCommandBufferSlot();
 
