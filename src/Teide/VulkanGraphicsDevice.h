@@ -95,6 +95,7 @@ public:
 
     SurfacePtr CreateSurface(vk::UniqueSurfaceKHR surface, SDL_Window* window, bool multisampled);
     BufferPtr CreateBuffer(const BufferData& data, const char* name, CommandBuffer& cmdBuffer);
+    VulkanBuffer CreateTransientBuffer(const BufferData& data, const char* name);
     TexturePtr CreateTexture(const TextureData& data, const char* name, CommandBuffer& cmdBuffer);
     TexturePtr CreateRenderableTexture(const TextureData& data, const char* name);
     TexturePtr CreateRenderableTexture(const TextureData& data, const char* name, CommandBuffer& cmdBuffer);
@@ -103,8 +104,9 @@ public:
     CreateParameterBlock(const ParameterBlockData& data, const char* name, CommandBuffer& cmdBuffer, uint32 threadIndex);
     ParameterBlockPtr CreateParameterBlock(
         const ParameterBlockData& data, const char* name, CommandBuffer& cmdBuffer, vk::DescriptorPool descriptorPool);
-    TransientParameterBlock CreateTransientParameterBlock(
-        const ParameterBlockData& data, const char* name, CommandBuffer& cmdBuffer, DescriptorPool& descriptorPool);
+    TransientParameterBlock
+    CreateTransientParameterBlock(const ParameterBlockData& data, const char* name, DescriptorPool& descriptorPool);
+    void UpdateTransientParameterBlock(TransientParameterBlock& pblock, const ParameterBlockData& data);
 
     vk::RenderPass CreateRenderPassLayout(const FramebufferLayout& framebufferLayout);
     vk::RenderPass CreateRenderPass(const FramebufferLayout& framebufferLayout, const ClearState& clearState);

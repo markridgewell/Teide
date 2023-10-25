@@ -738,6 +738,14 @@ BufferPtr VulkanGraphicsDevice::CreateBuffer(const BufferData& data, const char*
     return std::make_shared<const VulkanBuffer>(std::move(ret));
 }
 
+VulkanBuffer VulkanGraphicsDevice::CreateTransientBuffer(const BufferData& data, const char* name)
+{
+    auto nullCmdBuffer = CommandBuffer(vk::UniqueCommandBuffer{nullptr});
+    auto ret = CreateBufferWithData(data.data, data.usage, ResourceLifetime::Transient, nullCmdBuffer);
+    SetDebugName(ret.buffer, name);
+    return ret;
+}
+
 ShaderEnvironmentPtr
 VulkanGraphicsDevice::CreateShaderEnvironment(const ShaderEnvironmentData& data, const char* name [[maybe_unused]])
 {
@@ -1101,7 +1109,7 @@ ParameterBlockPtr VulkanGraphicsDevice::CreateParameterBlock(
     }
 
     const auto& layout = GetImpl(*data.layout);
-    const bool isPushConstant = layout.pushConstantRange.has_value();
+    const bool isPushConstant = layout.HasPushConstants();
 
     const auto setLayout = layout.setLayout.get();
     if (!setLayout && !isPushConstant)
@@ -1117,14 +1125,9 @@ ParameterBlockPtr VulkanGraphicsDevice::CreateParameterBlock(
     {
         if (!isPushConstant && !data.parameters.uniformData.empty())
         {
-            const auto uniformBufferName = DebugFormat("{}UniformBuffer", name);
-            ret.uniformBuffer = CreateBuffer(
-                BufferData{
-                    .usage = BufferUsage::Uniform,
-                    .lifetime = data.lifetime,
-                    .data = data.parameters.uniformData,
-                },
-                uniformBufferName.c_str(), cmdBuffer);
+            ret.uniformBuffer = MakeHandle(
+                CreateBufferWithData(data.parameters.uniformData, BufferUsage::Uniform, data.lifetime, cmdBuffer));
+            SetDebugName(ret.uniformBuffer->buffer, "{}UniformBuffer", name);
         }
         ret.descriptorSet = CreateUniqueDescriptorSet(
             descriptorPool, setLayout, ret.uniformBuffer.get(), data.parameters.textures, descriptorSetName.c_str());
@@ -1139,7 +1142,7 @@ ParameterBlockPtr VulkanGraphicsDevice::CreateParameterBlock(
 }
 
 TransientParameterBlock VulkanGraphicsDevice::CreateTransientParameterBlock(
-    const ParameterBlockData& data, const char* name, CommandBuffer& cmdBuffer, DescriptorPool& descriptorPool)
+    const ParameterBlockData& data, const char* name, DescriptorPool& descriptorPool)
 {
     assert(data.layout);
 
@@ -1158,19 +1161,34 @@ TransientParameterBlock VulkanGraphicsDevice::CreateTransientParameterBlock(
         if (!data.parameters.uniformData.empty())
         {
             const auto uniformBufferName = DebugFormat("{}UniformBuffer", name);
-            ret.uniformBuffer = CreateBuffer(
+            ret.uniformBuffer = MakeHandle(CreateTransientBuffer(
                 BufferData{
                     .usage = BufferUsage::Uniform,
                     .lifetime = data.lifetime,
                     .data = data.parameters.uniformData,
                 },
-                uniformBufferName.c_str(), cmdBuffer);
+                uniformBufferName.c_str()));
         }
         ret.descriptorSet = descriptorPool.Allocate(descriptorSetName.c_str());
         WriteDescriptorSet(ret.descriptorSet, ret.uniformBuffer.get(), ret.textures);
     }
 
     return ret;
+}
+
+void VulkanGraphicsDevice::UpdateTransientParameterBlock(TransientParameterBlock& pblock, const ParameterBlockData& data)
+{
+    pblock.textures = data.parameters.textures;
+
+    if (pblock.uniformBuffer)
+    {
+        SetBufferData(*pblock.uniformBuffer, data.parameters.uniformData);
+    }
+
+    if (pblock.descriptorSet)
+    {
+        WriteDescriptorSet(pblock.descriptorSet, pblock.uniformBuffer.get(), pblock.textures);
+    }
 }
 
 } // namespace Teide

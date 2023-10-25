@@ -100,7 +100,6 @@ VulkanRenderer::VulkanRenderer(VulkanGraphicsDevice& device, const QueueFamilies
     m_shaderEnvironment{std::move(shaderEnvironment)}
 {
     using std::ranges::generate;
-
     const auto vkdevice = device.GetVulkanDevice();
 
     if (queueFamilies.presentFamily)
@@ -115,17 +114,45 @@ VulkanRenderer::VulkanRenderer(VulkanGraphicsDevice& device, const QueueFamilies
 
     if (m_shaderEnvironment)
     {
-        constexpr uint32 ViewDescriptorPoolSize = 8;
-        const auto& viewPblockLayout = device.GetImpl(*m_shaderEnvironment->GetViewPblockLayout());
-        const auto numThreads = device.GetScheduler().GetThreadCount();
-        generate(m_frameResources, [&] {
-            FrameResources ret;
+        SetupDescriptorPools();
+    }
+}
+
+void VulkanRenderer::SetupDescriptorPools()
+{
+    const auto vkdevice = m_device.GetVulkanDevice();
+
+    constexpr uint32 ViewDescriptorPoolSize = 8;
+    const auto& scenePblockLayout = m_device.GetImpl(*m_shaderEnvironment->GetScenePblockLayout());
+    const auto& viewPblockLayout = m_device.GetImpl(*m_shaderEnvironment->GetViewPblockLayout());
+
+    if (scenePblockLayout.HasDescriptors())
+    {
+        m_sceneDescriptorPool.emplace(vkdevice, scenePblockLayout, MaxFramesInFlight);
+
+        const ParameterBlockData pblockData = {
+            .layout = m_shaderEnvironment ? m_shaderEnvironment->GetScenePblockLayout() : nullptr,
+            .lifetime = ResourceLifetime::Transient,
+            .parameters = {},
+        };
+
+        for (auto& frame : m_frameResources)
+        {
+            frame.sceneParameters
+                = m_device.CreateTransientParameterBlock(pblockData, "Scene", m_sceneDescriptorPool.value());
+        }
+    }
+
+    if (viewPblockLayout.HasDescriptors())
+    {
+        const auto numThreads = m_device.GetScheduler().GetThreadCount();
+        for (auto& frame : m_frameResources)
+        {
             for (uint32 i = 0; i < numThreads; i++)
             {
-                ret.threadResources.emplace_back(DescriptorPool(vkdevice, viewPblockLayout, ViewDescriptorPoolSize));
+                frame.threadResources.emplace_back(DescriptorPool(vkdevice, viewPblockLayout, ViewDescriptorPoolSize));
             }
-            return ret;
-        });
+        }
     }
 }
 
@@ -166,7 +193,7 @@ void VulkanRenderer::BeginFrame(ShaderParameters sceneParameters)
         .lifetime = ResourceLifetime::Transient,
         .parameters = std::move(sceneParameters),
     };
-    frameResources.sceneParameters = m_device.CreateParameterBlock(pblockData, "Scene");
+    m_device.UpdateTransientParameterBlock(frameResources.sceneParameters, pblockData);
     for (auto& threadResources : frameResources.threadResources)
     {
         threadResources.viewDescriptorPool.Reset();
@@ -373,6 +400,19 @@ Task<TextureData> VulkanRenderer::CopyTextureData(TexturePtr texture)
     });
 }
 
+TransientParameterBlock* VulkanRenderer::CreateViewParameterBlock(const ParameterBlockData& data, const char* name)
+{
+    if (m_shaderEnvironment == nullptr)
+    {
+        return nullptr;
+    }
+
+    const auto threadIndex = m_device.GetScheduler().GetThreadIndex();
+    auto& threadResources = GetCurrentFrame().threadResources.at(threadIndex);
+    auto p = m_device.CreateTransientParameterBlock(data, name, threadResources.viewDescriptorPool);
+    return &threadResources.viewParameters.emplace_back(std::move(p));
+}
+
 void VulkanRenderer::RecordRenderListCommands(
     CommandBuffer& commandBufferWrapper, const RenderList& renderList, vk::RenderPass renderPass,
     const RenderPassDesc& renderPassDesc, const Framebuffer& framebuffer)
@@ -398,14 +438,14 @@ void VulkanRenderer::RecordRenderListCommands(
         .parameters = renderList.viewParameters,
     };
     const auto viewParamsName = fmt::format("{}:View", renderList.name);
-    const auto* viewParameters = CreateViewParameterBlock(viewParamsData, viewParamsName.c_str(), commandBufferWrapper);
+    const auto* viewParameters = CreateViewParameterBlock(viewParamsData, viewParamsName.c_str());
 
     commandBuffer.beginRenderPass(renderPassBegin, vk::SubpassContents::eInline);
 
     if (!renderList.objects.empty())
     {
         const auto descriptorSets = std::array{
-            GetDescriptorSet(GetSceneParameterBlock().get()),
+            GetSceneParameterBlock().descriptorSet,
             viewParameters ? viewParameters->descriptorSet : nullptr,
         };
         const auto firstActiveSet

@@ -18,7 +18,9 @@ struct ShaderParameters
 };
 
 class ParameterBlockLayout : AbstractBase
-{};
+{
+    virtual bool IsEmpty() const = 0;
+};
 
 struct ParameterBlockData
 {

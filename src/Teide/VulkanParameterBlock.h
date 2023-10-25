@@ -2,6 +2,7 @@
 #pragma once
 
 #include "Vulkan.h"
+#include "VulkanBuffer.h"
 
 #include "Teide/ParameterBlock.h"
 
@@ -24,6 +25,10 @@ struct VulkanParameterBlockLayout : public ParameterBlockLayout
     vk::UniqueDescriptorSetLayout setLayout;
     std::optional<vk::PushConstantRange> pushConstantRange;
     vk::ShaderStageFlags uniformsStages;
+
+    bool IsEmpty() const override;
+    bool HasDescriptors() const;
+    bool HasPushConstants() const;
 };
 
 using VulkanParameterBlockLayoutPtr = std::shared_ptr<const VulkanParameterBlockLayout>;
@@ -36,7 +41,7 @@ struct VulkanImpl<ParameterBlockLayout>
 
 struct VulkanParameterBlock : public ParameterBlock
 {
-    BufferPtr uniformBuffer;
+    std::shared_ptr<VulkanBuffer> uniformBuffer;
     std::vector<TexturePtr> textures;
     vk::UniqueDescriptorSet descriptorSet;
     std::vector<byte> pushConstantData;
@@ -49,7 +54,7 @@ struct VulkanParameterBlock : public ParameterBlock
 
 struct TransientParameterBlock
 {
-    BufferPtr uniformBuffer;
+    std::shared_ptr<VulkanBuffer> uniformBuffer;
     std::vector<TexturePtr> textures;
     vk::DescriptorSet descriptorSet;
 };
