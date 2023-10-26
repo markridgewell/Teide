@@ -36,7 +36,7 @@ namespace Internal
     template <class... Args>
     inline std::string AssertFormat(const fmt::format_string<Args...>& format, Args&&... fmtArgs)
     {
-        return fmt::vformat(format, fmt::make_format_args(std::forward<Args>(fmtArgs)...));
+        return fmt::format(format, std::forward<Args>(fmtArgs)...);
     }
 
     inline std::string AssertFormat()
@@ -86,10 +86,10 @@ namespace Internal
             }                                                                                                          \
             TEIDE_WHILE_0
 #    else
-#        define TEIDE_NOP(x)                                                                                           \
+#        define TEIDE_NOP(...)                                                                                         \
             do                                                                                                         \
             {                                                                                                          \
-                (void)sizeof(x);                                                                                       \
+                (void)sizeof(__VA_ARGS__);                                                                             \
             }                                                                                                          \
             TEIDE_WHILE_0
 #    endif
