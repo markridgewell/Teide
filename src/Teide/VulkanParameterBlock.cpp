@@ -18,7 +18,7 @@ bool VulkanParameterBlockLayout::HasDescriptors() const
 
 bool VulkanParameterBlockLayout::HasPushConstants() const
 {
-    return !pushConstantRange.has_value();
+    return pushConstantRange.has_value();
 }
 
 VulkanParameterBlock::VulkanParameterBlock(const VulkanParameterBlockLayout& layout)
