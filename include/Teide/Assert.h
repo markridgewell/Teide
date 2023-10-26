@@ -95,12 +95,7 @@ namespace Internal
 #    endif
 
 #    define TEIDE_BREAK(...) TEIDE_NOP(__VA_ARGS__)
-#    define TEIDE_ASSERT(expr, ...)                                                                                    \
-        do                                                                                                             \
-        {                                                                                                              \
-            TEIDE_NOP((expr, __VA_ARGS__));                                                                            \
-        }                                                                                                              \
-        TEIDE_WHILE_0
+#    define TEIDE_ASSERT(...) TEIDE_NOP(__VA_ARGS__)
 #endif
 
 } // namespace Teide
