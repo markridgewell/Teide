@@ -48,12 +48,12 @@ struct Matrix<T, 1, N>
 
     constexpr auto& operator[](Extent i) noexcept
     {
-        assert(i >= 0 && i < sizeof(members) / sizeof(members[0]));
+        TEIDE_ASSERT(i >= 0 && i < sizeof(members) / sizeof(members[0]));
         return this->*members[i];
     }
     constexpr const auto& operator[](Extent i) const noexcept
     {
-        assert(i >= 0 && i < sizeof(members) / sizeof(members[0]));
+        TEIDE_ASSERT(i >= 0 && i < sizeof(members) / sizeof(members[0]));
         return this->*members[i];
     }
 
@@ -74,12 +74,12 @@ struct Matrix<T, 2, N>
 
     constexpr auto& operator[](Extent i) noexcept
     {
-        assert(i >= 0 && i < sizeof(members) / sizeof(members[0]));
+        TEIDE_ASSERT(i >= 0 && i < sizeof(members) / sizeof(members[0]));
         return this->*members[i];
     }
     constexpr const auto& operator[](Extent i) const noexcept
     {
-        assert(i >= 0 && i < sizeof(members) / sizeof(members[0]));
+        TEIDE_ASSERT(i >= 0 && i < sizeof(members) / sizeof(members[0]));
         return this->*members[i];
     }
 
@@ -101,12 +101,12 @@ struct Matrix<T, 3, N>
 
     constexpr auto& operator[](Extent i) noexcept
     {
-        assert(i >= 0 && i < sizeof(members) / sizeof(members[0]));
+        TEIDE_ASSERT(i >= 0 && i < sizeof(members) / sizeof(members[0]));
         return this->*members[i];
     }
     constexpr const auto& operator[](Extent i) const noexcept
     {
-        assert(i >= 0 && i < sizeof(members) / sizeof(members[0]));
+        TEIDE_ASSERT(i >= 0 && i < sizeof(members) / sizeof(members[0]));
         return this->*members[i];
     }
 
@@ -129,12 +129,12 @@ struct Matrix<T, 4, N>
 
     constexpr auto& operator[](Extent i) noexcept
     {
-        assert(i >= 0 && i < sizeof(members) / sizeof(members[0]));
+        TEIDE_ASSERT(i >= 0 && i < sizeof(members) / sizeof(members[0]));
         return this->*members[i];
     }
     constexpr const auto& operator[](Extent i) const noexcept
     {
-        assert(i >= 0 && i < sizeof(members) / sizeof(members[0]));
+        TEIDE_ASSERT(i >= 0 && i < sizeof(members) / sizeof(members[0]));
         return this->*members[i];
     }
 

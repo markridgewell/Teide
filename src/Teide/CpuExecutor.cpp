@@ -1,6 +1,8 @@
 
 #include "CpuExecutor.h"
 
+#include "Teide/Assert.h"
+
 #include <spdlog/spdlog.h>
 
 namespace Teide
@@ -18,8 +20,7 @@ class WorkerInterface : public ::tf::WorkerInterface
             }
             catch (const std::exception& e)
             {
-                spdlog::critical("Unhandled exception in worker thread: {}", e.what());
-                assert(false);
+                TEIDE_BREAK("Unhandled exception in worker thread: {}", e.what());
             }
         }
     }

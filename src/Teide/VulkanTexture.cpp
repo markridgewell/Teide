@@ -143,14 +143,14 @@ void VulkanTexture::TransitionToRenderTarget(TextureState& state, vk::CommandBuf
 
 void VulkanTexture::TransitionToColorTarget(TextureState& state, vk::CommandBuffer cmdBuffer) const
 {
-    assert(!HasDepthOrStencilComponent(format));
+    TEIDE_ASSERT(!HasDepthOrStencilComponent(format));
 
     DoTransition(state, cmdBuffer, vk::ImageLayout::eColorAttachmentOptimal, vk::PipelineStageFlagBits::eColorAttachmentOutput);
 }
 
 void VulkanTexture::TransitionToDepthStencilTarget(TextureState& state, vk::CommandBuffer cmdBuffer) const
 {
-    assert(HasDepthOrStencilComponent(format));
+    TEIDE_ASSERT(HasDepthOrStencilComponent(format));
 
     DoTransition(
         state, cmdBuffer, vk::ImageLayout::eDepthStencilAttachmentOptimal,

@@ -1,10 +1,66 @@
 
+#include "Teide/Assert.h"
 #include "Teide/TestUtils.h"
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <spdlog/sinks/ostream_sink.h>
 #include <spdlog/spdlog.h>
+
+#include <exception>
+
+#ifdef _WIN32
+#    define WIN32_LEAN_AND_MEAN
+#    define NOMINMAX
+#    include <windows.h>
+#else
+inline bool IsDebuggerPresent()
+{
+    return false;
+}
+#endif
+
+namespace
+{
+class AssertException : public std::exception
+{
+public:
+    AssertException(std::string_view msg) : exception(std::string(msg).c_str()) {}
+};
+
+bool AssertThrow(std::string_view msg, std::string_view expression, std::source_location /*location*/)
+{
+    if (!msg.empty())
+    {
+        throw AssertException(expression);
+    }
+    throw AssertException(msg);
+}
+
+bool AssertDie(std::string_view msg, std::string_view expression, std::source_location location)
+{
+    std::cout << location.file_name();
+    if (location.line() > 0)
+    {
+        std::cout << '(' << location.line() << ')';
+    }
+    std::cout << ": ";
+    if (std::strlen(location.function_name()) > 0)
+    {
+        std::cout << location.function_name() << ": ";
+    }
+    if (expression.empty())
+    {
+        std::cout << msg << std::endl;
+    }
+    else
+    {
+        std::cout << "Assertion failed: " << expression << ": " << msg << std::endl;
+    }
+    std::terminate();
+}
+
+} // namespace
 
 class LogSuppressor : public testing::EmptyTestEventListener
 {
@@ -64,6 +120,14 @@ int main(int argc, char** argv)
         // gtest demands an owning raw pointer to be passed in here
         listeners.Append(new LogSuppressor); // NOLINT(cppcoreguidelines-owning-memory)
     }
+
+    fmt::print("Debugger: {}\n", IsDebuggerPresent());
+    if (!IsDebuggerPresent())
+    {
+        Teide::SetAssertHandler(&AssertDie);
+    }
+
+    testing::FLAGS_gtest_break_on_failure = IsDebuggerPresent();
 
     return RUN_ALL_TESTS();
 }

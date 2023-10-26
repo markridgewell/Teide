@@ -19,7 +19,7 @@ struct VulkanPipeline : public Pipeline
     vk::Pipeline GetPipeline(const RenderPassDesc& renderPass) const
     {
         const auto it = std::ranges::find(pipelines, renderPass, &RenderPassPipeline::renderPass);
-        assert(it != pipelines.end());
+        TEIDE_ASSERT(it != pipelines.end());
         return it->pipeline.get();
     }
 

@@ -1,6 +1,7 @@
 
 #include "ShaderCompiler/ShaderCompiler.h"
 
+#include "Teide/Assert.h"
 #include "Teide/Definitions.h"
 
 #include <fmt/format.h>
@@ -253,12 +254,12 @@ void ReflectUniforms(ParameterBlockDesc& pblock, const glslang::TObjectReflectio
 
     if constexpr (IsDebugBuild)
     {
-        assert(uniformBlock.getType());
-        assert(uniformBlock.getType()->isStruct());
+        TEIDE_ASSERT(uniformBlock.getType());
+        TEIDE_ASSERT(uniformBlock.getType()->isStruct());
 
         for ([[maybe_unused]] const auto& u : *uniformBlock.getType()->getStruct())
         {
-            assert(
+            TEIDE_ASSERT(
                 std::ranges::find(pblock.parameters, std::string_view{u.type->getFieldName()}, &ShaderVariable::name)
                 != pblock.parameters.end());
         }
