@@ -22,21 +22,6 @@ inline bool IsDebuggerPresent()
 
 namespace
 {
-class AssertException : public std::exception
-{
-public:
-    AssertException(std::string_view msg) : exception(std::string(msg).c_str()) {}
-};
-
-bool AssertThrow(std::string_view msg, std::string_view expression, std::source_location /*location*/)
-{
-    if (!msg.empty())
-    {
-        throw AssertException(expression);
-    }
-    throw AssertException(msg);
-}
-
 bool AssertDie(std::string_view msg, std::string_view expression, std::source_location location)
 {
     std::cout << location.file_name();
