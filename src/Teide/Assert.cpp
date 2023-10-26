@@ -19,7 +19,7 @@ namespace Teide
 {
 namespace
 {
-    bool GenerateAssertHandler(std::string_view msg, std::string_view expression, std::source_location location)
+    bool GenericAssertHandler(std::string_view msg, std::string_view expression, std::source_location location)
     {
         // Print a message
         fmt::print("{}", location.file_name());
