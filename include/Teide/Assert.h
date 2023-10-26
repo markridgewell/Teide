@@ -14,7 +14,11 @@
 namespace Teide
 {
 
-#define TEIDE_WHILE_0 __pragma(warning(push)) __pragma(warning(disable : 4127)) while (0) __pragma(warning(pop))
+#ifdef _WIN32
+#    define TEIDE_WHILE_0 __pragma(warning(push)) __pragma(warning(disable : 4127)) while (0) __pragma(warning(pop))
+#else
+#    define TEIDE_WHILE_0 while (0)
+#endif
 
 #if !defined(NDEBUG) && !defined(TEIDE_ASSERTS_ENABLED)
 #    define TEIDE_ASSERTS_ENABLED
