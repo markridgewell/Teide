@@ -107,7 +107,7 @@ jobs:
     strategy:
       matrix:
         buildtype: [Debug, Release]
-        compiler: [g++-12, clang++-17]
+        compiler: [g++-13, clang++-17]
         sanitizer: [OFF]
         include:
         - preset: ninja
