@@ -88,6 +88,7 @@ jobs:
         path: build/${{matrix.preset}}/Testing/Temporary/LastTest.log
 
     - name: Upload coverage report
+      if: ${{matrix.coverage == 'ON'}}
       uses: codecov/codecov-action@v3
       with:
         directory: build/${{matrix.preset}}/coverage/output
@@ -96,6 +97,7 @@ jobs:
         functionalities: fixes
 
     - name: Save coverage report
+      if: ${{matrix.coverage == 'ON'}}
       uses: actions/upload-artifact@v3
       with:
         name: CoverageReport-${{env.job_name}}
