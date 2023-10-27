@@ -13,6 +13,7 @@ runs:
       uses: lukka/run-vcpkg@v11
       with:
         vcpkgDirectory: '${{github.workspace}}/external/vcpkg'
+        vcpkgJsonGlob: 'vcpkg.json'
 
     - name: Setup Vulkan SDK
       uses: humbletim/setup-vulkan-sdk@v1.2.0
