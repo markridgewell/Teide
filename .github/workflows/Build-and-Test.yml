@@ -71,7 +71,7 @@ jobs:
 
     - name: Test
       id: test
-      run: ctest --preset ${{matrix.preset}} --build-config ${{matrix.buildtype}} --verbose --no-tests=error
+      run: ctest --preset ${{matrix.preset}} --build-config ${{matrix.buildtype}} --verbose --output-on-failure --no-tests=error
 
     - name: Save render test output
       if: failure() && steps.test.outcome == 'failure'
