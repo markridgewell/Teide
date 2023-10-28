@@ -74,21 +74,21 @@ jobs:
       run: ctest --preset ${{matrix.preset}} --build-config ${{matrix.buildtype}} --verbose --no-tests=error
 
     - name: Save render test output
-      if: steps.test.outcome == 'failure'
+      if: failure() && steps.test.outcome == 'failure'
       uses: actions/upload-artifact@v3
       with:
         name: RenderTestOutput-${{env.job_name}}
         path: RenderTestOutput
 
     - name: Save test log
-      if: steps.test.outcome == 'failure'
+      if: failure() && steps.test.outcome == 'failure'
       uses: actions/upload-artifact@v3
       with:
         name: TestLog-${{env.job_name}}
         path: build/${{matrix.preset}}/Testing/Temporary/LastTest.log
 
     - name: Upload coverage report
-      if: ${{matrix.coverage == 'ON'}}
+      if: matrix.coverage == 'ON'
       uses: codecov/codecov-action@v3
       with:
         directory: build/${{matrix.preset}}/coverage/output
@@ -97,7 +97,7 @@ jobs:
         functionalities: fixes
 
     - name: Save coverage report
-      if: ${{matrix.coverage == 'ON'}}
+      if: matrix.coverage == 'ON'
       uses: actions/upload-artifact@v3
       with:
         name: CoverageReport-${{env.job_name}}
