@@ -38,6 +38,8 @@ LONG WINAPI ExceptionHandler(EXCEPTION_POINTERS* exceptions [[maybe_unused]])
         spdlog::error("{}: {} - {:x}", i, symbol->Name, symbol->Address);
     }
 
+    spdlog::default_logger()->flush();
+
     SymCleanup(process);
 
     spdlog::debug("ExceptionHandler end");
@@ -102,6 +104,7 @@ int main(int argc, char** argv)
     }
 
     spdlog::debug("Invoking crash...");
+    spdlog::default_logger()->flush();
     int* ptr = nullptr;
     *ptr = 42;
     spdlog::debug("You shouldn't see this!");
