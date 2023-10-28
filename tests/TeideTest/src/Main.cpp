@@ -14,13 +14,11 @@
 
 #    pragma comment(lib, "dbghelp.lib")
 
-#    include <fmt/core.h>
-
 #    include <bit>
 
 LONG WINAPI ExceptionHandler(EXCEPTION_POINTERS* exceptions [[maybe_unused]])
 {
-    fmt::println("ExceptionHandler begin");
+    spdlog::debug("ExceptionHandler begin");
     const HANDLE process = GetCurrentProcess();
     SymInitialize(process, nullptr, TRUE);
 
@@ -37,12 +35,12 @@ LONG WINAPI ExceptionHandler(EXCEPTION_POINTERS* exceptions [[maybe_unused]])
     for (USHORT i = 0; i < numFrames; i++)
     {
         SymFromAddr(process, std::bit_cast<DWORD64>(stack[i]), 0, symbol);
-        fmt::println("{}: {} - {:x}", i, symbol->Name, symbol->Address);
+        spdlog::error("{}: {} - {:x}", i, symbol->Name, symbol->Address);
     }
 
     SymCleanup(process);
 
-    fmt::println("ExceptionHandler end");
+    spdlog::debug("ExceptionHandler end");
     return EXCEPTION_CONTINUE_SEARCH;
 }
 #endif
@@ -80,7 +78,7 @@ private:
 int main(int argc, char** argv)
 {
 #ifdef _WIN32
-    fmt::println("Setting exception handler...");
+    spdlog::info("Setting exception handler...");
     SetUnhandledExceptionFilter(ExceptionHandler);
 #endif
 
@@ -102,10 +100,10 @@ int main(int argc, char** argv)
         }
     }
 
-    fmt::println("Invoking crash...");
+    spdlog::debug("Invoking crash...");
     int* ptr = nullptr;
     *ptr = 42;
-    fmt::println("You shouldn't see this!");
+    spdlog::debug("You shouldn't see this!");
 
     testing::InitGoogleTest(&argc, argv);
 
