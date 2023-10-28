@@ -7,48 +7,20 @@
 #include <spdlog/spdlog.h>
 
 #ifdef _WIN32
-#    define WIN32_LEAN_AND_MEAN
-#    include <Windows.h>
-// Must go after Windows.h
-#    include <DbgHelp.h>
+#    include "StackWalker.h"
 
-#    pragma comment(lib, "dbghelp.lib")
-#    include <bit>
-#    include <cstdio>
+class MyStackWalker : public StackWalker
+{
+    virtual void OnOutput(LPCSTR szText) { std::puts(szText); }
+};
 
 LONG WINAPI ExceptionHandler(EXCEPTION_POINTERS* exceptions [[maybe_unused]])
 {
-    spdlog::debug("ExceptionHandler begin");
-    const HANDLE process = GetCurrentProcess();
-    SymInitialize(process, nullptr, TRUE);
-
-    void* stack[100];
-    const USHORT numFrames = CaptureStackBackTrace(0, static_cast<DWORD>(std::size(stack)), stack, nullptr);
-
-    constexpr ULONG MaxSymbolNameLength = 255;
-    const auto buffer = std::make_unique<std::byte[]>(sizeof(SYMBOL_INFO) + MaxSymbolNameLength);
-    SYMBOL_INFO* symbol = new (buffer.get()) SYMBOL_INFO{
-        .SizeOfStruct = sizeof(SYMBOL_INFO),
-        .MaxNameLen = MaxSymbolNameLength,
-    };
-
-    FILE* out = nullptr;
-    fopen_s(&out, "stacktrace.txt", "w");
-    for (USHORT i = 0; i < numFrames; i++)
-    {
-        SymFromAddr(process, std::bit_cast<DWORD64>(stack[i]), 0, symbol);
-        spdlog::error("{}: {} - {:x}", i, symbol->Name, symbol->Address);
-        fmt::println(out, "{}: {} - {:x}", i, symbol->Name, symbol->Address);
-    }
-    fclose(out);
-
-    spdlog::default_logger()->flush();
-
-    SymCleanup(process);
-
-    spdlog::debug("ExceptionHandler end");
-    return EXCEPTION_CONTINUE_SEARCH;
+    MyStackWalker sw;
+    sw.ShowCallstack(GetCurrentThread(), exceptions->ContextRecord);
+    return EXCEPTION_EXECUTE_HANDLER;
 }
+
 #endif
 
 class LogSuppressor : public testing::EmptyTestEventListener
@@ -106,12 +78,6 @@ int main(int argc, char** argv)
             spdlog::info("Windowless environment indicated: skipping surface tests");
         }
     }
-
-    spdlog::debug("Invoking crash...");
-    spdlog::default_logger()->flush();
-    int* ptr = nullptr;
-    *ptr = 42;
-    spdlog::debug("You shouldn't see this!");
 
     testing::InitGoogleTest(&argc, argv);
 
