@@ -13,8 +13,8 @@
 #    include <DbgHelp.h>
 
 #    pragma comment(lib, "dbghelp.lib")
-
 #    include <bit>
+#    include <cstdio>
 
 LONG WINAPI ExceptionHandler(EXCEPTION_POINTERS* exceptions [[maybe_unused]])
 {
@@ -32,11 +32,15 @@ LONG WINAPI ExceptionHandler(EXCEPTION_POINTERS* exceptions [[maybe_unused]])
         .MaxNameLen = MaxSymbolNameLength,
     };
 
+    FILE* out = nullptr;
+    fopen_s(&out, "stacktrace.txt", "w");
     for (USHORT i = 0; i < numFrames; i++)
     {
         SymFromAddr(process, std::bit_cast<DWORD64>(stack[i]), 0, symbol);
         spdlog::error("{}: {} - {:x}", i, symbol->Name, symbol->Address);
+        fmt::println(out, "{}: {} - {:x}", i, symbol->Name, symbol->Address);
     }
+    fclose(out);
 
     spdlog::default_logger()->flush();
 

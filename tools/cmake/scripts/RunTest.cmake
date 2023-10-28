@@ -17,3 +17,7 @@ if("$ENV{TEST_COVERAGE}")
 endif()
 
 execute_process(COMMAND ${RUNNER_COMMAND} ${TEST_BINARY} ${TEST_ARGS} COMMAND_ECHO STDERR COMMAND_ERROR_IS_FATAL ANY)
+if (EXISTS "stacktrace.txt")
+    file(READ "stacktrace.txt" STACKTRACE)
+    message("${STACKTRACE}")
+endif()
