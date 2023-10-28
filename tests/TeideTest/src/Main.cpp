@@ -7,7 +7,6 @@
 #include <spdlog/spdlog.h>
 
 #ifdef _WIN32
-#    define WIN32_LEAN_AND_MEAN
 #    include <DbgHelp.h>
 #    include <Windows.h>
 #    pragma comment(lib, "dbghelp.lib")
