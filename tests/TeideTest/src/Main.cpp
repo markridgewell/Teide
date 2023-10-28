@@ -81,6 +81,7 @@ int main(int argc, char** argv)
     spdlog::info("Setting exception handler...");
     SetUnhandledExceptionFilter(ExceptionHandler);
 #endif
+    spdlog::flush_on(spdlog::level::err);
 
     for (const std::string_view arg : std::span(argv, static_cast<std::size_t>(argc)).subspan<1>())
     {
