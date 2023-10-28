@@ -20,6 +20,7 @@
 
 LONG WINAPI ExceptionHandler(EXCEPTION_POINTERS* exceptions [[maybe_unused]])
 {
+    fmt::println("ExceptionHandler begin");
     const HANDLE process = GetCurrentProcess();
     SymInitialize(process, nullptr, TRUE);
 
@@ -41,6 +42,7 @@ LONG WINAPI ExceptionHandler(EXCEPTION_POINTERS* exceptions [[maybe_unused]])
 
     SymCleanup(process);
 
+    fmt::println("ExceptionHandler end");
     return EXCEPTION_CONTINUE_SEARCH;
 }
 #endif
@@ -78,6 +80,7 @@ private:
 int main(int argc, char** argv)
 {
 #ifdef _WIN32
+    fmt::println("Setting exception handler...");
     SetUnhandledExceptionFilter(ExceptionHandler);
 #endif
 
@@ -99,8 +102,10 @@ int main(int argc, char** argv)
         }
     }
 
+    fmt::println("Invoking crash...");
     int* ptr = nullptr;
     *ptr = 42;
+    fmt::println("You shouldn't see this!");
 
     testing::InitGoogleTest(&argc, argv);
 
