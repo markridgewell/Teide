@@ -6,6 +6,43 @@
 #include <spdlog/sinks/ostream_sink.h>
 #include <spdlog/spdlog.h>
 
+#ifdef _WIN32
+#    define WIN32_LEAN_AND_MEAN
+#    include <DbgHelp.h>
+#    include <Windows.h>
+#    pragma comment(lib, "dbghelp.lib")
+
+#    include <fmt/core.h>
+
+#    include <bit>
+
+LONG WINAPI ExceptionHandler(EXCEPTION_POINTERS* exceptions [[maybe_unused]])
+{
+    const HANDLE process = GetCurrentProcess();
+    SymInitialize(process, nullptr, TRUE);
+
+    void* stack[100];
+    const USHORT numFrames = CaptureStackBackTrace(0, static_cast<DWORD>(std::size(stack)), stack, nullptr);
+
+    constexpr ULONG MaxSymbolNameLength = 255;
+    const auto buffer = std::make_unique<std::byte[]>(sizeof(SYMBOL_INFO) + MaxSymbolNameLength);
+    SYMBOL_INFO* symbol = new (buffer.get()) SYMBOL_INFO{
+        .SizeOfStruct = sizeof(SYMBOL_INFO),
+        .MaxNameLen = MaxSymbolNameLength,
+    };
+
+    for (USHORT i = 0; i < numFrames; i++)
+    {
+        SymFromAddr(process, std::bit_cast<DWORD64>(stack[i]), 0, symbol);
+        fmt::println("{}: {} - {:x}", i, symbol->Name, symbol->Address);
+    }
+
+    SymCleanup(process);
+
+    return EXCEPTION_CONTINUE_SEARCH;
+}
+#endif
+
 class LogSuppressor : public testing::EmptyTestEventListener
 {
 public:
@@ -38,6 +75,10 @@ private:
 
 int main(int argc, char** argv)
 {
+#ifdef _WIN32
+    SetUnhandledExceptionFilter(ExceptionHandler);
+#endif
+
     for (const std::string_view arg : std::span(argv, static_cast<std::size_t>(argc)).subspan<1>())
     {
         if (arg == "-s" || arg == "--sw-render")
@@ -55,6 +96,9 @@ int main(int argc, char** argv)
             spdlog::info("Windowless environment indicated: skipping surface tests");
         }
     }
+
+    int* ptr = nullptr;
+    *ptr = 42;
 
     testing::InitGoogleTest(&argc, argv);
 
