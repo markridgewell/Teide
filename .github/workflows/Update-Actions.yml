@@ -1,4 +1,4 @@
-name: GitHub Actions Version Updater
+name: Update-Actions
 
 # Controls when the action will run.
 on:
