@@ -37,13 +37,6 @@ jobs:
     - name: Print job ID
       run: echo "${{github.job}}"
 
-    - name: Enable crash dumps
-      run: |
-        $RegistryPath = "HKLM:\SOFTWARE\Microsoft\Windows\Windows Error Reporting\LocalDumps"
-        New-Item -Path $RegistryPath -Force
-        New-ItemProperty -Path $RegistryPath -Name DumpFolder -Value "%LocalAppData%\CrashDumps" -PropertyType ExpandString -Force
-        New-ItemProperty -Path $RegistryPath -Name DumpType -Value 2 -PropertyType DWord -Force
-
     - name: Checkout
       uses: actions/checkout@v3
       with:
@@ -93,13 +86,6 @@ jobs:
       with:
         name: TestLog-${{env.job_name}}
         path: build/${{matrix.preset}}/Testing/Temporary/LastTest.log
-
-    - name: Save crash dumps
-      if: failure() && steps.test.outcome == 'failure'
-      uses: actions/upload-artifact@v3
-      with:
-        name: CrashDumps-${{env.job_name}}
-        path: "${{env.LocalAppData}}/CrashDumps"
 
     - name: Upload coverage report
       if: ${{matrix.coverage == 'ON'}}
