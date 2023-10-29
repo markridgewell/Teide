@@ -95,7 +95,7 @@ namespace Internal
 
 #else
 
-#    define TEIDE_NOP(...) (void)sizeof(0, __VA_ARGS__)
+#    define TEIDE_NOP(...) static_cast<void>(sizeof(0, __VA_ARGS__))
 
 #    define TEIDE_BREAK(...) TEIDE_NOP(__VA_ARGS__)
 #    define TEIDE_ASSERT(...) TEIDE_NOP(__VA_ARGS__)
