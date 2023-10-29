@@ -64,6 +64,7 @@ namespace
         {
             fmt::println(stderr, "Assertion failed: {}: {}", expression, msg);
         }
+        std::fputs("###TEST###\n", stderr);
         return true;
     }
 
