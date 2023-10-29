@@ -40,33 +40,31 @@ namespace
         fmt::format_to(out, "\nClick OK to break into the debugger.");
 
         const auto title = expression.empty() ? "Breakpoint triggered!" : "Assert failed!";
-        if (MessageBox(nullptr, outputString.c_str(), title, MB_ICONSTOP | MB_OKCANCEL) == IDOK)
+        if (MessageBox(nullptr, outputString.c_str(), title, MB_ICONSTOP | MB_OKCANCEL) != IDOK)
         {
-            return true;
+            return false;
         }
-        return false;
-#else
+#endif
         // Print a message
-        fmt::print("{}", location.file_name());
+        fmt::print(stderr, "{}", location.file_name());
         if (location.line() > 0)
         {
-            fmt::print("({})", location.line());
+            fmt::print(stderr, "({})", location.line());
         }
-        fmt::print(": ");
+        fmt::print(stderr, ": ");
         if (std::strlen(location.function_name()) > 0)
         {
-            fmt::print("{}: ", location.function_name());
+            fmt::print(stderr, "{}: ", location.function_name());
         }
         if (expression.empty())
         {
-            fmt::println("{}", msg);
+            fmt::println(stderr, "{}", msg);
         }
         else
         {
-            fmt::println("Assertion failed: {}: {}", expression, msg);
+            fmt::println(stderr, "Assertion failed: {}: {}", expression, msg);
         }
         return true;
-#endif
     }
 
     std::stack<AssertHandler*> s_handlerStack;
