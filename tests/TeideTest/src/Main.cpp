@@ -6,6 +6,24 @@
 #include <spdlog/sinks/ostream_sink.h>
 #include <spdlog/spdlog.h>
 
+#if defined(_WIN32) && __has_include("StackWalker.h")
+#    define STACKWALKER_ENABLED
+#    include "StackWalker.h"
+
+class MyStackWalker : public StackWalker
+{
+    virtual void OnOutput(LPCSTR szText) { std::puts(szText); }
+};
+
+LONG WINAPI ExceptionHandler(EXCEPTION_POINTERS* exceptions [[maybe_unused]])
+{
+    MyStackWalker sw;
+    sw.ShowCallstack(GetCurrentThread(), exceptions->ContextRecord);
+    return EXCEPTION_EXECUTE_HANDLER;
+}
+
+#endif
+
 class LogSuppressor : public testing::EmptyTestEventListener
 {
 public:
@@ -38,6 +56,12 @@ private:
 
 int main(int argc, char** argv)
 {
+#ifdef STACKWALKER_ENABLED
+    spdlog::info("Setting exception handler...");
+    SetUnhandledExceptionFilter(ExceptionHandler);
+#endif
+    spdlog::flush_on(spdlog::level::err);
+
     for (const std::string_view arg : std::span(argv, static_cast<std::size_t>(argc)).subspan<1>())
     {
         if (arg == "-s" || arg == "--sw-render")

@@ -60,7 +60,7 @@ private:
     public:
         explicit Queue(vk::Device device, vk::Queue queue) : m_device{device}, m_queue{queue} {}
 
-        auto GetInFlightFences() const { return m_inFlightSubmits | std::views::transform(&InFlightSubmit::GetFence); }
+        std::vector<vk::Fence> GetInFlightFences() const;
 
         void Flush();
         uint32 AddCommandBufferSlot();

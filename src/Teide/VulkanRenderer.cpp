@@ -99,6 +99,8 @@ VulkanRenderer::VulkanRenderer(VulkanGraphicsDevice& device, const QueueFamilies
     m_graphicsQueue{device.GetVulkanDevice().getQueue(queueFamilies.graphicsFamily, 0)},
     m_shaderEnvironment{std::move(shaderEnvironment)}
 {
+    using std::ranges::generate;
+
     const auto vkdevice = device.GetVulkanDevice();
 
     if (queueFamilies.presentFamily)
@@ -106,10 +108,25 @@ VulkanRenderer::VulkanRenderer(VulkanGraphicsDevice& device, const QueueFamilies
         m_presentQueue = vkdevice.getQueue(*queueFamilies.presentFamily, 0);
     }
 
-    std::ranges::generate(m_renderFinished, [=] { return vkdevice.createSemaphoreUnique({}, s_allocator); });
-    std::ranges::generate(m_inFlightFences, [=] {
+    generate(m_renderFinished, [=] { return vkdevice.createSemaphoreUnique({}, s_allocator); });
+    generate(m_inFlightFences, [=] {
         return vkdevice.createFenceUnique({.flags = vk::FenceCreateFlagBits::eSignaled}, s_allocator);
     });
+
+    if (m_shaderEnvironment)
+    {
+        constexpr uint32 ViewDescriptorPoolSize = 8;
+        const auto& viewPblockLayout = device.GetImpl(*m_shaderEnvironment->GetViewPblockLayout());
+        const auto numThreads = device.GetScheduler().GetThreadCount();
+        generate(m_frameResources, [&] {
+            FrameResources ret;
+            for (uint32 i = 0; i < numThreads; i++)
+            {
+                ret.threadResources.emplace_back(DescriptorPool(vkdevice, viewPblockLayout, ViewDescriptorPoolSize));
+            }
+            return ret;
+        });
+    }
 }
 
 VulkanRenderer::~VulkanRenderer()
@@ -150,6 +167,11 @@ void VulkanRenderer::BeginFrame(ShaderParameters sceneParameters)
         .parameters = std::move(sceneParameters),
     };
     frameResources.sceneParameters = m_device.CreateParameterBlock(pblockData, "Scene");
+    for (auto& threadResources : frameResources.threadResources)
+    {
+        threadResources.viewDescriptorPool.Reset();
+        threadResources.viewParameters.clear();
+    }
 }
 
 void VulkanRenderer::EndFrame()
@@ -370,16 +392,13 @@ void VulkanRenderer::RecordRenderListCommands(
                                             : vk::Rect2D{.extent = {framebuffer.size.x, framebuffer.size.y}};
     commandBuffer.setScissor(0, scissor);
 
-    const auto threadIndex = m_device.GetScheduler().GetThreadIndex();
     const ParameterBlockData viewParamsData = {
         .layout = m_shaderEnvironment ? m_shaderEnvironment->GetViewPblockLayout() : nullptr,
         .lifetime = ResourceLifetime::Transient,
         .parameters = renderList.viewParameters,
     };
     const auto viewParamsName = fmt::format("{}:View", renderList.name);
-    const auto viewParameters
-        = m_device.CreateParameterBlock(viewParamsData, viewParamsName.c_str(), commandBufferWrapper, threadIndex);
-    commandBufferWrapper.AddReference(viewParameters);
+    const auto* viewParameters = CreateViewParameterBlock(viewParamsData, viewParamsName.c_str(), commandBufferWrapper);
 
     commandBuffer.beginRenderPass(renderPassBegin, vk::SubpassContents::eInline);
 
@@ -387,7 +406,7 @@ void VulkanRenderer::RecordRenderListCommands(
     {
         const auto descriptorSets = std::array{
             GetDescriptorSet(GetSceneParameterBlock().get()),
-            GetDescriptorSet(viewParameters.get()),
+            viewParameters ? viewParameters->descriptorSet : nullptr,
         };
         const auto firstActiveSet
             = static_cast<uint32>(std::distance(descriptorSets.begin(), std::ranges::find_if(descriptorSets, NotNull)));
