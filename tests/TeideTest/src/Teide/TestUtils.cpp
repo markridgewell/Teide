@@ -3,6 +3,12 @@
 
 #include <charconv>
 
+#ifdef _WIN32
+#    define WIN32_LEAN_AND_MEAN
+#    define NOMINMAX
+#    include <windows.h>
+#endif
+
 Teide::GraphicsDevicePtr CreateTestGraphicsDevice()
 {
     return Teide::CreateHeadlessDevice();
@@ -76,4 +82,13 @@ std::vector<std::byte> HexToBytes(std::string_view hexString)
     }
 
     return ret;
+}
+
+bool IsDebuggerAttached()
+{
+#ifdef _WIN32
+    return IsDebuggerPresent();
+#else
+    return false;
+#endif
 }

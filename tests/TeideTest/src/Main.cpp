@@ -9,14 +9,6 @@
 
 #include <exception>
 
-#ifdef _WIN32
-#    define WIN32_LEAN_AND_MEAN
-#    define NOMINMAX
-#    include <windows.h>
-#endif
-
-bool IsDebuggerAttached();
-
 namespace
 {
 bool AssertDie(std::string_view msg, std::string_view expression, Teide::SourceLocation location)
@@ -136,13 +128,4 @@ int main(int argc, char** argv)
     testing::FLAGS_gtest_break_on_failure = IsDebuggerAttached();
 
     return RUN_ALL_TESTS();
-}
-
-bool IsDebuggerAttached()
-{
-#ifdef _WIN32
-    return IsDebuggerPresent();
-#else
-    return false;
-#endif
 }
