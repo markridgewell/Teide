@@ -35,6 +35,20 @@ namespace
 {
     const vk::Optional<const vk::AllocationCallbacks> s_allocator = nullptr;
 
+    std::string_view Trim(std::string_view str)
+    {
+        constexpr const char* whitespace = " \t\n\r";
+        const auto strBegin = str.find_first_not_of(whitespace);
+        if (strBegin == std::string::npos)
+        {
+            return {};
+        }
+        const auto strEnd = str.find_last_not_of(whitespace);
+        const auto strRange = strEnd - strBegin + 1;
+
+        return str.substr(strBegin, strRange);
+    }
+
     vk::UniqueSurfaceKHR CreateVulkanSurface(SDL_Window* window, vk::Instance instance)
     {
         spdlog::info("Creating a Vulkan surface for a window");
@@ -224,7 +238,8 @@ namespace
         ret.queueFamilyIndices.erase(
             std::unique(ret.queueFamilyIndices.begin(), ret.queueFamilyIndices.end()), ret.queueFamilyIndices.end());
 
-        spdlog::info("Selected physical device: \"{}\"", ret.physicalDevice.getProperties().deviceName);
+        const auto& properties = ret.physicalDevice.getProperties();
+        spdlog::info("Selected physical device: {}", Trim(properties.deviceName));
         return ret;
     }
 
