@@ -1,7 +1,8 @@
 
 #include "Teide/Assert.h"
 
-#include <gtest/gtest.h>
+#ifdef TEIDE_ASSERTS_ENABLED
+#    include <gtest/gtest.h>
 
 using namespace Teide;
 
@@ -28,21 +29,21 @@ bool TestAssertHandler(std::string_view msg, std::string_view /*expression*/, st
 }
 } // namespace
 
-#define EXPECT_BREAK(expr, msg)                                                                                        \
-    {                                                                                                                  \
-        PushAssertHandler(TestAssertHandler);                                                                          \
-        s_lastFailureMessage.clear();                                                                                  \
-        EXPECT_THROW(expr, TestAssertException);                                                                       \
-        EXPECT_EQ(s_lastFailureMessage, msg);                                                                          \
-        PopAssertHandler();                                                                                            \
-    }
+#    define EXPECT_BREAK(expr, msg)                                                                                    \
+        {                                                                                                              \
+            PushAssertHandler(TestAssertHandler);                                                                      \
+            s_lastFailureMessage.clear();                                                                              \
+            EXPECT_THROW(expr, TestAssertException);                                                                   \
+            EXPECT_EQ(s_lastFailureMessage, msg);                                                                      \
+            PopAssertHandler();                                                                                        \
+        }
 
-#define EXPECT_NO_BREAK(expr)                                                                                          \
-    {                                                                                                                  \
-        PushAssertHandler(TestAssertHandler);                                                                          \
-        EXPECT_NO_THROW(expr);                                                                                         \
-        PopAssertHandler();                                                                                            \
-    }
+#    define EXPECT_NO_BREAK(expr)                                                                                      \
+        {                                                                                                              \
+            PushAssertHandler(TestAssertHandler);                                                                      \
+            EXPECT_NO_THROW(expr);                                                                                     \
+            PopAssertHandler();                                                                                        \
+        }
 
 TEST(AssertTest, FailedAssertionWithNoMessage)
 {
@@ -88,3 +89,4 @@ TEST(AssertTest, BreakWithFormattedMessage)
 {
     EXPECT_BREAK(TEIDE_BREAK("{}+{}", 1, 2), "1+2");
 }
+#endif

@@ -144,12 +144,12 @@ namespace
         if constexpr (BreakOnVulkanWarning)
         {
             // Vulkan warning triggered a debug break
-            TEIDE_ASSERT(severity != MessageSeverity::eWarning);
+            TEIDE_ASSERT(severity != MessageSeverity::eWarning, "{}", pCallbackData->pMessage);
         }
         if constexpr (BreakOnVulkanError)
         {
             // Vulkan error triggered a debug break
-            TEIDE_ASSERT(severity != MessageSeverity::eError);
+            TEIDE_ASSERT(severity != MessageSeverity::eError, "{}", pCallbackData->pMessage);
         }
         return VK_FALSE;
     }
