@@ -38,7 +38,16 @@ private:
     const char* m_function;
 };
 
-#define SOURCE_LOCATION_CURRENT() ::Teide::SourceLocation(__LINE__, 0, __FILE__, __func__)
+#if defined(__clang__) || defined(__GNUC__)
+#    define TEIDE_PRETTY_FUNCTION __PRETTY_FUNCTION__
+#elif defined(_MSC_VER)
+#    define TEIDE_PRETTY_FUNCTION __FUNCSIG__
+#else
+#    define TEIDE_PRETTY_FUNCTION __func__
+#endif
+
+#define SOURCE_LOCATION_CURRENT()                                                                                      \
+    ::Teide::SourceLocation(__LINE__, 0, __FILE__, static_cast<const char*>(TEIDE_PRETTY_FUNCTION))
 
 using AssertHandler = bool(std::string_view msg, std::string_view expression, SourceLocation location);
 
