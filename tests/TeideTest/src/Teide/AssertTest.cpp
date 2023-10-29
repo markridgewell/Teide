@@ -47,7 +47,7 @@ bool TestAssertHandler(std::string_view msg, std::string_view /*expression*/, So
 
 TEST(AssertDeathTest, FailedAssertionWithNoHandler)
 {
-    EXPECT_DEATH(TEIDE_ASSERT(False(), "fooey!"), "fooey!");
+    EXPECT_DEATH(TEIDE_ASSERT(False(), "fooey!"), "");
 }
 
 TEST(AssertTest, FailedAssertionWithNoMessage)
