@@ -27,6 +27,8 @@ namespace Teide
 using AssertHandler = bool(std::string_view msg, std::string_view expression, std::source_location location);
 
 void SetAssertHandler(AssertHandler* handler = nullptr);
+void PushAssertHandler(AssertHandler* handler = nullptr);
+void PopAssertHandler();
 
 #if defined(TEIDE_ASSERTS_ENABLED)
 namespace Internal

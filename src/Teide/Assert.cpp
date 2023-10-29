@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <filesystem>
 #include <ranges>
+#include <stack>
 #include <string>
 
 #ifdef _WIN32
@@ -72,6 +73,8 @@ namespace
         return GenericAssertHandler(msg, expression, location);
 #endif
     }
+
+    std::stack<AssertHandler*> s_handlerStack;
 } // namespace
 
 namespace Internal
@@ -82,5 +85,17 @@ namespace Internal
 void SetAssertHandler(AssertHandler* handler)
 {
     Internal::g_handleAssertFail = handler ? handler : &DefaultAssertHandler;
+}
+
+void PushAssertHandler(AssertHandler* handler)
+{
+    s_handlerStack.push(Internal::g_handleAssertFail);
+    SetAssertHandler(handler);
+}
+
+void PopAssertHandler()
+{
+    SetAssertHandler(s_handlerStack.top());
+    s_handlerStack.pop();
 }
 } // namespace Teide
