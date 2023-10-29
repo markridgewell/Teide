@@ -12,6 +12,10 @@ if(TEIDE_UNIT_TEST_SW_RENDER)
     list(APPEND extra_args --sw-render)
 endif()
 
+if(TARGET unofficial::stackwalker::StackWalker)
+    list(APPEND extra_deps unofficial::stackwalker::StackWalker)
+endif()
+
 td_add_test(
     TeideTest
     TARGET Teide

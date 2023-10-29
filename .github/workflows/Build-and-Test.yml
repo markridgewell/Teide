@@ -71,23 +71,24 @@ jobs:
 
     - name: Test
       id: test
-      run: ctest --preset ${{matrix.preset}} --build-config ${{matrix.buildtype}} --verbose --no-tests=error
+      run: ctest --preset ${{matrix.preset}} --build-config ${{matrix.buildtype}} --verbose --output-on-failure --no-tests=error
 
     - name: Save render test output
-      if: steps.test.outcome == 'failure'
+      if: failure() && steps.test.outcome == 'failure'
       uses: actions/upload-artifact@v3
       with:
         name: RenderTestOutput-${{env.job_name}}
         path: RenderTestOutput
 
     - name: Save test log
-      if: steps.test.outcome == 'failure'
+      if: failure() && steps.test.outcome == 'failure'
       uses: actions/upload-artifact@v3
       with:
         name: TestLog-${{env.job_name}}
         path: build/${{matrix.preset}}/Testing/Temporary/LastTest.log
 
     - name: Upload coverage report
+      if: matrix.coverage == 'ON'
       uses: codecov/codecov-action@v3
       with:
         directory: build/${{matrix.preset}}/coverage/output
@@ -96,6 +97,7 @@ jobs:
         functionalities: fixes
 
     - name: Save coverage report
+      if: matrix.coverage == 'ON'
       uses: actions/upload-artifact@v3
       with:
         name: CoverageReport-${{env.job_name}}
@@ -105,7 +107,7 @@ jobs:
     strategy:
       matrix:
         buildtype: [Debug, Release]
-        compiler: [g++-12, clang++-17]
+        compiler: [g++-13, clang++-17]
         sanitizer: [OFF]
         include:
         - preset: ninja

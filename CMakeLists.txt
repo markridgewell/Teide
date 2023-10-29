@@ -106,6 +106,7 @@ endif()
 if(TEIDE_BUILD_TESTS)
     find_package(GTest REQUIRED)
     find_package(SwiftShader REQUIRED)
+    find_package(StackWalker QUIET)
 
     add_subdirectory(tests)
 endif()
