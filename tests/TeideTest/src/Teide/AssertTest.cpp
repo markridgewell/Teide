@@ -45,6 +45,11 @@ bool TestAssertHandler(std::string_view msg, std::string_view /*expression*/, So
             PopAssertHandler();                                                                                        \
         }
 
+TEST(AssertDeathTest, FailedAssertionWithNoHandler)
+{
+    EXPECT_DEATH(TEIDE_ASSERT(False(), "fooey!"), "fooey!");
+}
+
 TEST(AssertTest, FailedAssertionWithNoMessage)
 {
     EXPECT_BREAK(TEIDE_ASSERT(False()), "");
