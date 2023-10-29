@@ -224,7 +224,7 @@ namespace
         ret.queueFamilyIndices.erase(
             std::unique(ret.queueFamilyIndices.begin(), ret.queueFamilyIndices.end()), ret.queueFamilyIndices.end());
 
-        // spdlog::info("Selected physical device: {}", ret.physicalDevice.getProperties().deviceName);
+        spdlog::info("Selected physical device: \"{}\"", ret.physicalDevice.getProperties().deviceName);
         return ret;
     }
 
