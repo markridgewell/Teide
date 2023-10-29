@@ -1,6 +1,8 @@
 
 #pragma once
 
+#include "Teide/BasicTypes.h"
+
 #include <fmt/core.h>
 
 #include <source_location>
@@ -9,7 +11,6 @@
 #ifndef _WIN32
 #    include <signal.h>
 #endif
-
 
 namespace Teide
 {
@@ -21,18 +22,18 @@ namespace Teide
 class SourceLocation
 {
 public:
-    SourceLocation(std::uint_least32_t line, std::uint_least32_t column, const char* file, const char* function) :
+    SourceLocation(uint32 line, uint32 column, const char* file, const char* function) :
         m_line{line}, m_column{column}, m_file{file}, m_function{function}
     {}
 
-    constexpr std::uint_least32_t line() const noexcept { return m_line; }
-    constexpr std::uint_least32_t column() const noexcept { return m_column; }
+    constexpr uint32 line() const noexcept { return m_line; }
+    constexpr uint32 column() const noexcept { return m_column; }
     constexpr const char* file_name() const noexcept { return m_file; }
     constexpr const char* function_name() const noexcept { return m_function; }
 
 private:
-    std::uint_least32_t m_line;
-    std::uint_least32_t m_column;
+    uint32 m_line;
+    uint32 m_column;
     const char* m_file;
     const char* m_function;
 };
