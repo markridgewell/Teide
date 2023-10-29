@@ -20,30 +20,6 @@ namespace Teide
 {
 namespace
 {
-    bool GenericAssertHandler(std::string_view msg, std::string_view expression, SourceLocation location)
-    {
-        // Print a message
-        fmt::print("{}", location.file_name());
-        if (location.line() > 0)
-        {
-            fmt::print("({})", location.line());
-        }
-        fmt::print(": ");
-        if (std::strlen(location.function_name()) > 0)
-        {
-            fmt::print("{}: ", location.function_name());
-        }
-        if (expression.empty())
-        {
-            fmt::println("{}", msg);
-        }
-        else
-        {
-            fmt::println("Assertion failed: {}: {}", expression, msg);
-        }
-        return true;
-    }
-
     bool DefaultAssertHandler(std::string_view msg, std::string_view expression, SourceLocation location)
     {
 #ifdef _WIN32
@@ -70,7 +46,26 @@ namespace
         }
         return false;
 #else
-        return GenericAssertHandler(msg, expression, location);
+        // Print a message
+        fmt::print("{}", location.file_name());
+        if (location.line() > 0)
+        {
+            fmt::print("({})", location.line());
+        }
+        fmt::print(": ");
+        if (std::strlen(location.function_name()) > 0)
+        {
+            fmt::print("{}: ", location.function_name());
+        }
+        if (expression.empty())
+        {
+            fmt::println("{}", msg);
+        }
+        else
+        {
+            fmt::println("Assertion failed: {}: {}", expression, msg);
+        }
+        return true;
 #endif
     }
 

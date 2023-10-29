@@ -13,12 +13,9 @@
 #    define WIN32_LEAN_AND_MEAN
 #    define NOMINMAX
 #    include <windows.h>
-#else
-inline bool IsDebuggerPresent()
-{
-    return false;
-}
 #endif
+
+bool IsDebuggerAttached();
 
 namespace
 {
@@ -130,13 +127,22 @@ int main(int argc, char** argv)
         listeners.Append(new LogSuppressor); // NOLINT(cppcoreguidelines-owning-memory)
     }
 
-    fmt::print("Debugger: {}\n", IsDebuggerPresent());
-    if (!IsDebuggerPresent())
+    fmt::print("Debugger: {}\n", IsDebuggerAttached());
+    if (!IsDebuggerAttached())
     {
         Teide::SetAssertHandler(&AssertDie);
     }
 
-    testing::FLAGS_gtest_break_on_failure = IsDebuggerPresent();
+    testing::FLAGS_gtest_break_on_failure = IsDebuggerAttached();
 
     return RUN_ALL_TESTS();
+}
+
+bool IsDebuggerAttached()
+{
+#ifdef _WIN32
+    return IsDebuggerPresent();
+#else
+    return false;
+#endif
 }
