@@ -22,7 +22,7 @@ inline bool IsDebuggerPresent()
 
 namespace
 {
-bool AssertDie(std::string_view msg, std::string_view expression, std::source_location location)
+bool AssertDie(std::string_view msg, std::string_view expression, Teide::SourceLocation location)
 {
     std::cout << location.file_name();
     if (location.line() > 0)

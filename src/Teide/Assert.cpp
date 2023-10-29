@@ -20,7 +20,7 @@ namespace Teide
 {
 namespace
 {
-    bool GenericAssertHandler(std::string_view msg, std::string_view expression, std::source_location location)
+    bool GenericAssertHandler(std::string_view msg, std::string_view expression, SourceLocation location)
     {
         // Print a message
         fmt::print("{}", location.file_name());
@@ -44,7 +44,7 @@ namespace
         return true;
     }
 
-    bool DefaultAssertHandler(std::string_view msg, std::string_view expression, std::source_location location)
+    bool DefaultAssertHandler(std::string_view msg, std::string_view expression, SourceLocation location)
     {
 #ifdef _WIN32
         // Display a message box and give the opportunity to break in the debugger
