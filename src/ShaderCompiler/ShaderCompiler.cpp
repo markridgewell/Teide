@@ -200,8 +200,9 @@ ParameterBlockDesc& GetPblockLayout(ShaderData& data, unsigned int set)
         case 1: return data.environment.viewPblock;
         case 2: return data.materialPblock;
         case 3: return data.objectPblock;
+
+        default: Unreachable();
     }
-    Unreachable();
 }
 
 ShaderStageFlags GetShaderStageFlags(EShLanguageMask lang)

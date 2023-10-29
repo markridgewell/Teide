@@ -6,7 +6,8 @@
 #include <spdlog/sinks/ostream_sink.h>
 #include <spdlog/spdlog.h>
 
-#ifdef _WIN32
+#if defined(_WIN32) && __has_include("StackWalker.h")
+#    define STACKWALKER_ENABLED
 #    include "StackWalker.h"
 
 class MyStackWalker : public StackWalker
@@ -55,7 +56,7 @@ private:
 
 int main(int argc, char** argv)
 {
-#ifdef _WIN32
+#ifdef STACKWALKER_ENABLED
     spdlog::info("Setting exception handler...");
     SetUnhandledExceptionFilter(ExceptionHandler);
 #endif
