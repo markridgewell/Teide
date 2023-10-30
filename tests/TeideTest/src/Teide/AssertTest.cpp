@@ -45,10 +45,12 @@ bool TestAssertHandler(std::string_view msg, std::string_view /*expression*/, So
             PopAssertHandler();                                                                                        \
         }
 
+#    ifndef _WIN32
 TEST(AssertDeathTest, FailedAssertionWithNoHandler)
 {
     EXPECT_DEATH(TEIDE_ASSERT(False(), "fooey!"), "");
 }
+#    endif
 
 TEST(AssertTest, FailedAssertionWithNoMessage)
 {
