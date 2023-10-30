@@ -78,5 +78,3 @@ void PrintTo(const std::span<T, N>& span, std::ostream* os)
 #define CONSTEXPR_EXPECT_NE(a, b)                                                                                      \
     static_assert((a) != (b));                                                                                         \
     EXPECT_NE(a, b);
-
-bool IsDebuggerAttached();

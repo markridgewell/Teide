@@ -119,13 +119,13 @@ int main(int argc, char** argv)
         listeners.Append(new LogSuppressor); // NOLINT(cppcoreguidelines-owning-memory)
     }
 
-    fmt::print("Debugger: {}\n", IsDebuggerAttached());
-    if (!IsDebuggerAttached())
+    fmt::print("Debugger: {}\n", Teide::IsDebuggerAttached());
+    if (!Teide::IsDebuggerAttached())
     {
         Teide::SetAssertHandler(&AssertDie);
     }
 
-    testing::FLAGS_gtest_break_on_failure = IsDebuggerAttached();
+    testing::FLAGS_gtest_break_on_failure = Teide::IsDebuggerAttached();
 
     return RUN_ALL_TESTS();
 }

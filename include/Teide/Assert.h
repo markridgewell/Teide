@@ -8,11 +8,7 @@
 #include <source_location>
 #include <string_view>
 
-#ifdef _WIN32
-extern "C" {
-int IsDebuggerPresent();
-}
-#else
+#ifndef _WIN32
 #    include <csignal>
 #endif
 
@@ -78,7 +74,7 @@ namespace Internal
 
 // Break program execution
 #    ifdef _WIN32
-#        define TEIDE_BREAK_IMPL() (IsDebuggerPresent() ? (__debugbreak(), 1) : (std::abort(), 0))
+#        define TEIDE_BREAK_IMPL() (::Teide::IsDebuggerAttached() ? (__debugbreak(), 1) : (std::abort(), 0))
 #    else
 #        define TEIDE_BREAK_IMPL() raise(SIGTRAP)
 #    endif
@@ -104,5 +100,7 @@ namespace Internal
 #    define TEIDE_BREAK(...) TEIDE_NOP(__VA_ARGS__)
 #    define TEIDE_ASSERT(...) TEIDE_NOP(__VA_ARGS__)
 #endif
+
+bool IsDebuggerAttached();
 
 } // namespace Teide

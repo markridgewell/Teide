@@ -89,4 +89,14 @@ void PopAssertHandler()
     SetAssertHandler(s_handlerStack.top());
     s_handlerStack.pop();
 }
+
+bool IsDebuggerAttached()
+{
+#ifdef _WIN32
+    return IsDebuggerPresent();
+#else
+    return false;
+#endif
+}
+
 } // namespace Teide

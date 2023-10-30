@@ -83,12 +83,3 @@ std::vector<std::byte> HexToBytes(std::string_view hexString)
 
     return ret;
 }
-
-bool IsDebuggerAttached()
-{
-#ifdef _WIN32
-    return IsDebuggerPresent();
-#else
-    return false;
-#endif
-}
