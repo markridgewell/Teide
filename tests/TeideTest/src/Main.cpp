@@ -25,11 +25,11 @@ bool AssertDie(std::string_view msg, std::string_view expression, Teide::SourceL
     }
     if (expression.empty())
     {
-        std::cout << msg << std::endl;
+        std::cout << msg << '\n';
     }
     else
     {
-        std::cout << "Assertion failed: " << expression << ": " << msg << std::endl;
+        std::cout << "Assertion failed: " << expression << ": " << msg << '\n';
     }
     std::terminate();
 }

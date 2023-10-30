@@ -9,7 +9,7 @@
 #include <string_view>
 
 #ifndef _WIN32
-#    include <signal.h>
+#    include <csignal>
 #endif
 
 namespace Teide

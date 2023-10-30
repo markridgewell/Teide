@@ -14,8 +14,6 @@
 #    pragma comment(lib, "user32.lib")
 #endif
 
-namespace sv = std::views;
-
 namespace Teide
 {
 namespace
