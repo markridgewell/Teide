@@ -65,8 +65,6 @@ namespace
         return clearValues;
     }
 
-    constexpr auto NotNull = [](const auto& handle) { return static_cast<bool>(handle); };
-
 } // namespace
 
 /*
@@ -112,6 +110,15 @@ VulkanRenderer::VulkanRenderer(VulkanGraphicsDevice& device, const QueueFamilies
         return vkdevice.createFenceUnique({.flags = vk::FenceCreateFlagBits::eSignaled}, s_allocator);
     });
 
+    const auto numThreads = m_device.GetScheduler().GetThreadCount();
+    for (auto& frame : m_frameResources)
+    {
+        for (uint32 i = 0; i < numThreads; i++)
+        {
+            frame.threadResources.emplace_back();
+        }
+    }
+
     if (m_shaderEnvironment)
     {
         SetupDescriptorPools();
@@ -143,14 +150,13 @@ void VulkanRenderer::SetupDescriptorPools()
         }
     }
 
-    if (viewPblockLayout.HasDescriptors())
+    for (auto& frame : m_frameResources)
     {
-        const auto numThreads = m_device.GetScheduler().GetThreadCount();
-        for (auto& frame : m_frameResources)
+        for (auto& thread : frame.threadResources)
         {
-            for (uint32 i = 0; i < numThreads; i++)
+            if (viewPblockLayout.HasDescriptors())
             {
-                frame.threadResources.emplace_back(DescriptorPool(vkdevice, viewPblockLayout, ViewDescriptorPoolSize));
+                thread.viewDescriptorPool.emplace(vkdevice, viewPblockLayout, ViewDescriptorPoolSize);
             }
         }
     }
@@ -196,7 +202,10 @@ void VulkanRenderer::BeginFrame(ShaderParameters sceneParameters)
     m_device.UpdateTransientParameterBlock(frameResources.sceneParameters, pblockData);
     for (auto& threadResources : frameResources.threadResources)
     {
-        threadResources.viewDescriptorPool.Reset();
+        if (threadResources.viewDescriptorPool)
+        {
+            threadResources.viewDescriptorPool->Reset();
+        }
         threadResources.viewParameters.clear();
     }
 }
@@ -407,9 +416,13 @@ TransientParameterBlock* VulkanRenderer::CreateViewParameterBlock(const Paramete
         return nullptr;
     }
 
-    const auto threadIndex = m_device.GetScheduler().GetThreadIndex();
-    auto& threadResources = GetCurrentFrame().threadResources.at(threadIndex);
-    auto p = m_device.CreateTransientParameterBlock(data, name, threadResources.viewDescriptorPool);
+    auto& threadResources = GetCurrentThread();
+    if (!threadResources.viewDescriptorPool.has_value())
+    {
+        return nullptr;
+    }
+
+    auto p = m_device.CreateTransientParameterBlock(data, name, *threadResources.viewDescriptorPool);
     return &threadResources.viewParameters.emplace_back(std::move(p));
 }
 
@@ -444,19 +457,16 @@ void VulkanRenderer::RecordRenderListCommands(
 
     if (!renderList.objects.empty())
     {
-        const auto descriptorSets = std::array{
-            GetSceneParameterBlock().descriptorSet,
-            viewParameters ? viewParameters->descriptorSet : nullptr,
-        };
-        const auto firstActiveSet
-            = static_cast<uint32>(std::distance(descriptorSets.begin(), std::ranges::find_if(descriptorSets, NotNull)));
-        const auto activeDescriptorSets = std::span{descriptorSets}.subspan(firstActiveSet);
+        const auto& firstPipeline = m_device.GetImpl(*renderList.objects.front().pipeline);
 
-        if (!activeDescriptorSets.empty())
+        if (const auto set = GetSceneParameterBlock().descriptorSet)
         {
-            const auto& firstPipeline = m_device.GetImpl(*renderList.objects.front().pipeline);
-            commandBuffer.bindDescriptorSets(
-                vk::PipelineBindPoint::eGraphics, firstPipeline.layout, firstActiveSet, activeDescriptorSets, {});
+            commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, firstPipeline.layout, 0, set, {});
+        }
+        if (viewParameters && viewParameters->descriptorSet)
+        {
+            const auto set = viewParameters->descriptorSet;
+            commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, firstPipeline.layout, 1, set, {});
         }
 
         for (const RenderObject& obj : renderList.objects)

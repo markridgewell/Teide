@@ -71,7 +71,7 @@ private:
 
     struct ThreadResources
     {
-        DescriptorPool viewDescriptorPool;
+        std::optional<DescriptorPool> viewDescriptorPool;
         std::vector<TransientParameterBlock> viewParameters;
     };
 
@@ -83,6 +83,14 @@ private:
 
     const FrameResources& GetCurrentFrame() const { return m_frameResources.at(m_frameNumber); }
     FrameResources& GetCurrentFrame() { return m_frameResources.at(m_frameNumber); }
+    const ThreadResources& GetCurrentThread() const
+    {
+        return GetCurrentFrame().threadResources.at(m_device.GetScheduler().GetThreadIndex());
+    }
+    ThreadResources& GetCurrentThread()
+    {
+        return GetCurrentFrame().threadResources.at(m_device.GetScheduler().GetThreadIndex());
+    }
 
     VulkanGraphicsDevice& m_device;
     vk::Queue m_graphicsQueue;
