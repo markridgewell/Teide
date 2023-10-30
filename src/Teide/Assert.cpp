@@ -21,26 +21,29 @@ namespace
     bool DefaultAssertHandler(std::string_view msg, std::string_view expression, SourceLocation location)
     {
 #ifdef _WIN32
-        // Display a message box and give the opportunity to break in the debugger
-        std::string outputString;
-        auto out = std::back_inserter(outputString);
-
-        fmt::format_to(out, "{}{}", msg, msg.empty() ? "" : "\n");
-
-        if (!expression.empty())
+        if (IsDebuggerAttached())
         {
-            fmt::format_to(out, "Expression: {}\n", expression);
-        }
+            // Display a message box and give the opportunity to break in the debugger
+            std::string outputString;
+            auto out = std::back_inserter(outputString);
 
-        fmt::format_to(out, "File: {}\n", std::filesystem::path(location.file_name()).filename().string());
-        fmt::format_to(out, "Line: {}\n", location.line());
-        fmt::format_to(out, "Function: {}\n", location.function_name());
-        fmt::format_to(out, "\nClick OK to break into the debugger.");
+            fmt::format_to(out, "{}{}", msg, msg.empty() ? "" : "\n");
 
-        const auto title = expression.empty() ? "Breakpoint triggered!" : "Assert failed!";
-        if (MessageBox(nullptr, outputString.c_str(), title, MB_ICONSTOP | MB_OKCANCEL) != IDOK)
-        {
-            return false;
+            if (!expression.empty())
+            {
+                fmt::format_to(out, "Expression: {}\n", expression);
+            }
+
+            fmt::format_to(out, "File: {}\n", std::filesystem::path(location.file_name()).filename().string());
+            fmt::format_to(out, "Line: {}\n", location.line());
+            fmt::format_to(out, "Function: {}\n", location.function_name());
+            fmt::format_to(out, "\nClick OK to break into the debugger.");
+
+            const auto title = expression.empty() ? "Breakpoint triggered!" : "Assert failed!";
+            if (MessageBox(nullptr, outputString.c_str(), title, MB_ICONSTOP | MB_OKCANCEL) != IDOK)
+            {
+                return false;
+            }
         }
 #endif
         // Print a message
