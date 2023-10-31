@@ -215,7 +215,7 @@ std::optional<SurfaceImage> VulkanSurface::AcquireNextImage(vk::Fence fence)
     constexpr uint64_t timeout = std::numeric_limits<uint64_t>::max();
 
     [[maybe_unused]] const auto waitResult = m_device.waitForFences(fence, true, timeout);
-    assert(waitResult == vk::Result::eSuccess); // TODO check if waitForFences can fail with no timeout
+    TEIDE_ASSERT(waitResult == vk::Result::eSuccess); // TODO check if waitForFences can fail with no timeout
 
     // Acquire an image from the swap chain
     const auto semaphore = GetNextSemaphore();
@@ -239,7 +239,7 @@ std::optional<SurfaceImage> VulkanSurface::AcquireNextImage(vk::Fence fence)
     if (m_imagesInFlight[imageIndex])
     {
         [[maybe_unused]] const auto waitResult2 = m_device.waitForFences(m_imagesInFlight[imageIndex], true, timeout);
-        assert(waitResult2 == vk::Result::eSuccess); // TODO check if waitForFences can fail with no timeout
+        TEIDE_ASSERT(waitResult2 == vk::Result::eSuccess); // TODO check if waitForFences can fail with no timeout
     }
     // Mark the image as in flight
     m_imagesInFlight[imageIndex] = fence;

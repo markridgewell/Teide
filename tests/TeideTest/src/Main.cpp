@@ -1,10 +1,40 @@
 
+#include "Teide/Assert.h"
 #include "Teide/TestUtils.h"
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <spdlog/sinks/ostream_sink.h>
 #include <spdlog/spdlog.h>
+
+#include <exception>
+
+namespace
+{
+bool AssertDie(std::string_view msg, std::string_view expression, Teide::SourceLocation location)
+{
+    std::cout << location.file_name();
+    if (location.line() > 0)
+    {
+        std::cout << '(' << location.line() << ')';
+    }
+    std::cout << ": ";
+    if (std::strlen(location.function_name()) > 0)
+    {
+        std::cout << location.function_name() << ": ";
+    }
+    if (expression.empty())
+    {
+        std::cout << msg << '\n';
+    }
+    else
+    {
+        std::cout << "Assertion failed: " << expression << ": " << msg << '\n';
+    }
+    std::terminate();
+}
+
+} // namespace
 
 #if defined(_WIN32) && __has_include("StackWalker.h")
 #    define STACKWALKER_ENABLED
@@ -88,6 +118,14 @@ int main(int argc, char** argv)
         // gtest demands an owning raw pointer to be passed in here
         listeners.Append(new LogSuppressor); // NOLINT(cppcoreguidelines-owning-memory)
     }
+
+    fmt::print("Debugger: {}\n", Teide::IsDebuggerAttached());
+    if (!Teide::IsDebuggerAttached())
+    {
+        Teide::SetAssertHandler(&AssertDie);
+    }
+
+    testing::FLAGS_gtest_break_on_failure = Teide::IsDebuggerAttached();
 
     return RUN_ALL_TESTS();
 }

@@ -1,6 +1,8 @@
 
 #include "CommandBuffer.h"
 
+#include "Teide/Assert.h"
+
 namespace Teide
 {
 
@@ -70,19 +72,19 @@ void CommandBuffer::SetDebugName(std::string_view name)
 
 CommandBuffer::operator vk::CommandBuffer()
 {
-    assert(m_cmdBuffer);
+    TEIDE_ASSERT(m_cmdBuffer);
     return m_cmdBuffer.get();
 }
 
 vk::CommandBuffer& CommandBuffer::operator*()
 {
-    assert(m_cmdBuffer);
+    TEIDE_ASSERT(m_cmdBuffer);
     return m_cmdBuffer.get();
 }
 
 vk::CommandBuffer* CommandBuffer::operator->()
 {
-    assert(m_cmdBuffer);
+    TEIDE_ASSERT(m_cmdBuffer);
     return &m_cmdBuffer.get();
 }
 

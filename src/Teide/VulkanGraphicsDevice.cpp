@@ -22,7 +22,6 @@
 #include <SDL_vulkan.h>
 #include <spdlog/spdlog.h>
 
-#include <cassert>
 #include <cstdlib>
 #include <filesystem>
 #include <optional>
@@ -36,6 +35,20 @@ namespace
 {
     const vk::Optional<const vk::AllocationCallbacks> s_allocator = nullptr;
 
+    std::string_view Trim(std::string_view str)
+    {
+        constexpr const char* whitespace = " \t\n\r";
+        const auto strBegin = str.find_first_not_of(whitespace);
+        if (strBegin == std::string::npos)
+        {
+            return {};
+        }
+        const auto strEnd = str.find_last_not_of(whitespace);
+        const auto strRange = strEnd - strBegin + 1;
+
+        return str.substr(strBegin, strRange);
+    }
+
     vk::UniqueSurfaceKHR CreateVulkanSurface(SDL_Window* window, vk::Instance instance)
     {
         spdlog::info("Creating a Vulkan surface for a window");
@@ -44,7 +57,7 @@ namespace
         {
             throw VulkanError("Failed to create Vulkan surface for window");
         }
-        assert(surfaceTmp);
+        TEIDE_ASSERT(surfaceTmp);
         spdlog::info("Surface created successfully");
         const auto deleter = vk::ObjectDestroy<vk::Instance, vk::DispatchLoaderDynamic>(
             instance, s_allocator, VULKAN_HPP_DEFAULT_DISPATCHER);
@@ -225,7 +238,8 @@ namespace
         ret.queueFamilyIndices.erase(
             std::unique(ret.queueFamilyIndices.begin(), ret.queueFamilyIndices.end()), ret.queueFamilyIndices.end());
 
-        spdlog::info("Selected physical device: {}", ret.physicalDevice.getProperties().deviceName);
+        const auto& properties = ret.physicalDevice.getProperties();
+        spdlog::info("Selected physical device: {}", Trim(properties.deviceName));
         return ret;
     }
 
@@ -439,7 +453,7 @@ namespace
 
 DeviceAndSurface CreateDeviceAndSurface(SDL_Window* window, bool multisampled, const GraphicsSettings& settings)
 {
-    assert(window);
+    TEIDE_ASSERT(window);
 
     spdlog::info("Creating graphics device and surface");
     VulkanLoader loader;
@@ -692,7 +706,7 @@ auto VulkanGraphicsDevice::CreateTextureImpl(
 void VulkanGraphicsDevice::SetBufferData(VulkanBuffer& buffer, BytesView data)
 {
     const auto allocation = buffer.allocation.get();
-    assert(m_allocator->getAllocationInfo(allocation).size >= data.size());
+    TEIDE_ASSERT(m_allocator->getAllocationInfo(allocation).size >= data.size());
 
     void* const mappedData = m_allocator->mapMemory(allocation);
 
@@ -724,7 +738,7 @@ SurfacePtr VulkanGraphicsDevice::CreateSurface(vk::UniqueSurfaceKHR surface, SDL
 {
     spdlog::info("Creating a new surface for a window");
 
-    assert(m_physicalDevice.queueFamilies.presentFamily.has_value());
+    TEIDE_ASSERT(m_physicalDevice.queueFamilies.presentFamily.has_value());
 
     return std::make_unique<VulkanSurface>(
         window, std::move(surface), m_device.get(), m_physicalDevice.physicalDevice, m_physicalDevice.queueFamilyIndices,
@@ -1144,13 +1158,13 @@ ParameterBlockPtr VulkanGraphicsDevice::CreateParameterBlock(
 TransientParameterBlock VulkanGraphicsDevice::CreateTransientParameterBlock(
     const ParameterBlockData& data, const char* name, DescriptorPool& descriptorPool)
 {
-    assert(data.layout);
+    TEIDE_ASSERT(data.layout);
 
     const auto& layout = GetImpl(*data.layout);
-    assert(!layout.pushConstantRange.has_value());
+    TEIDE_ASSERT(!layout.pushConstantRange.has_value());
 
     const auto setLayout = layout.setLayout.get();
-    assert(setLayout);
+    TEIDE_ASSERT(setLayout);
 
     const auto descriptorSetName = DebugFormat("{}DescriptorSet", name);
 

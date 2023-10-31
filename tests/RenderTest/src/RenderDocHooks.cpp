@@ -1,7 +1,8 @@
 
 #include "RenderDocHooks.h"
 
-#include <cassert>
+#include "Teide/Assert.h"
+
 
 #if defined(_WIN32)
 #    define WIN32_LEAN_AND_MEAN
@@ -22,7 +23,7 @@ RenderDoc::RenderDoc()
         auto RENDERDOC_GetAPI = reinterpret_cast<pRENDERDOC_GetAPI>(GetProcAddress(mod, "RENDERDOC_GetAPI"));
         [[maybe_unused]] const int ret
             = RENDERDOC_GetAPI(eRENDERDOC_API_Version_1_1_2, reinterpret_cast<void**>(&rdoc_api));
-        assert(ret == 1);
+        TEIDE_ASSERT(ret == 1);
     }
 #    elif defined(__linux__)
     if (void* mod = dlopen("librenderdoc.so", RTLD_NOW | RTLD_NOLOAD))
@@ -30,7 +31,7 @@ RenderDoc::RenderDoc()
         pRENDERDOC_GetAPI RENDERDOC_GetAPI = reinterpret_cast<pRENDERDOC_GetAPI>(dlsym(mod, "RENDERDOC_GetAPI"));
         [[maybe_unused]] const int ret
             = RENDERDOC_GetAPI(eRENDERDOC_API_Version_1_1_2, reinterpret_cast<void**>(&rdoc_api));
-        assert(ret == 1);
+        TEIDE_ASSERT(ret == 1);
     }
 #    endif
     // NOLINTEND(cppcoreguidelines-pro-type-reinterpret-cast)
