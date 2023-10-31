@@ -14,7 +14,7 @@ public:
 
     auto GetOption(std::initializer_list<std::string_view> aliases) -> bool
     {
-        assert(aliases.size() > 0);
+        TEIDE_ASSERT(aliases.size() > 0);
         const auto containsAlias = [&](std::string_view arg) { return std::ranges::find(aliases, arg) != aliases.end(); };
         return std::ranges::any_of(m_args, containsAlias);
     };
@@ -22,7 +22,7 @@ public:
     template <class T>
     auto GetArg(std::initializer_list<std::string_view> aliases, std::optional<T> defaultValue = std::nullopt) -> T
     {
-        assert(aliases.size() > 0);
+        TEIDE_ASSERT(aliases.size() > 0);
         const auto containsAlias = [&](std::string_view arg) { return std::ranges::find(aliases, arg) != aliases.end(); };
 
         const auto arg = std::ranges::find_if(m_args, containsAlias);

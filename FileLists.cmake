@@ -7,6 +7,7 @@ set(sources
     include/GeoLib/Vector.h
     include/ShaderCompiler/ShaderCompiler.h
     include/Teide/AbstractBase.h
+    include/Teide/Assert.h
     include/Teide/BasicTypes.h
     include/Teide/Buffer.h
     include/Teide/BytesView.h
@@ -32,6 +33,7 @@ set(sources
     src/GeoLib.natvis
     src/ShaderCompiler/ShaderCompiler.cpp
     src/Teide.natvis
+    src/Teide/Assert.cpp
     src/Teide/CommandBuffer.cpp
     src/Teide/CommandBuffer.h
     src/Teide/CpuExecutor.cpp

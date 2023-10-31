@@ -156,7 +156,7 @@ void VulkanRenderer::BeginFrame(ShaderParameters sceneParameters)
 
     [[maybe_unused]] const auto waitResult
         = m_device.GetVulkanDevice().waitForFences(m_inFlightFences[m_frameNumber].get(), true, timeout);
-    assert(waitResult == vk::Result::eSuccess); // TODO check if waitForFences can fail with no timeout
+    TEIDE_ASSERT(waitResult == vk::Result::eSuccess); // TODO check if waitForFences can fail with no timeout
 
     m_device.GetScheduler().NextFrame();
 
@@ -188,7 +188,7 @@ void VulkanRenderer::EndFrame()
         return;
     }
 
-    assert(m_presentQueue && "Can't present without a present queue");
+    TEIDE_ASSERT(m_presentQueue, "Can't present without a present queue");
 
     auto fenceToSignal = m_inFlightFences[m_frameNumber].get();
 
@@ -230,7 +230,7 @@ void VulkanRenderer::WaitForGpu()
 
 RenderToTextureResult VulkanRenderer::RenderToTexture(const RenderTargetInfo& renderTarget, RenderList renderList)
 {
-    assert((renderTarget.captureColor || renderTarget.captureDepthStencil) && "Nothing to capture in RTT pass");
+    TEIDE_ASSERT(renderTarget.captureColor || renderTarget.captureDepthStencil, "Nothing to capture in RTT pass");
 
     const auto CreateRenderableTexture = [&](std::optional<Format> format, const char* name) -> TexturePtr {
         if (!format)

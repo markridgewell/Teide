@@ -102,7 +102,7 @@ Teide::MeshData LoadMesh(const char* filename)
 
     for (const auto& face : std::span(mesh.mFaces, mesh.mNumFaces))
     {
-        assert(face.mNumIndices == 3u);
+        TEIDE_ASSERT(face.mNumIndices == 3u);
         for (const uint32 index : std::span(face.mIndices, face.mNumIndices))
         {
             if (index > std::numeric_limits<uint16>::max())
@@ -137,7 +137,7 @@ Teide::TextureData LoadTexture(const char* filename)
     {
         image.reset(SDL_ConvertSurfaceFormat(image.get(), SDL_PIXELFORMAT_ABGR8888, 0));
     }
-    assert(image->format->format == targetFormatEnum);
+    TEIDE_ASSERT(image->format->format == targetFormatEnum);
 
     return {
         .size = {static_cast<uint32>(image->w), static_cast<uint32>(image->h)},

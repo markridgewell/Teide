@@ -39,7 +39,7 @@ struct VulkanShader : VulkanShaderBase, public Shader
     uint32 GetAttributeLocation(std::string_view attributeName) const
     {
         const auto pos = std::ranges::find(vertexShaderInputs, attributeName, &ShaderVariable::name);
-        assert(pos != vertexShaderInputs.end());
+        TEIDE_ASSERT(pos != vertexShaderInputs.end());
         return static_cast<uint32>(std::ranges::distance(vertexShaderInputs.begin(), pos));
     }
 };
