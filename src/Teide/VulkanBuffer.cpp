@@ -1,7 +1,6 @@
 
 #include "VulkanBuffer.h"
 
-#include <cassert>
 
 namespace Teide
 {

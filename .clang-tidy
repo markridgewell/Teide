@@ -34,3 +34,4 @@ WarningsAsErrors: '*,-clang-diagnostic-*'
 
 CheckOptions:
   readability-function-cognitive-complexity.IgnoreMacros: true
+  readability-simplify-boolean-expr.SimplifyDeMorgan: false

@@ -3,6 +3,8 @@
 
 #include "Vulkan.h"
 
+#include "Teide/Assert.h"
+
 #include <fmt/chrono.h>
 #include <spdlog/spdlog.h>
 
@@ -66,7 +68,7 @@ GpuExecutor::GpuExecutor(uint32 numThreads, vk::Device device, vk::Queue queue, 
 
 GpuExecutor::~GpuExecutor() noexcept
 {
-    assert(m_mainThread == std::this_thread::get_id());
+    TEIDE_ASSERT(m_mainThread == std::this_thread::get_id());
 
     m_schedulerStop = true;
     m_schedulerThread.join();
