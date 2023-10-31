@@ -27,15 +27,6 @@
       "name": "glslang"
     },
     {
-      "name": "assimp"
-    },
-    {
-      "name": "gtest"
-    },
-    {
-      "name": "benchmark"
-    },
-    {
       "name": "taskflow"
     },
     {
@@ -43,12 +34,32 @@
     },
     {
       "name": "vulkan-memory-allocator-hpp"
-    },
-    {
-      "name": "stackwalker",
-      "platform": "windows & !uwp"
     }
   ],
+  "features": {
+    "tests": {
+      "description": "Build tests",
+      "dependencies": [
+        "gtest",
+        {
+          "name": "stackwalker",
+          "platform": "windows & !uwp"
+        }
+      ]
+    },
+    "examples": {
+      "description": "Build examples",
+      "dependencies": [
+        "assimp"
+      ]
+    },
+    "benchmarks": {
+      "description": "Build benchmarks",
+      "dependencies": [
+        "benchmark"
+      ]
+    }
+  },
   "builtin-baseline": "98a562a04cd03728f399e79e1b37bcccb5a69b37",
   "vcpkg-configuration": {
     "overlay-triplets": [
