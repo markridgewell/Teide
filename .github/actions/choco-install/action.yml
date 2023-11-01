@@ -53,8 +53,6 @@ runs:
         $pathAppend = $env:path.split(";") | ?{$pathBefore -NotContains $_}
         echo "New entries in PATH: $pathAppend"
         echo "$pathAppend" > "~\${{inputs.package-name}}\.path"
-        echo "Contents of ~\${{inputs.package-name}}:"
-        Get-ChildItem "~\${{inputs.package-name}}" -Recurse
 
     - name: Save to cache
       if: steps.cache.outputs.cache-hit != 'true'
