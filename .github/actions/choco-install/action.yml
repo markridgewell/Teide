@@ -23,6 +23,7 @@ runs:
       if: steps.cache.outputs.cache-hit != 'true'
       shell: pwsh
       run: |
+        $pathBefore = $env:path.split(";")
         choco install --ignorepackageexitcodes ${{inputs.package-name}} --version ${{inputs.package-version}} | Tee-Object -FilePath output.txt
         $installPath = (Get-Content output.txt | Select-String "Software installed to '(.*)'").matches.groups[1]
         echo "Install path: $installPath"
@@ -30,8 +31,8 @@ runs:
         $env:ChocolateyInstall = Convert-Path "$((Get-Command choco).Path)\..\.."
         Import-Module "$env:ChocolateyInstall\helpers\chocolateyProfile.psm1"
         refreshenv
-        echo PATH:
-        echo $env:path.split(";")
+        echo New entries in PATH:
+        echo $env:path.split(";") | ?{$pathBefore -NotContains $_}
 
     - name: Save to cache
       if: steps.cache.outputs.cache-hit != 'true'
