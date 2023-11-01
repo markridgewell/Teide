@@ -17,6 +17,7 @@ runs:
       id: cache
       with:
         key: Package-${{runner.os}}-${{inputs.package-name}}-${{inputs.package-version}}
+        path: '**'
 
     - name: Install package
       if: steps.cache.outputs.cache-hit != 'true'
@@ -25,8 +26,17 @@ runs:
         choco install --ignorepackageexitcodes ${{inputs.package-name}} --version ${{inputs.package-version}} | Tee-Object -FilePath output.txt
         $installPath = (Get-Content output.txt | Select-String "Software installed to '(.*)'").matches.groups[1]
         echo "Install path: $installPath"
+        echo "INSTALL_PATH=$installPath" >> "$env:GITHUB_ENV"
         $env:ChocolateyInstall = Convert-Path "$((Get-Command choco).Path)\..\.."
         Import-Module "$env:ChocolateyInstall\helpers\chocolateyProfile.psm1"
         refreshenv
         echo PATH:
         echo $env:path.split(";")
+
+    - name: Save to cache
+      if: steps.cache.outputs.cache-hit != 'true'
+      uses: actions/cache/save@v3
+      with:
+        key: ${{steps.cache.outputs.cache-primary-key}}
+        path: ${{env.INSTALL_PATH}}
+
