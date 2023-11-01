@@ -12,7 +12,14 @@ inputs:
 runs:
   using: composite
   steps:
+    - name: Restore from cache
+      uses: actions/cache/restore@v3
+      id: cache
+      with:
+        key: Package-${{runner.os}}-${{inputs.package-name}}-${{inputs.package-version}}
+
     - name: Install package
+      if: steps.cache.outputs.cache-hit != 'true'
       shell: pwsh
       run: |
         choco install --ignorepackageexitcodes ${{inputs.package-name}} --version ${{inputs.package-version}} | Tee-Object -FilePath output.txt

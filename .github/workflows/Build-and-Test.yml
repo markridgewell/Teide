@@ -50,7 +50,7 @@ jobs:
       name: Install OpenCppCoverage
       uses: ./.github/actions/choco-install
       with:
-        package-name: opencppcoverage
+        package-name: OpenCppCoverage
         package-version: 0.9.9.0
 
     - name: Configure CMake
