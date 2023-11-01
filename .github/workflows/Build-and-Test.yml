@@ -45,8 +45,13 @@ jobs:
 
     - name: Install dependencies
       uses: ./.github/actions/install-dependencies
+
+    - if: matrix.coverage == 'ON'
+      name: Install OpenCppCoverage
+      uses: ./.github/actions/choco-install
       with:
-        extra-packages: ${{matrix.coverage == 'ON' && 'OpenCppCoverage' || ''}}
+        package-name: opencppcoverage
+        package-version: 0.9.9.0
 
     - name: Configure CMake
       run: cmake --preset ${{matrix.preset}} -DTEIDE_PRECOMPILED_HEADERS=ON -DTEIDE_UNIT_TEST_SW_RENDER=ON -DTEIDE_TEST_COVERAGE=${{matrix.coverage}} --trace --trace-format=json-v1 --trace-redirect=CMakeTrace.txt

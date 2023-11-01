@@ -1,0 +1,23 @@
+name: 'choco-install'
+description: 'Install and cache Chocolatey packages'
+
+inputs:
+  package-name:
+    description: 'Name of the package to install'
+    required: true
+  package-version:
+    description: 'Version number of the package to install'
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Install package
+      shell: pwsh
+      run: |
+        choco install --ignorepackageexitcodes ${{inputs.package-name}} --version ${{inputs.package-version}}
+        $env:ChocolateyInstall = Convert-Path "$((Get-Command choco).Path)\..\.."
+        Import-Module "$env:ChocolateyInstall\helpers\chocolateyProfile.psm1"
+        refreshenv
+        echo PATH:
+        echo $env:path -split ";"
