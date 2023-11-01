@@ -16,8 +16,16 @@ runs:
       uses: actions/cache/restore@v3
       id: cache
       with:
-        key: Package-${{runner.os}}-${{inputs.package-name}}-${{inputs.package-version}}
+        key: ${{runner.os}}-${{inputs.package-name}}-${{inputs.package-version}}
         path: '**'
+
+    - name: Set cached path variable
+      if: steps.cache.outputs.cache-hit == 'true'
+      shell: pwsh
+      run: |
+        $pathAppend = Get-Content -Path "${{inputs.package-name}}.path"
+        echo "Adding $pathAppend to PATH"
+        echo "$pathAppend" >> $GITHUB_PATH
 
     - name: Install package
       if: steps.cache.outputs.cache-hit != 'true'
@@ -31,12 +39,13 @@ runs:
         $env:ChocolateyInstall = Convert-Path "$((Get-Command choco).Path)\..\.."
         Import-Module "$env:ChocolateyInstall\helpers\chocolateyProfile.psm1"
         refreshenv
-        echo New entries in PATH:
-        echo $env:path.split(";") | ?{$pathBefore -NotContains $_}
+        $pathAppend = $env:path.split(";") | ?{$pathBefore -NotContains $_}
+        echo "New entries in PATH: $pathAppend"
+        echo "$pathAppend" > "${{inputs.package-name}}.path"
 
     - name: Save to cache
       if: steps.cache.outputs.cache-hit != 'true'
       uses: actions/cache/save@v3
       with:
         key: ${{steps.cache.outputs.cache-primary-key}}
-        path: ${{env.INSTALL_PATH}}
+        path: "${{env.INSTALL_PATH}}" "${{inputs.package-name}}.path"
