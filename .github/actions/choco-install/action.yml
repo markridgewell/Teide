@@ -42,6 +42,7 @@ runs:
         choco install --ignorepackageexitcodes ${{inputs.package-name}} --version ${{inputs.package-version}} | Tee-Object -FilePath output.txt
         $installPath = (Get-Content output.txt | Select-String "Software installed to '(.*)'").matches.groups[1]
         echo "Copying $installPath to ~\${{inputs.package-name}}"
+        New-Item -ItemType Directory -Path "~\${{inputs.package-name}}"
         Copy-Item -Path "$installPath\*" -Destination "~\${{inputs.package-name}}" -Recurse
         echo "$installPath" > "~\${{inputs.package-name}}\install.path"
         echo "Install path: $installPath"
