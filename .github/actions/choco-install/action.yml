@@ -17,14 +17,17 @@ runs:
       id: cache
       with:
         key: ${{runner.os}}-${{inputs.package-name}}-${{inputs.package-version}}
-        path: '**'
+        path: '~/${{inputs.package-name}}/'
 
     - name: Set cached path variable
       if: steps.cache.outputs.cache-hit == 'true'
       shell: pwsh
       run: |
         # Set cached path variable
-        $pathAppend = Get-Content -Path "${{inputs.package-name}}.path"
+        $installPath = Get-Content -Path "~/${{inputs.package-name}}/install.path"
+        echo "Restoring to $installPath"
+        Copy-Item "~/${{inputs.package-name}}" "$installPath"
+        $pathAppend = Get-Content -Path "~/${{inputs.package-name}}/.path"
         echo "Adding $pathAppend to PATH"
         echo "$pathAppend" >> $GITHUB_PATH
 
@@ -36,6 +39,8 @@ runs:
         $pathBefore = $env:path.split(";")
         choco install --ignorepackageexitcodes ${{inputs.package-name}} --version ${{inputs.package-version}} | Tee-Object -FilePath output.txt
         $installPath = (Get-Content output.txt | Select-String "Software installed to '(.*)'").matches.groups[1]
+        Copy-Item "$installPath" "~/${{inputs.package-name}}"
+        echo "$installPath" > "~/${{inputs.package-name}}/install.path"
         echo "Install path: $installPath"
         echo "INSTALL_PATH=$installPath" >> "$env:GITHUB_ENV"
         $env:ChocolateyInstall = Convert-Path "$((Get-Command choco).Path)\..\.."
@@ -43,13 +48,11 @@ runs:
         refreshenv
         $pathAppend = $env:path.split(";") | ?{$pathBefore -NotContains $_}
         echo "New entries in PATH: $pathAppend"
-        echo "$pathAppend" > "${{inputs.package-name}}.path"
+        echo "$pathAppend" > "~/${{inputs.package-name}}/.path"
 
     - name: Save to cache
       if: steps.cache.outputs.cache-hit != 'true'
       uses: actions/cache/save@v3
       with:
         key: ${{steps.cache.outputs.cache-primary-key}}
-        path: |
-          ${{env.INSTALL_PATH}}
-          ${{inputs.package-name}}.path
+        path: '~/${{inputs.package-name}}/'
