@@ -16,10 +16,10 @@ runs:
       shell: pwsh
       run: |
         choco install --ignorepackageexitcodes ${{inputs.package-name}} --version ${{inputs.package-version}} | Tee-Object -FilePath output.txt
-        $installPath = Get-Content output.txt | Select-String "Software installed to "
+        $installPath = (Get-Content output.txt | Select-String "Software installed to '(.*)'").matches.groups[1]
         echo "Install path: $installPath"
         $env:ChocolateyInstall = Convert-Path "$((Get-Command choco).Path)\..\.."
         Import-Module "$env:ChocolateyInstall\helpers\chocolateyProfile.psm1"
         refreshenv
         echo PATH:
-        echo $env:path -split ";"
+        echo $env:path.split(";")
