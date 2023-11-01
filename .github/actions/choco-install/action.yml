@@ -15,7 +15,9 @@ runs:
     - name: Install package
       shell: pwsh
       run: |
-        choco install --ignorepackageexitcodes ${{inputs.package-name}} --version ${{inputs.package-version}}
+        choco install --ignorepackageexitcodes ${{inputs.package-name}} --version ${{inputs.package-version}} | Tee-Object -FilePath output.txt
+        $installPath = Get-Content output.txt | Select-String "Software installed to "
+        echo "Install path: $installPath"
         $env:ChocolateyInstall = Convert-Path "$((Get-Command choco).Path)\..\.."
         Import-Module "$env:ChocolateyInstall\helpers\chocolateyProfile.psm1"
         refreshenv
