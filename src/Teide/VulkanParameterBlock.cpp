@@ -13,7 +13,7 @@ bool VulkanParameterBlockLayout::IsEmpty() const
 
 bool VulkanParameterBlockLayout::HasDescriptors() const
 {
-    return descriptorTypeCounts.empty();
+    return !descriptorTypeCounts.empty();
 }
 
 bool VulkanParameterBlockLayout::HasPushConstants() const
