@@ -23,6 +23,7 @@ runs:
       if: steps.cache.outputs.cache-hit == 'true'
       shell: pwsh
       run: |
+        # Set cached path variable
         $pathAppend = Get-Content -Path "${{inputs.package-name}}.path"
         echo "Adding $pathAppend to PATH"
         echo "$pathAppend" >> $GITHUB_PATH
@@ -31,6 +32,7 @@ runs:
       if: steps.cache.outputs.cache-hit != 'true'
       shell: pwsh
       run: |
+        # Install package
         $pathBefore = $env:path.split(";")
         choco install --ignorepackageexitcodes ${{inputs.package-name}} --version ${{inputs.package-version}} | Tee-Object -FilePath output.txt
         $installPath = (Get-Content output.txt | Select-String "Software installed to '(.*)'").matches.groups[1]
