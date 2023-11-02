@@ -54,12 +54,12 @@ jobs:
         package-version: 0.9.9.0
 
     - name: Configure CMake
-      run: >-
-        cmake --preset ${{matrix.preset}}
-          -DTEIDE_PRECOMPILED_HEADERS=ON
-          -DTEIDE_UNIT_TEST_SW_RENDER=ON
-          -DTEIDE_TEST_COVERAGE=${{matrix.coverage}}
-          -DCMAKE_CONFIGURATION_TYPES=${{matrix.buildtype}}
+      run: |
+        cmake --preset ${{matrix.preset}} \
+          -DTEIDE_PRECOMPILED_HEADERS=ON \
+          -DTEIDE_UNIT_TEST_SW_RENDER=ON \
+          -DTEIDE_TEST_COVERAGE=${{matrix.coverage}} \
+          -DCMAKE_CONFIGURATION_TYPES=${{matrix.buildtype}} \
           --trace --trace-format=json-v1 --trace-redirect=CMakeTrace.txt
 
     - name: Save CMake trace
@@ -82,9 +82,9 @@ jobs:
 
     - name: Test
       id: test
-      run: >-
-        ctest --preset ${{matrix.preset}}
-          --build-config ${{matrix.buildtype}}
+      run: |
+        ctest --preset ${{matrix.preset}} \
+          --build-config ${{matrix.buildtype}} \
           --verbose --output-on-failure --no-tests=error
 
     - name: Save render test output
