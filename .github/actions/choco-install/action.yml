@@ -27,7 +27,7 @@ runs:
         $installPath = Get-Content -Path "~\${{inputs.package-name}}\install.path"
         echo "Copying ~\${{inputs.package-name}}\* to  $installPath\"
         New-Item -ItemType Directory -Path "$installPath"
-        Copy-Item -Path "~\${{inputs.package-name\*" -Destination "$installPath" -Recurse
+        Copy-Item -Path "~\${{inputs.package-name}}\*" -Destination "$installPath" -Recurse
         $pathAppend = Get-Content -Path "~\${{inputs.package-name}}\.path"
         echo "Adding $pathAppend to PATH"
         echo "$pathAppend" >> $GITHUB_PATH
