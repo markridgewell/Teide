@@ -49,7 +49,13 @@ jobs:
         extra-packages: ${{matrix.coverage == 'ON' && 'OpenCppCoverage' || ''}}
 
     - name: Configure CMake
-      run: cmake --preset ${{matrix.preset}} -DTEIDE_PRECOMPILED_HEADERS=ON -DTEIDE_UNIT_TEST_SW_RENDER=ON -DTEIDE_TEST_COVERAGE=${{matrix.coverage}} --trace --trace-format=json-v1 --trace-redirect=CMakeTrace.txt
+      run: >-
+        cmake --preset ${{matrix.preset}}
+          -DTEIDE_PRECOMPILED_HEADERS=ON
+          -DTEIDE_UNIT_TEST_SW_RENDER=ON
+          -DTEIDE_TEST_COVERAGE=${{matrix.coverage}}
+          -DCMAKE_CONFIGURATION_TYPES=${{matrix.buildtype}}
+          --trace --trace-format=json-v1 --trace-redirect=CMakeTrace.txt
 
     - name: Save CMake trace
       uses: actions/upload-artifact@v3
@@ -71,7 +77,10 @@ jobs:
 
     - name: Test
       id: test
-      run: ctest --preset ${{matrix.preset}} --build-config ${{matrix.buildtype}} --verbose --output-on-failure --no-tests=error
+      run: >-
+        ctest --preset ${{matrix.preset}}
+          --build-config ${{matrix.buildtype}}
+          --verbose --output-on-failure --no-tests=error
 
     - name: Save render test output
       if: failure() && steps.test.outcome == 'failure'
