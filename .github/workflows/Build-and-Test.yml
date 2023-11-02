@@ -6,10 +6,17 @@ on:
   pull_request:
     branches: [ main ]
   workflow_dispatch:
+    inputs:
+      profile-cmake:
+        description: 'Enable CMake profiling'
+        required: true
+        default: false
+        type: boolean
 
 env:
   VULKAN_SDK: ./VULKAN_SDK
   VCPKG_OVERLAY_PORTS: ./external/ports
+  EXTRA_CMAKE_FLAGS: ${{inputs.profile-cmake && '--profiling-format=google-trace --profiling-output=CMakeTrace.json' || ''}}
 
 jobs:
   windows:
@@ -54,7 +61,7 @@ jobs:
         package-version: 0.9.9.0
 
     - name: Configure CMake
-      run: cmake --preset ${{matrix.preset}} -DTEIDE_PRECOMPILED_HEADERS=ON -DTEIDE_UNIT_TEST_SW_RENDER=ON -DTEIDE_TEST_COVERAGE=${{matrix.coverage}} -DCMAKE_CONFIGURATION_TYPES=${{matrix.buildtype}} -DCMAKE_TRY_COMPILE_CONFIGURATION=${{matrix.buildtype}} --profiling-format=google-trace --profiling-output=CMakeTrace.json
+      run: cmake --preset ${{matrix.preset}} -DTEIDE_PRECOMPILED_HEADERS=ON -DTEIDE_UNIT_TEST_SW_RENDER=ON -DTEIDE_TEST_COVERAGE=${{matrix.coverage}} -DCMAKE_CONFIGURATION_TYPES=${{matrix.buildtype}} -DCMAKE_TRY_COMPILE_CONFIGURATION=${{matrix.buildtype}} ${{env.EXTRA_CMAKE_FLAGS}}
 
     - name: Save CMake trace
       uses: actions/upload-artifact@v3
@@ -156,7 +163,7 @@ jobs:
         extra-packages: ninja-build ${{matrix.compiler}}
 
     - name: Configure CMake
-      run: cmake --preset ${{matrix.preset}} -DCMAKE_CXX_COMPILER=${{matrix.compiler}} -DTEIDE_PRECOMPILED_HEADERS=ON -DTEIDE_UNIT_TEST_SW_RENDER=ON -DTEIDE_TEST_WINDOWLESS=ON -DTEIDE_TEST_COVERAGE=${{matrix.coverage}} -DTEIDE_SANITIZER=${{matrix.sanitizer}}
+      run: cmake --preset ${{matrix.preset}} -DCMAKE_CXX_COMPILER=${{matrix.compiler}} -DTEIDE_PRECOMPILED_HEADERS=ON -DTEIDE_UNIT_TEST_SW_RENDER=ON -DTEIDE_TEST_WINDOWLESS=ON -DTEIDE_TEST_COVERAGE=${{matrix.coverage}} -DTEIDE_SANITIZER=${{matrix.sanitizer}} ${{env.EXTRA_CMAKE_FLAGS}}
 
     - name: Build
       run: cmake --build --preset ${{matrix.preset}} --config ${{matrix.buildtype}}
