@@ -31,8 +31,6 @@ runs:
         $pathAppend = Get-Content -Path "~\${{inputs.package-name}}\.path"
         echo "Adding $pathAppend to PATH"
         echo "$pathAppend" >> $GITHUB_PATH
-        echo "Restored files:"
-        Get-ChildItem "$installPath" -Recurse
 
     - name: Install package
       if: steps.cache.outputs.cache-hit != 'true'
