@@ -25,8 +25,9 @@ runs:
       run: |
         # Set cached path variable
         $installPath = Get-Content -Path "~\${{inputs.package-name}}\install.path"
-        echo "Restoring to $installPath"
-        Copy-Item "~\${{inputs.package-name}}" "$installPath"
+        echo "Copying ~\${{inputs.package-name}}\* to  $installPath\"
+        New-Item -ItemType Directory -Path "$installPath"
+        Copy-Item -Path "~\${{inputs.package-name\*" -Destination "$installPath" -Recurse
         $pathAppend = Get-Content -Path "~\${{inputs.package-name}}\.path"
         echo "Adding $pathAppend to PATH"
         echo "$pathAppend" >> $GITHUB_PATH
@@ -41,7 +42,7 @@ runs:
         $pathBefore = $env:path.split(";")
         choco install --ignorepackageexitcodes ${{inputs.package-name}} --version ${{inputs.package-version}} | Tee-Object -FilePath output.txt
         $installPath = (Get-Content output.txt | Select-String "Software installed to '(.*)'").matches.groups[1]
-        echo "Copying $installPath to ~\${{inputs.package-name}}"
+        echo "Copying $installPath\* to ~\${{inputs.package-name}}\"
         New-Item -ItemType Directory -Path "~\${{inputs.package-name}}"
         Copy-Item -Path "$installPath\*" -Destination "~\${{inputs.package-name}}" -Recurse
         echo "$installPath" > "~\${{inputs.package-name}}\install.path"
