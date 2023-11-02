@@ -54,13 +54,13 @@ jobs:
         package-version: 0.9.9.0
 
     - name: Configure CMake
-      run: cmake --preset ${{matrix.preset}} -DTEIDE_PRECOMPILED_HEADERS=ON -DTEIDE_UNIT_TEST_SW_RENDER=ON -DTEIDE_TEST_COVERAGE=${{matrix.coverage}} -DCMAKE_CONFIGURATION_TYPES=${{matrix.buildtype}} -DCMAKE_TRY_COMPILE_CONFIGURATION=${{matrix.buildtype}}
+      run: cmake --preset ${{matrix.preset}} -DTEIDE_PRECOMPILED_HEADERS=ON -DTEIDE_UNIT_TEST_SW_RENDER=ON -DTEIDE_TEST_COVERAGE=${{matrix.coverage}} -DCMAKE_CONFIGURATION_TYPES=${{matrix.buildtype}} -DCMAKE_TRY_COMPILE_CONFIGURATION=${{matrix.buildtype}} --profiling-format=google-trace --profiling-output=CMakeTrace.json
 
     - name: Save CMake trace
       uses: actions/upload-artifact@v3
       with:
         name: CMakeTrace-${{env.job_name}}
-        path: ./CMakeTrace.txt
+        path: ./CMakeTrace.json
 
     - name: Build
       run: cmake --build --preset ${{matrix.preset}} --config ${{matrix.buildtype}}
