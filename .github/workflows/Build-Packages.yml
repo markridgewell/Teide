@@ -4,6 +4,7 @@ on:
   schedule:
     # Run at 5:20am and 5:20pm every day
     - cron:  '20 5,17 * * *'
+  workflow_dispatch:
 
 env:
   VULKAN_SDK: ./VULKAN_SDK
