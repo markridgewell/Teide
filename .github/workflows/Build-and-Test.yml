@@ -45,8 +45,13 @@ jobs:
 
     - name: Install dependencies
       uses: ./.github/actions/install-dependencies
+
+    - if: matrix.coverage == 'ON'
+      name: Install OpenCppCoverage
+      uses: ./.github/actions/choco-install
       with:
-        extra-packages: ${{matrix.coverage == 'ON' && 'OpenCppCoverage' || ''}}
+        package-name: OpenCppCoverage
+        package-version: 0.9.9.0
 
     - name: Configure CMake
       run: >-
