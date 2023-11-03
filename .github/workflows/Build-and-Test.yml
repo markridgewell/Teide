@@ -6,10 +6,22 @@ on:
   pull_request:
     branches: [ main ]
   workflow_dispatch:
+    inputs:
+      profile-cmake:
+        description: 'Enable CMake profiling'
+        required: true
+        default: false
+        type: boolean
+      coverage:
+        description: 'Enable code coverage'
+        required: true
+        default: true
+        type: boolean
 
 env:
   VULKAN_SDK: ./VULKAN_SDK
   VCPKG_OVERLAY_PORTS: ./external/ports
+  EXTRA_CMAKE_FLAGS: ${{inputs.profile-cmake && '--profiling-format=google-trace --profiling-output=CMakeTrace.json' || ''}}
 
 jobs:
   windows:
@@ -21,7 +33,7 @@ jobs:
         include:
         - preset: msvc2022
           runner: windows-2022
-          coverage: ON
+          coverage: ${{(inputs.coverage || inputs.coverage=='') && 'ON' || 'OFF'}}
         - preset: msvc2022-clang
           runner: windows-2022
           coverage: OFF
@@ -34,9 +46,6 @@ jobs:
       CMAKE_BUILD_TYPE: ${{matrix.buildtype}}
 
     steps:
-    - name: Print job ID
-      run: echo "${{github.job}}"
-
     - name: Checkout
       uses: actions/checkout@v3
       with:
@@ -45,17 +54,23 @@ jobs:
 
     - name: Install dependencies
       uses: ./.github/actions/install-dependencies
+
+    - if: matrix.coverage == 'ON'
+      name: Install OpenCppCoverage
+      uses: ./.github/actions/choco-install
       with:
-        extra-packages: ${{matrix.coverage == 'ON' && 'OpenCppCoverage' || ''}}
+        package-name: OpenCppCoverage
+        package-version: 0.9.9.0
 
     - name: Configure CMake
-      run: cmake --preset ${{matrix.preset}} -DTEIDE_PRECOMPILED_HEADERS=ON -DTEIDE_UNIT_TEST_SW_RENDER=ON -DTEIDE_TEST_COVERAGE=${{matrix.coverage}} --trace --trace-format=json-v1 --trace-redirect=CMakeTrace.txt
+      run: cmake --preset ${{matrix.preset}} -DTEIDE_PRECOMPILED_HEADERS=ON -DTEIDE_UNIT_TEST_SW_RENDER=ON -DTEIDE_TEST_COVERAGE=${{matrix.coverage}} -DCMAKE_CONFIGURATION_TYPES=${{matrix.buildtype}} -DCMAKE_TRY_COMPILE_CONFIGURATION=${{matrix.buildtype}} ${{env.EXTRA_CMAKE_FLAGS}}
 
     - name: Save CMake trace
+      if: inputs.profile-cmake
       uses: actions/upload-artifact@v3
       with:
         name: CMakeTrace-${{env.job_name}}
-        path: ./CMakeTrace.txt
+        path: ./CMakeTrace.json
 
     - name: Build
       run: cmake --build --preset ${{matrix.preset}} --config ${{matrix.buildtype}}
@@ -114,7 +129,7 @@ jobs:
         - coverage: OFF
         - buildtype: Debug
           compiler: clang++-17
-          coverage: ON
+          coverage: ${{(inputs.coverage || inputs.coverage=='') && 'ON' || 'OFF'}}
         - buildtype: Debug
           compiler: clang++-17
           sanitizer: ASAN
@@ -136,9 +151,6 @@ jobs:
       job_name: Linux-${{matrix.buildtype}}-${{matrix.compiler}}${{matrix.name-suffix}}
 
     steps:
-    - name: Print job ID
-      run: echo "${{github.job}}"
-
     - name: Checkout
       uses: actions/checkout@v3
       with:
@@ -151,7 +163,14 @@ jobs:
         extra-packages: ninja-build ${{matrix.compiler}}
 
     - name: Configure CMake
-      run: cmake --preset ${{matrix.preset}} -DCMAKE_CXX_COMPILER=${{matrix.compiler}} -DTEIDE_PRECOMPILED_HEADERS=ON -DTEIDE_UNIT_TEST_SW_RENDER=ON -DTEIDE_TEST_WINDOWLESS=ON -DTEIDE_TEST_COVERAGE=${{matrix.coverage}} -DTEIDE_SANITIZER=${{matrix.sanitizer}}
+      run: cmake --preset ${{matrix.preset}} -DCMAKE_CXX_COMPILER=${{matrix.compiler}} -DTEIDE_PRECOMPILED_HEADERS=ON -DTEIDE_UNIT_TEST_SW_RENDER=ON -DTEIDE_TEST_WINDOWLESS=ON -DTEIDE_TEST_COVERAGE=${{matrix.coverage}} -DTEIDE_SANITIZER=${{matrix.sanitizer}} ${{env.EXTRA_CMAKE_FLAGS}}
+
+    - name: Save CMake trace
+      if: inputs.profile-cmake
+      uses: actions/upload-artifact@v3
+      with:
+        name: CMakeTrace-${{env.job_name}}
+        path: ./CMakeTrace.json
 
     - name: Build
       run: cmake --build --preset ${{matrix.preset}} --config ${{matrix.buildtype}}
