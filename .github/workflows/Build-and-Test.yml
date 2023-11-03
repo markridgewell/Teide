@@ -33,7 +33,7 @@ jobs:
         include:
         - preset: msvc2022
           runner: windows-2022
-          coverage: ${{inputs.coverage && 'ON' || 'OFF'}}
+          coverage: ${{(inputs.coverage || inputs.coverage=='') && 'ON' || 'OFF'}}
         - preset: msvc2022-clang
           runner: windows-2022
           coverage: OFF
@@ -46,9 +46,6 @@ jobs:
       CMAKE_BUILD_TYPE: ${{matrix.buildtype}}
 
     steps:
-    - name: Print job ID
-      run: echo "${{github.job}}"
-
     - name: Checkout
       uses: actions/checkout@v3
       with:
@@ -132,7 +129,7 @@ jobs:
         - coverage: OFF
         - buildtype: Debug
           compiler: clang++-17
-          coverage: ${{inputs.coverage && 'ON' || 'OFF'}}
+          coverage: ${{(inputs.coverage || inputs.coverage=='') && 'ON' || 'OFF'}}
         - buildtype: Debug
           compiler: clang++-17
           sanitizer: ASAN
@@ -154,9 +151,6 @@ jobs:
       job_name: Linux-${{matrix.buildtype}}-${{matrix.compiler}}${{matrix.name-suffix}}
 
     steps:
-    - name: Print job ID
-      run: echo "${{github.job}}"
-
     - name: Checkout
       uses: actions/checkout@v3
       with:
