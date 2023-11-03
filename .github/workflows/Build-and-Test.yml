@@ -33,7 +33,7 @@ jobs:
         include:
         - preset: msvc2022
           runner: windows-2022
-          coverage: ${{(inputs.coverage || inputs.coverage=='') && 'ON' || 'OFF'}}
+          coverage: ${{toJSON(inputs.coverage) == 'true' && 'ON' || 'OFF'}}
         - preset: msvc2022-clang
           runner: windows-2022
           coverage: OFF
@@ -129,7 +129,7 @@ jobs:
         - coverage: OFF
         - buildtype: Debug
           compiler: clang++-17
-          coverage: ${{(inputs.coverage || inputs.coverage=='') && 'ON' || 'OFF'}}
+          coverage: ${{toJSON(inputs.coverage) == 'true' && 'ON' || 'OFF'}}
         - buildtype: Debug
           compiler: clang++-17
           sanitizer: ASAN
