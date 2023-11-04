@@ -3,6 +3,7 @@ include(FileLists.cmake)
 if(TEIDE_TEST_VERBOSE)
     list(APPEND extra_args --verbose)
 endif()
+
 if(TEIDE_TEST_WINDOWLESS)
     list(APPEND extra_args --windowless)
 endif()

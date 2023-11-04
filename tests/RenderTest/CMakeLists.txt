@@ -9,6 +9,10 @@ if(TEIDE_RENDER_TEST_SW_RENDER)
     list(APPEND extra_args --sw-render)
 endif()
 
+if(TARGET unofficial::stackwalker::StackWalker)
+    list(APPEND extra_deps unofficial::stackwalker::StackWalker)
+endif()
+
 set(TEIDE_RENDER_TEST_REFERENCE_DIR
     "${CMAKE_CURRENT_SOURCE_DIR}/references"
     CACHE
