@@ -60,10 +60,10 @@ jobs:
       matrix:
         preset: [g++-13, clang++-17]
         include:
-        - preset: msvc2022
-          runner: windows-2022
-        - preset: msvc2022-clang
-          runner: windows-2022
+        - preset: g++-13
+          runner: ubuntu-latest
+        - preset: clang++-17
+          runner: ubuntu-latest
       fail-fast: true
 
     name: Linux-${{matrix.preset}}
