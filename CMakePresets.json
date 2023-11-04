@@ -87,10 +87,6 @@
       "configurePreset": "msvc2022-clang"
     },
     {
-      "name": "mingw",
-      "configurePreset": "mingw"
-    },
-    {
       "name": "make",
       "configurePreset": "make"
     },
@@ -115,10 +111,6 @@
     {
       "name": "msvc2022-clang",
       "configurePreset": "msvc2022-clang"
-    },
-    {
-      "name": "mingw",
-      "configurePreset": "mingw"
     },
     {
       "name": "make",
