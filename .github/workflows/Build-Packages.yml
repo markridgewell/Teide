@@ -58,15 +58,19 @@ jobs:
   linux:
     strategy:
       matrix:
-        compiler: [g++-13, clang++-17]
-        preset: [ninja]
+        preset: [g++-13, clang++-17]
+        include:
+        - preset: msvc2022
+          runner: windows-2022
+        - preset: msvc2022-clang
+          runner: windows-2022
       fail-fast: true
 
-    name: Linux-${{matrix.compiler}}
-    runs-on: ubuntu-latest
+    name: Linux-${{matrix.preset}}
+    runs-on: ${{matrix.runner}}
 
     env:
-      job_name: Linux-${{matrix.compiler}}
+      job_name: Linux-${{matrix.preset}}
 
     steps:
     - name: Checkout
@@ -86,11 +90,11 @@ jobs:
       if: steps.cache.outputs.cache-hit != 'true'
       uses: ./.github/actions/install-dependencies
       with:
-        extra-packages: ninja-build ${{matrix.compiler}}
+        extra-packages: ninja-build ${{matrix.preset}}
 
     - name: Configure CMake
       if: steps.cache.outputs.cache-hit != 'true'
-      run: cmake --preset ${{matrix.preset}} -DCMAKE_CXX_COMPILER=${{matrix.compiler}}
+      run: cmake --preset ${{matrix.preset}} -DCMAKE_CXX_COMPILER=${{matrix.preset}}
 
     - name: Export packages
       if: steps.cache.outputs.cache-hit != 'true'
