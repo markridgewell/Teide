@@ -32,24 +32,28 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v3
       with:
-        lfs: true
+        lfs: false
         submodules: recursive
 
+    - name: Cache
+      id: cache
+      uses: actions/cache@v3
+      with:
+        key: vcpkg-export-${{env.job_name}}-${{hashFiles('vckpg.json,external/ports/**')}}
+        path: './exports'
+
     - name: Install dependencies
+      if: steps.cache.outputs.cache-hit != 'true'
       uses: ./.github/actions/install-dependencies
 
     - name: Configure CMake
+      if: steps.cache.outputs.cache-hit != 'true'
       run: cmake --preset ${{matrix.preset}}
 
     - name: Export packages
+      if: steps.cache.outputs.cache-hit != 'true'
       run: |
         ./external/vcpkg/vcpkg export --raw --output-dir=./exports
-
-    - name: Save to cache
-      uses: actions/cache/save@v3
-      with:
-        key: vcpkg-export-${{env.job_name}}
-        path: './exports'
 
   linux:
     strategy:
@@ -68,23 +72,27 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v3
       with:
-        lfs: true
+        lfs: false
         submodules: recursive
 
+    - name: Cache
+      id: cache
+      uses: actions/cache@v3
+      with:
+        key: vcpkg-export-${{env.job_name}}-${{hashFiles('vckpg.json,external/ports/**')}}
+        path: './exports'
+
     - name: Install dependencies
+      if: steps.cache.outputs.cache-hit != 'true'
       uses: ./.github/actions/install-dependencies
       with:
         extra-packages: ninja-build ${{matrix.compiler}}
 
     - name: Configure CMake
+      if: steps.cache.outputs.cache-hit != 'true'
       run: cmake --preset ${{matrix.preset}} -DCMAKE_CXX_COMPILER=${{matrix.compiler}}
 
     - name: Export packages
+      if: steps.cache.outputs.cache-hit != 'true'
       run: |
         ./external/vcpkg/vcpkg export --raw --output-dir=./exports
-
-    - name: Save to cache
-      uses: actions/cache/save@v3
-      with:
-        key: vcpkg-export-${{env.job_name}}
-        path: './exports'
