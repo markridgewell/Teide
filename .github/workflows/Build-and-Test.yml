@@ -60,14 +60,16 @@ jobs:
     - name: Build
       run: cmake --build --preset ${{matrix.preset}} --config ${{matrix.buildtype}}
 
-    - name: Save CMake output logs
+    - name: Dump CMake output logs
       if: failure()
-      uses: actions/upload-artifact@v3
-      with:
-        name: CMakeLogs-${{env.job_name}}
-        path: |
-          ./build/${{matrix.preset}}/**/*.log
-          ./external/vcpkg/**/*.log
+      shell: bash
+      run: |
+        paths="external/vcpkg build/${{matrix.preset}}"
+        for file in $(find $paths -name '*.log'); do
+            echo "::group::$file"
+            cat $file
+            echo "::endgroup::"
+        done
 
     - name: Test
       id: test
