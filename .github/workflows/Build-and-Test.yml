@@ -21,7 +21,7 @@ on:
 env:
   VULKAN_SDK: ./VULKAN_SDK
   VCPKG_OVERLAY_PORTS: ./external/ports
-  TEIDE_PREBUILT_PACKAGES_DIR: ./exports
+  TEIDE_PREBUILT_PACKAGES_DIR: ${{github.workspace}}/exports
   EXTRA_CMAKE_FLAGS: ${{inputs.profile-cmake && '--profiling-format=google-trace --profiling-output=CMakeTrace.json' || ''}}
 
 jobs:
@@ -83,6 +83,10 @@ jobs:
         key: vcpkg-export-${{matrix.runner}}-${{matrix.preset}}-${{hashFiles('vckpg.json','external/ports/**')}}
         path: ${{env.TEIDE_PREBUILT_PACKAGES_DIR}}
         fail-on-cache-miss: true
+
+    - if: runner.os == 'Windows'
+      shell: pwsh
+      run: Get-ChildItem -Path "${{env.TEIDE_PREBUILT_PACKAGES_DIR}}" -Recurse 
 
     - name: Install dependencies
       uses: ./.github/actions/install-dependencies
