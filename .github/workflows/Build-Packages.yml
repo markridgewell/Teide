@@ -45,6 +45,12 @@ jobs:
         key: vcpkg-export-${{matrix.runner}}-${{matrix.preset}}-${{hashFiles('vckpg.json','external/ports/**')}}
         path: './exports'
 
+    - name: Setup vcpkg
+      uses: lukka/run-vcpkg@v11
+      with:
+        vcpkgDirectory: '${{github.workspace}}/external/vcpkg'
+        vcpkgJsonGlob: 'vcpkg.json'
+
     - name: Install dependencies
       if: steps.cache.outputs.cache-hit != 'true'
       uses: ./.github/actions/install-dependencies

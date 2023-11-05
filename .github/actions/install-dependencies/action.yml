@@ -5,21 +5,10 @@ inputs:
   extra-packages:
     description: 'Additional packages to install with apt-get (Linux) or chocolatey (Windows)'
     required: false
-  vcpkg:
-    type: boolean
-    required: false
-    default: true
 
 runs:
   using: composite
   steps:
-    - name: Setup vcpkg
-      if: inputs.vcpkg
-      uses: lukka/run-vcpkg@v11
-      with:
-        vcpkgDirectory: '${{github.workspace}}/external/vcpkg'
-        vcpkgJsonGlob: 'vcpkg.json'
-
     - name: Setup Vulkan SDK
       uses: edvn0/setup-vulkan-sdk@v1.3.0
       with:

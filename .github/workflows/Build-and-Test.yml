@@ -87,7 +87,6 @@ jobs:
     - name: Install dependencies
       uses: ./.github/actions/install-dependencies
       with:
-        vcpkg: false
         extra-packages: ${{matrix.extra-packages}}
 
     - if: matrix.coverage == 'ON' && runner.os == 'Windows'
