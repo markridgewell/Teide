@@ -84,10 +84,6 @@ jobs:
         path: './exports'
         fail-on-cache-miss: true
 
-    - if: runner.os == 'Windows'
-      shell: pwsh
-      run: Get-ChildItem -Path "${{env.TEIDE_PREBUILT_PACKAGES_DIR}}" -Recurse
-
     - name: Install dependencies
       uses: ./.github/actions/install-dependencies
       with:
