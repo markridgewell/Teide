@@ -10,7 +10,7 @@
       "name": "_common",
       "hidden": true,
       "binaryDir": "${sourceDir}/build/${presetName}",
-      "toolchainFile": "${sourceDir}/external/vcpkg/scripts/buildsystems/vcpkg.cmake",
+      "toolchainFile": "${sourceDir}/tools/cmake/toolchains/vcpkg.cmake",
       "cacheVariables": {
         "VCPKG_INSTALL_OPTIONS": "--no-print-usage",
         "CMAKE_OPTIMIZE_DEPENDENCIES": "ON"
