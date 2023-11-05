@@ -106,9 +106,11 @@ jobs:
       run: |
         paths="external/vcpkg build/${{matrix.preset}}"
         for file in $(find $paths -name '*.log'); do
-            echo "::group::$file"
-            cat $file
-            echo "::endgroup::"
+            if [ -s $file ]; then
+                echo "::group::$file"
+                cat $file
+                echo "::endgroup::"
+            fi
         done
 
     - name: Test
