@@ -84,6 +84,12 @@ jobs:
         path: './exports'
         fail-on-cache-miss: true
 
+    - name: Setup vcpkg
+      uses: lukka/run-vcpkg@v11
+      with:
+        vcpkgDirectory: '${{github.workspace}}/external/vcpkg'
+        vcpkgJsonGlob: 'vcpkg.json'
+
     - name: Install dependencies
       uses: ./.github/actions/install-dependencies
       with:
