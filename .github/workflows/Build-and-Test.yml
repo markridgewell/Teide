@@ -61,11 +61,11 @@ jobs:
           sanitizer: UBSAN
           name-suffix: -ubsan
 
-    name: ${{startsWith(matrix.runner, 'windows') && 'Windows' || 'Linux'}}-${{matrix.buildtype}}-${{matrix.preset}}
+    name: ${{startsWith(matrix.runner, 'windows') && 'Windows' || 'Linux'}}-${{matrix.buildtype}}-${{matrix.preset}}${{matrix.name-suffix}}
     runs-on: ${{matrix.runner}}
 
     env:
-      job_name: ${{startsWith(matrix.runner, 'windows') && 'Windows' || 'Linux'}}-${{matrix.buildtype}}-${{matrix.preset}}
+      job_name: ${{startsWith(matrix.runner, 'windows') && 'Windows' || 'Linux'}}-${{matrix.buildtype}}-${{matrix.preset}}${{matrix.name-suffix}}
       CMAKE_BUILD_TYPE: ${{matrix.buildtype}}
 
     steps:
