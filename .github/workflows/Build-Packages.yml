@@ -64,4 +64,8 @@ jobs:
     - name: Export packages
       if: steps.cache.outputs.cache-hit != 'true'
       run: |
-        ./external/vcpkg/vcpkg export --raw --output-dir=./exports --x-install-root=build/${{matrix.preset}}/vcpkg_installed
+        ./external/vcpkg/vcpkg export --raw --output=exports --output-dir=. --x-install-root=build/${{matrix.preset}}/vcpkg_installed
+
+    - name: List contents
+      shell: bash
+      run: ls -R exports
