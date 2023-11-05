@@ -24,25 +24,48 @@ env:
   EXTRA_CMAKE_FLAGS: ${{inputs.profile-cmake && '--profiling-format=google-trace --profiling-output=CMakeTrace.json' || ''}}
 
 jobs:
-  windows:
+  unified:
     strategy:
       fail-fast: false
       matrix:
+        preset: [msvc2022, msvc2022-clang, g++-13, clang++-17]
         buildtype: [Debug, Release]
-        preset: [msvc2022, msvc2022-clang]
+        sanitizer: [OFF]
         include:
+        # Overrides
+        - coverage: OFF
         - preset: msvc2022
           runner: windows-2022
           coverage: ${{toJSON(inputs.coverage) != 'false' && 'ON' || 'OFF'}}
         - preset: msvc2022-clang
           runner: windows-2022
-          coverage: OFF
+        - preset: g++-13
+          runner: ubuntu-latest
+          extra-packages: ninja-build g++-13
+        - preset: clang++-17
+          runner: ubuntu-latest
+          extra-packages: ninja-build clang++-17
+          coverage: ${{toJSON(inputs.coverage) != 'false' && 'ON' || 'OFF'}}
 
-    name: Windows-${{matrix.buildtype}}-${{matrix.preset}}
+        # Additional jobs
+        - preset: clang++-17
+          buildtype: Debug
+          runner: ubuntu-latest
+          extra-packages: ninja-build clang++-17
+          sanitizer: ASAN
+          name-suffix: -asan
+        - preset: clang++-17
+          buildtype: Debug
+          runner: ubuntu-latest
+          extra-packages: ninja-build clang++-17
+          sanitizer: UBSAN
+          name-suffix: -ubsan
+
+    name: ${{startsWith(matrix.runner, 'windows') && 'Windows' || 'Linux'}}-${{matrix.buildtype}}-${{matrix.preset}}
     runs-on: ${{matrix.runner}}
 
     env:
-      job_name: Windows-${{matrix.buildtype}}-${{matrix.preset}}
+      job_name: ${{startsWith(matrix.runner, 'windows') && 'Windows' || 'Linux'}}-${{matrix.buildtype}}-${{matrix.preset}}
       CMAKE_BUILD_TYPE: ${{matrix.buildtype}}
 
     steps:
@@ -54,8 +77,10 @@ jobs:
 
     - name: Install dependencies
       uses: ./.github/actions/install-dependencies
+      with:
+        extra-packages: ${{matrix.extra-packages}}
 
-    - if: matrix.coverage == 'ON'
+    - if: matrix.coverage == 'ON' && runner.os == 'Windows'
       name: Install OpenCppCoverage
       uses: ./.github/actions/choco-install
       with:
@@ -63,7 +88,7 @@ jobs:
         package-version: 0.9.9.0
 
     - name: Configure CMake
-      run: cmake --preset ${{matrix.preset}} -DTEIDE_PRECOMPILED_HEADERS=ON -DTEIDE_UNIT_TEST_SW_RENDER=ON -DTEIDE_TEST_COVERAGE=${{matrix.coverage}} -DCMAKE_CONFIGURATION_TYPES=${{matrix.buildtype}} -DCMAKE_TRY_COMPILE_CONFIGURATION=${{matrix.buildtype}} ${{env.EXTRA_CMAKE_FLAGS}}
+      run: cmake --preset ${{matrix.preset}} -DTEIDE_PRECOMPILED_HEADERS=ON -DTEIDE_UNIT_TEST_SW_RENDER=ON -DTEIDE_TEST_WINDOWLESS=${{runner.os == 'Linux'}} -DTEIDE_TEST_COVERAGE=${{matrix.coverage}} -DTEIDE_SANITIZER=${{matrix.sanitizer}} -DCMAKE_CONFIGURATION_TYPES=${{matrix.buildtype}} -DCMAKE_TRY_COMPILE_CONFIGURATION=${{matrix.buildtype}} ${{env.EXTRA_CMAKE_FLAGS}}
 
     - name: Save CMake trace
       if: inputs.profile-cmake
@@ -118,115 +143,10 @@ jobs:
         name: CoverageReport-${{env.job_name}}
         path: build/${{matrix.preset}}/coverage/output
 
-  linux:
-    strategy:
-      matrix:
-        buildtype: [Debug, Release]
-        preset: [g++-13, clang++-17]
-        sanitizer: [OFF]
-        include:
-        # Overrides
-        - coverage: OFF
-        - preset: g++-13
-          extra-packages: ninja-build g++-13
-        - preset: clang++-17
-          extra-packages: ninja-build clang++-17
-        - buildtype: Debug
-          preset: clang++-17
-          sanitizer: OFF
-          coverage: ${{toJSON(inputs.coverage) != 'false' && 'ON' || 'OFF'}}
-
-        # Additional jobs
-        - buildtype: Debug
-          preset: clang++-17
-          extra-packages: ninja-build clang++-17
-          sanitizer: ASAN
-          name-suffix: -asan
-        - buildtype: Debug
-          preset: clang++-17
-          extra-packages: ninja-build clang++-17
-          sanitizer: UBSAN
-          name-suffix: -ubsan
-      fail-fast: false
-
-    name: Linux-${{matrix.buildtype}}-${{matrix.preset}}${{matrix.name-suffix}}
-    runs-on: ubuntu-latest
-
-    env:
-      job_name: Linux-${{matrix.buildtype}}-${{matrix.preset}}${{matrix.name-suffix}}
-
-    steps:
-    - name: Checkout
-      uses: actions/checkout@v3
-      with:
-        lfs: true
-        submodules: recursive
-
-    - name: Install dependencies
-      uses: ./.github/actions/install-dependencies
-      with:
-        extra-packages: ${{matrix.extra-packages}}
-
-    - name: Configure CMake
-      run: cmake --preset ${{matrix.preset}} -DTEIDE_PRECOMPILED_HEADERS=ON -DTEIDE_UNIT_TEST_SW_RENDER=ON -DTEIDE_TEST_WINDOWLESS=ON -DTEIDE_TEST_COVERAGE=${{matrix.coverage}} -DTEIDE_SANITIZER=${{matrix.sanitizer}} ${{env.EXTRA_CMAKE_FLAGS}}
-
-    - name: Save CMake trace
-      if: inputs.profile-cmake
-      uses: actions/upload-artifact@v3
-      with:
-        name: CMakeTrace-${{env.job_name}}
-        path: ./CMakeTrace.json
-
-    - name: Build
-      run: cmake --build --preset ${{matrix.preset}} --config ${{matrix.buildtype}}
-
-    - name: Save CMake output logs
-      if: failure()
-      uses: actions/upload-artifact@v3
-      with:
-        name: CMakeLogs-${{env.job_name}}
-        path: |
-          ./build/${{matrix.preset}}/**/*.log
-          ./external/vcpkg/**/*.log
-
-    - name: Test
-      id: test
-      run: ctest --preset ${{matrix.preset}} --build-config ${{matrix.buildtype}} --verbose --no-tests=error
-
-    - name: Save render test output
-      if: steps.test.outcome == 'failure'
-      uses: actions/upload-artifact@v3
-      with:
-        name: RenderTestOutput-${{env.job_name}}
-        path: RenderTestOutput
-
-    - name: Save test log
-      if: steps.test.outcome == 'failure'
-      uses: actions/upload-artifact@v3
-      with:
-        name: TestLog-${{env.job_name}}
-        path: build/${{matrix.preset}}/Testing/Temporary/LastTest.log
-
-    - name: Upload coverage report
-      if: matrix.coverage == 'ON'
-      uses: codecov/codecov-action@v3
-      with:
-        directory: build/${{matrix.preset}}/coverage/output
-        fail_ci_if_error: false
-        verbose: true
-        functionalities: fixes
-
-    - name: Save coverage report
-      if: matrix.coverage == 'ON'
-      uses: actions/upload-artifact@v3
-      with:
-        name: CoverageReport-${{env.job_name}}
-        path: build/${{matrix.preset}}/coverage/output
-
   time-report:
     name: Time-Report
     runs-on: ubuntu-latest
-    needs: [windows, linux]
+    needs: [unified]
     if: ${{ github.event_name == 'push' }}
     env:
       GH_TOKEN: ${{github.token}}
