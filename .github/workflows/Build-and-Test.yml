@@ -81,7 +81,7 @@ jobs:
       uses: actions/cache/restore@v3
       with:
         key: vcpkg-export-${{matrix.runner}}-${{matrix.preset}}-${{hashFiles('vckpg.json','external/ports/**')}}
-        path: ${{env.TEIDE_PREBUILT_PACKAGES_DIR}}
+        path: './exports'
         fail-on-cache-miss: true
 
     - if: runner.os == 'Windows'
