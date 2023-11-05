@@ -74,7 +74,7 @@ jobs:
       uses: actions/checkout@v3
       with:
         lfs: true
-        submodules: false
+        submodules: true
 
     - name: Restore packages from cache
       id: cache
