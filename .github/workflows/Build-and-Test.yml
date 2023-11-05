@@ -122,33 +122,38 @@ jobs:
     strategy:
       matrix:
         buildtype: [Debug, Release]
-        compiler: [g++-13, clang++-17]
+        preset: [g++-13, clang++-17]
         sanitizer: [OFF]
         include:
-        - preset: ninja
+        # Overrides
         - coverage: OFF
+        - preset: g++-13
+          extra-packages: ninja-build g++-13
+        - preset: clang++-17
+          extra-packages: ninja-build clang++-17
         - buildtype: Debug
-          compiler: clang++-17
+          preset: clang++-17
+          sanitizer: OFF
           coverage: ${{toJSON(inputs.coverage) != 'false' && 'ON' || 'OFF'}}
+
+        # Additional jobs
         - buildtype: Debug
-          compiler: clang++-17
+          preset: clang++-17
+          extra-packages: ninja-build clang++-17
           sanitizer: ASAN
-          preset: ninja
-          coverage: OFF
           name-suffix: -asan
         - buildtype: Debug
-          compiler: clang++-17
+          preset: clang++-17
+          extra-packages: ninja-build clang++-17
           sanitizer: UBSAN
-          preset: ninja
-          coverage: OFF
           name-suffix: -ubsan
       fail-fast: false
 
-    name: Linux-${{matrix.buildtype}}-${{matrix.compiler}}${{matrix.name-suffix}}
+    name: Linux-${{matrix.buildtype}}-${{matrix.preset}}${{matrix.name-suffix}}
     runs-on: ubuntu-latest
 
     env:
-      job_name: Linux-${{matrix.buildtype}}-${{matrix.compiler}}${{matrix.name-suffix}}
+      job_name: Linux-${{matrix.buildtype}}-${{matrix.preset}}${{matrix.name-suffix}}
 
     steps:
     - name: Checkout
@@ -160,10 +165,10 @@ jobs:
     - name: Install dependencies
       uses: ./.github/actions/install-dependencies
       with:
-        extra-packages: ninja-build ${{matrix.compiler}}
+        extra-packages: ${{matrix.extra-packages}}
 
     - name: Configure CMake
-      run: cmake --preset ${{matrix.preset}} -DCMAKE_CXX_COMPILER=${{matrix.compiler}} -DTEIDE_PRECOMPILED_HEADERS=ON -DTEIDE_UNIT_TEST_SW_RENDER=ON -DTEIDE_TEST_WINDOWLESS=ON -DTEIDE_TEST_COVERAGE=${{matrix.coverage}} -DTEIDE_SANITIZER=${{matrix.sanitizer}} ${{env.EXTRA_CMAKE_FLAGS}}
+      run: cmake --preset ${{matrix.preset}} -DTEIDE_PRECOMPILED_HEADERS=ON -DTEIDE_UNIT_TEST_SW_RENDER=ON -DTEIDE_TEST_WINDOWLESS=ON -DTEIDE_TEST_COVERAGE=${{matrix.coverage}} -DTEIDE_SANITIZER=${{matrix.sanitizer}} ${{env.EXTRA_CMAKE_FLAGS}}
 
     - name: Save CMake trace
       if: inputs.profile-cmake
