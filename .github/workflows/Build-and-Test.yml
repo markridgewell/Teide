@@ -21,7 +21,7 @@ on:
 env:
   VULKAN_SDK: ./VULKAN_SDK
   VCPKG_OVERLAY_PORTS: ./external/ports
-  TEIDE_PREBUILT_PACKAGES_DIR: ${{github.workspace}}/exports
+  PREBUILT_PACKAGES_DIR: ${{github.workspace}}/exports
   EXTRA_CMAKE_FLAGS: ${{inputs.profile-cmake && '--profiling-format=google-trace --profiling-output=CMakeTrace.json' || ''}}
 
 jobs:
@@ -111,7 +111,18 @@ jobs:
         package-version: 0.9.9.0
 
     - name: Configure CMake
-      run: cmake --preset ${{matrix.preset}} -DTEIDE_PRECOMPILED_HEADERS=ON -DTEIDE_UNIT_TEST_SW_RENDER=ON -DTEIDE_TEST_WINDOWLESS=${{runner.os == 'Linux'}} -DTEIDE_TEST_COVERAGE=${{matrix.coverage}} -DTEIDE_SANITIZER=${{matrix.sanitizer}} -DCMAKE_CONFIGURATION_TYPES=${{matrix.buildtype}} -DCMAKE_TRY_COMPILE_CONFIGURATION=${{matrix.buildtype}} ${{env.EXTRA_CMAKE_FLAGS}}
+      run: >
+        cmake --preset ${{matrix.preset}}
+        -DTEIDE_USE_VCPKG=OFF
+        -DCMAKE_SYSTEM_PREFIX_PATH=${{env.PREBUILT_PACKAGES_DIR}}
+        -DTEIDE_PRECOMPILED_HEADERS=ON
+        -DTEIDE_UNIT_TEST_SW_RENDER=ON
+        -DTEIDE_TEST_WINDOWLESS=${{runner.os == 'Linux'}}
+        -DTEIDE_TEST_COVERAGE=${{matrix.coverage}}
+        -DTEIDE_SANITIZER=${{matrix.sanitizer}}
+        -DCMAKE_CONFIGURATION_TYPES=${{matrix.buildtype}}
+        -DCMAKE_TRY_COMPILE_CONFIGURATION=${{matrix.buildtype}}
+        ${{env.EXTRA_CMAKE_FLAGS}}
 
     - name: Save CMake trace
       if: inputs.profile-cmake

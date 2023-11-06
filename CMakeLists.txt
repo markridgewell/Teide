@@ -11,6 +11,7 @@ include(tools/cmake/Option.cmake)
 option_feature(TEIDE_BUILD_EXAMPLES examples "Build examples for Teide" ON)
 option_feature(TEIDE_BUILD_TESTS tests "Build tests for Teide" ON)
 option_feature(TEIDE_BUILD_BENCHMARKS benchmarks "Build benchmarks for Teide" ON)
+option(TEIDE_USE_VCPKG "Vendor dependencies through vcpkg" ON)
 option(TEIDE_TEST_VERBOSE "Enable verbose logging for Teide tests" OFF)
 option(TEIDE_TEST_COVERAGE "Enable code coverage reporting when running tests" OFF)
 option(TEIDE_TEST_WINDOWLESS "Disable tests requiring a windowing system" OFF)
@@ -23,6 +24,10 @@ option_enum(TEIDE_SANITIZER "Name of a sanitizer to enable, or OFF to disable" "
 
 if(LINUX AND TEIDE_SANITIZER STREQUAL "UBSAN")
     set(VCPKG_TARGET_TRIPLET "x64-linux-ubsan")
+endif()
+
+if(TEIDE_USE_VCPKG)
+    set(CMAKE_TOOLCHAIN_FILE "${CMAKE_SOURCE_DIR}/tools/cmake/toolchains/vcpkg.cmake")
 endif()
 
 project(
