@@ -114,7 +114,7 @@ jobs:
       run: >
         cmake --preset ${{matrix.preset}}
         -DTEIDE_USE_VCPKG=OFF
-        -DCMAKE_SYSTEM_PREFIX_PATH=${{env.PREBUILT_PACKAGES_DIR}}
+        -DCMAKE_PREFIX_PATH=${{env.PREBUILT_PACKAGES_DIR}}
         -DTEIDE_PRECOMPILED_HEADERS=ON
         -DTEIDE_UNIT_TEST_SW_RENDER=ON
         -DTEIDE_TEST_WINDOWLESS=${{runner.os == 'Linux'}}
