@@ -90,6 +90,14 @@ jobs:
         vcpkgDirectory: '${{github.workspace}}/external/vcpkg'
         vcpkgJsonGlob: 'vcpkg.json'
 
+    - if: runner.os == 'Windows'
+      name: Install problem matcher (MSVC)
+      uses: ammaraskar/msvc-problem-matcher@master
+
+    - if: runner.os == 'Linux'
+      name: Install problem matcher (GCC)
+      uses: ammaraskar/gcc-problem-matcher@master
+
     - name: Install dependencies
       uses: ./.github/actions/install-dependencies
       with:
@@ -115,14 +123,18 @@ jobs:
     - name: Build
       run: cmake --build --preset ${{matrix.preset}} --config ${{matrix.buildtype}}
 
-    - name: Save CMake output logs
+    - name: Dump CMake output logs
       if: failure()
-      uses: actions/upload-artifact@v3
-      with:
-        name: CMakeLogs-${{env.job_name}}
-        path: |
-          ./build/${{matrix.preset}}/**/*.log
-          ./external/vcpkg/**/*.log
+      shell: bash
+      run: |
+        paths="external/vcpkg build/${{matrix.preset}}"
+        for file in $(find $paths -name '*.log'); do
+            if [ -s $file ]; then
+                echo "::group::$file"
+                cat $file
+                echo "::endgroup::"
+            fi
+        done
 
     - name: Test
       id: test
