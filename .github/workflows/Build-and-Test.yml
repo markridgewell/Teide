@@ -68,6 +68,7 @@ jobs:
     env:
       job_name: ${{startsWith(matrix.runner, 'windows') && 'Windows' || 'Linux'}}-${{matrix.buildtype}}-${{matrix.preset}}${{matrix.name-suffix}}
       CMAKE_BUILD_TYPE: ${{matrix.buildtype}}
+      VCPKG_TRIPLET: x64-${{startsWith(matrix.runner, 'windows') && 'windows' || 'linux'}}
 
     steps:
     - name: Checkout
@@ -114,7 +115,7 @@ jobs:
       run: >
         cmake --preset ${{matrix.preset}}
         -DTEIDE_USE_VCPKG=OFF
-        -DCMAKE_PREFIX_PATH=${{env.PREBUILT_PACKAGES_DIR}}
+        -DCMAKE_PREFIX_PATH=${{env.PREBUILT_PACKAGES_DIR}}/installed/${{env.VCPKG_TRIPLET}}
         -DTEIDE_PRECOMPILED_HEADERS=ON
         -DTEIDE_UNIT_TEST_SW_RENDER=ON
         -DTEIDE_TEST_WINDOWLESS=${{runner.os == 'Linux'}}
