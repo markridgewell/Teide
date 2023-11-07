@@ -16,6 +16,7 @@ jobs:
       fail-fast: true
       matrix:
         preset: [msvc2022, msvc2022-clang, g++-13, clang++-17]
+        sanitizer: ['']
         include:
         - preset: msvc2022
           runner: windows-2022
@@ -27,8 +28,12 @@ jobs:
         - preset: clang++-17
           runner: ubuntu-latest
           extra-packages: ninja-build clang++-17
+        - preset: clang++-17
+          runner: ubuntu-latest
+          extra-packages: ninja-build clang++-17
+          sanitizer: UBSAN
 
-    name: ${{startsWith(matrix.runner, 'windows') && 'Windows' || 'Linux'}}-${{matrix.preset}}
+    name: ${{startsWith(matrix.runner, 'windows') && 'Windows' || 'Linux'}}-${{matrix.preset}}${{matrix.sanitizer != '' && '-' || ''}}${{matrix.sanitizer}}
     runs-on: ${{matrix.runner}}
 
     steps:
@@ -42,7 +47,7 @@ jobs:
       id: cache
       uses: actions/cache@v3
       with:
-        key: vcpkg-export-${{matrix.runner}}-${{matrix.preset}}-${{hashFiles('vckpg.json','external/ports/**')}}
+        key: vcpkg-export-${{matrix.runner}}-${{matrix.preset}}${{matrix.sanitizer != '' && '-' || ''}}${{matrix.sanitizer}}-${{hashFiles('vckpg.json','external/ports/**')}}
         path: './exports'
 
     - name: Install dependencies
@@ -53,7 +58,7 @@ jobs:
 
     - name: Configure CMake
       if: steps.cache.outputs.cache-hit != 'true'
-      run: cmake --preset ${{matrix.preset}}
+      run: cmake --preset ${{matrix.preset}} -DTEIDE_SANITIZER=${{matrix.sanitizer || 'OFF'}}
 
     - name: Export packages
       if: steps.cache.outputs.cache-hit != 'true'
