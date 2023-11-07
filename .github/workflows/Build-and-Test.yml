@@ -68,7 +68,7 @@ jobs:
     env:
       job_name: ${{startsWith(matrix.runner, 'windows') && 'Windows' || 'Linux'}}-${{matrix.buildtype}}-${{matrix.preset}}${{matrix.name-suffix}}
       CMAKE_BUILD_TYPE: ${{matrix.buildtype}}
-      VCPKG_TRIPLET: x64-${{startsWith(matrix.runner, 'windows') && 'windows' || 'linux'}}
+      VCPKG_TRIPLET: x64-${{startsWith(matrix.runner, 'windows') && 'windows' || 'linux'}}${{matrix.sanitizer == 'UBSAN' && '-ubsan' || ''}}
 
     steps:
     - name: Checkout
@@ -81,7 +81,7 @@ jobs:
       id: cache
       uses: actions/cache/restore@v3
       with:
-        key: vcpkg-export-${{matrix.runner}}-${{matrix.preset}}-${{hashFiles('vckpg.json','external/ports/**')}}
+        key: vcpkg-export-${{matrix.runner}}-${{matrix.preset}}${{matrix.sanitizer == 'UBSAN' && '-UBSAN' || ''}}-${{hashFiles('vckpg.json','external/ports/**')}}
         path: './exports'
         fail-on-cache-miss: true
 
