@@ -51,6 +51,7 @@ jobs:
         path: './exports'
 
     - name: Setup vcpkg
+      if: steps.cache.outputs.cache-hit != 'true'
       uses: lukka/run-vcpkg@v11
       with:
         vcpkgDirectory: '${{github.workspace}}/external/vcpkg'
