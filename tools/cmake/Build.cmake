@@ -31,6 +31,13 @@ function(_copy_install_files target)
             COMMAND ${CMAKE_COMMAND} -E copy_if_different ${install_files} $<TARGET_FILE_DIR:${target}>
             COMMAND_EXPAND_LISTS)
     endif()
+    if(WIN32) # Install DLLs
+        add_custom_command(
+            TARGET ${target}
+            POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_RUNTIME_DLLS:${target}> $<TARGET_FILE_DIR:${target}>
+            COMMAND_EXPAND_LISTS)
+    endif()
 endfunction()
 
 function(td_add_library target)
@@ -98,12 +105,6 @@ function(td_add_application target)
     endif()
     target_enable_sanitizer(${target} ${TEIDE_SANITIZER})
 
-    add_custom_command(
-        TARGET ${target}
-        POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_RUNTIME_DLLS:${target}> $<TARGET_FILE_DIR:${target}>
-        COMMAND_EXPAND_LISTS)
-
     _copy_install_files(${target})
 endfunction()
 
@@ -131,12 +132,6 @@ function(td_add_test target)
         target_enable_coverage(${target})
     endif()
     target_enable_sanitizer(${target} ${TEIDE_SANITIZER})
-
-    add_custom_command(
-        TARGET ${target}
-        POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_RUNTIME_DLLS:${target}> $<TARGET_FILE_DIR:${target}>
-        COMMAND_EXPAND_LISTS)
 
     get_local_dependencies(dependencies ${target})
     get_target_sources(dep_sources ${dependencies})
