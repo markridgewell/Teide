@@ -68,7 +68,6 @@ jobs:
     env:
       job_name: ${{startsWith(matrix.runner, 'windows') && 'Windows' || 'Linux'}}-${{matrix.buildtype}}-${{matrix.preset}}${{matrix.name-suffix}}
       CMAKE_BUILD_TYPE: ${{matrix.buildtype}}
-      VCPKG_TRIPLET: x64-${{startsWith(matrix.runner, 'windows') && 'windows' || 'linux'}}${{matrix.sanitizer == 'UBSAN' && '-ubsan' || ''}}
 
     steps:
     - name: Checkout
@@ -77,11 +76,15 @@ jobs:
         lfs: true
         submodules: true
 
+    - name: Determine target triplet
+      shell: bash
+      run: echo "VCPKG_TRIPLET=$(cmake -DTEIDE_SANITIZER=${{matrix.sanitizer}} -P tools/cmake/scripts/DetermineTriplet.cmake)" >> ${{env.GITHUB_ENV}}
+
     - name: Restore packages from cache
       id: cache
       uses: actions/cache/restore@v3
       with:
-        key: vcpkg-export-${{matrix.runner}}-${{matrix.preset}}${{matrix.sanitizer == 'UBSAN' && '-UBSAN' || ''}}-${{hashFiles('vckpg.json','external/ports/**')}}
+        key: vcpkg-export-${{env.VCPKG_TRIPLET}}-${{hashFiles('vckpg.json', 'external/ports/**', 'cmake/triplets/*.cmake', 'cmake/toolchains/*.cmake')}}
         path: './exports'
         fail-on-cache-miss: true
 
