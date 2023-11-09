@@ -1,4 +1,3 @@
-
 if(NOT DEFINED TEIDE_SANITIZER)
     message(SEND_ERROR "Triplet determination requires cache variable TEIDE_SANITIZER, which was not defined.")
 endif()
