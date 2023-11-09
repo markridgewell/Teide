@@ -15,16 +15,11 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        preset: [msvc2022, msvc2022-clang, g++-13, clang++-17]
+        preset: [msvc2022, clang++-17]
         sanitizer: ['OFF']
         include:
         - preset: msvc2022
           runner: windows-2022
-        - preset: msvc2022-clang
-          runner: windows-2022
-        - preset: g++-13
-          runner: ubuntu-latest
-          extra-packages: ninja-build g++-13
         - preset: clang++-17
           runner: ubuntu-latest
           extra-packages: ninja-build clang++-17
@@ -34,7 +29,7 @@ jobs:
           sanitizer: UBSAN
           name-suffix: -ubsan
 
-    name: ${{startsWith(matrix.runner, 'windows') && 'Windows' || 'Linux'}}-${{matrix.preset}}${{matrix.name-suffix}}
+    name: ${{startsWith(matrix.runner, 'windows') && 'Windows' || 'Linux'}}${{matrix.name-suffix}}
     runs-on: ${{matrix.runner}}
 
     steps:
