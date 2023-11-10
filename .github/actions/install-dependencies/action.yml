@@ -14,7 +14,7 @@ runs:
       run: echo "::group::Install problem matchers"
     - uses: ammaraskar/msvc-problem-matcher@master
     - uses: ammaraskar/gcc-problem-matcher@master
-    
+
     - name: '----------------------------------------------------------------'
       shell: bash
       run: |
