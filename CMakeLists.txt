@@ -24,8 +24,8 @@ option_enum(TEIDE_SANITIZER "Name of a sanitizer to enable, or OFF to disable" "
 
 if(TEIDE_USE_VCPKG)
     include(tools/cmake/Triplet.cmake)
-    set(CMAKE_TOOLCHAIN_FILE "${CMAKE_SOURCE_DIR}/tools/cmake/toolchains/vcpkg.cmake")
     message(STATUS "Target triplet for vcpkg determined to be ${VCPKG_TARGET_TRIPLET}")
+    set(CMAKE_TOOLCHAIN_FILE "${CMAKE_SOURCE_DIR}/external/vcpkg/scripts/buildsystems/vcpkg.cmake")
 endif()
 
 project(

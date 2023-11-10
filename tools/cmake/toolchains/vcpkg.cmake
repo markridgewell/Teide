@@ -1,8 +1,0 @@
-if(DEFINED ENV{TEIDE_PREBUILT_PACKAGES_DIR})
-    if(NOT IS_DIRECTORY "$ENV{TEIDE_PREBUILT_PACKAGES_DIR}")
-        message(FATAL_ERROR "Directory '$ENV{TEIDE_PREBUILT_PACKAGES_DIR}' not found!")
-    endif()
-    include("$ENV{TEIDE_PREBUILT_PACKAGES_DIR}/scripts/buildsystems/vcpkg.cmake")
-else()
-    include("${CMAKE_CURRENT_LIST_DIR}/../../../external/vcpkg/scripts/buildsystems/vcpkg.cmake")
-endif()
