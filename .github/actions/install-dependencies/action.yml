@@ -9,14 +9,12 @@ inputs:
 runs:
   using: composite
   steps:
-    - name: '----------------------------------------------------------------'
-      shell: bash
+    - shell: bash
       run: echo "::group::Install problem matchers"
     - uses: ammaraskar/msvc-problem-matcher@master
     - uses: ammaraskar/gcc-problem-matcher@master
 
-    - name: '----------------------------------------------------------------'
-      shell: bash
+    - shell: bash
       run: |
         echo "::endgroup::"
         echo "::group::Setup Vulkan SDK"
@@ -27,8 +25,7 @@ runs:
         vulkan-components: Vulkan-Headers, Vulkan-Loader
         vulkan-use-cache: true
 
-    - name: '----------------------------------------------------------------'
-      shell: bash
+    - shell: bash
       run: echo "::endgroup::"
 
     - if: ${{runner.os == 'Windows' && inputs.extra-packages != ''}}
