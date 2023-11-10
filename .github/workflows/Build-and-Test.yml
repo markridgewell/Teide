@@ -74,7 +74,7 @@ jobs:
       uses: actions/checkout@v3
       with:
         lfs: true
-        submodules: true
+        submodules: false
 
     - name: Determine target triplet
       shell: bash
@@ -87,12 +87,6 @@ jobs:
         key: vcpkg-export-${{env.VCPKG_TRIPLET}}-${{hashFiles('vckpg.json', 'external/ports/**', 'cmake/triplets/*.cmake', 'cmake/toolchains/*.cmake')}}
         path: './exports'
         fail-on-cache-miss: true
-
-    - name: Setup vcpkg
-      uses: lukka/run-vcpkg@v11
-      with:
-        vcpkgDirectory: '${{github.workspace}}/external/vcpkg'
-        vcpkgJsonGlob: 'vcpkg.json'
 
     - name: Install dependencies
       uses: ./.github/actions/install-dependencies
