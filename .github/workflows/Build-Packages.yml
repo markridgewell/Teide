@@ -1,0 +1,77 @@
+name: Build-Packages
+
+on:
+  schedule:
+    # Run at 5:20am and 5:20pm every day
+    - cron:  '20 5,17 * * *'
+  workflow_dispatch:
+
+env:
+  VULKAN_SDK: ./VULKAN_SDK
+  VCPKG_OVERLAY_PORTS: ./external/ports
+
+jobs:
+  unified:
+    strategy:
+      fail-fast: true
+      matrix:
+        preset: [msvc2022, clang++-17]
+        sanitizer: ['OFF']
+        include:
+        - preset: msvc2022
+          runner: windows-2022
+        - preset: clang++-17
+          runner: ubuntu-latest
+          extra-packages: ninja-build clang++-17
+        - preset: clang++-17
+          runner: ubuntu-latest
+          extra-packages: ninja-build clang++-17
+          sanitizer: UBSAN
+          name-suffix: -ubsan
+
+    name: ${{startsWith(matrix.runner, 'windows') && 'Windows' || 'Linux'}}${{matrix.name-suffix}}
+    runs-on: ${{matrix.runner}}
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+      with:
+        lfs: false
+        submodules: recursive
+
+    - name: Determine target triplet
+      shell: bash
+      run: echo "VCPKG_TRIPLET=$(cmake -DTEIDE_SANITIZER=${{matrix.sanitizer}} -P tools/cmake/scripts/DetermineTriplet.cmake)" >> "$GITHUB_ENV"
+
+    - name: Cache
+      id: cache
+      uses: actions/cache@v3
+      with:
+        key: vcpkg-export-${{env.VCPKG_TRIPLET}}-${{hashFiles('vckpg.json', 'external/ports/**', 'cmake/triplets/*.cmake', 'cmake/toolchains/*.cmake')}}
+        path: './exports'
+
+    - name: Setup vcpkg
+      if: steps.cache.outputs.cache-hit != 'true'
+      uses: lukka/run-vcpkg@v11
+      with:
+        vcpkgDirectory: '${{github.workspace}}/external/vcpkg'
+        vcpkgJsonGlob: 'vcpkg.json'
+
+    - name: Install dependencies
+      if: steps.cache.outputs.cache-hit != 'true'
+      uses: ./.github/actions/install-dependencies
+      with:
+        extra-packages: ${{matrix.extra-packages}}
+
+    - name: Configure CMake
+      if: steps.cache.outputs.cache-hit != 'true'
+      run: cmake --preset ${{matrix.preset}} -DTEIDE_SANITIZER=${{matrix.sanitizer}}
+
+    - name: Export packages
+      if: steps.cache.outputs.cache-hit != 'true'
+      run: |
+        ./external/vcpkg/vcpkg export --raw --output=exports --output-dir=. --x-install-root=build/${{matrix.preset}}/vcpkg_installed
+
+    - name: List contents
+      shell: bash
+      run: ls -R exports

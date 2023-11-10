@@ -1,0 +1,61 @@
+name: 'choco-install'
+description: 'Install and cache Chocolatey packages'
+
+inputs:
+  package-name:
+    description: 'Name of the package to install'
+    required: true
+  package-version:
+    description: 'Version number of the package to install'
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Restore from cache
+      uses: actions/cache/restore@v3
+      id: cache
+      with:
+        key: ${{runner.os}}-${{inputs.package-name}}-${{inputs.package-version}}
+        path: '~/${{inputs.package-name}}'
+
+    - name: Set cached path variable
+      if: steps.cache.outputs.cache-hit == 'true'
+      shell: pwsh
+      run: |
+        # Set cached path variable
+        $installPath = Get-Content -Path "~\${{inputs.package-name}}\install.path"
+        echo "Copying ~\${{inputs.package-name}}\* to  $installPath\"
+        New-Item -ItemType Directory -Path "$installPath"
+        Copy-Item -Path "~\${{inputs.package-name}}\*" -Destination "$installPath" -Recurse
+        $pathAppend = Get-Content -Path "~\${{inputs.package-name}}\.path"
+        echo "Adding $pathAppend to PATH"
+        echo "$pathAppend" >> $GITHUB_PATH
+
+    - name: Install package
+      if: steps.cache.outputs.cache-hit != 'true'
+      shell: pwsh
+      run: |
+        # Install package
+        $pathBefore = $env:path.split(";")
+        choco install --ignorepackageexitcodes ${{inputs.package-name}} --version ${{inputs.package-version}} | Tee-Object -FilePath output.txt
+        $installPath = (Get-Content output.txt | Select-String "Software installed to '(.*)'").matches.groups[1]
+        echo "Copying $installPath\* to ~\${{inputs.package-name}}\"
+        New-Item -ItemType Directory -Path "~\${{inputs.package-name}}"
+        Copy-Item -Path "$installPath\*" -Destination "~\${{inputs.package-name}}" -Recurse
+        echo "$installPath" > "~\${{inputs.package-name}}\install.path"
+        echo "Install path: $installPath"
+        echo "INSTALL_PATH=$installPath" >> "$env:GITHUB_ENV"
+        $env:ChocolateyInstall = Convert-Path "$((Get-Command choco).Path)\..\.."
+        Import-Module "$env:ChocolateyInstall\helpers\chocolateyProfile.psm1"
+        refreshenv
+        $pathAppend = $env:path.split(";") | ?{$pathBefore -NotContains $_}
+        echo "New entries in PATH: $pathAppend"
+        echo "$pathAppend" > "~\${{inputs.package-name}}\.path"
+
+    - name: Save to cache
+      if: steps.cache.outputs.cache-hit != 'true'
+      uses: actions/cache/save@v3
+      with:
+        key: ${{steps.cache.outputs.cache-primary-key}}
+        path: '~/${{inputs.package-name}}'

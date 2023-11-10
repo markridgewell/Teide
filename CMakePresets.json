@@ -10,7 +10,6 @@
       "name": "_common",
       "hidden": true,
       "binaryDir": "${sourceDir}/build/${presetName}",
-      "toolchainFile": "${sourceDir}/external/vcpkg/scripts/buildsystems/vcpkg.cmake",
       "cacheVariables": {
         "VCPKG_INSTALL_OPTIONS": "--no-print-usage",
         "CMAKE_OPTIMIZE_DEPENDENCIES": "ON"
@@ -61,17 +60,19 @@
       "generator": "Ninja Multi-Config"
     },
     {
-      "name": "mingw",
-      "inherits": "_common",
-      "displayName": "MinGW",
-      "generator": "MinGW Makefiles",
+      "name": "g++-13",
+      "inherits": "ninja",
+      "displayName": "Ninja with GCC 13",
       "cacheVariables": {
-        "CMAKE_CXX_FLAGS": "--std=c++2a -DSDL_main=main -Wall -Werror -Wno-attributes"
-      },
-      "environment": {
-        "VCPKG_TARGET_TRIPLET": "x64-mingw-dynamic",
-        "VCPKG_DEFAULT_TRIPLET": "x64-mingw-dynamic",
-        "VCPKG_DEFAULT_HOST_TRIPLET": "x64-mingw-dynamic"
+        "CMAKE_CXX_COMPILER": "g++-13"
+      }
+    },
+    {
+      "name": "clang++-17",
+      "inherits": "ninja",
+      "displayName": "Ninja with Clang 17",
+      "cacheVariables": {
+        "CMAKE_CXX_COMPILER": "clang++-17"
       }
     }
   ],
@@ -85,16 +86,20 @@
       "configurePreset": "msvc2022-clang"
     },
     {
-      "name": "mingw",
-      "configurePreset": "mingw"
-    },
-    {
       "name": "make",
       "configurePreset": "make"
     },
     {
       "name": "ninja",
       "configurePreset": "ninja"
+    },
+    {
+      "name": "g++-13",
+      "configurePreset": "g++-13"
+    },
+    {
+      "name": "clang++-17",
+      "configurePreset": "clang++-17"
     }
   ],
   "testPresets": [
@@ -107,16 +112,20 @@
       "configurePreset": "msvc2022-clang"
     },
     {
-      "name": "mingw",
-      "configurePreset": "mingw"
-    },
-    {
       "name": "make",
       "configurePreset": "make"
     },
     {
       "name": "ninja",
       "configurePreset": "ninja"
+    },
+    {
+      "name": "g++-13",
+      "configurePreset": "g++-13"
+    },
+    {
+      "name": "clang++-17",
+      "configurePreset": "clang++-17"
     }
   ]
 }

@@ -5,6 +5,7 @@ on:
   schedule:
     # Automatically run on every Sunday
     - cron:  '0 0 * * 0'
+  workflow_dispatch:
 
 jobs:
   build:
@@ -13,11 +14,12 @@ jobs:
     steps:
     - uses: actions/checkout@v3
       with:
+        lfs: true
         # [Required] Access token with `workflow` scope.
-        token: ${{secrets.WORKFLOW_SECRET}}
+        token: ${{secrets.GITHUB_TOKEN}}
 
     - name: Run GitHub Actions Version Updater
       uses: saadmk11/github-actions-version-updater@v0.8.1
       with:
         # [Required] Access token with `workflow` scope.
-        token: ${{secrets.WORKFLOW_SECRET}}
+        token: ${{secrets.GITHUB_TOKEN}}
