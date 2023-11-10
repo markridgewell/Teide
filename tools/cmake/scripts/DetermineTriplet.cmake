@@ -3,4 +3,4 @@
 
 include("${CMAKE_CURRENT_LIST_DIR}/../Triplet.cmake")
 
-message(${VCPKG_TARGET_TRIPLET})
+execute_process(COMMAND "${CMAKE_COMMAND}" -E echo "${VCPKG_TARGET_TRIPLET}")
