@@ -41,7 +41,7 @@ jobs:
 
     - name: Determine target triplet
       shell: bash
-      run: echo "VCPKG_TRIPLET=$(cmake -DTEIDE_SANITIZER=${{matrix.sanitizer}} -P tools/cmake/scripts/DetermineTriplet.cmake 2>&1)" >> "$GITHUB_ENV"
+      run: echo "VCPKG_TRIPLET=$(cmake -DTEIDE_SANITIZER=${{matrix.sanitizer}} -P tools/cmake/scripts/DetermineTriplet.cmake)" >> "$GITHUB_ENV"
 
     - name: Cache
       id: cache
