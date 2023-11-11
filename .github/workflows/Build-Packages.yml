@@ -5,6 +5,13 @@ on:
     # Run at 5:20am and 5:20pm every day
     - cron:  '20 5,17 * * *'
   workflow_dispatch:
+  pull_request:
+    # Only run for pull requests when the vcpkg configuration has changed
+    paths:
+    - 'vckpg*.json'
+    - 'external/ports/**'
+    - 'cmake/triplets/*.cmake'
+    - 'cmake/toolchains/*.cmake'
 
 env:
   VULKAN_SDK: ./VULKAN_SDK
@@ -47,7 +54,7 @@ jobs:
       id: cache
       uses: actions/cache@v3
       with:
-        key: vcpkg-export-${{env.VCPKG_TRIPLET}}-${{hashFiles('vckpg.json', 'external/ports/**', 'cmake/triplets/*.cmake', 'cmake/toolchains/*.cmake')}}
+        key: vcpkg-export-${{env.VCPKG_TRIPLET}}-${{hashFiles('vckpg*.json', 'external/ports/**', 'cmake/triplets/*.cmake', 'cmake/toolchains/*.cmake')}}
         path: './exports'
 
     - name: Setup vcpkg
