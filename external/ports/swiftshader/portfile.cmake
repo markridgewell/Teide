@@ -7,6 +7,8 @@ vcpkg_from_github(
     HEAD_REF master
     PATCHES buildfixes.patch)
 
+set(VCPKG_POLICY_EMPTY_INCLUDE_FOLDER enabled)
+
 file(MAKE_DIRECTORY ${SOURCE_PATH}/.git/hooks)
 file(TOUCH ${SOURCE_PATH}/.git/hooks/commit-msg)
 vcpkg_cmake_configure(SOURCE_PATH "${SOURCE_PATH}" OPTIONS -DSWIFTSHADER_BUILD_TESTS=OFF
