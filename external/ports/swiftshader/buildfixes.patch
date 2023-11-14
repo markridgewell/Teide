@@ -5,7 +5,7 @@ index fc252f8a2..308bba434 100644
 @@ -787,6 +787,9 @@ else()
      message(FATAL_ERROR "REACTOR_BACKEND must be 'LLVM', 'LLVM-Submodule' or 'Subzero'")
  endif()
-
+ 
 +find_package(SPIRV-Tools CONFIG REQUIRED)
 +find_package(SPIRV-Tools-opt CONFIG REQUIRED)
 +add_library(SPIRV-Tools ALIAS SPIRV-Tools-static)
@@ -19,7 +19,7 @@ index c440a8c02..17c0ec1f7 100644
 @@ -71,11 +71,11 @@ if (NOT TARGET SPIRV-Tools)
      message(FATAL_ERROR "Missing required target: SPIRV-Tools")
  endif()
-
+ 
 -set_target_properties(core_tables PROPERTIES FOLDER "SPIRV-Tools build")
 -set_target_properties(enum_string_mapping PROPERTIES FOLDER "SPIRV-Tools build")
 -set_target_properties(extinst_tables PROPERTIES FOLDER "SPIRV-Tools build")
@@ -30,7 +30,7 @@ index c440a8c02..17c0ec1f7 100644
 +#set_target_properties(extinst_tables PROPERTIES FOLDER "SPIRV-Tools build")
 +#set_target_properties(spirv-tools-pkg-config PROPERTIES FOLDER "SPIRV-Tools build")
 +#set_target_properties(spirv-tools-shared-pkg-config PROPERTIES FOLDER "SPIRV-Tools build")
-
+ 
  set_target_properties(vk_pipeline PROPERTIES
      POSITION_INDEPENDENT_CODE 1
 diff --git a/src/Vulkan/CMakeLists.txt b/src/Vulkan/CMakeLists.txt
@@ -42,5 +42,5 @@ index bd05b0fc8..32a2644e2 100644
      "${CMAKE_BINARY_DIR}/${CMAKE_SYSTEM_NAME}/vk_swiftshader_icd.json"
  )
 +
-+install(FILES src/Vulkan/vk_swiftshader_icd.json TYPE BIN)
++install(FILES "${CMAKE_BINARY_DIR}/${CMAKE_SYSTEM_NAME}/vk_swiftshader_icd.json" TYPE BIN)
 +install(TARGETS vk_swiftshader)
