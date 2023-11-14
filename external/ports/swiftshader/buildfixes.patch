@@ -1,0 +1,46 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index fc252f8a2..308bba434 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -787,6 +787,9 @@ else()
+     message(FATAL_ERROR "REACTOR_BACKEND must be 'LLVM', 'LLVM-Submodule' or 'Subzero'")
+ endif()
+
++find_package(SPIRV-Tools CONFIG REQUIRED)
++find_package(SPIRV-Tools-opt CONFIG REQUIRED)
++add_library(SPIRV-Tools ALIAS SPIRV-Tools-static)
+ if (NOT TARGET SPIRV-Tools)
+     # This variable is also used by SPIRV-Tools to locate SPIRV-Headers
+     set(SPIRV-Headers_SOURCE_DIR "${THIRD_PARTY_DIR}/SPIRV-Headers")
+diff --git a/src/Pipeline/CMakeLists.txt b/src/Pipeline/CMakeLists.txt
+index c440a8c02..17c0ec1f7 100644
+--- a/src/Pipeline/CMakeLists.txt
++++ b/src/Pipeline/CMakeLists.txt
+@@ -71,11 +71,11 @@ if (NOT TARGET SPIRV-Tools)
+     message(FATAL_ERROR "Missing required target: SPIRV-Tools")
+ endif()
+
+-set_target_properties(core_tables PROPERTIES FOLDER "SPIRV-Tools build")
+-set_target_properties(enum_string_mapping PROPERTIES FOLDER "SPIRV-Tools build")
+-set_target_properties(extinst_tables PROPERTIES FOLDER "SPIRV-Tools build")
+-set_target_properties(spirv-tools-pkg-config PROPERTIES FOLDER "SPIRV-Tools build")
+-set_target_properties(spirv-tools-shared-pkg-config PROPERTIES FOLDER "SPIRV-Tools build")
++#set_target_properties(core_tables PROPERTIES FOLDER "SPIRV-Tools build")
++#set_target_properties(enum_string_mapping PROPERTIES FOLDER "SPIRV-Tools build")
++#set_target_properties(extinst_tables PROPERTIES FOLDER "SPIRV-Tools build")
++#set_target_properties(spirv-tools-pkg-config PROPERTIES FOLDER "SPIRV-Tools build")
++#set_target_properties(spirv-tools-shared-pkg-config PROPERTIES FOLDER "SPIRV-Tools build")
+
+ set_target_properties(vk_pipeline PROPERTIES
+     POSITION_INDEPENDENT_CODE 1
+diff --git a/src/Vulkan/CMakeLists.txt b/src/Vulkan/CMakeLists.txt
+index bd05b0fc8..32a2644e2 100644
+--- a/src/Vulkan/CMakeLists.txt
++++ b/src/Vulkan/CMakeLists.txt
+@@ -258,3 +258,6 @@ configure_file(
+     "vk_swiftshader_icd.json.tmpl"
+     "${CMAKE_BINARY_DIR}/${CMAKE_SYSTEM_NAME}/vk_swiftshader_icd.json"
+ )
++
++install(FILES src/Vulkan/vk_swiftshader_icd.json TYPE BIN)
++install(TARGETS vk_swiftshader)
