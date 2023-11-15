@@ -1,8 +1,54 @@
 diff --git a/CMakeLists.txt b/CMakeLists.txt
-index fc252f8a2..308bba434 100644
+index fc252f8..5876156 100644
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
-@@ -787,6 +787,9 @@ else()
+@@ -661,13 +661,19 @@ endif()
+ ###########################################################
+ # LLVM
+ ###########################################################
+-add_subdirectory(${THIRD_PARTY_DIR}/llvm-${SWIFTSHADER_LLVM_VERSION} EXCLUDE_FROM_ALL)
+-set_target_properties(llvm PROPERTIES FOLDER "third_party")
++#add_subdirectory(${THIRD_PARTY_DIR}/llvm-${SWIFTSHADER_LLVM_VERSION} EXCLUDE_FROM_ALL)
++#set_target_properties(llvm PROPERTIES FOLDER "third_party")
+ 
+ ###########################################################
+ # LLVM-Submodule
+ ###########################################################
+ if(${REACTOR_BACKEND} STREQUAL "LLVM-Submodule")
++    set(LLVM_INCLUDE_TESTS FALSE)
++    set(LLVM_ENABLE_RTTI TRUE)
++    find_package(LLVM CONFIG REQUIRED)
++    list(APPEND CMAKE_MODULE_PATH "${LLVM_CMAKE_DIR}")
++    include(HandleLLVMOptions)
++    add_definitions(${LLVM_DEFINITIONS})
+     set(LLVM_INCLUDE_TESTS FALSE)
+     set(LLVM_ENABLE_RTTI TRUE)
+     add_subdirectory(${THIRD_PARTY_DIR}/llvm-project/llvm EXCLUDE_FROM_ALL)
+@@ -688,17 +694,17 @@ endif()
+ ###########################################################
+ # Subzero
+ ###########################################################
+-add_subdirectory(${THIRD_PARTY_DIR}/llvm-subzero EXCLUDE_FROM_ALL)
+-add_subdirectory(${THIRD_PARTY_DIR}/subzero EXCLUDE_FROM_ALL)
+-set_target_properties(llvm-subzero PROPERTIES FOLDER "third_party")
+-set_target_properties(subzero PROPERTIES FOLDER "third_party")
++#add_subdirectory(${THIRD_PARTY_DIR}/llvm-subzero EXCLUDE_FROM_ALL)
++#add_subdirectory(${THIRD_PARTY_DIR}/subzero EXCLUDE_FROM_ALL)
++#set_target_properties(llvm-subzero PROPERTIES FOLDER "third_party")
++#set_target_properties(subzero PROPERTIES FOLDER "third_party")
+ 
+ ###########################################################
+ # marl
+ ###########################################################
+ set(MARL_THIRD_PARTY_DIR ${THIRD_PARTY_DIR})
+-add_subdirectory(${THIRD_PARTY_DIR}/marl)
+-set_target_properties(marl PROPERTIES FOLDER "third_party")
++#add_subdirectory(${THIRD_PARTY_DIR}/marl)
++#set_target_properties(marl PROPERTIES FOLDER "third_party")
+ 
+ if(MARL_THREAD_SAFETY_ANALYSIS_SUPPORTED)
+     list(APPEND SWIFTSHADER_COMPILE_OPTIONS "-Wthread-safety")
+@@ -787,6 +793,9 @@ else()
      message(FATAL_ERROR "REACTOR_BACKEND must be 'LLVM', 'LLVM-Submodule' or 'Subzero'")
  endif()
  
@@ -13,7 +59,7 @@ index fc252f8a2..308bba434 100644
      # This variable is also used by SPIRV-Tools to locate SPIRV-Headers
      set(SPIRV-Headers_SOURCE_DIR "${THIRD_PARTY_DIR}/SPIRV-Headers")
 diff --git a/src/Pipeline/CMakeLists.txt b/src/Pipeline/CMakeLists.txt
-index c440a8c02..17c0ec1f7 100644
+index c440a8c..aedeafa 100644
 --- a/src/Pipeline/CMakeLists.txt
 +++ b/src/Pipeline/CMakeLists.txt
 @@ -71,11 +71,11 @@ if (NOT TARGET SPIRV-Tools)
@@ -34,7 +80,7 @@ index c440a8c02..17c0ec1f7 100644
  set_target_properties(vk_pipeline PROPERTIES
      POSITION_INDEPENDENT_CODE 1
 diff --git a/src/Vulkan/CMakeLists.txt b/src/Vulkan/CMakeLists.txt
-index bd05b0fc8..32a2644e2 100644
+index bd05b0f..8f39a1c 100644
 --- a/src/Vulkan/CMakeLists.txt
 +++ b/src/Vulkan/CMakeLists.txt
 @@ -258,3 +258,6 @@ configure_file(

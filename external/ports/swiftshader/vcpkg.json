@@ -17,6 +17,13 @@
     },
     {
       "name": "spirv-tools"
+    },
+    {
+      "name": "llvm",
+      "default-features": false,
+      "features": [
+        "enable-rtti"
+      ]
     }
   ]
 }
