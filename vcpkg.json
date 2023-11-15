@@ -45,6 +45,13 @@
         {
           "name": "stackwalker",
           "platform": "windows & !uwp"
+        },
+        {
+          "name": "llvm",
+          "default-features": false,
+          "features": [
+            "enable-rtti"
+          ]
         }
       ]
     },
