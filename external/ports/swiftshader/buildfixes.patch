@@ -1,8 +1,8 @@
 diff --git a/CMakeLists.txt b/CMakeLists.txt
-index fc252f8..5876156 100644
+index fc252f8a2..4a4cd8e44 100644
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
-@@ -661,13 +661,19 @@ endif()
+@@ -661,8 +661,8 @@ endif()
  ###########################################################
  # LLVM
  ###########################################################
@@ -13,17 +13,21 @@ index fc252f8..5876156 100644
  
  ###########################################################
  # LLVM-Submodule
- ###########################################################
+@@ -670,7 +670,13 @@ set_target_properties(llvm PROPERTIES FOLDER "third_party")
  if(${REACTOR_BACKEND} STREQUAL "LLVM-Submodule")
-+    set(LLVM_INCLUDE_TESTS FALSE)
-+    set(LLVM_ENABLE_RTTI TRUE)
+     set(LLVM_INCLUDE_TESTS FALSE)
+     set(LLVM_ENABLE_RTTI TRUE)
+-    add_subdirectory(${THIRD_PARTY_DIR}/llvm-project/llvm EXCLUDE_FROM_ALL)
 +    find_package(LLVM CONFIG REQUIRED)
 +    list(APPEND CMAKE_MODULE_PATH "${LLVM_CMAKE_DIR}")
 +    include(HandleLLVMOptions)
 +    add_definitions(${LLVM_DEFINITIONS})
-     set(LLVM_INCLUDE_TESTS FALSE)
-     set(LLVM_ENABLE_RTTI TRUE)
-     add_subdirectory(${THIRD_PARTY_DIR}/llvm-project/llvm EXCLUDE_FROM_ALL)
++    set(LLVM_INCLUDE_TESTS FALSE)
++    set(LLVM_ENABLE_RTTI TRUE)
++    #add_subdirectory(${THIRD_PARTY_DIR}/llvm-project/llvm EXCLUDE_FROM_ALL)
+     if(ARCH STREQUAL "aarch64")
+         llvm_map_components_to_libnames(llvm_libs orcjit aarch64asmparser aarch64codegen)
+     elseif(ARCH STREQUAL "arm")
 @@ -688,17 +694,17 @@ endif()
  ###########################################################
  # Subzero
@@ -59,7 +63,7 @@ index fc252f8..5876156 100644
      # This variable is also used by SPIRV-Tools to locate SPIRV-Headers
      set(SPIRV-Headers_SOURCE_DIR "${THIRD_PARTY_DIR}/SPIRV-Headers")
 diff --git a/src/Pipeline/CMakeLists.txt b/src/Pipeline/CMakeLists.txt
-index c440a8c..aedeafa 100644
+index c440a8c02..aedeafa29 100644
 --- a/src/Pipeline/CMakeLists.txt
 +++ b/src/Pipeline/CMakeLists.txt
 @@ -71,11 +71,11 @@ if (NOT TARGET SPIRV-Tools)
@@ -80,7 +84,7 @@ index c440a8c..aedeafa 100644
  set_target_properties(vk_pipeline PROPERTIES
      POSITION_INDEPENDENT_CODE 1
 diff --git a/src/Vulkan/CMakeLists.txt b/src/Vulkan/CMakeLists.txt
-index bd05b0f..8f39a1c 100644
+index bd05b0fc8..8f39a1c4e 100644
 --- a/src/Vulkan/CMakeLists.txt
 +++ b/src/Vulkan/CMakeLists.txt
 @@ -258,3 +258,6 @@ configure_file(
