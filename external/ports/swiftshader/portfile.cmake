@@ -17,3 +17,5 @@ vcpkg_cmake_configure(
                                          -DSWIFTSHADER_ENABLE_ASTC=OFF -DREACTOR_BACKEND=LLVM-Submodule)
 vcpkg_cmake_install()
 vcpkg_install_copyright(FILE_LIST "${SOURCE_PATH}/LICENSE.txt")
+
+configure_file("${CMAKE_CURRENT_LIST_DIR}/SwiftShaderConfig.cmake.in")

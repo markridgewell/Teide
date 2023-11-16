@@ -1,0 +1,3 @@
+
+add_library(SwiftShader::SwiftShader INTERFACE IMPORTED)
+set_property(TARGET SwiftShader::SwiftShader PROPERTY INSTALL_FILES "${LIBRARY_FILE}" "${ICD_FILE}")
