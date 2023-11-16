@@ -39,6 +39,10 @@ jobs:
         lfs: false
         submodules: recursive
 
+    - name: Free Disk Space (Ubuntu)
+      if: runner.os == 'Linux'
+      uses: jlumbroso/free-disk-space@main
+
     - name: Determine target triplet
       shell: bash
       run: echo "VCPKG_TRIPLET=$(cmake -DTEIDE_SANITIZER=${{matrix.sanitizer}} -P tools/cmake/scripts/DetermineTriplet.cmake)" >> "$GITHUB_ENV"
@@ -66,6 +70,19 @@ jobs:
     - name: Configure CMake
       if: steps.cache.outputs.cache-hit != 'true'
       run: cmake --preset ${{matrix.preset}} -DTEIDE_SANITIZER=${{matrix.sanitizer}}
+
+    - name: Dump CMake output logs
+      if: failure()
+      shell: bash
+      run: |
+        paths="external/vcpkg build/${{matrix.preset}}"
+        for file in $(find $paths -name '*.log'); do
+            if [ -s $file ]; then
+                echo "::group::$file"
+                cat $file
+                echo "::endgroup::"
+            fi
+        done
 
     - name: Export packages
       if: steps.cache.outputs.cache-hit != 'true'
