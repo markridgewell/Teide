@@ -5,15 +5,23 @@ on:
     # Run at 5:20am and 5:20pm every day
     - cron:  '20 5,17 * * *'
   workflow_dispatch:
+  pull_request:
+    # Only run for pull requests when the vcpkg configuration has changed
+    paths:
+    - 'vckpg*.json'
+    - 'external/ports/**'
+    - 'cmake/triplets/*.cmake'
+    - 'cmake/toolchains/*.cmake'
 
 env:
   VULKAN_SDK: ./VULKAN_SDK
   VCPKG_OVERLAY_PORTS: ./external/ports
+  VCPKG_BINARY_SOURCES: 'clear;nuget,GitHub,readwrite'
 
 jobs:
   unified:
     strategy:
-      fail-fast: true
+      fail-fast: false
       matrix:
         preset: [msvc2022, clang++-17]
         sanitizer: ['OFF']
@@ -39,10 +47,6 @@ jobs:
         lfs: false
         submodules: recursive
 
-    - name: Free Disk Space (Ubuntu)
-      if: runner.os == 'Linux'
-      uses: jlumbroso/free-disk-space@main
-
     - name: Determine target triplet
       shell: bash
       run: echo "VCPKG_TRIPLET=$(cmake -DTEIDE_SANITIZER=${{matrix.sanitizer}} -P tools/cmake/scripts/DetermineTriplet.cmake)" >> "$GITHUB_ENV"
@@ -53,6 +57,24 @@ jobs:
       with:
         key: vcpkg-export-${{env.VCPKG_TRIPLET}}-${{hashFiles('vcpkg*.json', 'external/ports/**', 'cmake/triplets/*.cmake', 'cmake/toolchains/*.cmake')}}
         path: './exports'
+
+    - name: Free disk space (Ubuntu)
+      if: runner.os == 'Linux'
+      uses: jlumbroso/free-disk-space@main
+
+    - name: 'Setup NuGet credentials'
+      shell: 'bash'
+      # Replace <OWNER> with your organization name
+      run: |
+        alias nuget=${{runner.os == 'Linux' && 'mono ' || ''}}$(./external/vcpkg/vcpkg fetch nuget | tail -n 1)
+        nuget sources add \
+          -source "https://nuget.pkg.github.com/markridgewell/index.json" \
+          -storepasswordincleartext \
+          -name "GitHub" \
+          -username markridgewell \
+          -password "${{secrets.GITHUB_TOKEN}}"
+        nuget setapikey "${{secrets.GITHUB_TOKEN}}" \
+          -source "https://nuget.pkg.github.com/markridgewell/index.json"
 
     - name: Setup vcpkg
       if: steps.cache.outputs.cache-hit != 'true'
