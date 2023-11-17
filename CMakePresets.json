@@ -11,7 +11,7 @@
       "hidden": true,
       "binaryDir": "${sourceDir}/build/${presetName}",
       "cacheVariables": {
-        "VCPKG_INSTALL_OPTIONS": "--x-abi-tools-use-exact-versions --no-print-usage",
+        "VCPKG_INSTALL_OPTIONS": "--x-abi-tools-use-exact-versions;--no-print-usage",
         "CMAKE_OPTIMIZE_DEPENDENCIES": "ON"
       }
     },
