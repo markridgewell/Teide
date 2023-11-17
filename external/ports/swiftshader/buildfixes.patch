@@ -1,7 +1,16 @@
 diff --git a/CMakeLists.txt b/CMakeLists.txt
-index fc252f8a2..4a4cd8e44 100644
+index fc252f8a2..d940343da 100644
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
+@@ -278,7 +278,7 @@ if(SWIFTSHADER_BUILD_CPPDAP)
+ endif()
+ 
+ if(${REACTOR_BACKEND} STREQUAL "LLVM-Submodule")
+-    InitSubmodule(llvm-submodule ${THIRD_PARTY_DIR}/llvm-project)
++    #InitSubmodule(llvm-submodule ${THIRD_PARTY_DIR}/llvm-project)
+ endif()
+ 
+ ###########################################################
 @@ -661,8 +661,8 @@ endif()
  ###########################################################
  # LLVM
@@ -28,7 +37,7 @@ index fc252f8a2..4a4cd8e44 100644
      if(ARCH STREQUAL "aarch64")
          llvm_map_components_to_libnames(llvm_libs orcjit aarch64asmparser aarch64codegen)
      elseif(ARCH STREQUAL "arm")
-@@ -688,17 +694,17 @@ endif()
+@@ -688,17 +694,18 @@ endif()
  ###########################################################
  # Subzero
  ###########################################################
@@ -44,15 +53,17 @@ index fc252f8a2..4a4cd8e44 100644
  ###########################################################
  # marl
  ###########################################################
- set(MARL_THIRD_PARTY_DIR ${THIRD_PARTY_DIR})
+-set(MARL_THIRD_PARTY_DIR ${THIRD_PARTY_DIR})
 -add_subdirectory(${THIRD_PARTY_DIR}/marl)
 -set_target_properties(marl PROPERTIES FOLDER "third_party")
++find_package(marl CONFIG REQUIRED)
++#set(MARL_THIRD_PARTY_DIR ${THIRD_PARTY_DIR})
 +#add_subdirectory(${THIRD_PARTY_DIR}/marl)
 +#set_target_properties(marl PROPERTIES FOLDER "third_party")
  
  if(MARL_THREAD_SAFETY_ANALYSIS_SUPPORTED)
      list(APPEND SWIFTSHADER_COMPILE_OPTIONS "-Wthread-safety")
-@@ -787,6 +793,9 @@ else()
+@@ -787,6 +794,9 @@ else()
      message(FATAL_ERROR "REACTOR_BACKEND must be 'LLVM', 'LLVM-Submodule' or 'Subzero'")
  endif()
  
