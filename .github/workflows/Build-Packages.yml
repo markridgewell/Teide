@@ -21,7 +21,7 @@ env:
 jobs:
   unified:
     strategy:
-      fail-fast: true
+      fail-fast: false
       matrix:
         preset: [msvc2022, clang++-17]
         sanitizer: ['OFF']
