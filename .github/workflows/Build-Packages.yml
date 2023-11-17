@@ -96,12 +96,14 @@ jobs:
       run: |
         ./external/vcpkg/vcpkg export --raw --output=exports --output-dir=. --x-install-root=build/${{matrix.preset}}/vcpkg_installed
 
+    - name: List contents
+      if: always()
+      shell: bash
+      run: ls -R exports
+
     - name: Save packages as artifact
+      if: steps.cache.outputs.cache-hit != 'true'
       uses: actions/upload-artifact@v3
       with:
         name: vcpkg-export-${{env.VCPKG_TRIPLET}}
         path: './exports'
-
-    - name: List contents
-      shell: bash
-      run: ls -R exports
