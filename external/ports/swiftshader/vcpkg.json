@@ -19,6 +19,9 @@
       "name": "spirv-tools"
     },
     {
+      "name": "marl"
+    },
+    {
       "name": "llvm",
       "default-features": false,
       "features": [
