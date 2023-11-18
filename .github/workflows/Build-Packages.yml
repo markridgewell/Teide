@@ -112,7 +112,7 @@ jobs:
         ./external/vcpkg/vcpkg export --raw --output=exports --output-dir=. --x-install-root=build/${{matrix.preset}}/vcpkg_installed
 
     - name: List contents
-      if: always()
+      if: steps.cache.outputs.cache-hit != 'true'
       shell: bash
       run: ls -R exports
 
