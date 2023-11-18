@@ -1,5 +1,5 @@
 diff --git a/CMakeLists.txt b/CMakeLists.txt
-index fc252f8a2..d940343da 100644
+index fc252f8a2..df895a03e 100644
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
 @@ -278,7 +278,7 @@ if(SWIFTSHADER_BUILD_CPPDAP)
@@ -11,7 +11,7 @@ index fc252f8a2..d940343da 100644
  endif()
  
  ###########################################################
-@@ -661,8 +661,8 @@ endif()
+@@ -661,16 +661,20 @@ endif()
  ###########################################################
  # LLVM
  ###########################################################
@@ -22,22 +22,22 @@ index fc252f8a2..d940343da 100644
  
  ###########################################################
  # LLVM-Submodule
-@@ -670,7 +670,13 @@ set_target_properties(llvm PROPERTIES FOLDER "third_party")
+ ###########################################################
  if(${REACTOR_BACKEND} STREQUAL "LLVM-Submodule")
-     set(LLVM_INCLUDE_TESTS FALSE)
-     set(LLVM_ENABLE_RTTI TRUE)
+-    set(LLVM_INCLUDE_TESTS FALSE)
+-    set(LLVM_ENABLE_RTTI TRUE)
 -    add_subdirectory(${THIRD_PARTY_DIR}/llvm-project/llvm EXCLUDE_FROM_ALL)
++    #set(LLVM_INCLUDE_TESTS FALSE)
++    #set(LLVM_ENABLE_RTTI TRUE)
++    #add_subdirectory(${THIRD_PARTY_DIR}/llvm-project/llvm EXCLUDE_FROM_ALL)
 +    find_package(LLVM CONFIG REQUIRED)
 +    list(APPEND CMAKE_MODULE_PATH "${LLVM_CMAKE_DIR}")
 +    include(HandleLLVMOptions)
 +    add_definitions(${LLVM_DEFINITIONS})
-+    set(LLVM_INCLUDE_TESTS FALSE)
-+    set(LLVM_ENABLE_RTTI TRUE)
-+    #add_subdirectory(${THIRD_PARTY_DIR}/llvm-project/llvm EXCLUDE_FROM_ALL)
      if(ARCH STREQUAL "aarch64")
          llvm_map_components_to_libnames(llvm_libs orcjit aarch64asmparser aarch64codegen)
      elseif(ARCH STREQUAL "arm")
-@@ -688,17 +694,18 @@ endif()
+@@ -688,17 +692,18 @@ endif()
  ###########################################################
  # Subzero
  ###########################################################
@@ -63,7 +63,7 @@ index fc252f8a2..d940343da 100644
  
  if(MARL_THREAD_SAFETY_ANALYSIS_SUPPORTED)
      list(APPEND SWIFTSHADER_COMPILE_OPTIONS "-Wthread-safety")
-@@ -787,6 +794,9 @@ else()
+@@ -787,6 +792,9 @@ else()
      message(FATAL_ERROR "REACTOR_BACKEND must be 'LLVM', 'LLVM-Submodule' or 'Subzero'")
  endif()
  
@@ -94,6 +94,19 @@ index c440a8c02..aedeafa29 100644
  
  set_target_properties(vk_pipeline PROPERTIES
      POSITION_INDEPENDENT_CODE 1
+diff --git a/src/Reactor/CMakeLists.txt b/src/Reactor/CMakeLists.txt
+index 3e301a174..f571ff1ed 100644
+--- a/src/Reactor/CMakeLists.txt
++++ b/src/Reactor/CMakeLists.txt
+@@ -160,6 +160,8 @@ target_include_directories(ReactorLLVMSubmodule
+         .
+         "${THIRD_PARTY_DIR}/llvm-project/llvm/include"
+         "${CMAKE_BINARY_DIR}/third_party/llvm-project/llvm/include"
++    PRIVATE
++        ${LLVM_INCLUDE_DIRS}
+ )
+ 
+ target_compile_definitions(ReactorLLVMSubmodule
 diff --git a/src/Vulkan/CMakeLists.txt b/src/Vulkan/CMakeLists.txt
 index bd05b0fc8..8f39a1c4e 100644
 --- a/src/Vulkan/CMakeLists.txt
