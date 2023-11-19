@@ -108,6 +108,45 @@ index 3e301a174..f571ff1ed 100644
  )
  
  target_compile_definitions(ReactorLLVMSubmodule
+diff --git a/src/Reactor/Debug.cpp b/src/Reactor/Debug.cpp
+index 34c77b70c..960eff7ae 100644
+--- a/src/Reactor/Debug.cpp
++++ b/src/Reactor/Debug.cpp
+@@ -160,7 +160,7 @@ void logv(Level level, const char *format, va_list args)
+ 	logv_android(level, buffer);
+ #	elif defined(_WIN32)
+ 	logv_std(level, buffer);
+-	::OutputDebugString(buffer);
++	::OutputDebugStringA(buffer);
+ #	else
+ 	logv_std(level, buffer);
+ #	endif
+diff --git a/src/Reactor/Reactor.cpp b/src/Reactor/Reactor.cpp
+index 8d2100dd5..750091d74 100644
+--- a/src/Reactor/Reactor.cpp
++++ b/src/Reactor/Reactor.cpp
+@@ -4795,7 +4795,7 @@ int DebugPrintf(const char *format, ...)
+ 
+ 	std::fputs(buffer, stdout);
+ #		if defined(_WIN32)
+-	OutputDebugString(buffer);
++	OutputDebugStringA(buffer);
+ #		endif
+ 
+ 	return result;
+diff --git a/src/System/Debug.cpp b/src/System/Debug.cpp
+index 13e5a8ac7..3a0f1acae 100644
+--- a/src/System/Debug.cpp
++++ b/src/System/Debug.cpp
+@@ -111,7 +111,7 @@ void logv(Level level, const char *format, va_list args)
+ 		logv_android(level, buffer);
+ #	elif defined(_WIN32)
+ 		logv_std(level, buffer);
+-		::OutputDebugString(buffer);
++		::OutputDebugStringA(buffer);
+ #	else
+ 		logv_std(level, buffer);
+ #	endif
 diff --git a/src/Vulkan/CMakeLists.txt b/src/Vulkan/CMakeLists.txt
 index bd05b0fc8..8f39a1c4e 100644
 --- a/src/Vulkan/CMakeLists.txt
