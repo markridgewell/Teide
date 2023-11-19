@@ -1,4 +1,3 @@
-vcpkg_check_linkage(ONLY_DYNAMIC_LIBRARY)
 set(VCPKG_POLICY_EMPTY_INCLUDE_FOLDER enabled)
 
 vcpkg_from_github(
