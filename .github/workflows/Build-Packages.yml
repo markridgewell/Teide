@@ -91,7 +91,7 @@ jobs:
 
     - name: Configure CMake
       if: steps.cache.outputs.cache-hit != 'true'
-      run: cmake --preset ${{matrix.preset}} -DTEIDE_SANITIZER=${{matrix.sanitizer}} "-DVCPKG_INSTALL_OPTIONS=--x-abi-tools-use-exact-versions;--debug"
+      run: cmake --preset ${{matrix.preset}} -DTEIDE_SANITIZER=${{matrix.sanitizer}} "-DVCPKG_INSTALL_OPTIONS=--x-abi-tools-use-exact-versions${{runner.debug && ';--debug' || ''}}"
 
     - name: Dump CMake output logs
       if: failure()
