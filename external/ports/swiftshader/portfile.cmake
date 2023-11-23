@@ -9,13 +9,21 @@ vcpkg_from_github(
     HEAD_REF master
     PATCHES buildfixes.patch)
 
+set(CXX_FLAGS "")
+if(VCPKG_TARGET_IS_WINDOWS)
+    set(CXX_FLAGS "/U_UNICODE /UUNICODE")
+endif()
+
 file(MAKE_DIRECTORY ${SOURCE_PATH}/.git/hooks)
 file(TOUCH ${SOURCE_PATH}/.git/hooks/commit-msg)
 vcpkg_cmake_configure(
     SOURCE_PATH "${SOURCE_PATH}"
     NO_CHARSET_FLAG
-    OPTIONS -DSWIFTSHADER_BUILD_TESTS=OFF -DSWIFTSHADER_WARNINGS_AS_ERRORS=OFF -DSWIFTSHADER_ENABLE_ASTC=OFF
-            -DREACTOR_BACKEND=LLVM-Submodule)
+    OPTIONS -DSWIFTSHADER_BUILD_TESTS=OFF
+            -DSWIFTSHADER_WARNINGS_AS_ERRORS=OFF
+            -DSWIFTSHADER_ENABLE_ASTC=OFF
+            -DREACTOR_BACKEND=LLVM-Submodule
+            "-DCMAKE_CXX_FLAGS=${CXX_FLAGS}")
 vcpkg_cmake_install()
 vcpkg_install_copyright(FILE_LIST "${SOURCE_PATH}/LICENSE.txt")
 
