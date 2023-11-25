@@ -9,11 +9,6 @@ vcpkg_from_github(
     HEAD_REF master
     PATCHES buildfixes.patch)
 
-set(CXX_FLAGS "")
-if(VCPKG_TARGET_IS_WINDOWS)
-    set(CXX_FLAGS "/U_UNICODE /UUNICODE")
-endif()
-
 file(MAKE_DIRECTORY ${SOURCE_PATH}/.git/hooks)
 file(TOUCH ${SOURCE_PATH}/.git/hooks/commit-msg)
 vcpkg_cmake_configure(
