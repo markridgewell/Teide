@@ -111,6 +111,15 @@ jobs:
       run: |
         ./external/vcpkg/vcpkg export --raw --output=exports --output-dir=. --x-install-root=build/${{matrix.preset}}/vcpkg_installed
 
+    - name: Delete LLVM files # they take up way too much space and we don't need them
+      if: steps.cache.outputs.cache-hit != 'true'
+      shell: bash
+      working-directory: exports/installed
+      run: |
+        cat vcpkg/info/llvm*.list | grep -v '/$' | xargs rm # Remove all files in llvm package
+        find . -type d -empty -delete # Remove empty directories
+        rm vcpkg/info/llvm*.list # Remove listing file
+
     - name: List contents
       if: steps.cache.outputs.cache-hit != 'true'
       shell: bash
