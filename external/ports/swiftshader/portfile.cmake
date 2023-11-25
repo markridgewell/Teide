@@ -22,5 +22,4 @@ vcpkg_cmake_configure(
 vcpkg_cmake_install()
 vcpkg_install_copyright(FILE_LIST "${SOURCE_PATH}/LICENSE.txt")
 
-configure_file("${CMAKE_CURRENT_LIST_DIR}/SwiftShaderConfig.cmake.in"
-               "${CURRENT_PACKAGES_DIR}/share/${PORT}/SwiftShaderConfig.cmake")
+file(INSTALL "${CMAKE_CURRENT_LIST_DIR}/SwiftShaderConfig.cmake" DESTINATION "${CURRENT_PACKAGES_DIR}/share/${PORT}")
