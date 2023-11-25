@@ -158,3 +158,18 @@ index bd05b0fc8..8f39a1c4e 100644
 +
 +install(FILES "${CMAKE_BINARY_DIR}/${CMAKE_SYSTEM_NAME}/vk_swiftshader_icd.json" TYPE BIN)
 +install(TARGETS vk_swiftshader)
+diff --git a/src/Vulkan/main.cpp b/src/Vulkan/main.cpp
+index 2179eab70..8288a658a 100644
+--- a/src/Vulkan/main.cpp
++++ b/src/Vulkan/main.cpp
+@@ -64,8 +64,8 @@ extern "C" BOOL WINAPI DllMain(HINSTANCE instance, DWORD reason, LPVOID reserved
+ 	case DLL_PROCESS_ATTACH:
+ #	ifdef DEBUGGER_WAIT_DIALOG
+ 		{
+-			char disable_debugger_wait_dialog[] = "0";
+-			GetEnvironmentVariable("SWIFTSHADER_DISABLE_DEBUGGER_WAIT_DIALOG", disable_debugger_wait_dialog, sizeof(disable_debugger_wait_dialog));
++			wchar_t disable_debugger_wait_dialog[] = L"0";
++			GetEnvironmentVariable(L"SWIFTSHADER_DISABLE_DEBUGGER_WAIT_DIALOG", disable_debugger_wait_dialog, sizeof(disable_debugger_wait_dialog));
+ 
+ 			if(disable_debugger_wait_dialog[0] != '1')
+ 			{
