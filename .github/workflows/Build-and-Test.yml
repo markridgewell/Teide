@@ -4,7 +4,6 @@ on:
   push:
     branches: [ main ]
   pull_request:
-    branches: [ main ]
   workflow_dispatch:
     inputs:
       profile-cmake:
@@ -184,9 +183,10 @@ jobs:
     if: github.event_name == 'pull_request'
     env:
       GH_TOKEN: ${{github.token}}
+      INPUTS: "${{toJSON(needs)}}"
 
     steps:
-    - run: echo "${{toJSON(needs)}}"
+    - run: echo "$INPUTS"
 
   time-report:
     name: Time-Report
