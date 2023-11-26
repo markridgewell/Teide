@@ -146,7 +146,7 @@ jobs:
       uses: actions/upload-artifact@v3
       with:
         name: RenderTestOutput-${{env.job_name}}
-        path: RenderTestOutput
+        path: build/${{matrix.preset}}/tests/RenderTest/RenderTestOutput
 
     - name: Save test log
       if: failure() && steps.test.outcome == 'failure'
