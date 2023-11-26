@@ -88,14 +88,6 @@ jobs:
         path: './exports'
         fail-on-cache-miss: true
 
-    - if: runner.os == 'Windows'
-      name: Install problem matcher (MSVC)
-      uses: ammaraskar/msvc-problem-matcher@master
-
-    - if: runner.os == 'Linux'
-      name: Install problem matcher (GCC)
-      uses: ammaraskar/gcc-problem-matcher@master
-
     - name: Install dependencies
       uses: ./.github/actions/install-dependencies
       with:
