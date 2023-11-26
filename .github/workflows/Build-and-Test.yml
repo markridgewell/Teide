@@ -185,8 +185,7 @@ jobs:
     name: Render-Test-Report
     runs-on: ubuntu-latest
     needs: [unified]
-    #if: needs.unified.outputs.rendertest-outcome == 'failure'
-    if: always()
+    if: always() && needs.unified.outputs.rendertest-outcome == 'failure'
     env:
       GH_TOKEN: ${{github.token}}
       INPUTS: "${{toJSON(needs)}}"
