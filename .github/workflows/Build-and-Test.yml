@@ -193,6 +193,14 @@ jobs:
     steps:
     - run: echo "$INPUTS"
 
+    - uses: actions/download-artifact@v3
+      with:
+        path: artifacts
+
+    - name: Display structure of downloaded files
+      run: ls -R
+      working-directory: artifacts
+
   time-report:
     name: Time-Report
     runs-on: ubuntu-latest
