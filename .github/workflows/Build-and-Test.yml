@@ -69,7 +69,7 @@ jobs:
       CMAKE_BUILD_TYPE: ${{matrix.buildtype}}
 
     outputs:
-      ${{runner.os}}: ${{steps.step1.outputs.test}}
+      ${{matrix.runner}}: ${{steps.step1.outputs.test}}
 
     steps:
     - id: step1
