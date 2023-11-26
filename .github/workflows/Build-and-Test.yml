@@ -69,12 +69,9 @@ jobs:
       CMAKE_BUILD_TYPE: ${{matrix.buildtype}}
 
     outputs:
-      ${{matrix.runner}}: ${{steps.step1.outputs.test}}
+      rendertest-outcome: ${{steps.rendertest.outputs.outcome}}
 
     steps:
-    - id: step1
-      run: echo "test=${{env.job_name}}" >> "$GITHUB_OUTPUT"
-
     - name: Checkout
       uses: actions/checkout@v3
       with:
@@ -153,6 +150,14 @@ jobs:
         name: RenderTestOutput-${{env.job_name}}
         path: build/${{matrix.preset}}/tests/RenderTest/RenderTestOutput
 
+    - name: Record render test outcome
+      id: rendertest
+      if: failure() && steps.test.outcome == 'failure'
+      run: |
+        if [ -d build/${{matrix.preset}}/tests/RenderTest/RenderTestOutput ]; then
+          echo "outcome=failure" >> "$GITHUB_OUTPUT"
+        fi
+
     - name: Save test log
       if: failure() && steps.test.outcome == 'failure'
       uses: actions/upload-artifact@v3
@@ -180,7 +185,7 @@ jobs:
     name: Render-Test-Report
     runs-on: ubuntu-latest
     needs: [unified]
-    if: always()
+    if: needs.unified.outputs.rendertest-outcome == 'failure'
     env:
       GH_TOKEN: ${{github.token}}
       INPUTS: "${{toJSON(needs)}}"
