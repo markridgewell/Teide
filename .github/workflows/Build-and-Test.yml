@@ -153,6 +153,7 @@ jobs:
     - name: Record render test outcome
       id: rendertest
       if: failure() && steps.test.outcome == 'failure'
+      shell: bash
       run: |
         if [ -d build/${{matrix.preset}}/tests/RenderTest/RenderTestOutput ]; then
           echo "outcome=failure" >> "$GITHUB_OUTPUT"
