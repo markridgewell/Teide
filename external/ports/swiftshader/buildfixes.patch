@@ -148,7 +148,7 @@ index 13e5a8ac7..3a0f1acae 100644
  		logv_std(level, buffer);
  #	endif
 diff --git a/src/Vulkan/CMakeLists.txt b/src/Vulkan/CMakeLists.txt
-index bd05b0fc8..8f39a1c4e 100644
+index bd05b0fc8..708b0bb86 100644
 --- a/src/Vulkan/CMakeLists.txt
 +++ b/src/Vulkan/CMakeLists.txt
 @@ -258,3 +258,6 @@ configure_file(
@@ -156,7 +156,7 @@ index bd05b0fc8..8f39a1c4e 100644
      "${CMAKE_BINARY_DIR}/${CMAKE_SYSTEM_NAME}/vk_swiftshader_icd.json"
  )
 +
-+install(FILES "${CMAKE_BINARY_DIR}/${CMAKE_SYSTEM_NAME}/vk_swiftshader_icd.json" TYPE BIN)
++install(FILES "${CMAKE_BINARY_DIR}/${CMAKE_SYSTEM_NAME}/vk_swiftshader_icd.json" DESTINATION share/swiftshader)
 +install(TARGETS vk_swiftshader)
 diff --git a/src/Vulkan/main.cpp b/src/Vulkan/main.cpp
 index 2179eab70..8288a658a 100644
