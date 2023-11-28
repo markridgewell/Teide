@@ -193,8 +193,7 @@ jobs:
     if: always() && needs.unified.outputs.rendertest-failures
     env:
       GH_TOKEN: ${{github.token}}
-      INPUTS: "${{toJSON(needs)}}"
-      ANY_PASSED: "${{needs.unified.outputs.rendertest-successes && 'true' || 'false'}}"
+      ANY_PASSED: "${{needs.unified.outputs.rendertest-successes}}"
 
     steps:
     - uses: actions/download-artifact@v3
@@ -203,7 +202,8 @@ jobs:
 
     - name: Generate summary
       run: |
-        echo "Render tests failed. [Click for details](https://markridgewell.github.io/TeideStats/rendertest.html?run_id=${{github.run_id}})" >> $GITHUB_STEP_SUMMARY'
+        URL="https://markridgewell.github.io/TeideStats/rendertest.html?run_id=${{github.run_id}}"
+        echo "Render tests failed. [Click for details]($URL)" >> $GITHUB_STEP_SUMMARY
 
     - name: Display structure of downloaded files
       run: ls -R
