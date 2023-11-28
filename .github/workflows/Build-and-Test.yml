@@ -159,13 +159,6 @@ jobs:
       run: |
         if [ -d "$RT_OUTPUT_DIR" ]; then
           echo "failure=true" >> "$GITHUB_OUTPUT"
-          (
-            echo "# Render tests failed:"
-            for i in $(ls $RT_OUTPUT_DIR/*.out.png); do
-              echo -n ' * '
-              basename $i .out.png
-            done
-          ) >> $GITHUB_STEP_SUMMARY
         else
           echo "success=true" >> "$GITHUB_OUTPUT"
         fi
@@ -204,11 +197,13 @@ jobs:
       ANY_PASSED: "${{needs.unified.outputs.rendertest-successes && 'true' || 'false'}}"
 
     steps:
-    - run: echo "$INPUTS"
-
     - uses: actions/download-artifact@v3
       with:
         path: artifacts
+
+    - name: Generate summary
+      run: |
+        echo "Render tests failed. [Click for details](https://markridgewell.github.io/TeideStats/rendertest.html?run_id=${{github.run_id}})" >> $GITHUB_STEP_SUMMARY'
 
     - name: Display structure of downloaded files
       run: ls -R
