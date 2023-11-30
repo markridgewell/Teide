@@ -41,6 +41,7 @@
       "description": "Build tests",
       "dependencies": [
         "gtest",
+        "swiftshader",
         {
           "name": "stackwalker",
           "platform": "windows & !uwp"

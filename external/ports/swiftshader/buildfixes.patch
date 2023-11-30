@@ -1,0 +1,175 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index fc252f8a2..b25ae4c43 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -278,7 +278,7 @@ if(SWIFTSHADER_BUILD_CPPDAP)
+ endif()
+ 
+ if(${REACTOR_BACKEND} STREQUAL "LLVM-Submodule")
+-    InitSubmodule(llvm-submodule ${THIRD_PARTY_DIR}/llvm-project)
++    #InitSubmodule(llvm-submodule ${THIRD_PARTY_DIR}/llvm-project)
+ endif()
+ 
+ ###########################################################
+@@ -661,16 +661,20 @@ endif()
+ ###########################################################
+ # LLVM
+ ###########################################################
+-add_subdirectory(${THIRD_PARTY_DIR}/llvm-${SWIFTSHADER_LLVM_VERSION} EXCLUDE_FROM_ALL)
+-set_target_properties(llvm PROPERTIES FOLDER "third_party")
++#add_subdirectory(${THIRD_PARTY_DIR}/llvm-${SWIFTSHADER_LLVM_VERSION} EXCLUDE_FROM_ALL)
++#set_target_properties(llvm PROPERTIES FOLDER "third_party")
+ 
+ ###########################################################
+ # LLVM-Submodule
+ ###########################################################
+ if(${REACTOR_BACKEND} STREQUAL "LLVM-Submodule")
+-    set(LLVM_INCLUDE_TESTS FALSE)
+-    set(LLVM_ENABLE_RTTI TRUE)
+-    add_subdirectory(${THIRD_PARTY_DIR}/llvm-project/llvm EXCLUDE_FROM_ALL)
++    #set(LLVM_INCLUDE_TESTS FALSE)
++    #set(LLVM_ENABLE_RTTI TRUE)
++    #add_subdirectory(${THIRD_PARTY_DIR}/llvm-project/llvm EXCLUDE_FROM_ALL)
++    find_package(LLVM CONFIG REQUIRED)
++    list(APPEND CMAKE_MODULE_PATH "${LLVM_CMAKE_DIR}")
++    include(HandleLLVMOptions)
++    add_definitions(${LLVM_DEFINITIONS})
+     if(ARCH STREQUAL "aarch64")
+         llvm_map_components_to_libnames(llvm_libs orcjit aarch64asmparser aarch64codegen)
+     elseif(ARCH STREQUAL "arm")
+@@ -688,17 +692,19 @@ endif()
+ ###########################################################
+ # Subzero
+ ###########################################################
+-add_subdirectory(${THIRD_PARTY_DIR}/llvm-subzero EXCLUDE_FROM_ALL)
+-add_subdirectory(${THIRD_PARTY_DIR}/subzero EXCLUDE_FROM_ALL)
+-set_target_properties(llvm-subzero PROPERTIES FOLDER "third_party")
+-set_target_properties(subzero PROPERTIES FOLDER "third_party")
++#add_subdirectory(${THIRD_PARTY_DIR}/llvm-subzero EXCLUDE_FROM_ALL)
++#add_subdirectory(${THIRD_PARTY_DIR}/subzero EXCLUDE_FROM_ALL)
++#set_target_properties(llvm-subzero PROPERTIES FOLDER "third_party")
++#set_target_properties(subzero PROPERTIES FOLDER "third_party")
+ 
+ ###########################################################
+ # marl
+ ###########################################################
+-set(MARL_THIRD_PARTY_DIR ${THIRD_PARTY_DIR})
+-add_subdirectory(${THIRD_PARTY_DIR}/marl)
+-set_target_properties(marl PROPERTIES FOLDER "third_party")
++find_package(marl CONFIG REQUIRED)
++add_library(marl ALIAS marl::marl)
++#set(MARL_THIRD_PARTY_DIR ${THIRD_PARTY_DIR})
++#add_subdirectory(${THIRD_PARTY_DIR}/marl)
++#set_target_properties(marl PROPERTIES FOLDER "third_party")
+ 
+ if(MARL_THREAD_SAFETY_ANALYSIS_SUPPORTED)
+     list(APPEND SWIFTSHADER_COMPILE_OPTIONS "-Wthread-safety")
+@@ -787,6 +793,9 @@ else()
+     message(FATAL_ERROR "REACTOR_BACKEND must be 'LLVM', 'LLVM-Submodule' or 'Subzero'")
+ endif()
+ 
++find_package(SPIRV-Tools CONFIG REQUIRED)
++find_package(SPIRV-Tools-opt CONFIG REQUIRED)
++add_library(SPIRV-Tools ALIAS SPIRV-Tools-static)
+ if (NOT TARGET SPIRV-Tools)
+     # This variable is also used by SPIRV-Tools to locate SPIRV-Headers
+     set(SPIRV-Headers_SOURCE_DIR "${THIRD_PARTY_DIR}/SPIRV-Headers")
+diff --git a/src/Pipeline/CMakeLists.txt b/src/Pipeline/CMakeLists.txt
+index c440a8c02..aedeafa29 100644
+--- a/src/Pipeline/CMakeLists.txt
++++ b/src/Pipeline/CMakeLists.txt
+@@ -71,11 +71,11 @@ if (NOT TARGET SPIRV-Tools)
+     message(FATAL_ERROR "Missing required target: SPIRV-Tools")
+ endif()
+ 
+-set_target_properties(core_tables PROPERTIES FOLDER "SPIRV-Tools build")
+-set_target_properties(enum_string_mapping PROPERTIES FOLDER "SPIRV-Tools build")
+-set_target_properties(extinst_tables PROPERTIES FOLDER "SPIRV-Tools build")
+-set_target_properties(spirv-tools-pkg-config PROPERTIES FOLDER "SPIRV-Tools build")
+-set_target_properties(spirv-tools-shared-pkg-config PROPERTIES FOLDER "SPIRV-Tools build")
++#set_target_properties(core_tables PROPERTIES FOLDER "SPIRV-Tools build")
++#set_target_properties(enum_string_mapping PROPERTIES FOLDER "SPIRV-Tools build")
++#set_target_properties(extinst_tables PROPERTIES FOLDER "SPIRV-Tools build")
++#set_target_properties(spirv-tools-pkg-config PROPERTIES FOLDER "SPIRV-Tools build")
++#set_target_properties(spirv-tools-shared-pkg-config PROPERTIES FOLDER "SPIRV-Tools build")
+ 
+ set_target_properties(vk_pipeline PROPERTIES
+     POSITION_INDEPENDENT_CODE 1
+diff --git a/src/Reactor/CMakeLists.txt b/src/Reactor/CMakeLists.txt
+index 3e301a174..f571ff1ed 100644
+--- a/src/Reactor/CMakeLists.txt
++++ b/src/Reactor/CMakeLists.txt
+@@ -160,6 +160,8 @@ target_include_directories(ReactorLLVMSubmodule
+         .
+         "${THIRD_PARTY_DIR}/llvm-project/llvm/include"
+         "${CMAKE_BINARY_DIR}/third_party/llvm-project/llvm/include"
++    PRIVATE
++        ${LLVM_INCLUDE_DIRS}
+ )
+ 
+ target_compile_definitions(ReactorLLVMSubmodule
+diff --git a/src/Reactor/Debug.cpp b/src/Reactor/Debug.cpp
+index 34c77b70c..960eff7ae 100644
+--- a/src/Reactor/Debug.cpp
++++ b/src/Reactor/Debug.cpp
+@@ -160,7 +160,7 @@ void logv(Level level, const char *format, va_list args)
+ 	logv_android(level, buffer);
+ #	elif defined(_WIN32)
+ 	logv_std(level, buffer);
+-	::OutputDebugString(buffer);
++	::OutputDebugStringA(buffer);
+ #	else
+ 	logv_std(level, buffer);
+ #	endif
+diff --git a/src/Reactor/Reactor.cpp b/src/Reactor/Reactor.cpp
+index 8d2100dd5..750091d74 100644
+--- a/src/Reactor/Reactor.cpp
++++ b/src/Reactor/Reactor.cpp
+@@ -4795,7 +4795,7 @@ int DebugPrintf(const char *format, ...)
+ 
+ 	std::fputs(buffer, stdout);
+ #		if defined(_WIN32)
+-	OutputDebugString(buffer);
++	OutputDebugStringA(buffer);
+ #		endif
+ 
+ 	return result;
+diff --git a/src/System/Debug.cpp b/src/System/Debug.cpp
+index 13e5a8ac7..3a0f1acae 100644
+--- a/src/System/Debug.cpp
++++ b/src/System/Debug.cpp
+@@ -111,7 +111,7 @@ void logv(Level level, const char *format, va_list args)
+ 		logv_android(level, buffer);
+ #	elif defined(_WIN32)
+ 		logv_std(level, buffer);
+-		::OutputDebugString(buffer);
++		::OutputDebugStringA(buffer);
+ #	else
+ 		logv_std(level, buffer);
+ #	endif
+diff --git a/src/Vulkan/CMakeLists.txt b/src/Vulkan/CMakeLists.txt
+index bd05b0fc8..708b0bb86 100644
+--- a/src/Vulkan/CMakeLists.txt
++++ b/src/Vulkan/CMakeLists.txt
+@@ -258,3 +258,6 @@ configure_file(
+     "vk_swiftshader_icd.json.tmpl"
+     "${CMAKE_BINARY_DIR}/${CMAKE_SYSTEM_NAME}/vk_swiftshader_icd.json"
+ )
++
++install(FILES "${CMAKE_BINARY_DIR}/${CMAKE_SYSTEM_NAME}/vk_swiftshader_icd.json" DESTINATION share/swiftshader)
++install(TARGETS vk_swiftshader)
+diff --git a/src/Vulkan/main.cpp b/src/Vulkan/main.cpp
+index 2179eab70..8288a658a 100644
+--- a/src/Vulkan/main.cpp
++++ b/src/Vulkan/main.cpp
+@@ -64,8 +64,8 @@ extern "C" BOOL WINAPI DllMain(HINSTANCE instance, DWORD reason, LPVOID reserved
+ 	case DLL_PROCESS_ATTACH:
+ #	ifdef DEBUGGER_WAIT_DIALOG
+ 		{
+-			char disable_debugger_wait_dialog[] = "0";
+-			GetEnvironmentVariable("SWIFTSHADER_DISABLE_DEBUGGER_WAIT_DIALOG", disable_debugger_wait_dialog, sizeof(disable_debugger_wait_dialog));
++			wchar_t disable_debugger_wait_dialog[] = L"0";
++			GetEnvironmentVariable(L"SWIFTSHADER_DISABLE_DEBUGGER_WAIT_DIALOG", disable_debugger_wait_dialog, sizeof(disable_debugger_wait_dialog));
+ 
+ 			if(disable_debugger_wait_dialog[0] != '1')
+ 			{

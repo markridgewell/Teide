@@ -1,0 +1,32 @@
+{
+  "name": "swiftshader",
+  "version": "2023-10-03",
+  "port-version": 1,
+  "description": "A high-performance CPU-based implementation of the Vulkan graphics API",
+  "homepage": "https://swiftshader.googlesource.com/SwiftShader",
+  "license": "Apache-2.0",
+  "supports": "!uwp & !xbox",
+  "dependencies": [
+    {
+      "name": "vcpkg-cmake",
+      "host": true
+    },
+    {
+      "name": "vcpkg-cmake-config",
+      "host": true
+    },
+    {
+      "name": "spirv-tools"
+    },
+    {
+      "name": "marl"
+    },
+    {
+      "name": "llvm",
+      "default-features": false,
+      "features": [
+        "enable-rtti"
+      ]
+    }
+  ]
+}

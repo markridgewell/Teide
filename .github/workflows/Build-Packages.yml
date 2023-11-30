@@ -16,7 +16,7 @@ on:
 env:
   VULKAN_SDK: ./VULKAN_SDK
   VCPKG_OVERLAY_PORTS: ./external/ports
-  VCPKG_BINARY_SOURCES: 'clear;nuget,GitHub,readwrite'
+  VCPKG_BINARY_SOURCES: 'clear;nuget,GitHub,readwrite;nugettimeout,600'
 
 jobs:
   unified:
@@ -91,7 +91,7 @@ jobs:
 
     - name: Configure CMake
       if: steps.cache.outputs.cache-hit != 'true'
-      run: cmake --preset ${{matrix.preset}} -DTEIDE_SANITIZER=${{matrix.sanitizer}}
+      run: cmake --preset ${{matrix.preset}} -DTEIDE_SANITIZER=${{matrix.sanitizer}} "-DVCPKG_INSTALL_OPTIONS=--x-abi-tools-use-exact-versions${{runner.debug && ';--debug' || ''}}"
 
     - name: Dump CMake output logs
       if: failure()
@@ -111,6 +111,23 @@ jobs:
       run: |
         ./external/vcpkg/vcpkg export --raw --output=exports --output-dir=. --x-install-root=build/${{matrix.preset}}/vcpkg_installed
 
+    - name: Delete LLVM files # they take up way too much space and we don't need them
+      if: steps.cache.outputs.cache-hit != 'true'
+      shell: bash
+      working-directory: exports/installed
+      run: |
+        cat vcpkg/info/llvm*.list | grep -v '/$' | xargs rm # Remove all files in llvm package
+        find . -type d -empty -delete # Remove empty directories
+        rm vcpkg/info/llvm*.list # Remove listing file
+
     - name: List contents
+      if: steps.cache.outputs.cache-hit != 'true'
       shell: bash
       run: ls -R exports
+
+    - name: Save packages as artifact
+      if: steps.cache.outputs.cache-hit != 'true'
+      uses: actions/upload-artifact@v3
+      with:
+        name: vcpkg-export-${{env.VCPKG_TRIPLET}}
+        path: './exports'
