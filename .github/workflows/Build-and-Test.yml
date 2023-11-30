@@ -16,11 +16,6 @@ on:
         required: true
         default: true
         type: boolean
-      update-references:
-        description: 'Update render test references'
-        required: true
-        default: false
-        type: boolean
 
 env:
   VULKAN_SDK: ./VULKAN_SDK
@@ -191,6 +186,7 @@ jobs:
         name: CoverageReport-${{env.job_name}}
         path: build/${{matrix.preset}}/coverage/output
 
+
   render-test-report:
     name: Render-Test-Report
     runs-on: ubuntu-latest
@@ -221,40 +217,6 @@ jobs:
       run: ls -R
       working-directory: artifacts
 
-    - name: Checkout
-      if: inputs.update-references
-      uses: actions/checkout@v3
-      with:
-        lfs: true
-        submodules: false
-        path: repo
-
-    - name: Update references
-      if: inputs.update-references
-      working-directory: repo
-      env:
-        REFERENCES_DIR: tests/RenderTest/references
-      run: |
-        if $ANY_PASSED; then
-          echo "Not all render tests failed, cannot update references"
-          exit 1
-        else
-          python tools/update_references.py ../artifacts $REFERENCES_DIR
-        fi
-
-        echo Staging changes...
-        git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
-        git config --local user.name "github-actions[bot]"
-        git add $REFERENCES_DIR
-        echo
-
-        echo Status:
-        git status
-        echo
-
-        echo Pushing changes...
-        git commit -m "Update render test references"
-        git push
 
   time-report:
     name: Time-Report

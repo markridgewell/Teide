@@ -1,0 +1,49 @@
+name: Update-References
+
+on:
+  workflow_dispatch:
+
+jobs:
+  update:
+    name: Update-References
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Download artifacts
+      run: |
+        echo "Downloading artifacts for last Build-and-Test workflow run on branch ${{github.head_ref}}"
+        RUN_ID=$(gh run list \
+          --workflow Build-and-Test \
+          --branch ${{github.head_ref}} \
+          --limit 1 \
+          --json databaseId \
+          --jq '.[].databaseId')
+        gh run download $RUN_ID --dir artifacts
+
+    - name: Checkout
+      uses: actions/checkout@v3
+      with:
+        lfs: true
+        submodules: false
+        path: repo
+
+    - name: Update references
+      working-directory: repo
+      env:
+        REFERENCES_DIR: tests/RenderTest/references
+      run: |
+        python tools/update_references.py ../artifacts $REFERENCES_DIR
+
+        echo Staging changes...
+        git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
+        git config --local user.name "github-actions[bot]"
+        git add $REFERENCES_DIR
+        echo
+
+        echo Status:
+        git status
+        echo
+
+        echo Pushing changes...
+        git commit -m "Update render test references"
+        git push
