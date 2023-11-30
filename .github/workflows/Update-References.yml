@@ -11,10 +11,10 @@ jobs:
     steps:
     - name: Download artifacts
       run: |
-        echo "Downloading artifacts for last Build-and-Test workflow run on branch ${{github.head_ref}}"
+        echo "Downloading artifacts for last Build-and-Test workflow run on branch ${{github.ref_name}}"
         RUN_ID=$(gh run list \
           --workflow Build-and-Test \
-          --branch ${{github.head_ref}} \
+          --branch ${{github.ref_name}} \
           --limit 1 \
           --json databaseId \
           --jq '.[].databaseId')
