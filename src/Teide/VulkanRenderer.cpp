@@ -10,10 +10,10 @@
 #include "VulkanShader.h"
 #include "VulkanShaderEnvironment.h"
 #include "VulkanTexture.h"
-#include "VulkanUtils.h"
 
 #include "Teide/Renderer.h"
 #include "Teide/TextureData.h"
+#include "vkex/vkex.hpp"
 
 #include <fmt/chrono.h>
 #include <spdlog/spdlog.h>
@@ -99,6 +99,8 @@ VulkanRenderer::VulkanRenderer(VulkanGraphicsDevice& device, const QueueFamilies
     m_graphicsQueue{device.GetVulkanDevice().getQueue(queueFamilies.graphicsFamily, 0)},
     m_shaderEnvironment{std::move(shaderEnvironment)}
 {
+    using std::ranges::generate;
+
     const auto vkdevice = device.GetVulkanDevice();
 
     if (queueFamilies.presentFamily)
@@ -106,10 +108,25 @@ VulkanRenderer::VulkanRenderer(VulkanGraphicsDevice& device, const QueueFamilies
         m_presentQueue = vkdevice.getQueue(*queueFamilies.presentFamily, 0);
     }
 
-    std::ranges::generate(m_renderFinished, [=] { return vkdevice.createSemaphoreUnique({}, s_allocator); });
-    std::ranges::generate(m_inFlightFences, [=] {
+    generate(m_renderFinished, [=] { return vkdevice.createSemaphoreUnique({}, s_allocator); });
+    generate(m_inFlightFences, [=] {
         return vkdevice.createFenceUnique({.flags = vk::FenceCreateFlagBits::eSignaled}, s_allocator);
     });
+
+    if (m_shaderEnvironment)
+    {
+        constexpr uint32 ViewDescriptorPoolSize = 8;
+        const auto& viewPblockLayout = device.GetImpl(*m_shaderEnvironment->GetViewPblockLayout());
+        const auto numThreads = device.GetScheduler().GetThreadCount();
+        generate(m_frameResources, [&] {
+            FrameResources ret;
+            for (uint32 i = 0; i < numThreads; i++)
+            {
+                ret.threadResources.emplace_back(DescriptorPool(vkdevice, viewPblockLayout, ViewDescriptorPoolSize));
+            }
+            return ret;
+        });
+    }
 }
 
 VulkanRenderer::~VulkanRenderer()
@@ -139,7 +156,7 @@ void VulkanRenderer::BeginFrame(ShaderParameters sceneParameters)
 
     [[maybe_unused]] const auto waitResult
         = m_device.GetVulkanDevice().waitForFences(m_inFlightFences[m_frameNumber].get(), true, timeout);
-    assert(waitResult == vk::Result::eSuccess); // TODO check if waitForFences can fail with no timeout
+    TEIDE_ASSERT(waitResult == vk::Result::eSuccess); // TODO check if waitForFences can fail with no timeout
 
     m_device.GetScheduler().NextFrame();
 
@@ -150,6 +167,11 @@ void VulkanRenderer::BeginFrame(ShaderParameters sceneParameters)
         .parameters = std::move(sceneParameters),
     };
     frameResources.sceneParameters = m_device.CreateParameterBlock(pblockData, "Scene");
+    for (auto& threadResources : frameResources.threadResources)
+    {
+        threadResources.viewDescriptorPool.Reset();
+        threadResources.viewParameters.clear();
+    }
 }
 
 void VulkanRenderer::EndFrame()
@@ -166,7 +188,7 @@ void VulkanRenderer::EndFrame()
         return;
     }
 
-    assert(m_presentQueue && "Can't present without a present queue");
+    TEIDE_ASSERT(m_presentQueue, "Can't present without a present queue");
 
     auto fenceToSignal = m_inFlightFences[m_frameNumber].get();
 
@@ -208,7 +230,7 @@ void VulkanRenderer::WaitForGpu()
 
 RenderToTextureResult VulkanRenderer::RenderToTexture(const RenderTargetInfo& renderTarget, RenderList renderList)
 {
-    assert((renderTarget.captureColor || renderTarget.captureDepthStencil) && "Nothing to capture in RTT pass");
+    TEIDE_ASSERT(renderTarget.captureColor || renderTarget.captureDepthStencil, "Nothing to capture in RTT pass");
 
     const auto CreateRenderableTexture = [&](std::optional<Format> format, const char* name) -> TexturePtr {
         if (!format)
@@ -355,18 +377,13 @@ void VulkanRenderer::RecordRenderListCommands(
     CommandBuffer& commandBufferWrapper, const RenderList& renderList, vk::RenderPass renderPass,
     const RenderPassDesc& renderPassDesc, const Framebuffer& framebuffer)
 {
-    using std::data;
-
     const vk::CommandBuffer commandBuffer = commandBufferWrapper;
 
-    const auto clearValues = MakeClearValues(framebuffer, renderList.clearState);
-
-    const vk::RenderPassBeginInfo renderPassBegin = {
+    const vkex::RenderPassBeginInfo renderPassBegin = {
         .renderPass = renderPass,
         .framebuffer = framebuffer.framebuffer,
         .renderArea = {.offset = {0, 0}, .extent = {framebuffer.size.x, framebuffer.size.y}},
-        .clearValueCount = size32(clearValues),
-        .pClearValues = data(clearValues),
+        .clearValues = MakeClearValues(framebuffer, renderList.clearState),
     };
 
     const auto viewport = MakeViewport(framebuffer.size, renderList.viewportRegion);
@@ -375,16 +392,13 @@ void VulkanRenderer::RecordRenderListCommands(
                                             : vk::Rect2D{.extent = {framebuffer.size.x, framebuffer.size.y}};
     commandBuffer.setScissor(0, scissor);
 
-    const auto threadIndex = m_device.GetScheduler().GetThreadIndex();
     const ParameterBlockData viewParamsData = {
         .layout = m_shaderEnvironment ? m_shaderEnvironment->GetViewPblockLayout() : nullptr,
         .lifetime = ResourceLifetime::Transient,
         .parameters = renderList.viewParameters,
     };
     const auto viewParamsName = fmt::format("{}:View", renderList.name);
-    const auto viewParameters
-        = m_device.CreateParameterBlock(viewParamsData, viewParamsName.c_str(), commandBufferWrapper, threadIndex);
-    commandBufferWrapper.AddReference(viewParameters);
+    const auto* viewParameters = CreateViewParameterBlock(viewParamsData, viewParamsName.c_str(), commandBufferWrapper);
 
     commandBuffer.beginRenderPass(renderPassBegin, vk::SubpassContents::eInline);
 
@@ -392,7 +406,7 @@ void VulkanRenderer::RecordRenderListCommands(
     {
         const auto descriptorSets = std::array{
             GetDescriptorSet(GetSceneParameterBlock().get()),
-            GetDescriptorSet(viewParameters.get()),
+            viewParameters ? viewParameters->descriptorSet : nullptr,
         };
         const auto firstActiveSet
             = static_cast<uint32>(std::distance(descriptorSets.begin(), std::ranges::find_if(descriptorSets, NotNull)));

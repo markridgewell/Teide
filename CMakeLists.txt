@@ -2,9 +2,11 @@ cmake_minimum_required(VERSION 3.19)
 
 include(CMakeParseArguments)
 include(CMakeDependentOption)
+include(CMakePrintHelpers)
 include(tools/cmake/Build.cmake)
 include(tools/cmake/Cache.cmake)
 include(tools/cmake/CompileCommands.cmake)
+include(tools/cmake/Option.cmake)
 
 if(LINUX AND TEIDE_SANITIZER STREQUAL "UBSAN")
     set(VCPKG_TARGET_TRIPLET "x64-linux-ubsan")
@@ -27,15 +29,10 @@ elseif(
     set(VCPKG_CHAINLOAD_TOOLCHAIN_FILE "${CMAKE_CURRENT_SOURCE_DIR}/tools/cmake/toolchains/clang-msan.cmake")
 endif()
 
-project(
-    Teide
-    VERSION 0.0.0
-    DESCRIPTION "Vulkan-based 3D renderer"
-    LANGUAGES CXX)
-
-option(TEIDE_BUILD_EXAMPLES "Build examples for Teide" ON)
-option(TEIDE_BUILD_TESTS "Build tests for Teide" ON)
-option(TEIDE_BUILD_BENCHMARKS "Build benchmarks for Teide" ON)
+option_feature(TEIDE_BUILD_EXAMPLES examples "Build examples for Teide" ON)
+option_feature(TEIDE_BUILD_TESTS tests "Build tests for Teide" ON)
+option_feature(TEIDE_BUILD_BENCHMARKS benchmarks "Build benchmarks for Teide" ON)
+option(TEIDE_USE_VCPKG "Vendor dependencies through vcpkg" ON)
 option(TEIDE_TEST_VERBOSE "Enable verbose logging for Teide tests" OFF)
 option(TEIDE_TEST_COVERAGE "Enable code coverage reporting when running tests" OFF)
 option(TEIDE_TEST_WINDOWLESS "Disable tests requiring a windowing system" OFF)
@@ -44,11 +41,19 @@ option(TEIDE_RENDER_TEST_SW_RENDER "Enable software rendering for Teide render t
 option(TEIDE_CLANG_TIDY "Enable static analysis with clang-tidy" OFF)
 option(TEIDE_CPPCHECK "Enable static analysis with Cppcheck" OFF)
 option(TEIDE_PRECOMPILED_HEADERS "Enable precompiled headers when building" OFF)
+option_enum(TEIDE_SANITIZER "Name of a sanitizer to enable, or OFF to disable" "OFF;ASAN;UBSAN;MSAN")
 
-set(TEIDE_SANITIZER
-    OFF
-    CACHE STRING "Name of a sanitizer to enable, or OFF to disable")
-set_property(CACHE TEIDE_SANITIZER PROPERTY STRINGS "OFF;ASAN;UBSAN;MSAN")
+if(TEIDE_USE_VCPKG)
+    include(tools/cmake/Triplet.cmake)
+    message(STATUS "Target triplet for vcpkg determined to be ${VCPKG_TARGET_TRIPLET}")
+    set(CMAKE_TOOLCHAIN_FILE "${CMAKE_SOURCE_DIR}/external/vcpkg/scripts/buildsystems/vcpkg.cmake")
+endif()
+
+project(
+    Teide
+    VERSION 0.0.0
+    DESCRIPTION "Vulkan-based 3D renderer"
+    LANGUAGES CXX)
 
 enable_testing()
 
@@ -62,7 +67,6 @@ find_package(SDL2_image REQUIRED)
 find_package(fmt REQUIRED)
 find_package(spdlog REQUIRED)
 find_package(glslang REQUIRED)
-find_package(assimp REQUIRED)
 find_package(Taskflow REQUIRED)
 find_package(function2 REQUIRED)
 find_package(RenderDoc)
@@ -76,10 +80,19 @@ set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# Generate vkex headers
+set(GENERATED_INCLUDE_DIR "${CMAKE_BINARY_DIR}/GENERATED/include")
+find_package(Python REQUIRED)
+execute_process(
+    COMMAND
+        "${Python_EXECUTABLE}" "${CMAKE_SOURCE_DIR}/tools/vkex/genvkex.py" -registry
+        "${Vulkan_INCLUDE_DIR}/../share/vulkan/registry/vk.xml" -o "${GENERATED_INCLUDE_DIR}/vkex"
+        COMMAND_ERROR_IS_FATAL ANY)
+
 include(FileLists.cmake)
 td_add_library(
     Teide
-    SOURCES "${sources}"
+    SOURCES "${sources}" "${GENERATED_INCLUDE_DIR}/vkex/vkex.hpp"
     PUBLIC_DEPS spdlog::spdlog
     PRIVATE_DEPS
         Vulkan::Vulkan
@@ -90,6 +103,7 @@ td_add_library(
         function2::function2
         glslang::SPIRV
         glslang::glslang)
+target_include_directories(Teide SYSTEM PRIVATE "${GENERATED_INCLUDE_DIR}")
 
 if(TEIDE_PRECOMPILED_HEADERS)
     target_precompile_headers(
@@ -104,6 +118,8 @@ if(TEIDE_PRECOMPILED_HEADERS)
 endif()
 
 if(TEIDE_BUILD_EXAMPLES)
+    find_package(assimp REQUIRED)
+
     add_subdirectory(examples)
     set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT Application)
 endif()
@@ -111,6 +127,7 @@ endif()
 if(TEIDE_BUILD_TESTS)
     find_package(GTest REQUIRED)
     find_package(SwiftShader REQUIRED)
+    find_package(StackWalker QUIET)
 
     add_subdirectory(tests)
 endif()

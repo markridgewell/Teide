@@ -7,6 +7,7 @@ set(sources
     include/GeoLib/Vector.h
     include/ShaderCompiler/ShaderCompiler.h
     include/Teide/AbstractBase.h
+    include/Teide/Assert.h
     include/Teide/BasicTypes.h
     include/Teide/Buffer.h
     include/Teide/BytesView.h
@@ -32,10 +33,13 @@ set(sources
     src/GeoLib.natvis
     src/ShaderCompiler/ShaderCompiler.cpp
     src/Teide.natvis
+    src/Teide/Assert.cpp
     src/Teide/CommandBuffer.cpp
     src/Teide/CommandBuffer.h
     src/Teide/CpuExecutor.cpp
     src/Teide/CpuExecutor.h
+    src/Teide/DescriptorPool.cpp
+    src/Teide/DescriptorPool.h
     src/Teide/Format.cpp
     src/Teide/GpuExecutor.cpp
     src/Teide/GpuExecutor.h
@@ -67,5 +71,5 @@ set(sources
     src/Teide/VulkanSurface.h
     src/Teide/VulkanTexture.cpp
     src/Teide/VulkanTexture.h
-    src/Teide/VulkanUtils.h
-    src/Vulkan.natvis)
+    src/Vulkan.natvis
+    src/vkex/vkex_utils.hpp)

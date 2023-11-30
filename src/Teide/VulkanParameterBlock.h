@@ -12,8 +12,15 @@
 namespace Teide
 {
 
+struct DescriptorTypeCount
+{
+    vk::DescriptorType type;
+    uint32 count;
+};
+
 struct VulkanParameterBlockLayout : public ParameterBlockLayout
 {
+    std::vector<DescriptorTypeCount> descriptorTypeCounts;
     vk::UniqueDescriptorSetLayout setLayout;
     std::optional<vk::PushConstantRange> pushConstantRange;
     vk::ShaderStageFlags uniformsStages;
@@ -38,6 +45,13 @@ struct VulkanParameterBlock : public ParameterBlock
 
     usize GetUniformBufferSize() const override;
     usize GetPushConstantSize() const override;
+};
+
+struct TransientParameterBlock
+{
+    BufferPtr uniformBuffer;
+    std::vector<TexturePtr> textures;
+    vk::DescriptorSet descriptorSet;
 };
 
 template <>

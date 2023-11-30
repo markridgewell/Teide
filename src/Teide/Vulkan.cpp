@@ -3,6 +3,7 @@
 
 #include "VulkanLoader.h"
 
+#include "Teide/Assert.h"
 #include "Teide/Definitions.h"
 #include "Teide/Pipeline.h"
 #include "Teide/Renderer.h"
@@ -27,7 +28,7 @@ namespace
         requires std::indirect_binary_predicate<std::ranges::equal_to, std::projected<std::ranges::iterator_t<R>, P>, const V*>
     constexpr bool contains(R&& range, const V& value, P&& proj = {})
     {
-        return std::ranges::find(range, value, std::forward<P>(proj)) != std::ranges::end(range);
+        return std::ranges::find(std::forward<R>(range), value, std::forward<P>(proj)) != std::ranges::end(range);
     }
 
     constexpr StaticMap<Format, vk::Format, FormatCount> VulkanFormats = {
@@ -143,12 +144,12 @@ namespace
         if constexpr (BreakOnVulkanWarning)
         {
             // Vulkan warning triggered a debug break
-            assert(severity != MessageSeverity::eWarning);
+            TEIDE_ASSERT(severity != MessageSeverity::eWarning, "{}", pCallbackData->pMessage);
         }
         if constexpr (BreakOnVulkanError)
         {
             // Vulkan error triggered a debug break
-            assert(severity != MessageSeverity::eError);
+            TEIDE_ASSERT(severity != MessageSeverity::eError, "{}", pCallbackData->pMessage);
         }
         return VK_FALSE;
     }
@@ -181,7 +182,7 @@ namespace
             case eDepthStencilReadOnlyOptimal: return Access::eShaderRead;
             case ePresentSrcKHR: return Access::eNoneKHR;
 
-            default: assert(false && "Unsupported image transition"); return {};
+            default: TEIDE_BREAK("Unsupported image transition"); return {};
         }
     }
 
@@ -472,7 +473,7 @@ vk::UniqueRenderPass CreateRenderPass(vk::Device device, const FramebufferLayout
 
 vk::UniqueRenderPass CreateRenderPass(vk::Device device, const FramebufferLayout& layout, const RenderPassInfo& renderPassInfo)
 {
-    assert(layout.colorFormat.has_value() || layout.depthStencilFormat.has_value());
+    TEIDE_ASSERT(layout.colorFormat.has_value() || layout.depthStencilFormat.has_value());
 
     const bool multisampling = layout.sampleCount != 1;
     const bool loadColor = renderPassInfo.colorLoadOp == vk::AttachmentLoadOp::eLoad;
@@ -484,7 +485,7 @@ vk::UniqueRenderPass CreateRenderPass(vk::Device device, const FramebufferLayout
 
     if (layout.colorFormat.has_value())
     {
-        assert(*layout.colorFormat != Format::Unknown);
+        TEIDE_ASSERT(*layout.colorFormat != Format::Unknown);
 
         colorAttachmentRefs.push_back({
             .attachment = size32(attachments),
@@ -503,7 +504,7 @@ vk::UniqueRenderPass CreateRenderPass(vk::Device device, const FramebufferLayout
 
     if (layout.depthStencilFormat.has_value())
     {
-        assert(*layout.depthStencilFormat != Format::Unknown);
+        TEIDE_ASSERT(*layout.depthStencilFormat != Format::Unknown);
 
         depthStencilAttachmentRef = vk::AttachmentReference{
             .attachment = size32(attachments),
@@ -527,7 +528,7 @@ vk::UniqueRenderPass CreateRenderPass(vk::Device device, const FramebufferLayout
 
     if (multisampling)
     {
-        assert(layout.colorFormat.has_value());
+        TEIDE_ASSERT(layout.colorFormat.has_value());
 
         resolveAttachmentRefs.push_back({
             .attachment = size32(attachments),

@@ -1,6 +1,7 @@
 
 #include "ShaderCompiler/ShaderCompiler.h"
 
+#include "Teide/Assert.h"
 #include "Teide/Definitions.h"
 
 #include <fmt/format.h>
@@ -11,6 +12,7 @@
 #include <array>
 #include <memory>
 #include <numeric>
+#include <optional>
 #include <span>
 
 using namespace Teide;
@@ -153,7 +155,7 @@ mat4 mul(mat4 m1, mat4 m2) {
 }
 )--";
 
-const struct StaticInit
+struct StaticInit
 {
     StaticInit() { glslang::InitializeProcess(); }
     ~StaticInit() { glslang::FinalizeProcess(); }
@@ -162,7 +164,17 @@ const struct StaticInit
     StaticInit(StaticInit&&) = delete;
     StaticInit& operator=(const StaticInit&) = delete;
     StaticInit& operator=(StaticInit&&) = delete;
-} s_staticInit;
+};
+
+std::optional<StaticInit> s_staticInit;
+
+void EnsureInitialized()
+{
+    if (!s_staticInit)
+    {
+        s_staticInit.emplace();
+    }
+}
 
 std::unique_ptr<glslang::TShader> CompileStage(std::string_view shaderSource, EShLanguage stage, glslang::EShSource source)
 {
@@ -189,8 +201,9 @@ ParameterBlockDesc& GetPblockLayout(ShaderData& data, unsigned int set)
         case 1: return data.environment.viewPblock;
         case 2: return data.materialPblock;
         case 3: return data.objectPblock;
+
+        default: Unreachable();
     }
-    Unreachable();
 }
 
 ShaderStageFlags GetShaderStageFlags(EShLanguageMask lang)
@@ -253,12 +266,12 @@ void ReflectUniforms(ParameterBlockDesc& pblock, const glslang::TObjectReflectio
 
     if constexpr (IsDebugBuild)
     {
-        assert(uniformBlock.getType());
-        assert(uniformBlock.getType()->isStruct());
+        TEIDE_ASSERT(uniformBlock.getType());
+        TEIDE_ASSERT(uniformBlock.getType()->isStruct());
 
         for ([[maybe_unused]] const auto& u : *uniformBlock.getType()->getStruct())
         {
-            assert(
+            TEIDE_ASSERT(
                 std::ranges::find(pblock.parameters, std::string_view{u.type->getFieldName()}, &ShaderVariable::name)
                 != pblock.parameters.end());
         }
@@ -420,6 +433,8 @@ void BuildVaryings(std::string& source, ShaderStageData& data, const ShaderStage
 
 ShaderData CompileShader(const ShaderSourceData& sourceData)
 {
+    EnsureInitialized();
+
     ShaderData data;
     data.environment = sourceData.environment;
     data.materialPblock = sourceData.materialPblock;

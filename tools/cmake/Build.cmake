@@ -31,6 +31,13 @@ function(_copy_install_files target)
             COMMAND ${CMAKE_COMMAND} -E copy_if_different ${install_files} $<TARGET_FILE_DIR:${target}>
             COMMAND_EXPAND_LISTS)
     endif()
+    if(WIN32) # Install DLLs
+        add_custom_command(
+            TARGET ${target}
+            POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy -t $<TARGET_FILE_DIR:${target}> $<TARGET_RUNTIME_DLLS:${target}>
+            COMMAND_EXPAND_LISTS)
+    endif()
 endfunction()
 
 function(td_add_library target)

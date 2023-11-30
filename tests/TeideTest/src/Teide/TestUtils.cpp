@@ -3,6 +3,12 @@
 
 #include <charconv>
 
+#ifdef _WIN32
+#    define WIN32_LEAN_AND_MEAN
+#    define NOMINMAX
+#    include <windows.h>
+#endif
+
 Teide::GraphicsDevicePtr CreateTestGraphicsDevice()
 {
     return Teide::CreateHeadlessDevice();
@@ -70,7 +76,7 @@ std::vector<std::byte> HexToBytes(std::string_view hexString)
 
         unsigned int i = 0;
         [[maybe_unused]] const auto result = std::from_chars(hexString.data(), hexString.data() + 2, i, 16);
-        assert(result.ec == std::errc{});
+        TEIDE_ASSERT(result.ec == std::errc{});
         ret.push_back(static_cast<std::byte>(i));
         hexString.remove_prefix(2);
     }

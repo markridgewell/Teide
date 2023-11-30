@@ -5,6 +5,7 @@ function(td_add_cppcheck)
 
     set(cppcheck_args
         --quiet
+        --force
         --language=c++
         "--std=c++${CMAKE_CXX_STANDARD}"
         --enable=all

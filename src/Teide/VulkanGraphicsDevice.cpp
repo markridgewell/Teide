@@ -2,6 +2,7 @@
 #include "VulkanGraphicsDevice.h"
 
 #include "CommandBuffer.h"
+#include "DescriptorPool.h"
 #include "VulkanBuffer.h"
 #include "VulkanLoader.h"
 #include "VulkanMesh.h"
@@ -15,12 +16,12 @@
 
 #include "Teide/ShaderData.h"
 #include "Teide/TextureData.h"
+#include "vkex/vkex.hpp"
 
 #include <SDL.h>
 #include <SDL_vulkan.h>
 #include <spdlog/spdlog.h>
 
-#include <cassert>
 #include <cstdlib>
 #include <filesystem>
 #include <optional>
@@ -34,6 +35,20 @@ namespace
 {
     const vk::Optional<const vk::AllocationCallbacks> s_allocator = nullptr;
 
+    std::string_view Trim(std::string_view str)
+    {
+        constexpr const char* whitespace = " \t\n\r";
+        const auto strBegin = str.find_first_not_of(whitespace);
+        if (strBegin == std::string::npos)
+        {
+            return {};
+        }
+        const auto strEnd = str.find_last_not_of(whitespace);
+        const auto strRange = strEnd - strBegin + 1;
+
+        return str.substr(strBegin, strRange);
+    }
+
     vk::UniqueSurfaceKHR CreateVulkanSurface(SDL_Window* window, vk::Instance instance)
     {
         spdlog::info("Creating a Vulkan surface for a window");
@@ -42,7 +57,7 @@ namespace
         {
             throw VulkanError("Failed to create Vulkan surface for window");
         }
-        assert(surfaceTmp);
+        TEIDE_ASSERT(surfaceTmp);
         spdlog::info("Surface created successfully");
         const auto deleter = vk::ObjectDestroy<vk::Instance, vk::DispatchLoaderDynamic>(
             instance, s_allocator, VULKAN_HPP_DEFAULT_DISPATCHER);
@@ -223,7 +238,8 @@ namespace
         ret.queueFamilyIndices.erase(
             std::unique(ret.queueFamilyIndices.begin(), ret.queueFamilyIndices.end()), ret.queueFamilyIndices.end());
 
-        spdlog::info("Selected physical device: {}", ret.physicalDevice.getProperties().deviceName);
+        const auto& properties = ret.physicalDevice.getProperties();
+        spdlog::info("Selected physical device: {}", Trim(properties.deviceName));
         return ret;
     }
 
@@ -237,17 +253,6 @@ namespace
         cmdBuffer.copyBuffer(source, destination, copyRegion);
     }
 
-    vk::UniqueDescriptorSetLayout
-    CreateDescriptorSetLayout(vk::Device device, std::span<const vk::DescriptorSetLayoutBinding> layoutBindings)
-    {
-        const vk::DescriptorSetLayoutCreateInfo createInfo = {
-            .bindingCount = size32(layoutBindings),
-            .pBindings = data(layoutBindings),
-        };
-
-        return device.createDescriptorSetLayoutUnique(createInfo, s_allocator);
-    }
-
     vk::UniquePipelineLayout CreateGraphicsPipelineLayout(vk::Device device, const VulkanShaderBase& shader)
     {
         std::vector<vk::DescriptorSetLayout> setLayouts = {
@@ -257,14 +262,12 @@ namespace
             shader.objectPblockLayout->setLayout.get(),
         };
 
-        vk::PipelineLayoutCreateInfo createInfo = {
-            .setLayoutCount = size32(setLayouts),
-            .pSetLayouts = data(setLayouts),
+        vkex::PipelineLayoutCreateInfo createInfo = {
+            .setLayouts = setLayouts,
         };
         if (const auto pushConstantRange = shader.objectPblockLayout->pushConstantRange)
         {
-            createInfo.pushConstantRangeCount = 1;
-            createInfo.pPushConstantRanges = &*pushConstantRange;
+            createInfo.pushConstantRanges = *pushConstantRange;
         }
 
         return device.createPipelineLayoutUnique(createInfo, s_allocator);
@@ -450,7 +453,7 @@ namespace
 
 DeviceAndSurface CreateDeviceAndSurface(SDL_Window* window, bool multisampled, const GraphicsSettings& settings)
 {
-    assert(window);
+    TEIDE_ASSERT(window);
 
     spdlog::info("Creating graphics device and surface");
     VulkanLoader loader;
@@ -703,7 +706,7 @@ auto VulkanGraphicsDevice::CreateTextureImpl(
 void VulkanGraphicsDevice::SetBufferData(VulkanBuffer& buffer, BytesView data)
 {
     const auto allocation = buffer.allocation.get();
-    assert(m_allocator->getAllocationInfo(allocation).size >= data.size());
+    TEIDE_ASSERT(m_allocator->getAllocationInfo(allocation).size >= data.size());
 
     void* const mappedData = m_allocator->mapMemory(allocation);
 
@@ -735,7 +738,7 @@ SurfacePtr VulkanGraphicsDevice::CreateSurface(vk::UniqueSurfaceKHR surface, SDL
 {
     spdlog::info("Creating a new surface for a window");
 
-    assert(m_physicalDevice.queueFamilies.presentFamily.has_value());
+    TEIDE_ASSERT(m_physicalDevice.queueFamilies.presentFamily.has_value());
 
     return std::make_unique<VulkanSurface>(
         window, std::move(surface), m_device.get(), m_physicalDevice.physicalDevice, m_physicalDevice.queueFamilyIndices,
@@ -910,13 +913,10 @@ PipelinePtr VulkanGraphicsDevice::CreatePipeline(const PipelineData& data)
     return pipeline;
 }
 
-vk::UniqueDescriptorSet VulkanGraphicsDevice::CreateDescriptorSet(
+vk::UniqueDescriptorSet VulkanGraphicsDevice::CreateUniqueDescriptorSet(
     vk::DescriptorPool pool, vk::DescriptorSetLayout layout, const Buffer* uniformBuffer,
     std::span<const TexturePtr> textures, const char* name)
 {
-    // TODO support multiple textures in descriptor sets
-    assert(textures.size() <= 1 && "Multiple textures not yet supported!");
-
     const vk::DescriptorSetAllocateInfo allocInfo = {
         .descriptorPool = pool,
         .descriptorSetCount = 1,
@@ -926,6 +926,14 @@ vk::UniqueDescriptorSet VulkanGraphicsDevice::CreateDescriptorSet(
     auto descriptorSet = std::move(m_device->allocateDescriptorSetsUnique(allocInfo).front());
     SetDebugName(descriptorSet, name);
 
+    WriteDescriptorSet(descriptorSet.get(), uniformBuffer, textures);
+
+    return descriptorSet;
+}
+
+void VulkanGraphicsDevice::WriteDescriptorSet(
+    vk::DescriptorSet descriptorSet, const Buffer* uniformBuffer, std::span<const TexturePtr> textures)
+{
     const auto numUniformBuffers = uniformBuffer ? 1 : 0;
 
     std::vector<vk::WriteDescriptorSet> descriptorWrites;
@@ -944,7 +952,7 @@ vk::UniqueDescriptorSet VulkanGraphicsDevice::CreateDescriptorSet(
         if (uniformBufferImpl.size > 0)
         {
             descriptorWrites.push_back({
-                .dstSet = descriptorSet.get(),
+                .dstSet = descriptorSet,
                 .dstBinding = 0,
                 .dstArrayElement = 0,
                 .descriptorCount = 1,
@@ -973,7 +981,7 @@ vk::UniqueDescriptorSet VulkanGraphicsDevice::CreateDescriptorSet(
         });
 
         descriptorWrites.push_back({
-            .dstSet = descriptorSet.get(),
+            .dstSet = descriptorSet,
             .dstBinding = 1,
             .dstArrayElement = 0,
             .descriptorCount = 1,
@@ -983,14 +991,12 @@ vk::UniqueDescriptorSet VulkanGraphicsDevice::CreateDescriptorSet(
     }
 
     m_device->updateDescriptorSets(descriptorWrites, {});
-
-    return descriptorSet;
 }
 
 VulkanParameterBlockLayoutPtr VulkanGraphicsDevice::CreateParameterBlockLayout(const ParameterBlockDesc& desc, int set)
 {
     VulkanParameterBlockLayout ret;
-    std::vector<vk::DescriptorSetLayoutBinding> bindings;
+    std::optional<vk::DescriptorSetLayoutBinding> uniformBinding;
 
     const ParameterBlockLayoutData layout = BuildParameterBlockLayout(desc, set);
 
@@ -1006,26 +1012,31 @@ VulkanParameterBlockLayoutPtr VulkanGraphicsDevice::CreateParameterBlockLayout(c
         }
         else
         {
-            bindings.push_back({
+            uniformBinding = {
                 .binding = 0,
                 .descriptorType = vk::DescriptorType::eUniformBuffer,
                 .descriptorCount = 1,
                 .stageFlags = GetShaderStageFlags(layout.uniformsStages),
-            });
+            };
         }
     }
 
-    for (uint32 i = 0; i < layout.textureCount; i++)
-    {
-        bindings.push_back({
+    const auto textureBindings = std::views::transform(std::views::iota(0u, layout.textureCount), [](uint32 i) {
+        return vk::DescriptorSetLayoutBinding{
             .binding = i + 1,
             .descriptorType = vk::DescriptorType::eCombinedImageSampler,
             .descriptorCount = 1,
             .stageFlags = vk::ShaderStageFlagBits::eAllGraphics,
-        });
-    }
+        };
+    });
 
-    ret.setLayout = CreateDescriptorSetLayout(m_device.get(), bindings);
+    const vkex::DescriptorSetLayoutCreateInfo layoutInfo = {
+        .bindings = vkex::Join(uniformBinding, textureBindings),
+    };
+    std::ranges::transform(layoutInfo.bindings, std::back_inserter(ret.descriptorTypeCounts), [](const auto& binding) {
+        return DescriptorTypeCount{binding.descriptorType, binding.descriptorCount};
+    });
+    ret.setLayout = m_device->createDescriptorSetLayoutUnique(layoutInfo, s_allocator);
     ret.uniformsStages = GetShaderStageFlags(layout.uniformsStages);
     return std::make_shared<const VulkanParameterBlockLayout>(std::move(ret));
 }
@@ -1129,7 +1140,7 @@ ParameterBlockPtr VulkanGraphicsDevice::CreateParameterBlock(
                 },
                 uniformBufferName.c_str(), cmdBuffer);
         }
-        ret.descriptorSet = CreateDescriptorSet(
+        ret.descriptorSet = CreateUniqueDescriptorSet(
             descriptorPool, setLayout, ret.uniformBuffer.get(), data.parameters.textures, descriptorSetName.c_str());
     }
 
@@ -1139,6 +1150,41 @@ ParameterBlockPtr VulkanGraphicsDevice::CreateParameterBlock(
     }
 
     return std::make_unique<VulkanParameterBlock>(std::move(ret));
+}
+
+TransientParameterBlock VulkanGraphicsDevice::CreateTransientParameterBlock(
+    const ParameterBlockData& data, const char* name, CommandBuffer& cmdBuffer, DescriptorPool& descriptorPool)
+{
+    TEIDE_ASSERT(data.layout);
+
+    const auto& layout = GetImpl(*data.layout);
+    TEIDE_ASSERT(!layout.pushConstantRange.has_value());
+
+    const auto setLayout = layout.setLayout.get();
+    TEIDE_ASSERT(setLayout);
+
+    const auto descriptorSetName = DebugFormat("{}DescriptorSet", name);
+
+    TransientParameterBlock ret;
+    ret.textures = data.parameters.textures;
+    if (setLayout)
+    {
+        if (!data.parameters.uniformData.empty())
+        {
+            const auto uniformBufferName = DebugFormat("{}UniformBuffer", name);
+            ret.uniformBuffer = CreateBuffer(
+                BufferData{
+                    .usage = BufferUsage::Uniform,
+                    .lifetime = data.lifetime,
+                    .data = data.parameters.uniformData,
+                },
+                uniformBufferName.c_str(), cmdBuffer);
+        }
+        ret.descriptorSet = descriptorPool.Allocate(descriptorSetName.c_str());
+        WriteDescriptorSet(ret.descriptorSet, ret.uniformBuffer.get(), ret.textures);
+    }
+
+    return ret;
 }
 
 } // namespace Teide

@@ -3,8 +3,8 @@
 
 #include <GeoLib/ForwardDeclare.h>
 #include <GeoLib/Scalar.h>
+#include <Teide/Assert.h>
 
-#include <cassert>
 #include <cmath>
 #include <ostream>
 
@@ -20,12 +20,12 @@ struct Vector<T, 1, Tag>
 
     constexpr T& operator[](Extent i) noexcept
     {
-        assert(i >= 0 && i < sizeof(members) / sizeof(members[0]));
+        TEIDE_ASSERT(i >= 0 && i < sizeof(members) / sizeof(members[0]));
         return this->*members[i];
     }
     constexpr T operator[](Extent i) const noexcept
     {
-        assert(i >= 0 && i < sizeof(members) / sizeof(members[0]));
+        TEIDE_ASSERT(i >= 0 && i < sizeof(members) / sizeof(members[0]));
         return this->*members[i];
     }
 
@@ -53,12 +53,12 @@ struct Vector<T, 2, Tag>
 
     constexpr T& operator[](Extent i) noexcept
     {
-        assert(i >= 0 && i < sizeof(members) / sizeof(members[0]));
+        TEIDE_ASSERT(i >= 0 && i < sizeof(members) / sizeof(members[0]));
         return this->*members[i];
     }
     constexpr T operator[](Extent i) const noexcept
     {
-        assert(i >= 0 && i < sizeof(members) / sizeof(members[0]));
+        TEIDE_ASSERT(i >= 0 && i < sizeof(members) / sizeof(members[0]));
         return this->*members[i];
     }
 
@@ -88,12 +88,12 @@ struct Vector<T, 3, Tag>
 
     constexpr T& operator[](Extent i) noexcept
     {
-        assert(i >= 0 && i < sizeof(members) / sizeof(members[0]));
+        TEIDE_ASSERT(i >= 0 && i < sizeof(members) / sizeof(members[0]));
         return this->*members[i];
     }
     constexpr T operator[](Extent i) const noexcept
     {
-        assert(i >= 0 && i < sizeof(members) / sizeof(members[0]));
+        TEIDE_ASSERT(i >= 0 && i < sizeof(members) / sizeof(members[0]));
         return this->*members[i];
     }
 
@@ -123,12 +123,12 @@ struct Vector<T, 4, Tag>
 
     constexpr T& operator[](Extent i) noexcept
     {
-        assert(i >= 0 && i < sizeof(members) / sizeof(members[0]));
+        TEIDE_ASSERT(i >= 0 && i < sizeof(members) / sizeof(members[0]));
         return this->*members[i];
     }
     constexpr T operator[](Extent i) const noexcept
     {
-        assert(i >= 0 && i < sizeof(members) / sizeof(members[0]));
+        TEIDE_ASSERT(i >= 0 && i < sizeof(members) / sizeof(members[0]));
         return this->*members[i];
     }
 
