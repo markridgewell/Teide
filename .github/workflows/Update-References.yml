@@ -15,6 +15,7 @@ jobs:
       run: |
         echo "Downloading artifacts for last Build-and-Test workflow run on branch ${{github.ref_name}}"
         RUN_ID=$(gh run list \
+          --repo ${{github.repository}} \
           --workflow Build-and-Test \
           --branch ${{github.ref_name}} \
           --limit 1 \
