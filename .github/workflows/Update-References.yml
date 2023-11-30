@@ -7,18 +7,23 @@ jobs:
   update:
     name: Update-References
     runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
 
     steps:
     - name: Download artifacts
       run: |
-        echo "Downloading artifacts for last Build-and-Test workflow run on branch ${{github.head_ref}}"
+        echo "Downloading artifacts for last Build-and-Test workflow run on branch ${{github.ref_name}}"
         RUN_ID=$(gh run list \
+          --repo ${{github.repository}} \
           --workflow Build-and-Test \
-          --branch ${{github.head_ref}} \
+          --branch ${{github.ref_name}} \
           --limit 1 \
           --json databaseId \
           --jq '.[].databaseId')
-        gh run download $RUN_ID --dir artifacts
+        gh run download $RUN_ID \
+          --repo ${{github.repository}} \
+          --dir artifacts
 
     - name: Checkout
       uses: actions/checkout@v3
