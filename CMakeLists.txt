@@ -8,27 +8,6 @@ include(tools/cmake/Cache.cmake)
 include(tools/cmake/CompileCommands.cmake)
 include(tools/cmake/Option.cmake)
 
-if(LINUX AND TEIDE_SANITIZER STREQUAL "UBSAN")
-    set(VCPKG_TARGET_TRIPLET "x64-linux-ubsan")
-elseif(
-    LINUX
-    AND CMAKE_CXX_COMPILER MATCHES "clang"
-    AND TEIDE_SANITIZER STREQUAL "MSAN")
-    find_package(customlibcxx REQUIRED)
-
-    if(NOT LIBCXX_DIR)
-        message(SEND_ERROR "LIBCXX_DIR not set!")
-    endif()
-
-    set(ENV{LIBCXX_INCLUDE_DIR} "${LIBCXX_DIR}/include")
-    set(ENV{LIBCXX_LIB_DIR} "${LIBCXX_DIR}/lib")
-    message("Setting env var LIBCXX_INCLUDE_DIR to $ENV{LIBCXX_INCLUDE_DIR}")
-    message("Setting env var LIBCXX_LIB_DIR to $ENV{LIBCXX_LIB_DIR}")
-
-    set(VCPKG_TARGET_TRIPLET "x64-linux-msan")
-    set(VCPKG_CHAINLOAD_TOOLCHAIN_FILE "${CMAKE_CURRENT_SOURCE_DIR}/tools/cmake/toolchains/clang-msan.cmake")
-endif()
-
 option_feature(TEIDE_BUILD_EXAMPLES examples "Build examples for Teide" ON)
 option_feature(TEIDE_BUILD_TESTS tests "Build tests for Teide" ON)
 option_feature(TEIDE_BUILD_BENCHMARKS benchmarks "Build benchmarks for Teide" ON)
