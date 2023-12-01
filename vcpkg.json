@@ -41,9 +41,17 @@
       "description": "Build tests",
       "dependencies": [
         "gtest",
+        "swiftshader",
         {
           "name": "stackwalker",
           "platform": "windows & !uwp"
+        },
+        {
+          "name": "llvm",
+          "default-features": false,
+          "features": [
+            "enable-rtti"
+          ]
         }
       ]
     },
@@ -60,10 +68,5 @@
       ]
     }
   },
-  "builtin-baseline": "98a562a04cd03728f399e79e1b37bcccb5a69b37",
-  "vcpkg-configuration": {
-    "overlay-triplets": [
-      "tools/cmake/triplets"
-    ]
-  }
+  "builtin-baseline": "2b14b606cea54573eec11080a3ac00737958b6d6"
 }

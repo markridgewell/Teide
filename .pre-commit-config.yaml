@@ -11,10 +11,11 @@ repos:
       args: ["--autofix", "--no-sort-keys"]
     - id: mixed-line-ending
     - id: trailing-whitespace
+      exclude_types: ['diff']
     - id: end-of-file-fixer
 
   - repo: https://github.com/pre-commit/mirrors-clang-format
-    rev: 'v17.0.3'
+    rev: 'v17.0.5'
     hooks:
     - id: clang-format
 

@@ -31,6 +31,12 @@ jobs:
       with:
         filter-pattern: ${{env.pattern}}
 
+    - name: Setup vcpkg
+      uses: lukka/run-vcpkg@v11
+      with:
+        vcpkgDirectory: '${{github.workspace}}/external/vcpkg'
+        vcpkgJsonGlob: 'vcpkg.json'
+
     - name: Install dependencies
       if: steps.get-changes.outputs.changed-files != ''
       uses: ./.github/actions/install-dependencies
@@ -63,6 +69,12 @@ jobs:
       uses: ./.github/actions/get-changed-files
       with:
         filter-pattern: ${{env.pattern}}
+
+    - name: Setup vcpkg
+      uses: lukka/run-vcpkg@v11
+      with:
+        vcpkgDirectory: '${{github.workspace}}/external/vcpkg'
+        vcpkgJsonGlob: 'vcpkg.json'
 
     - name: Install dependencies
       if: steps.get-changes.outputs.changed-files != ''

@@ -4,7 +4,6 @@ on:
   push:
     branches: [ main ]
   pull_request:
-    branches: [ main ]
   workflow_dispatch:
     inputs:
       profile-cmake:
@@ -21,41 +20,84 @@ on:
 env:
   VULKAN_SDK: ./VULKAN_SDK
   VCPKG_OVERLAY_PORTS: ./external/ports
+  PREBUILT_PACKAGES_DIR: ${{github.workspace}}/exports
   EXTRA_CMAKE_FLAGS: ${{inputs.profile-cmake && '--profiling-format=google-trace --profiling-output=CMakeTrace.json' || ''}}
 
 jobs:
-  windows:
+  unified:
     strategy:
       fail-fast: false
       matrix:
+        preset: [msvc2022, msvc2022-clang, g++-13, clang++-17]
         buildtype: [Debug, Release]
-        preset: [msvc2022, msvc2022-clang]
+        sanitizer: [OFF]
         include:
+        # Overrides
+        - coverage: OFF
         - preset: msvc2022
           runner: windows-2022
           coverage: ${{toJSON(inputs.coverage) != 'false' && 'ON' || 'OFF'}}
         - preset: msvc2022-clang
           runner: windows-2022
-          coverage: OFF
+        - preset: g++-13
+          runner: ubuntu-latest
+          extra-packages: ninja-build g++-13
+        - preset: clang++-17
+          runner: ubuntu-latest
+          extra-packages: ninja-build clang++-17
+          coverage: ${{toJSON(inputs.coverage) != 'false' && 'ON' || 'OFF'}}
 
-    name: Windows-${{matrix.buildtype}}-${{matrix.preset}}
+        # Additional jobs
+        - preset: clang++-17
+          buildtype: Debug
+          runner: ubuntu-latest
+          extra-packages: ninja-build clang++-17
+          sanitizer: ASAN
+          name-suffix: -asan
+        - preset: clang++-17
+          buildtype: Debug
+          runner: ubuntu-latest
+          extra-packages: ninja-build clang++-17
+          sanitizer: UBSAN
+          name-suffix: -ubsan
+
+    name: ${{startsWith(matrix.runner, 'windows') && 'Windows' || 'Linux'}}-${{matrix.buildtype}}-${{matrix.preset}}${{matrix.name-suffix}}
     runs-on: ${{matrix.runner}}
 
     env:
-      job_name: Windows-${{matrix.buildtype}}-${{matrix.preset}}
+      job_name: ${{startsWith(matrix.runner, 'windows') && 'Windows' || 'Linux'}}-${{matrix.buildtype}}-${{matrix.preset}}${{matrix.name-suffix}}
       CMAKE_BUILD_TYPE: ${{matrix.buildtype}}
+      RT_OUTPUT_DIR: build/${{matrix.preset}}/tests/RenderTest/RenderTestOutput
+
+    outputs:
+      rendertest-failures: ${{steps.rendertest.outputs.failure == 'true'}}
+      rendertest-successes: ${{steps.rendertest.outputs.success == 'true'}}
 
     steps:
     - name: Checkout
       uses: actions/checkout@v3
       with:
         lfs: true
-        submodules: recursive
+        submodules: false
+
+    - name: Determine target triplet
+      shell: bash
+      run: echo "VCPKG_TRIPLET=$(cmake -DTEIDE_SANITIZER=${{matrix.sanitizer}} -P tools/cmake/scripts/DetermineTriplet.cmake)" >> "$GITHUB_ENV"
+
+    - name: Restore packages from cache
+      id: cache
+      uses: actions/cache/restore@v3
+      with:
+        key: vcpkg-export-${{env.VCPKG_TRIPLET}}-${{hashFiles('vcpkg.json', 'vcpkg-configuration.json', 'external/ports/**', 'cmake/triplets/*.cmake', 'cmake/toolchains/*.cmake')}}
+        path: './exports'
+        fail-on-cache-miss: true
 
     - name: Install dependencies
       uses: ./.github/actions/install-dependencies
+      with:
+        extra-packages: ${{matrix.extra-packages}}
 
-    - if: matrix.coverage == 'ON'
+    - if: matrix.coverage == 'ON' && runner.os == 'Windows'
       name: Install OpenCppCoverage
       uses: ./.github/actions/choco-install
       with:
@@ -63,7 +105,18 @@ jobs:
         package-version: 0.9.9.0
 
     - name: Configure CMake
-      run: cmake --preset ${{matrix.preset}} -DTEIDE_PRECOMPILED_HEADERS=ON -DTEIDE_UNIT_TEST_SW_RENDER=ON -DTEIDE_TEST_COVERAGE=${{matrix.coverage}} -DCMAKE_CONFIGURATION_TYPES=${{matrix.buildtype}} -DCMAKE_TRY_COMPILE_CONFIGURATION=${{matrix.buildtype}} ${{env.EXTRA_CMAKE_FLAGS}}
+      run: >
+        cmake --preset ${{matrix.preset}}
+        -DTEIDE_USE_VCPKG=OFF
+        -DCMAKE_PREFIX_PATH=${{env.PREBUILT_PACKAGES_DIR}}/installed/${{env.VCPKG_TRIPLET}}
+        -DTEIDE_PRECOMPILED_HEADERS=ON
+        -DTEIDE_UNIT_TEST_SW_RENDER=ON
+        -DTEIDE_TEST_WINDOWLESS=${{runner.os == 'Linux'}}
+        -DTEIDE_TEST_COVERAGE=${{matrix.coverage}}
+        -DTEIDE_SANITIZER=${{matrix.sanitizer}}
+        -DCMAKE_CONFIGURATION_TYPES=${{matrix.buildtype}}
+        -DCMAKE_TRY_COMPILE_CONFIGURATION=${{matrix.buildtype}}
+        ${{env.EXTRA_CMAKE_FLAGS}}
 
     - name: Save CMake trace
       if: inputs.profile-cmake
@@ -75,14 +128,18 @@ jobs:
     - name: Build
       run: cmake --build --preset ${{matrix.preset}} --config ${{matrix.buildtype}}
 
-    - name: Save CMake output logs
+    - name: Dump CMake output logs
       if: failure()
-      uses: actions/upload-artifact@v3
-      with:
-        name: CMakeLogs-${{env.job_name}}
-        path: |
-          ./build/${{matrix.preset}}/**/*.log
-          ./external/vcpkg/**/*.log
+      shell: bash
+      run: |
+        paths="external/vcpkg build/${{matrix.preset}}"
+        for file in $(find $paths -name '*.log'); do
+            if [ -s $file ]; then
+                echo "::group::$file"
+                cat $file
+                echo "::endgroup::"
+            fi
+        done
 
     - name: Test
       id: test
@@ -93,7 +150,18 @@ jobs:
       uses: actions/upload-artifact@v3
       with:
         name: RenderTestOutput-${{env.job_name}}
-        path: RenderTestOutput
+        path: ${{env.RT_OUTPUT_DIR}}
+
+    - name: Record render test outcome
+      id: rendertest
+      if: always()
+      shell: bash
+      run: |
+        if [ -d "$RT_OUTPUT_DIR" ]; then
+          echo "failure=true" >> "$GITHUB_OUTPUT"
+        else
+          echo "success=true" >> "$GITHUB_OUTPUT"
+        fi
 
     - name: Save test log
       if: failure() && steps.test.outcome == 'failure'
@@ -118,111 +186,43 @@ jobs:
         name: CoverageReport-${{env.job_name}}
         path: build/${{matrix.preset}}/coverage/output
 
-  linux:
-    strategy:
-      matrix:
-        buildtype: [Debug, Release]
-        compiler: [g++-13, clang++-17]
-        sanitizer: [OFF]
-        include:
-        - preset: ninja
-        - coverage: OFF
-        - buildtype: Debug
-          compiler: clang++-17
-          coverage: ${{toJSON(inputs.coverage) != 'false' && 'ON' || 'OFF'}}
-        - buildtype: Debug
-          compiler: clang++-17
-          sanitizer: ASAN
-          preset: ninja
-          coverage: OFF
-          name-suffix: -asan
-        - buildtype: Debug
-          compiler: clang++-17
-          sanitizer: UBSAN
-          preset: ninja
-          coverage: OFF
-          name-suffix: -ubsan
-      fail-fast: false
 
-    name: Linux-${{matrix.buildtype}}-${{matrix.compiler}}${{matrix.name-suffix}}
+  render-test-report:
+    name: Render-Test-Report
     runs-on: ubuntu-latest
-
+    needs: [unified]
+    if: always()
     env:
-      job_name: Linux-${{matrix.buildtype}}-${{matrix.compiler}}${{matrix.name-suffix}}
+      GH_TOKEN: ${{github.token}}
+      ANY_PASSED: "${{needs.unified.outputs.rendertest-successes}}"
+      ANY_FAILED: "${{needs.unified.outputs.rendertest-failures}}"
 
     steps:
-    - name: Checkout
-      uses: actions/checkout@v3
+    - uses: actions/download-artifact@v3
+      if: needs.unified.outputs.rendertest-failures
       with:
-        lfs: true
-        submodules: recursive
+        path: artifacts
 
-    - name: Install dependencies
-      uses: ./.github/actions/install-dependencies
-      with:
-        extra-packages: ninja-build ${{matrix.compiler}}
+    - name: Generate summary
+      run: |
+        if $ANY_FAILED; then
+          URL="https://markridgewell.github.io/TeideStats/rendertest.html?run_id=${{github.run_id}}"
+          echo "Render tests failed. [Click for details]($URL)" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "Render tests passed." >> $GITHUB_STEP_SUMMARY
+        fi
 
-    - name: Configure CMake
-      run: cmake --preset ${{matrix.preset}} -DCMAKE_CXX_COMPILER=${{matrix.compiler}} -DTEIDE_PRECOMPILED_HEADERS=ON -DTEIDE_UNIT_TEST_SW_RENDER=ON -DTEIDE_TEST_WINDOWLESS=ON -DTEIDE_TEST_COVERAGE=${{matrix.coverage}} -DTEIDE_SANITIZER=${{matrix.sanitizer}} ${{env.EXTRA_CMAKE_FLAGS}}
+    - name: Display structure of downloaded files
+      if: needs.unified.outputs.rendertest-failures
+      run: ls -R
+      working-directory: artifacts
 
-    - name: Save CMake trace
-      if: inputs.profile-cmake
-      uses: actions/upload-artifact@v3
-      with:
-        name: CMakeTrace-${{env.job_name}}
-        path: ./CMakeTrace.json
-
-    - name: Build
-      run: cmake --build --preset ${{matrix.preset}} --config ${{matrix.buildtype}}
-
-    - name: Save CMake output logs
-      if: failure()
-      uses: actions/upload-artifact@v3
-      with:
-        name: CMakeLogs-${{env.job_name}}
-        path: |
-          ./build/${{matrix.preset}}/**/*.log
-          ./external/vcpkg/**/*.log
-
-    - name: Test
-      id: test
-      run: ctest --preset ${{matrix.preset}} --build-config ${{matrix.buildtype}} --verbose --no-tests=error
-
-    - name: Save render test output
-      if: steps.test.outcome == 'failure'
-      uses: actions/upload-artifact@v3
-      with:
-        name: RenderTestOutput-${{env.job_name}}
-        path: RenderTestOutput
-
-    - name: Save test log
-      if: steps.test.outcome == 'failure'
-      uses: actions/upload-artifact@v3
-      with:
-        name: TestLog-${{env.job_name}}
-        path: build/${{matrix.preset}}/Testing/Temporary/LastTest.log
-
-    - name: Upload coverage report
-      if: matrix.coverage == 'ON'
-      uses: codecov/codecov-action@v3
-      with:
-        directory: build/${{matrix.preset}}/coverage/output
-        fail_ci_if_error: false
-        verbose: true
-        functionalities: fixes
-
-    - name: Save coverage report
-      if: matrix.coverage == 'ON'
-      uses: actions/upload-artifact@v3
-      with:
-        name: CoverageReport-${{env.job_name}}
-        path: build/${{matrix.preset}}/coverage/output
 
   time-report:
     name: Time-Report
     runs-on: ubuntu-latest
-    needs: [windows, linux]
-    if: ${{ github.event_name == 'push' }}
+    needs: [unified]
+    if: github.event_name == 'push'
     env:
       GH_TOKEN: ${{github.token}}
 
