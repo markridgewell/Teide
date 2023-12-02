@@ -20,7 +20,6 @@ on:
 env:
   VULKAN_SDK: ./VULKAN_SDK
   VCPKG_OVERLAY_PORTS: ./external/ports
-  PREBUILT_PACKAGES_DIR: ${{github.workspace}}/exports
   EXTRA_CMAKE_FLAGS: ${{inputs.profile-cmake && '--profiling-format=google-trace --profiling-output=CMakeTrace.json' || ''}}
 
 jobs:
@@ -80,17 +79,11 @@ jobs:
         lfs: true
         submodules: false
 
-    - name: Determine target triplet
-      shell: bash
-      run: echo "VCPKG_TRIPLET=$(cmake -DTEIDE_SANITIZER=${{matrix.sanitizer}} -P tools/cmake/scripts/DetermineTriplet.cmake)" >> "$GITHUB_ENV"
-
-    - name: Restore packages from cache
-      id: cache
-      uses: actions/cache/restore@v3
+    - name: Install packages
+      id: packages
+      uses: ./.github/actions/install-packages
       with:
-        key: vcpkg-export-${{env.VCPKG_TRIPLET}}-${{hashFiles('vcpkg.json', 'vcpkg-configuration.json', 'external/ports/**', 'cmake/triplets/*.cmake', 'cmake/toolchains/*.cmake')}}
-        path: './exports'
-        fail-on-cache-miss: true
+        sanitizer: ${{matrix.sanitizer}}
 
     - name: Install dependencies
       uses: ./.github/actions/install-dependencies
@@ -108,7 +101,7 @@ jobs:
       run: >
         cmake --preset ${{matrix.preset}}
         -DTEIDE_USE_VCPKG=OFF
-        -DCMAKE_PREFIX_PATH=${{env.PREBUILT_PACKAGES_DIR}}/installed/${{env.VCPKG_TRIPLET}}
+        -DCMAKE_PREFIX_PATH=${{steps.packages.outputs.install-dir}}
         -DTEIDE_PRECOMPILED_HEADERS=ON
         -DTEIDE_UNIT_TEST_SW_RENDER=ON
         -DTEIDE_TEST_WINDOWLESS=${{runner.os == 'Linux'}}
