@@ -1,0 +1,33 @@
+name: 'install-packages'
+description: 'Install pre-built packages from the GitHub Actions cache'
+
+inputs:
+  sanitizer:
+    description: 'Sanitizer to be used, or OFF to disable'
+    required: true
+    default: 'OFF'
+outputs:
+  install-dir:
+    description: "Directory the packages were installed to"
+    value: ${{ steps.determine-triplet.outputs.dir }}
+
+runs:
+  using: composite
+  steps:
+    - name: Determine target triplet
+      id: determine-triplet
+      shell: bash
+      run: |
+        TRIPLET=$(cmake \
+          -DTEIDE_SANITIZER=${{inputs.sanitizer}} \
+          -P tools/cmake/scripts/DetermineTriplet.cmake)
+        echo "VCPKG_TRIPLET=${TRIPLET}" >> $GITHUB_ENV
+        echo "dir=${{github.workspace}}/exports/installed/${TRIPLET}" >> $GITHUB_OUTPUT
+
+    - name: Restore packages from cache
+      id: cache
+      uses: actions/cache/restore@v3
+      with:
+        key: vcpkg-export-${{env.VCPKG_TRIPLET}}-${{hashFiles('vcpkg.json', 'vcpkg-configuration.json', 'external/ports/**', 'cmake/triplets/*.cmake', 'cmake/toolchains/*.cmake')}}
+        path: './exports'
+        fail-on-cache-miss: true
