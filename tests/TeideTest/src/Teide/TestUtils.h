@@ -1,9 +1,9 @@
 
 #pragma once
 
-#include "Teide/GraphicsDevice.h"
 #include "Teide/Visitable.h"
 #include "Teide/Vulkan.h"
+#include "Teide/VulkanGraphicsDevice.h"
 
 #include <gtest/gtest.h>
 
@@ -16,7 +16,7 @@
 
 inline bool g_windowless = false;
 
-Teide::GraphicsDevicePtr CreateTestGraphicsDevice();
+Teide::VulkanGraphicsDevicePtr CreateTestGraphicsDevice();
 
 std::optional<std::uint32_t> GetTransferQueueIndex(vk::PhysicalDevice physicalDevice);
 Teide::PhysicalDevice FindPhysicalDevice(vk::Instance instance);
@@ -78,3 +78,24 @@ void PrintTo(const std::span<T, N>& span, std::ostream* os)
 #define CONSTEXPR_EXPECT_NE(a, b)                                                                                      \
     static_assert((a) != (b));                                                                                         \
     EXPECT_NE(a, b);
+
+// Implements the polymorphic NotNull() matcher, which matches any raw or smart
+// pointer that is not NULL.
+class ValidVkHandleMatcher
+{
+public:
+    template <typename Pointer>
+    bool MatchAndExplain(const Pointer& p, testing::MatchResultListener* /* listener */) const
+    {
+        return static_cast<bool>(p);
+    }
+
+    void DescribeTo(::std::ostream* os) const { *os << "is a valid Vulkan handle"; }
+    void DescribeNegationTo(::std::ostream* os) const { *os << "is not a valid Vulkan handle"; }
+};
+
+// Creates a polymorphic matcher that matches any non-null vulkan handle.
+inline testing::PolymorphicMatcher<ValidVkHandleMatcher> IsValidVkHandle()
+{
+    return testing::MakePolymorphicMatcher(ValidVkHandleMatcher());
+}

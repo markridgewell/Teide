@@ -5,6 +5,7 @@
 #include "VulkanBuffer.h"
 
 #include "Teide/ParameterBlock.h"
+#include "Teide/ShaderData.h"
 
 #include <memory>
 #include <optional>
@@ -23,8 +24,12 @@ struct VulkanParameterBlockLayout : public ParameterBlockLayout
 {
     std::vector<DescriptorTypeCount> descriptorTypeCounts;
     vk::UniqueDescriptorSetLayout setLayout;
+    uint32 uniformBufferSize = 0;
     std::optional<vk::PushConstantRange> pushConstantRange;
     vk::ShaderStageFlags uniformsStages;
+
+    VulkanParameterBlockLayout() = default;
+    explicit VulkanParameterBlockLayout(ParameterBlockLayoutData data, vk::Device device);
 
     bool IsEmpty() const override;
     bool HasDescriptors() const;

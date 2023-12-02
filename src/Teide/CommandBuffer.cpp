@@ -51,9 +51,6 @@ void CommandBuffer::Reset()
     m_referencedParameterBlocks.clear();
     m_ownedBuffers.clear();
     m_ownedAllocations.clear();
-    m_referencedTextures.clear();
-    m_referencedBuffers.clear();
-    m_referencedParameterBlocks.clear();
 }
 
 std::string_view CommandBuffer::GetDebugName() const

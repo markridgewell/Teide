@@ -130,17 +130,16 @@ void VulkanRenderer::SetupDescriptorPools()
     const auto vkdevice = m_device.GetVulkanDevice();
 
     constexpr uint32 ViewDescriptorPoolSize = 8;
-    const auto& scenePblockLayout = m_device.GetImpl(*m_shaderEnvironment->GetScenePblockLayout());
-    const auto& viewPblockLayout = m_device.GetImpl(*m_shaderEnvironment->GetViewPblockLayout());
+    const auto scenePblockLayout = m_device.GetImpl(m_shaderEnvironment->GetScenePblockLayout());
+    const auto viewPblockLayout = m_device.GetImpl(m_shaderEnvironment->GetViewPblockLayout());
 
-    if (scenePblockLayout.HasDescriptors())
+    if (scenePblockLayout->HasDescriptors())
     {
-        m_sceneDescriptorPool.emplace(vkdevice, scenePblockLayout, MaxFramesInFlight);
+        m_sceneDescriptorPool.emplace(vkdevice, *scenePblockLayout, MaxFramesInFlight);
 
         const ParameterBlockData pblockData = {
-            .layout = m_shaderEnvironment ? m_shaderEnvironment->GetScenePblockLayout() : nullptr,
+            .layout = scenePblockLayout,
             .lifetime = ResourceLifetime::Transient,
-            .parameters = {},
         };
 
         for (auto& frame : m_frameResources)
@@ -154,9 +153,9 @@ void VulkanRenderer::SetupDescriptorPools()
     {
         for (auto& thread : frame.threadResources)
         {
-            if (viewPblockLayout.HasDescriptors())
+            if (viewPblockLayout->HasDescriptors())
             {
-                thread.viewDescriptorPool.emplace(vkdevice, viewPblockLayout, ViewDescriptorPoolSize);
+                thread.viewDescriptorPool.emplace(vkdevice, *viewPblockLayout, ViewDescriptorPoolSize);
             }
         }
     }

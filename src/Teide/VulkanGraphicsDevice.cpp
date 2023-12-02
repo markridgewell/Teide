@@ -433,20 +433,6 @@ namespace
         return std::move(result.value);
     }
 
-    vk::ShaderStageFlags GetShaderStageFlags(ShaderStageFlags flags)
-    {
-        vk::ShaderStageFlags ret{};
-        if ((flags & ShaderStageFlags::Vertex) != ShaderStageFlags{})
-        {
-            ret |= vk::ShaderStageFlagBits::eVertex;
-        }
-        if ((flags & ShaderStageFlags::Pixel) != ShaderStageFlags{})
-        {
-            ret |= vk::ShaderStageFlagBits::eFragment;
-        }
-        return ret;
-    }
-
 } // namespace
 
 //---------------------------------------------------------------------------------------------------------------------
@@ -1003,50 +989,7 @@ void VulkanGraphicsDevice::WriteDescriptorSet(
 
 VulkanParameterBlockLayoutPtr VulkanGraphicsDevice::CreateParameterBlockLayout(const ParameterBlockDesc& desc, int set)
 {
-    VulkanParameterBlockLayout ret;
-    std::optional<vk::DescriptorSetLayoutBinding> uniformBinding;
-
-    const ParameterBlockLayoutData layout = BuildParameterBlockLayout(desc, set);
-
-    if (layout.uniformsSize > 0u)
-    {
-        if (layout.isPushConstant)
-        {
-            ret.pushConstantRange = {
-                .stageFlags = GetShaderStageFlags(layout.uniformsStages),
-                .offset = 0,
-                .size = static_cast<uint32_t>(layout.uniformsSize),
-            };
-        }
-        else
-        {
-            uniformBinding = {
-                .binding = 0,
-                .descriptorType = vk::DescriptorType::eUniformBuffer,
-                .descriptorCount = 1,
-                .stageFlags = GetShaderStageFlags(layout.uniformsStages),
-            };
-        }
-    }
-
-    const auto textureBindings = std::views::transform(std::views::iota(0u, layout.textureCount), [](uint32 i) {
-        return vk::DescriptorSetLayoutBinding{
-            .binding = i + 1,
-            .descriptorType = vk::DescriptorType::eCombinedImageSampler,
-            .descriptorCount = 1,
-            .stageFlags = vk::ShaderStageFlagBits::eAllGraphics,
-        };
-    });
-
-    const vkex::DescriptorSetLayoutCreateInfo layoutInfo = {
-        .bindings = vkex::Join(uniformBinding, textureBindings),
-    };
-    std::ranges::transform(layoutInfo.bindings, std::back_inserter(ret.descriptorTypeCounts), [](const auto& binding) {
-        return DescriptorTypeCount{binding.descriptorType, binding.descriptorCount};
-    });
-    ret.setLayout = m_device->createDescriptorSetLayoutUnique(layoutInfo, s_allocator);
-    ret.uniformsStages = GetShaderStageFlags(layout.uniformsStages);
-    return std::make_shared<const VulkanParameterBlockLayout>(std::move(ret));
+    return std::make_shared<const VulkanParameterBlockLayout>(BuildParameterBlockLayout(desc, set), m_device.get());
 }
 
 vk::RenderPass VulkanGraphicsDevice::CreateRenderPassLayout(const FramebufferLayout& framebufferLayout)
@@ -1172,14 +1115,15 @@ TransientParameterBlock VulkanGraphicsDevice::CreateTransientParameterBlock(
     ret.textures = data.parameters.textures;
     if (setLayout)
     {
-        if (!data.parameters.uniformData.empty())
+        if (layout.uniformBufferSize > 0)
         {
             const auto uniformBufferName = DebugFormat("{}UniformBuffer", name);
             ret.uniformBuffer = MakeHandle(CreateTransientBuffer(
                 BufferData{
                     .usage = BufferUsage::Uniform,
                     .lifetime = data.lifetime,
-                    .data = data.parameters.uniformData,
+                    .data = data.parameters.uniformData.empty() ? std::vector<byte>(layout.uniformBufferSize)
+                                                                : data.parameters.uniformData,
                 },
                 uniformBufferName.c_str()));
         }

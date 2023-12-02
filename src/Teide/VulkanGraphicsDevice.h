@@ -136,9 +136,6 @@ private:
     vk::UniqueDescriptorSet CreateUniqueDescriptorSet(
         vk::DescriptorPool pool, vk::DescriptorSetLayout layout, const Buffer* uniformBuffer,
         std::span<const TexturePtr> textures, const char* name);
-    vk::DescriptorSet CreateDescriptorSet(
-        vk::DescriptorPool pool, vk::DescriptorSetLayout layout, const Buffer* uniformBuffer,
-        std::span<const TexturePtr> textures, const char* name);
     void WriteDescriptorSet(vk::DescriptorSet descriptorSet, const Buffer* uniformBuffer, std::span<const TexturePtr> textures);
 
     VulkanParameterBlockLayoutPtr CreateParameterBlockLayout(const ParameterBlockDesc& desc, int set);
@@ -166,5 +163,7 @@ private:
 
     Scheduler m_scheduler;
 };
+
+using VulkanGraphicsDevicePtr = std::unique_ptr<VulkanGraphicsDevice>;
 
 } // namespace Teide
