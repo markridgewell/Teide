@@ -209,4 +209,10 @@ constexpr uint64 Timeout(std::chrono::duration<Rep, Period> duration)
 template <class T>
 struct VulkanImpl;
 
+template <class T>
+auto MakeHandle(T&& object)
+{
+    return std::make_shared<typename std::remove_const_t<T>>(std::forward<T>(object));
+}
+
 } // namespace Teide

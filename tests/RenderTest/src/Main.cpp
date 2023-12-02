@@ -7,6 +7,24 @@
 #include <filesystem>
 #include <initializer_list>
 
+#if defined(_WIN32) && __has_include("StackWalker.h")
+#    define STACKWALKER_ENABLED
+#    include "StackWalker.h"
+
+class MyStackWalker : public StackWalker
+{
+    virtual void OnOutput(LPCSTR szText) { std::puts(szText); }
+};
+
+LONG WINAPI ExceptionHandler(EXCEPTION_POINTERS* exceptions [[maybe_unused]])
+{
+    MyStackWalker sw;
+    sw.ShowCallstack(GetCurrentThread(), exceptions->ContextRecord);
+    return EXCEPTION_EXECUTE_HANDLER;
+}
+
+#endif
+
 class ArgParser
 {
 public:
@@ -59,6 +77,11 @@ private:
 
 int main(int argc, char** argv)
 {
+#ifdef STACKWALKER_ENABLED
+    spdlog::info("Setting exception handler...");
+    SetUnhandledExceptionFilter(ExceptionHandler);
+#endif
+
     using namespace std::filesystem;
 
     auto parser = ArgParser(argc, argv);
