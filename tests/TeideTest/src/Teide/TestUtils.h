@@ -90,8 +90,8 @@ public:
         return static_cast<bool>(p);
     }
 
-    void DescribeTo(::std::ostream* os) const { *os << "is a valid Vulkan handle"; }
-    void DescribeNegationTo(::std::ostream* os) const { *os << "is not a valid Vulkan handle"; }
+    static void DescribeTo(::std::ostream* os) { *os << "is a valid Vulkan handle"; }
+    static void DescribeNegationTo(::std::ostream* os) { *os << "is not a valid Vulkan handle"; }
 };
 
 // Creates a polymorphic matcher that matches any non-null vulkan handle.

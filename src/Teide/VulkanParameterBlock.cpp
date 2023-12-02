@@ -29,7 +29,7 @@ namespace
     }
 } // namespace
 
-VulkanParameterBlockLayout::VulkanParameterBlockLayout(ParameterBlockLayoutData data, vk::Device device)
+VulkanParameterBlockLayout::VulkanParameterBlockLayout(const ParameterBlockLayoutData& data, vk::Device device)
 {
     std::optional<vk::DescriptorSetLayoutBinding> uniformBinding;
 

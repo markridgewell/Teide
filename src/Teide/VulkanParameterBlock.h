@@ -29,7 +29,7 @@ struct VulkanParameterBlockLayout : public ParameterBlockLayout
     vk::ShaderStageFlags uniformsStages;
 
     VulkanParameterBlockLayout() = default;
-    explicit VulkanParameterBlockLayout(ParameterBlockLayoutData data, vk::Device device);
+    explicit VulkanParameterBlockLayout(const ParameterBlockLayoutData& data, vk::Device device);
 
     bool IsEmpty() const override;
     bool HasDescriptors() const;
