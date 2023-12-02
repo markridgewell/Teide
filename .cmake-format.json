@@ -51,6 +51,32 @@
         "FILE_DISAMBIGUATOR": "1"
       }
     },
+    "FetchContent_Declare": {
+      "pargs": 1,
+      "kwargs": {
+        "URL": "1",
+        "URL_HASH": "1",
+        "DOWNLOAD_EXTRACT_TIMESTAMP": "1",
+        "GIT_REPOSITORY": "1",
+        "GIT_TAG": "1",
+        "GIT_SHALLOW": "1",
+        "PREFIX": "1",
+        "SOURCE_SUBDIR": "1",
+        "CMAKE_ARGS": "1",
+        "BUILD_COMMAND": "*",
+        "TEST_COMMAND": "*",
+        "INSTALL_COMMAND": "*"
+      }
+    },
+    "execute_process": {
+      "pargs": "*",
+      "kwargs": {
+        "COMMAND": "*",
+        "OUTPUT_FILE": "1",
+        "COMMAND_ECHO": "1",
+        "COMMAND_ERROR_IS_FATAL": "1"
+      }
+    },
     "vcpkg_cmake_configure": {
       "pargs": 0,
       "kwargs": {
