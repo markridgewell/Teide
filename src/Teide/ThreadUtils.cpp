@@ -31,6 +31,6 @@ void Teide::SetCurrentTheadName(const std::string& name [[maybe_unused]])
 
 void Teide::SetCurrentTheadName(const std::string& name [[maybe_unused]])
 {
-    pthread_setname(pthread_self(), name.data(), name.size());
+    pthread_setname_np(pthread_self(), name.data(), name.size());
 }
 #endif
