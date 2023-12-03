@@ -47,8 +47,9 @@ set(sources
     src/Teide/Scheduler.h
     src/Teide/ShaderData.cpp
     src/Teide/StaticMap.h
-    src/Teide/Synchronized.h
     src/Teide/TextureData.cpp
+    src/Teide/ThreadUtils.cpp
+    src/Teide/ThreadUtils.h
     src/Teide/VmaImpl.cpp
     src/Teide/Vulkan.cpp
     src/Teide/Vulkan.h

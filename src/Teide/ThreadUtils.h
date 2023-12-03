@@ -3,6 +3,10 @@
 
 #include <functional>
 #include <mutex>
+#include <string_view>
+
+namespace Teide
+{
 
 template <class T>
 class Synchronized
@@ -24,3 +28,7 @@ private:
     T m_object;
     std::mutex m_mutex;
 };
+
+void SetCurrentTheadName(std::string_view name);
+
+} // namespace Teide

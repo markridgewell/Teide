@@ -63,6 +63,7 @@ int SDL_main(int argc, char* argv[])
         // Send log output to Visual Studio's Output window when running in the debugger.
         spdlog::set_default_logger(std::make_shared<spdlog::logger>("msvc", std::make_shared<spdlog::sinks::msvc_sink_mt>()));
     }
+    SetThreadDescription(GetCurrentThread(), L"Main");
 #endif
 
     spdlog::set_pattern("[%Y-%m-%D %H:%M:%S.%e] [%l] %v");
