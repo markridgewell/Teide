@@ -1,12 +1,16 @@
 
 #include "Teide/ThreadUtils.h"
 
-#if defined(_WIN32) && !defined(NDEBUG)
+#if defined(NDEBUG)
+void Teide::SetCurrentTheadName(const std::string& name [[maybe_unused]])
+{}
+
+#elif defined(_WIN32)
 #    include <windows.h>
 
 #    include <string>
 
-void Teide::SetCurrentTheadName(std::string_view name [[maybe_unused]])
+void Teide::SetCurrentTheadName(const std::string& name [[maybe_unused]])
 {
     const int convertResult = MultiByteToWideChar(CP_UTF8, 0, name.data(), static_cast<int>(name.size()), nullptr, 0);
     if (convertResult > 0)
@@ -21,11 +25,12 @@ void Teide::SetCurrentTheadName(std::string_view name [[maybe_unused]])
         }
     }
 }
+
 #elif defined(__linux__)
 #    include <pthread.h>
 
-void Teide::SetCurrentTheadName(std::string_view name [[maybe_unused]])
+void Teide::SetCurrentTheadName(const std::string& name [[maybe_unused]])
 {
-    pthread_getname_np(pthread_self(), name.data(), name.size());
+    pthread_setname(pthread_self(), name.data(), name.size());
 }
 #endif

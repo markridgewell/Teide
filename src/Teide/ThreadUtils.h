@@ -3,7 +3,7 @@
 
 #include <functional>
 #include <mutex>
-#include <string_view>
+#include <string>
 
 namespace Teide
 {
@@ -29,6 +29,6 @@ private:
     std::mutex m_mutex;
 };
 
-void SetCurrentTheadName(std::string_view name);
+void SetCurrentTheadName(const std::string& name);
 
 } // namespace Teide
