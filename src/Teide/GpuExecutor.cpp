@@ -43,6 +43,7 @@ GpuExecutor::GpuExecutor(uint32 numThreads, vk::Device device, vk::Queue queue, 
     });
 
     m_schedulerThread = std::thread([this] {
+        SetCurrentTheadName("GpuExecutor");
         constexpr auto timeout = std::chrono::milliseconds{2};
 
         while (!m_schedulerStop)

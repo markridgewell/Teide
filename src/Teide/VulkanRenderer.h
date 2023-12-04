@@ -3,7 +3,7 @@
 
 #include "CommandBuffer.h"
 #include "DescriptorPool.h"
-#include "Synchronized.h"
+#include "ThreadUtils.h"
 #include "Vulkan.h"
 #include "VulkanGraphicsDevice.h"
 #include "VulkanParameterBlock.h"
