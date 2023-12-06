@@ -25,7 +25,10 @@ public:
     GraphicsDeviceTest() : m_device{CreateTestGraphicsDevice()} {}
 
 protected:
+    ShaderData CompileShader(const ShaderSourceData& data) { return m_shaderCompiler.Compile(data); }
+
     GraphicsDevicePtr m_device; // NOLINT(cppcoreguidelines-non-private-member-variables-in-classes)
+    ShaderCompiler m_shaderCompiler;
 };
 
 TEST_F(GraphicsDeviceTest, CreateBuffer)

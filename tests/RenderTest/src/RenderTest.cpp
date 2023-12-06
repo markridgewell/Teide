@@ -313,6 +313,11 @@ Teide::PipelinePtr RenderTest::CreatePipeline(Teide::ShaderPtr shader, const Tei
     });
 }
 
+Teide::ShaderData RenderTest::CompileShader(const ShaderSourceData& data)
+{
+    return m_shaderCompiler.Compile(data);
+}
+
 Teide::GraphicsDevice& RenderTest::GetDevice()
 {
     return *m_device;

@@ -76,7 +76,8 @@ const ShaderSourceData TestShader = {
 
 TEST(ShaderCompilerTest, CompileSimple)
 {
-    const auto result = CompileShader(TestShader);
+    ShaderCompiler compiler;
+    const auto result = compiler.Compile(TestShader);
     EXPECT_THAT(result.vertexShader.spirv, Not(IsEmpty()));
     EXPECT_THAT(result.pixelShader.spirv, Not(IsEmpty()));
     EXPECT_THAT(result.environment.scenePblock.parameters, Eq(TestShader.environment.scenePblock.parameters));

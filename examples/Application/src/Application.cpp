@@ -396,3 +396,8 @@ void Application::CreatePipelines()
         },
     });
 }
+
+Teide::ShaderData Application::CompileShader(const ShaderSourceData& data) const
+{
+    return m_shaderCompiler.Compile(data);
+}
