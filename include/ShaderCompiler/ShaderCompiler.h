@@ -54,5 +54,5 @@ public:
     ShaderCompiler& operator=(const ShaderCompiler&) = delete;
     ShaderCompiler& operator=(ShaderCompiler&&) = delete;
 
-    static Teide::ShaderData Compile(const ShaderSourceData& sourceData);
+    Teide::ShaderData Compile(const ShaderSourceData& sourceData) const;
 };

@@ -428,7 +428,9 @@ ShaderCompiler::~ShaderCompiler()
     }
 }
 
-ShaderData ShaderCompiler::Compile(const ShaderSourceData& sourceData)
+// This function cannot be static because it depends on side-effects invoked by the constructor.
+// NOLINTNEXTLINE(readability-convert-member-functions-to-static)
+ShaderData ShaderCompiler::Compile(const ShaderSourceData& sourceData) const
 {
     ShaderData data;
     data.environment = sourceData.environment;
