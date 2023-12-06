@@ -280,8 +280,9 @@ bool Application::OnEvent(const SDL_Event& event)
             SDL_SetRelativeMouseMode(SDL_FALSE);
             break;
         }
+
+        default: return true;
     }
-    return true;
 }
 
 bool Application::OnUpdate()

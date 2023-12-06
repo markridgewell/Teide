@@ -28,6 +28,8 @@ protected:
     ShaderData CompileShader(const ShaderSourceData& data) { return m_shaderCompiler.Compile(data); }
 
     GraphicsDevicePtr m_device; // NOLINT(cppcoreguidelines-non-private-member-variables-in-classes)
+
+private:
     ShaderCompiler m_shaderCompiler;
 };
 
