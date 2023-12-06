@@ -3,6 +3,7 @@
 
 #include "Teide/ShaderData.h"
 
+#include <atomic>
 #include <exception>
 #include <string>
 #include <string_view>
@@ -42,4 +43,16 @@ private:
     std::string m_message;
 };
 
-Teide::ShaderData CompileShader(const ShaderSourceData& sourceData);
+class ShaderCompiler
+{
+public:
+    ShaderCompiler();
+    ~ShaderCompiler();
+
+    ShaderCompiler(const ShaderCompiler&) = delete;
+    ShaderCompiler(ShaderCompiler&&) = delete;
+    ShaderCompiler& operator=(const ShaderCompiler&) = delete;
+    ShaderCompiler& operator=(ShaderCompiler&&) = delete;
+
+    Teide::ShaderData Compile(const ShaderSourceData& sourceData) const;
+};

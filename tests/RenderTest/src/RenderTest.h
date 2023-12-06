@@ -63,6 +63,8 @@ protected:
     Teide::TexturePtr CreateCheckerTexture();
     Teide::PipelinePtr CreatePipeline(Teide::ShaderPtr shader, const Teide::MeshPtr& mesh);
 
+    Teide::ShaderData CompileShader(const ShaderSourceData& data);
+
     Teide::GraphicsDevice& GetDevice();
 
 private:
@@ -76,4 +78,5 @@ private:
     Teide::GraphicsDevicePtr m_device;
     Teide::ShaderEnvironmentPtr m_shaderEnv;
     Teide::RendererPtr m_renderer;
+    ShaderCompiler m_shaderCompiler;
 };

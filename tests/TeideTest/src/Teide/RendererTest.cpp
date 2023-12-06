@@ -30,6 +30,8 @@ public:
     }
 
 protected:
+    ShaderData CompileShader(const ShaderSourceData& data) { return m_shaderCompiler.Compile(data); }
+
     static RenderTargetInfo CreateRenderTargetInfo(Geo::Size2i size, Format format = Format::Byte4Srgb)
     {
         return {
@@ -69,6 +71,9 @@ protected:
 
     GraphicsDevicePtr m_device; // NOLINT(cppcoreguidelines-non-private-member-variables-in-classes)
     RendererPtr m_renderer;     // NOLINT(cppcoreguidelines-non-private-member-variables-in-classes)
+
+private:
+    ShaderCompiler m_shaderCompiler;
 };
 
 TEST_F(RendererTest, RenderFullscreenTri)
