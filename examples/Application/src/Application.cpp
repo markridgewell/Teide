@@ -281,8 +281,10 @@ bool Application::OnEvent(const SDL_Event& event)
             break;
         }
 
-        default: return true;
+        default: break;
     }
+
+    return true;
 }
 
 bool Application::OnUpdate()
