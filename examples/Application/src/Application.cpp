@@ -268,6 +268,8 @@ bool Application::OnEvent(const SDL_Event& event)
                     OnResize();
                     break;
                 }
+
+                default: break;
             }
             break;
 
