@@ -102,7 +102,7 @@ void BM_RenderToTexture(benchmark::State& state)
            .bufferBindings = {{.stride = sizeof(float) * 2}},
            .attributes = {{.name = "inPosition", .format = Teide::Format::Float2, .bufferIndex = 0, .offset = 0}}};
 
-    ShaderCompiler compiler;
+    ShaderCompiler const compiler;
     const auto shaderData = compiler.Compile(SimpleShader);
     const auto shader = device->CreateShader(shaderData, "SimpleShader");
 

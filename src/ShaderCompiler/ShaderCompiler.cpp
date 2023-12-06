@@ -428,7 +428,7 @@ ShaderCompiler::~ShaderCompiler()
     }
 }
 
-ShaderData ShaderCompiler::Compile(const ShaderSourceData& sourceData) const
+ShaderData ShaderCompiler::Compile(const ShaderSourceData& sourceData) 
 {
     ShaderData data;
     data.environment = sourceData.environment;
