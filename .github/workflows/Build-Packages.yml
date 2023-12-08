@@ -8,7 +8,7 @@ on:
   pull_request:
     # Only run for pull requests when the vcpkg configuration has changed
     paths:
-    - 'vckpg*.json'
+    - 'vcpkg*.json'
     - 'external/ports/**'
     - 'cmake/triplets/*.cmake'
     - 'cmake/toolchains/*.cmake'
