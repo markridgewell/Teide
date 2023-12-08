@@ -41,17 +41,9 @@
       "description": "Build tests",
       "dependencies": [
         "gtest",
-        "swiftshader",
         {
           "name": "stackwalker",
           "platform": "windows & !uwp"
-        },
-        {
-          "name": "llvm",
-          "default-features": false,
-          "features": [
-            "enable-rtti"
-          ]
         }
       ]
     },
@@ -65,6 +57,19 @@
       "description": "Build benchmarks",
       "dependencies": [
         "benchmark"
+      ]
+    },
+    "swiftshader": {
+      "description": "Build with Swiftshader support",
+      "dependencies": [
+        "swiftshader",
+        {
+          "name": "llvm",
+          "default-features": false,
+          "features": [
+            "enable-rtti"
+          ]
+        }
       ]
     }
   },
