@@ -60,12 +60,12 @@ jobs:
         path: './exports'
 
     - name: Free disk space (Ubuntu)
-      if: runner.os == 'Linux'
+      if: runner.os == 'Linux' && steps.cache.outputs.cache-hit != 'true'
       uses: jlumbroso/free-disk-space@main
 
     - name: 'Setup NuGet credentials'
+      if: steps.cache.outputs.cache-hit != 'true'
       shell: 'bash'
-      # Replace <OWNER> with your organization name
       run: |
         alias nuget=${{runner.os == 'Linux' && 'mono ' || ''}}$(./external/vcpkg/vcpkg fetch nuget | tail -n 1)
         nuget sources add \
