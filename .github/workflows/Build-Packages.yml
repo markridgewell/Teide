@@ -132,3 +132,29 @@ jobs:
       with:
         name: vcpkg-export-${{env.VCPKG_TRIPLET}}
         path: './exports'
+
+  rerun-test-jobs:
+    needs: unified
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    env:
+      HEAD_REF: ${{github.head_ref}}
+
+    steps:
+    - name: Re-run failed Build-and-Test workflow
+      run: |
+        # Get the id of the last Build-and-Test workflow run for this pull request,
+        # but only if it failed. Otherwise, return nothing.
+        run_id=$(gh run list \
+          --workflow Build-and-Test \
+          --limit 1 \
+          --branch $HEAD_REF \
+          --event pull_request \
+          --json conclusion,databaseId \
+          --jq '.[]|select(.conclusion == "failure")|.databaseId')
+        if [[ -n "$run_id" ]]; then
+          echo "Restarting workflow run ${run_id}..."
+          gh rerun $run_id --failed
+        else
+          echo "No failed workflow runs found"
+        fi
