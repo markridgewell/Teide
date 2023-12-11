@@ -138,6 +138,7 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request'
     env:
+      GH_TOKEN: ${{github.token}}
       HEAD_REF: ${{github.head_ref}}
 
     steps:
