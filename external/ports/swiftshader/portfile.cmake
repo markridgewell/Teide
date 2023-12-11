@@ -17,7 +17,7 @@ vcpkg_cmake_configure(
             -DSWIFTSHADER_WARNINGS_AS_ERRORS=OFF
             -DSWIFTSHADER_ENABLE_ASTC=OFF
             -DREACTOR_BACKEND=LLVM-Submodule
-            "-DCMAKE_CXX_FLAGS=${CXX_FLAGS}")
+            "-DCMAKE_CXX_FLAGS=${VCPKG_CXX_FLAGS} -Wl,--undefined-version")
 vcpkg_cmake_install()
 vcpkg_install_copyright(FILE_LIST "${SOURCE_PATH}/LICENSE.txt")
 
