@@ -37,4 +37,6 @@ elseif(WIN32)
     set(VCPKG_TARGET_TRIPLET "x64-windows-static-md")
 endif()
 
-set(VCPKG_HOST_TRIPLET ${VCPKG_TARGET_TRIPLET})
+set(VCPKG_HOST_TRIPLET
+    ${VCPKG_TARGET_TRIPLET}
+    CACHE STRING "Triplet respresenting host machine for vcpkg")
