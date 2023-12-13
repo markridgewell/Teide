@@ -16,7 +16,7 @@ if("$ENV{TEST_COVERAGE}")
     endif()
 endif()
 
-execute_process(
-    COMMAND ${RUNNER_COMMAND} ${TEST_BINARY} ${TEST_ARGS}
-    COMMAND_ECHO STDERR
-    COMMAND_ERROR_IS_FATAL ANY)
+execute_process(COMMAND ${RUNNER_COMMAND} ${TEST_BINARY} ${TEST_ARGS} RESULT_VARIABLE result)
+if(NOT result EQUAL 0)
+    message(FATAL_ERROR "Process result: ${result}")
+endif()

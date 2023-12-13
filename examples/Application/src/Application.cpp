@@ -268,6 +268,8 @@ bool Application::OnEvent(const SDL_Event& event)
                     OnResize();
                     break;
                 }
+
+                default: break;
             }
             break;
 
@@ -280,7 +282,10 @@ bool Application::OnEvent(const SDL_Event& event)
             SDL_SetRelativeMouseMode(SDL_FALSE);
             break;
         }
+
+        default: break;
     }
+
     return true;
 }
 
@@ -395,4 +400,9 @@ void Application::CreatePipelines()
             }
         },
     });
+}
+
+Teide::ShaderData Application::CompileShader(const ShaderSourceData& data) const
+{
+    return m_shaderCompiler.Compile(data);
 }

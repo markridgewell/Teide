@@ -43,6 +43,7 @@ GpuExecutor::GpuExecutor(uint32 numThreads, vk::Device device, vk::Queue queue, 
     });
 
     m_schedulerThread = std::thread([this] {
+        SetCurrentTheadName("GpuExecutor");
         constexpr auto timeout = std::chrono::milliseconds{2};
 
         while (!m_schedulerStop)
@@ -57,9 +58,17 @@ GpuExecutor::GpuExecutor(uint32 numThreads, vk::Device device, vk::Queue queue, 
             else
             {
                 // If there are fences, wait on them and see if any are signalled
-                if (m_device.waitForFences(fences, false, Timeout(timeout)) == vk::Result::eSuccess)
+                try
                 {
-                    m_queue.Lock(&Queue::Flush);
+                    if (m_device.waitForFences(fences, false, Timeout(timeout)) == vk::Result::eSuccess)
+                    {
+                        m_queue.Lock(&Queue::Flush);
+                    }
+                }
+                catch (const vk::DeviceLostError&)
+                {
+                    spdlog::critical("Device lost while waiting for fences");
+                    std::abort();
                 }
             }
         }

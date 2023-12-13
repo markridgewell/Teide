@@ -4,7 +4,7 @@
 #include "CommandBuffer.h"
 
 #include "Teide/BasicTypes.h"
-#include "Teide/Synchronized.h"
+#include "Teide/ThreadUtils.h"
 #include "Teide/VulkanConfig.h"
 
 #include <function2/function2.hpp>

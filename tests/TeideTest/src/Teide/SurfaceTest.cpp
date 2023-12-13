@@ -56,7 +56,8 @@ TEST_F(SurfaceTest, CreatePipelineForSurface)
     ASSERT_THAT(window, NotNull()) << SDL_GetError();
 
     auto [device, surface] = CreateDeviceAndSurface(window.get(), true);
-    const auto shaderData = CompileShader(SimpleShader);
+    ShaderCompiler const compiler;
+    const auto shaderData = compiler.Compile(SimpleShader);
     const VertexLayout vertexLayout = {
         .topology = PrimitiveTopology::TriangleList,
         .bufferBindings = {{.stride = 0}},

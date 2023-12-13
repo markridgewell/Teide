@@ -3,7 +3,7 @@
 
 #include "CommandBuffer.h"
 #include "DescriptorPool.h"
-#include "Synchronized.h"
+#include "ThreadUtils.h"
 #include "Vulkan.h"
 #include "VulkanGraphicsDevice.h"
 #include "VulkanParameterBlock.h"
@@ -47,26 +47,17 @@ public:
     Task<TextureData> CopyTextureData(TexturePtr texture) override;
 
 private:
+    void SetupDescriptorPools();
+
     template <std::invocable<CommandBuffer&> F>
     auto ScheduleGpu(F&& f) -> TaskForCallable<F, CommandBuffer&>
     {
         return m_device.GetScheduler().ScheduleGpu(std::forward<F>(f));
     }
 
-    ParameterBlockPtr GetSceneParameterBlock() const { return GetCurrentFrame().sceneParameters; }
+    const TransientParameterBlock& GetSceneParameterBlock() const { return GetCurrentFrame().sceneParameters; }
 
-    TransientParameterBlock* CreateViewParameterBlock(const ParameterBlockData& data, const char* name, CommandBuffer& cmdBuffer)
-    {
-        if (m_shaderEnvironment == nullptr)
-        {
-            return nullptr;
-        }
-
-        const auto threadIndex = m_device.GetScheduler().GetThreadIndex();
-        auto& threadResources = GetCurrentFrame().threadResources.at(threadIndex);
-        auto p = m_device.CreateTransientParameterBlock(data, name, cmdBuffer, threadResources.viewDescriptorPool);
-        return &threadResources.viewParameters.emplace_back(std::move(p));
-    }
+    TransientParameterBlock* CreateViewParameterBlock(const ParameterBlockData& data, const char* name);
 
     void RecordRenderListCommands(
         CommandBuffer& commandBuffer, const RenderList& renderList, vk::RenderPass renderPass,
@@ -80,18 +71,26 @@ private:
 
     struct ThreadResources
     {
-        DescriptorPool viewDescriptorPool;
+        std::optional<DescriptorPool> viewDescriptorPool;
         std::vector<TransientParameterBlock> viewParameters;
     };
 
     struct FrameResources
     {
-        ParameterBlockPtr sceneParameters;
+        TransientParameterBlock sceneParameters;
         std::vector<ThreadResources> threadResources;
     };
 
     const FrameResources& GetCurrentFrame() const { return m_frameResources.at(m_frameNumber); }
     FrameResources& GetCurrentFrame() { return m_frameResources.at(m_frameNumber); }
+    const ThreadResources& GetCurrentThread() const
+    {
+        return GetCurrentFrame().threadResources.at(m_device.GetScheduler().GetThreadIndex());
+    }
+    ThreadResources& GetCurrentThread()
+    {
+        return GetCurrentFrame().threadResources.at(m_device.GetScheduler().GetThreadIndex());
+    }
 
     VulkanGraphicsDevice& m_device;
     vk::Queue m_graphicsQueue;
@@ -104,6 +103,7 @@ private:
 
     Synchronized<std::vector<SurfaceImage>> m_surfacesToPresent;
 
+    std::optional<DescriptorPool> m_sceneDescriptorPool;
     std::array<FrameResources, MaxFramesInFlight> m_frameResources;
 };
 

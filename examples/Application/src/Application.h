@@ -5,6 +5,7 @@
 #include "GeoLib/Box.h"
 #include "GeoLib/Matrix.h"
 #include "GeoLib/Vector.h"
+#include "ShaderCompiler/ShaderCompiler.h"
 #include "Teide/ForwardDeclare.h"
 #include "Teide/GraphicsDevice.h"
 #include "Teide/Surface.h"
@@ -53,12 +54,14 @@ private:
     void CreateMesh(const char* filename);
     void CreateMaterial(const char* imageFilename);
     void CreatePipelines();
+    Teide::ShaderData CompileShader(const ShaderSourceData& data) const;
 
     SDL_Window* m_window;
 
     Teide::GraphicsDevicePtr m_device;
     Teide::SurfacePtr m_surface;
     Teide::ShaderEnvironmentPtr m_shaderEnvironment;
+    ShaderCompiler m_shaderCompiler;
 
     // Object setup
     Teide::MeshPtr m_mesh;

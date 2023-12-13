@@ -8,7 +8,8 @@ on:
   pull_request:
     # Only run for pull requests when the vcpkg configuration has changed
     paths:
-    - 'vckpg*.json'
+    - 'vcpkg.json'
+    - 'vcpkg-configuration.json'
     - 'external/ports/**'
     - 'cmake/triplets/*.cmake'
     - 'cmake/toolchains/*.cmake'
@@ -59,12 +60,12 @@ jobs:
         path: './exports'
 
     - name: Free disk space (Ubuntu)
-      if: runner.os == 'Linux'
+      if: runner.os == 'Linux' && steps.cache.outputs.cache-hit != 'true'
       uses: jlumbroso/free-disk-space@main
 
     - name: 'Setup NuGet credentials'
+      if: steps.cache.outputs.cache-hit != 'true'
       shell: 'bash'
-      # Replace <OWNER> with your organization name
       run: |
         alias nuget=${{runner.os == 'Linux' && 'mono ' || ''}}$(./external/vcpkg/vcpkg fetch nuget | tail -n 1)
         nuget sources add \
@@ -131,3 +132,33 @@ jobs:
       with:
         name: vcpkg-export-${{env.VCPKG_TRIPLET}}
         path: './exports'
+
+  rerunner:
+    name: Rerun-Test-Jobs
+    needs: unified
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    env:
+      GH_TOKEN: ${{github.token}}
+      REPOSITORY: ${{github.repository}}
+      HEAD_REF: ${{github.head_ref}}
+
+    steps:
+    - name: Re-run failed Build-and-Test workflow
+      run: |
+        # Get the id of the last Build-and-Test workflow run for this pull request,
+        # but only if it failed. Otherwise, return nothing.
+        run_id=$(gh run list \
+          --repo $REPOSITORY \
+          --workflow Build-and-Test \
+          --limit 1 \
+          --branch $HEAD_REF \
+          --event pull_request \
+          --json conclusion,databaseId \
+          --jq '.[]|select(.conclusion == "failure")|.databaseId')
+        if [[ -n "$run_id" ]]; then
+          echo "Restarting workflow run ${run_id}..."
+          gh rerun --repo $REPOSITORY $run_id --failed
+        else
+          echo "No failed workflow runs found"
+        fi

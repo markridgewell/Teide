@@ -155,27 +155,6 @@ mat4 mul(mat4 m1, mat4 m2) {
 }
 )--";
 
-struct StaticInit
-{
-    StaticInit() { glslang::InitializeProcess(); }
-    ~StaticInit() { glslang::FinalizeProcess(); }
-
-    StaticInit(const StaticInit&) = delete;
-    StaticInit(StaticInit&&) = delete;
-    StaticInit& operator=(const StaticInit&) = delete;
-    StaticInit& operator=(StaticInit&&) = delete;
-};
-
-std::optional<StaticInit> s_staticInit;
-
-void EnsureInitialized()
-{
-    if (!s_staticInit)
-    {
-        s_staticInit.emplace();
-    }
-}
-
 std::unique_ptr<glslang::TShader> CompileStage(std::string_view shaderSource, EShLanguage stage, glslang::EShSource source)
 {
     auto shader = std::make_unique<glslang::TShader>(stage);
@@ -278,7 +257,7 @@ void ReflectUniforms(ParameterBlockDesc& pblock, const glslang::TObjectReflectio
     }
 };
 
-void Compile(ShaderData& data, std::string_view vertexSource, std::string_view pixelSource, glslang::EShSource source)
+void CompileShader(ShaderData& data, std::string_view vertexSource, std::string_view pixelSource, glslang::EShSource source)
 {
     auto vertexShader = CompileStage(vertexSource, EShLangVertex, source);
     auto pixelShader = CompileStage(pixelSource, EShLangFragment, source);
@@ -429,12 +408,30 @@ void BuildVaryings(std::string& source, ShaderStageData& data, const ShaderStage
     source += '\n';
 }
 
+std::atomic<int> s_numInstances;
+
 } // namespace
 
-ShaderData CompileShader(const ShaderSourceData& sourceData)
+ShaderCompiler::ShaderCompiler()
 {
-    EnsureInitialized();
+    if (s_numInstances.fetch_add(1) == 0)
+    {
+        glslang::InitializeProcess();
+    }
+}
 
+ShaderCompiler::~ShaderCompiler()
+{
+    if (s_numInstances.fetch_sub(1) == 1)
+    {
+        glslang::FinalizeProcess();
+    }
+}
+
+// This function cannot be static because it depends on side-effects invoked by the constructor.
+// NOLINTNEXTLINE(readability-convert-member-functions-to-static)
+ShaderData ShaderCompiler::Compile(const ShaderSourceData& sourceData) const
+{
     ShaderData data;
     data.environment = sourceData.environment;
     data.materialPblock = sourceData.materialPblock;
@@ -454,6 +451,6 @@ ShaderData CompileShader(const ShaderSourceData& sourceData)
     BuildVaryings(pixelShader, data.pixelShader, sourceData.pixelShader);
     pixelShader += sourceData.pixelShader.source;
 
-    Compile(data, vertexShader, pixelShader, GetEShSource(sourceData.language));
+    CompileShader(data, vertexShader, pixelShader, GetEShSource(sourceData.language));
     return data;
 }

@@ -11,16 +11,28 @@ include(tools/cmake/Option.cmake)
 option_feature(TEIDE_BUILD_EXAMPLES examples "Build examples for Teide" ON)
 option_feature(TEIDE_BUILD_TESTS tests "Build tests for Teide" ON)
 option_feature(TEIDE_BUILD_BENCHMARKS benchmarks "Build benchmarks for Teide" ON)
+option_feature(TEIDE_USE_SWIFTSHADER swiftshader "Enable software rendering using the Swiftshader library" ON)
 option(TEIDE_USE_VCPKG "Vendor dependencies through vcpkg" ON)
 option(TEIDE_TEST_VERBOSE "Enable verbose logging for Teide tests" OFF)
 option(TEIDE_TEST_COVERAGE "Enable code coverage reporting when running tests" OFF)
 option(TEIDE_TEST_WINDOWLESS "Disable tests requiring a windowing system" OFF)
-option(TEIDE_UNIT_TEST_SW_RENDER "Enable software rendering for Teide unit tests" OFF)
-option(TEIDE_RENDER_TEST_SW_RENDER "Enable software rendering for Teide render tests" ON)
 option(TEIDE_CLANG_TIDY "Enable static analysis with clang-tidy" OFF)
 option(TEIDE_CPPCHECK "Enable static analysis with Cppcheck" OFF)
 option(TEIDE_PRECOMPILED_HEADERS "Enable precompiled headers when building" OFF)
 option_enum(TEIDE_SANITIZER "Name of a sanitizer to enable, or OFF to disable" "OFF;ASAN;UBSAN;MSAN")
+
+cmake_dependent_option(
+    TEIDE_UNIT_TEST_SW_RENDER
+    "Enable software rendering for Teide unit tests"
+    OFF
+    TEIDE_USE_SWIFTSHADER
+    OFF)
+cmake_dependent_option(
+    TEIDE_RENDER_TEST_SW_RENDER
+    "Enable software rendering for Teide render tests"
+    ON
+    TEIDE_USE_SWIFTSHADER
+    OFF)
 
 if(TEIDE_USE_VCPKG)
     include(tools/cmake/Triplet.cmake)
@@ -102,9 +114,12 @@ if(TEIDE_BUILD_EXAMPLES)
     set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT Application)
 endif()
 
+if(TEIDE_USE_SWIFTSHADER)
+    find_package(SwiftShader REQUIRED)
+endif()
+
 if(TEIDE_BUILD_TESTS)
     find_package(GTest REQUIRED)
-    find_package(SwiftShader REQUIRED)
     find_package(StackWalker QUIET)
 
     add_subdirectory(tests)

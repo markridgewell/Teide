@@ -31,11 +31,10 @@ jobs:
       with:
         filter-pattern: ${{env.pattern}}
 
-    - name: Setup vcpkg
-      uses: lukka/run-vcpkg@v11
-      with:
-        vcpkgDirectory: '${{github.workspace}}/external/vcpkg'
-        vcpkgJsonGlob: 'vcpkg.json'
+    - name: Install packages
+      if: steps.get-changes.outputs.changed-files != ''
+      id: packages
+      uses: ./.github/actions/install-packages
 
     - name: Install dependencies
       if: steps.get-changes.outputs.changed-files != ''
@@ -45,7 +44,11 @@ jobs:
 
     - name: Configure CMake
       if: steps.get-changes.outputs.changed-files != ''
-      run: cmake --preset ${{env.preset}} -DTEIDE_CPPCHECK=ON
+      run: >
+        cmake --preset ${{env.preset}}
+        -DTEIDE_CPPCHECK=ON
+        -DTEIDE_USE_VCPKG=OFF
+        -DCMAKE_PREFIX_PATH=${{steps.packages.outputs.install-dir}}
 
     - name: Run Cppcheck
       if: steps.get-changes.outputs.changed-files != ''
@@ -70,11 +73,10 @@ jobs:
       with:
         filter-pattern: ${{env.pattern}}
 
-    - name: Setup vcpkg
-      uses: lukka/run-vcpkg@v11
-      with:
-        vcpkgDirectory: '${{github.workspace}}/external/vcpkg'
-        vcpkgJsonGlob: 'vcpkg.json'
+    - name: Install packages
+      if: steps.get-changes.outputs.changed-files != ''
+      id: packages
+      uses: ./.github/actions/install-packages
 
     - name: Install dependencies
       if: steps.get-changes.outputs.changed-files != ''
@@ -84,7 +86,11 @@ jobs:
 
     - name: Configure CMake
       if: steps.get-changes.outputs.changed-files != ''
-      run: cmake --preset ${{env.preset}} -DTEIDE_CLANG_TIDY=ON
+      run: >
+        cmake --preset ${{env.preset}}
+        -DTEIDE_CLANG_TIDY=ON
+        -DTEIDE_USE_VCPKG=OFF
+        -DCMAKE_PREFIX_PATH=${{steps.packages.outputs.install-dir}}
 
     - name: Run clang-tidy
       if: steps.get-changes.outputs.changed-files != ''
@@ -94,12 +100,15 @@ jobs:
         sudo ln -sf `which clang-tidy-${{env.clang_tidy_version}}` /usr/bin/clang-tidy
         cmake --build --preset ${{env.preset}} --target ClangTidy
 
+    - name: Apply replacements
+      if: failure() && github.event_name == 'pull_request'
+      run: clang-apply-replacements .
+
     - name: Report issues as PR comments
       if: failure() && github.event_name == 'pull_request'
-      uses: platisd/clang-tidy-pr-comments@v1
+      uses: reviewdog/action-suggester@v1
       with:
-        github_token: ${{secrets.GITHUB_TOKEN}}
-        clang_tidy_fixes: ${{github.workspace}}/build/${{env.preset}}/clang-tidy-fixes.yaml
+        tool_name: clang-tidy
 
     - name: Save fixes as build artifact
       if: failure()
