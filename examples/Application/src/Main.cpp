@@ -1,7 +1,8 @@
 
 #include "Application.h"
 
-#include <SDL.h>
+#include <SDL2/SDL.h>
+#include <SDL2/SDL_main.h>
 #include <spdlog/sinks/msvc_sink.h>
 #include <spdlog/spdlog.h>
 
@@ -55,7 +56,7 @@ int Run(std::span<const char* const> args)
     return 0;
 }
 
-int SDL_main(int argc, char* argv[])
+int main(int argc, char* argv[])
 {
 #ifdef _WIN32
     if (IsDebuggerPresent())
