@@ -9,7 +9,7 @@ namespace Teide
 struct Visitor // for exposition only, not actually used
 {
     template <typename... Args>
-    void operator()(Args&&...)
+    void operator()(Args&&... /*args*/)
     {}
 };
 

@@ -65,7 +65,7 @@ public:
             return {};
         }
         return *nextArg;
-    };
+    }
 
     bool HasErrors() const { return !m_errorString.empty(); }
     const std::string& GetErrors() const { return m_errorString; }
