@@ -2,39 +2,21 @@
   "name": "teide",
   "version": "0.0.0",
   "dependencies": [
-    {
-      "name": "vulkan"
-    },
-    {
-      "name": "vulkan-headers"
-    },
+    "vulkan",
+    "vulkan-headers",
+    "vulkan-memory-allocator-hpp",
     {
       "name": "sdl2",
       "features": [
         "vulkan"
       ]
     },
-    {
-      "name": "sdl2-image"
-    },
-    {
-      "name": "fmt"
-    },
-    {
-      "name": "spdlog"
-    },
-    {
-      "name": "glslang"
-    },
-    {
-      "name": "taskflow"
-    },
-    {
-      "name": "function2"
-    },
-    {
-      "name": "vulkan-memory-allocator-hpp"
-    }
+    "sdl2-image",
+    "fmt",
+    "spdlog",
+    "glslang",
+    "taskflow",
+    "function2"
   ],
   "features": {
     "tests": {
