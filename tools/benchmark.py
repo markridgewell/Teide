@@ -5,6 +5,7 @@ import tempfile
 import shutil
 import shlex
 import sys
+import os
 from pathlib import Path
 
 
@@ -39,7 +40,7 @@ def run_benchmark(bin_dir: Path, out_file: Path, build: bool = False):
     run_process(
         [bin_dir / 'benchmarks/TeideBenchmark/TeideBenchmark',
         f'--benchmark_out={out_file}',
-        '--benchmark_repetitions=10',
+        '--benchmark_repetitions=20',
         '--benchmark_min_warmup_time=1',
         '--benchmark_enable_random_interleaving=true'])
     print(f"Results stored in file {out_file}")
@@ -63,11 +64,12 @@ def benchmark_commit(ref_name, preset, out_dir: Path):
 
 
 def benchmark_compare(ref1_name: str, ref2_name: str, preset, out_dir: Path, compare: str):
+    output_file = out_dir / (ref1_name + '_' + ref2_name + '.json')
     result1 = benchmark_commit(ref1_name, preset, out_dir)
     print()
     result2 = benchmark_commit(ref2_name, preset, out_dir)
     print()
-    print(run_process([sys.executable, compare, 'benchmarks', result1, result2, '--display_aggregates_only']))
+    print(run_process([sys.executable, compare, '--display_aggregates_only', '--dump_to_json', output_file, 'benchmarks', result1, result2]))
 
 
 def benchmark_prs(preset, out_dir: Path, compare: str):
@@ -97,19 +99,21 @@ if __name__ == '__main__':
     cmd.add_argument('-o', '--out-dir', required=True, type=Path)
     cmd.set_defaults(func=benchmark_commit)
 
+    default_compare = os.environ.get('COMPARE')
+
     cmd = subparsers.add_parser('compare',
         help="Run benchmarks on two commits and compare the results")
     cmd.add_argument('ref1_name')
     cmd.add_argument('ref2_name')
     cmd.add_argument('-p', '--preset', required=True)
     cmd.add_argument('-o', '--out-dir', required=True, type=Path)
-    cmd.add_argument('--compare', required=True)
+    cmd.add_argument('--compare', required=default_compare==None, default=default_compare)
     cmd.set_defaults(func=benchmark_compare)
-
+    
     cmd = subparsers.add_parser('prs')
     cmd.add_argument('-p', '--preset', required=True)
     cmd.add_argument('-o', '--out-dir', required=True, type=Path)
-    cmd.add_argument('--compare', required=True)
+    cmd.add_argument('--compare', required=default_compare==None, default=default_compare)
     cmd.set_defaults(func=benchmark_prs)
 
     opts = parser.parse_args()
