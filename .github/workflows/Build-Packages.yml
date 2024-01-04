@@ -158,7 +158,7 @@ jobs:
           --jq '.[]|select(.conclusion == "failure")|.databaseId')
         if [[ -n "$run_id" ]]; then
           echo "Restarting workflow run ${run_id}..."
-          gh rerun --repo $REPOSITORY $run_id --failed
+          gh run rerun --repo $REPOSITORY $run_id --failed
         else
           echo "No failed workflow runs found"
         fi

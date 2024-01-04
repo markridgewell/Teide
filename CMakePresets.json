@@ -45,7 +45,7 @@
       "inherits": "_common",
       "hidden": true,
       "cacheVariables": {
-        "CMAKE_CXX_FLAGS": "-Wall -Werror -Wno-attributes -ggdb"
+        "CMAKE_CXX_FLAGS": "-Wall -Wextra -Wpedantic -Werror -Wno-attributes -Wno-missing-field-initializers -ggdb"
       }
     },
     {
