@@ -47,6 +47,9 @@ jobs:
           --preset g++-13 \
           --out-dir benchmark_results \
           --compare benchmark/tools/compare.py \
+          -DTEIDE_USE_VCPKG=OFF \
+          -DCMAKE_PREFIX_PATH=${{steps.packages.outputs.install-dir}} \
+          -DTEIDE_PRECOMPILED_HEADERS=ON \
           "$base_ref" "${{github.sha}}"
 
     - name: Save output

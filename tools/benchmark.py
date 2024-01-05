@@ -10,6 +10,7 @@ from pathlib import Path
 
 
 def run_process(cmd):
+    print('>', subprocess.list2cmdline(cmd))
     proc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, encoding='utf-8')
     proc.check_returncode()
     return proc.stdout
@@ -46,7 +47,7 @@ def run_benchmark(bin_dir: Path, out_file: Path, build: bool = False):
     print(f"Results stored in file {out_file}")
 
 
-def benchmark_commit(ref_name, preset, out_dir: Path):
+def benchmark_commit(ref_name, preset, out_dir: Path, definitions: list[str]):
     commit_hash = run_process(['git', 'rev-parse', ref_name]).strip()
     out_file = out_dir / (commit_hash + '.json')
     print(f"Benchmarking commit {commit_hash}...")
@@ -57,17 +58,17 @@ def benchmark_commit(ref_name, preset, out_dir: Path):
         print(f"Configuring preset {preset}")
         bin_dir = Path('build') / preset
         shutil.rmtree(bin_dir, ignore_errors=True)
-        run_process(['cmake', '--preset', preset, '-B', bin_dir])
+        run_process(['cmake', '--preset', preset, '-B', bin_dir] + ['-D'+x for x in definitions])
 
         run_benchmark(bin_dir, out_file, build=True)
     return out_file
 
 
-def benchmark_compare(ref1_name: str, ref2_name: str, preset, out_dir: Path, compare: str):
+def benchmark_compare(ref1_name: str, ref2_name: str, preset, out_dir: Path, compare: str, definitions: list[str]):
     output_file = out_dir / (ref1_name + '_' + ref2_name + '.json')
     result1 = benchmark_commit(ref1_name, preset, out_dir)
     print()
-    result2 = benchmark_commit(ref2_name, preset, out_dir)
+    result2 = benchmark_commit(ref2_name, preset, out_dir, definitions)
     print()
     print(run_process([sys.executable, compare, '--display_aggregates_only', '--dump_to_json', output_file, 'benchmarks', result1, result2]))
 
@@ -80,6 +81,11 @@ def benchmark_prs(preset, out_dir: Path, compare: str):
         print(f"  Base: {merge_base} ({pr['baseRefName']})")
         benchmark_compare(merge_base, pr['headRefOid'], preset, out_dir, compare)
 
+
+def add_build_options(cmd):
+    cmd.add_argument('-p', '--preset', required=True)
+    cmd.add_argument('-o', '--out-dir', required=True, type=Path)
+    cmd.add_argument('-D', dest='definitions', default=[], action='append')
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -95,8 +101,7 @@ if __name__ == '__main__':
     cmd = subparsers.add_parser('commit',
         help="Run benchmarks on a commit")
     cmd.add_argument('ref_name')
-    cmd.add_argument('-p', '--preset', required=True)
-    cmd.add_argument('-o', '--out-dir', required=True, type=Path)
+    add_build_options(cmd)
     cmd.set_defaults(func=benchmark_commit)
 
     default_compare = os.environ.get('BENCHMARK_COMPARE')
@@ -105,22 +110,24 @@ if __name__ == '__main__':
         help="Run benchmarks on two commits and compare the results")
     cmd.add_argument('ref1_name')
     cmd.add_argument('ref2_name')
-    cmd.add_argument('-p', '--preset', required=True)
-    cmd.add_argument('-o', '--out-dir', required=True, type=Path)
+    add_build_options(cmd)
     cmd.add_argument('--compare', required=default_compare==None, default=default_compare)
     cmd.set_defaults(func=benchmark_compare)
 
     cmd = subparsers.add_parser('prs')
-    cmd.add_argument('-p', '--preset', required=True)
-    cmd.add_argument('-o', '--out-dir', required=True, type=Path)
+    add_build_options(cmd)
     cmd.add_argument('--compare', required=default_compare==None, default=default_compare)
     cmd.set_defaults(func=benchmark_prs)
 
     opts = parser.parse_args()
     func = opts.func
     delattr(opts, 'func')
+    print(vars(opts))
     try:
         func(**vars(opts))
     except subprocess.CalledProcessError as e:
         print(e.output)
         sys.exit(1)
+    except KeyboardInterrupt:
+        print("Cancelled")
+        sys.exit(2)
