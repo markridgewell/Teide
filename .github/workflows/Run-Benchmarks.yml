@@ -42,7 +42,7 @@ jobs:
 
     - name: Run benchmark script
       run: |
-        base_ref=$(git merge-base "${{github.sha}}" "${{inputs.base-branch}}")
+        base_ref=$(git merge-base "${{github.sha}}" "origin/${{inputs.base-branch}}")
         python tools/benchmark.py compare \
           --preset g++-13 \
           --out-dir benchmark_results \
