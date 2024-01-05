@@ -35,16 +35,19 @@ def git_switch(ref):
 def run_benchmark(bin_dir: Path, out_file: Path, build: bool = False):
     if build:
         print(f"Building in binary directory {bin_dir}")
-        run_process(['cmake', '--build', bin_dir])
+        run_process(['cmake', '--build', bin_dir, '--config', 'Release'])
+
     print("Running benchmarks")
-    out_file.parent.mkdir(exist_ok=True)
-    run_process(
-        [bin_dir / 'benchmarks/TeideBenchmark/TeideBenchmark',
-        f'--benchmark_out={out_file}',
-        '--benchmark_repetitions=20',
-        '--benchmark_min_warmup_time=1',
-        '--benchmark_enable_random_interleaving=true'])
-    print(f"Results stored in file {out_file}")
+    with tempfile.TemporaryDirectory() as install_dir:
+        run_process(['cmake', '--install', bin_dir, '--prefix', install_dir, '--component', 'benchmarks'])
+        out_file.parent.mkdir(exist_ok=True)
+        run_process(
+            [install_dir + '/benchmarks/TeideBenchmark',
+            f'--benchmark_out={out_file}',
+            '--benchmark_repetitions=20',
+            '--benchmark_min_warmup_time=1',
+            '--benchmark_enable_random_interleaving=true'])
+        print(f"Results stored in file {out_file}")
 
 
 def benchmark_commit(ref_name, preset, out_dir: Path, definitions: list[str]):
@@ -58,7 +61,7 @@ def benchmark_commit(ref_name, preset, out_dir: Path, definitions: list[str]):
         print(f"Configuring preset {preset}")
         bin_dir = Path('build') / preset
         shutil.rmtree(bin_dir, ignore_errors=True)
-        run_process(['cmake', '--preset', preset, '-B', bin_dir] + ['-D'+x for x in definitions])
+        run_process(['cmake', '--preset', preset, '-B', bin_dir, '-DTEIDE_BUILD_TESTS=OFF', '-DTEIDE_BUILD_EXAMPLES=OFF'] + ['-D'+x for x in definitions])
 
         run_benchmark(bin_dir, out_file, build=True)
     return out_file
