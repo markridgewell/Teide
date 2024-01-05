@@ -38,16 +38,17 @@ def run_benchmark(bin_dir: Path, out_file: Path, build: bool = False):
         print(run_process(['cmake', '--build', bin_dir, '--config', 'Release']))
 
     print("Running benchmarks")
-    with tempfile.TemporaryDirectory() as install_dir:
-        print(run_process(['cmake', '--install', bin_dir, '--prefix', install_dir, '--component', 'benchmarks', '--verbose']))
-        out_file.parent.mkdir(exist_ok=True)
-        print(run_process(
-            [install_dir + '/benchmarks/TeideBenchmark',
-            f'--benchmark_out={out_file}',
-            '--benchmark_repetitions=20',
-            '--benchmark_min_warmup_time=1',
-            '--benchmark_enable_random_interleaving=true']))
-        print(f"Results stored in file {out_file}")
+    out_file.parent.mkdir(exist_ok=True)
+    exe_paths = ['benchmarks/TeideBenchmark/TeideBenchmark', 'benchmarks/TeideBenchmark/Release/TeideBenchmark']
+    full_paths = [bin_dir / i for i in exe_paths]
+    valid_paths = [i for i in full_paths if i.exists()]
+    print(run_process(
+        [valid_paths[0],
+        f'--benchmark_out={out_file}',
+        '--benchmark_repetitions=20',
+        '--benchmark_min_warmup_time=1',
+        '--benchmark_enable_random_interleaving=true']))
+    print(f"Results stored in file {out_file}")
 
 
 def benchmark_commit(ref_name, preset, out_dir: Path, definitions: list[str]):
