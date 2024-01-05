@@ -61,7 +61,7 @@ def benchmark_commit(ref_name, preset, out_dir: Path, definitions: list[str]):
         print(f"Configuring preset {preset}")
         bin_dir = Path('build') / preset
         shutil.rmtree(bin_dir, ignore_errors=True)
-        run_process(['cmake', '--preset', preset, '-B', bin_dir, '-DTEIDE_BUILD_TESTS=OFF', '-DTEIDE_BUILD_EXAMPLES=OFF'] + ['-D'+x for x in definitions])
+        print(run_process(['cmake', '--preset', preset, '-B', bin_dir, '-DTEIDE_BUILD_TESTS=OFF', '-DTEIDE_BUILD_EXAMPLES=OFF'] + ['-D'+x for x in definitions]))
 
         run_benchmark(bin_dir, out_file, build=True)
     return out_file
