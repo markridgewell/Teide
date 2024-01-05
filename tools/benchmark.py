@@ -99,7 +99,7 @@ if __name__ == '__main__':
     cmd.add_argument('-o', '--out-dir', required=True, type=Path)
     cmd.set_defaults(func=benchmark_commit)
 
-    default_compare = os.environ.get('COMPARE')
+    default_compare = os.environ.get('BENCHMARK_COMPARE')
 
     cmd = subparsers.add_parser('compare',
         help="Run benchmarks on two commits and compare the results")
@@ -123,3 +123,4 @@ if __name__ == '__main__':
         func(**vars(opts))
     except subprocess.CalledProcessError as e:
         print(e.output)
+        sys.exit(1)
