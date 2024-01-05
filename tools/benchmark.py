@@ -109,7 +109,7 @@ if __name__ == '__main__':
     cmd.add_argument('-o', '--out-dir', required=True, type=Path)
     cmd.add_argument('--compare', required=default_compare==None, default=default_compare)
     cmd.set_defaults(func=benchmark_compare)
-    
+
     cmd = subparsers.add_parser('prs')
     cmd.add_argument('-p', '--preset', required=True)
     cmd.add_argument('-o', '--out-dir', required=True, type=Path)

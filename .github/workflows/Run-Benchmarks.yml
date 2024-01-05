@@ -18,7 +18,7 @@ jobs:
   benchmark:
     name: Run-Benchmarks
     runs-on: ubuntu-latest
-    
+
     steps:
     - name: Checkout
       uses: actions/checkout@v3
