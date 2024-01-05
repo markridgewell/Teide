@@ -46,7 +46,7 @@ runs:
         echo "::group::Install apt packages"
         # If clang packages requested, add the appropriate llvm repository
         LLVM_VERSIONS=$(echo ${{inputs.extra-packages}} | tr ' ' '\n' | sed -n 's/^clang.*-\([1-9][0-9]*\)$/\1/p' | sort | uniq)
-        if [ -n "{$LLVM_VERSIONS}" ]; then
+        if [ -n "${LLVM_VERSIONS}" ]; then
           wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key | sudo tee /etc/apt/trusted.gpg.d/apt.llvm.org.asc
           UBUNTU_CODENAME=`sudo cat /etc/os-release | sed -n s/UBUNTU_CODENAME=//p`
           for VERSION in ${LLVM_VERSIONS}; do
