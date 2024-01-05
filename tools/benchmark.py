@@ -35,7 +35,7 @@ def git_switch(ref):
 def run_benchmark(bin_dir: Path, out_file: Path, build: bool = False):
     if build:
         print(f"Building in binary directory {bin_dir}")
-        run_process(['cmake', '--build', bin_dir, '--config', 'Release'])
+        print(run_process(['cmake', '--build', bin_dir, '--config', 'Release']))
 
     print("Running benchmarks")
     with tempfile.TemporaryDirectory() as install_dir:
