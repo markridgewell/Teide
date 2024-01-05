@@ -38,7 +38,7 @@ jobs:
     - name: Install google benchmark tools
       run: |
         git clone https://github.com/google/benchmark.git
-        python -m pip benchmark/tools/requirements.txt
+        python -m pip install benchmark/tools/requirements.txt
 
     - name: Run benchmark script
       run: >-
