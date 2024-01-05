@@ -39,14 +39,14 @@ def run_benchmark(bin_dir: Path, out_file: Path, build: bool = False):
 
     print("Running benchmarks")
     with tempfile.TemporaryDirectory() as install_dir:
-        run_process(['cmake', '--install', bin_dir, '--prefix', install_dir, '--component', 'benchmarks'])
+        print(run_process(['cmake', '--install', bin_dir, '--prefix', install_dir, '--component', 'benchmarks']))
         out_file.parent.mkdir(exist_ok=True)
-        run_process(
+        print(run_process(
             [install_dir + '/benchmarks/TeideBenchmark',
             f'--benchmark_out={out_file}',
             '--benchmark_repetitions=20',
             '--benchmark_min_warmup_time=1',
-            '--benchmark_enable_random_interleaving=true'])
+            '--benchmark_enable_random_interleaving=true']))
         print(f"Results stored in file {out_file}")
 
 
