@@ -1,0 +1,45 @@
+name: Run-Benchmarks
+
+on:
+  workflow_dispatch:
+    inputs:
+      base-branch:
+        description: 'Branch to compare benchmark against'
+        required: true
+        default: main
+        type: string
+      repetitions:
+        description: 'Number of times to run each benchmark'
+        required: true
+        default: 10
+        type: number
+
+jobs:
+  benchmark:
+    name: Run-Benchmarks
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+        submodules: false
+
+    - name: Install packages
+      id: packages
+      uses: ./.github/actions/install-packages
+
+    - name: Install dependencies
+      uses: ./.github/actions/install-dependencies
+      with:
+        extra-packages: ninja-build g++-13
+
+    - name: Run benchmark script
+      run: python tools/benchmark.py compare --preset g++-13 --out-dir benchmark_results "${{inputs.base-branch}}" "${{github.sha}}"
+
+    - name: Save output
+      uses: actions/upload-artifact@v3
+      with:
+        name: BenchmarkResults
+        path: benchmark_results
