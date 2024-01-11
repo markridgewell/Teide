@@ -35,8 +35,23 @@ jobs:
       with:
         extra-packages: ninja-build g++-13
 
+    - name: Install google benchmark tools
+      run: |
+        git clone https://github.com/google/benchmark.git
+        python -m pip install -r benchmark/tools/requirements.txt
+
     - name: Run benchmark script
-      run: python tools/benchmark.py compare --preset g++-13 --out-dir benchmark_results "${{inputs.base-branch}}" "${{github.sha}}"
+      run: |
+        base_ref=$(git merge-base "${{github.sha}}" "origin/${{inputs.base-branch}}")
+        python tools/benchmark.py compare \
+          --preset g++-13 \
+          --out-dir benchmark_results \
+          --compare benchmark/tools/compare.py \
+          --sw-render \
+          -DTEIDE_USE_VCPKG=OFF \
+          -DCMAKE_PREFIX_PATH=${{steps.packages.outputs.install-dir}} \
+          -DTEIDE_PRECOMPILED_HEADERS=ON \
+          "$base_ref" "${{github.sha}}"
 
     - name: Save output
       uses: actions/upload-artifact@v3
