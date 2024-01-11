@@ -1,1 +1,1 @@
-set(sources src/RenderBenchmarks.cpp)
+set(sources src/Main.cpp src/RenderBenchmarks.cpp)
