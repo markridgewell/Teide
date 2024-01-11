@@ -1,0 +1,60 @@
+name: Run-Benchmarks
+
+on:
+  workflow_dispatch:
+    inputs:
+      base-branch:
+        description: 'Branch to compare benchmark against'
+        required: true
+        default: main
+        type: string
+      repetitions:
+        description: 'Number of times to run each benchmark'
+        required: true
+        default: 10
+        type: number
+
+jobs:
+  benchmark:
+    name: Run-Benchmarks
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+        submodules: false
+
+    - name: Install packages
+      id: packages
+      uses: ./.github/actions/install-packages
+
+    - name: Install dependencies
+      uses: ./.github/actions/install-dependencies
+      with:
+        extra-packages: ninja-build g++-13
+
+    - name: Install google benchmark tools
+      run: |
+        git clone https://github.com/google/benchmark.git
+        python -m pip install -r benchmark/tools/requirements.txt
+
+    - name: Run benchmark script
+      run: |
+        base_ref=$(git merge-base "${{github.sha}}" "origin/${{inputs.base-branch}}")
+        python tools/benchmark.py compare \
+          --preset g++-13 \
+          --out-dir benchmark_results \
+          --compare benchmark/tools/compare.py \
+          --sw-render \
+          -DTEIDE_USE_VCPKG=OFF \
+          -DCMAKE_PREFIX_PATH=${{steps.packages.outputs.install-dir}} \
+          -DTEIDE_PRECOMPILED_HEADERS=ON \
+          "$base_ref" "${{github.sha}}"
+
+    - name: Save output
+      uses: actions/upload-artifact@v3
+      with:
+        name: BenchmarkResults
+        path: benchmark_results
