@@ -103,8 +103,12 @@ def benchmark_compare(
     result2 = benchmark_commit(ref2_name, preset, out_dir, definitions, repetitions, sw_render)
     print()
 
-    # Run comparison and report results
-    report = run_process([sys.executable, compare, '--display_aggregates_only', '--dump_to_json', out_json, 'benchmarks', result1, result2])
+    # Run comparison and report result
+    compare_cmd = [sys.executable, compare, '--display_aggregates_only', '--dump_to_json', out_json]
+    if out_report:
+        compare_cmd += ['--no-color']
+    compare_cmd += ['benchmarks', result1, result2]
+    report = run_process(compare_cmd)
     if out_report:
         with open(out_report, 'w') as f:
             f.write(report)

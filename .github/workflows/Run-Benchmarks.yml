@@ -59,6 +59,10 @@ jobs:
       env:
         GH_TOKEN: ${{github.token}}
       run: |
+        echo "## Benchmark Report" > comment.md
+        echo "```" >> comment.md
+        cat report.txt >> comment.md
+        echo "```" >> comment.md
         gh pr comment ${{github.ref_name}} --body-file report.txt
 
     - name: Save output
