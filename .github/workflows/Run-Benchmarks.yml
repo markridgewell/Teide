@@ -63,7 +63,7 @@ jobs:
         echo "```" >> comment.md
         cat report.txt >> comment.md
         echo "```" >> comment.md
-        gh pr comment ${{github.ref_name}} --body-file report.txt
+        gh pr comment ${{github.ref_name}} --body-file comment.md
 
     - name: Save output
       uses: actions/upload-artifact@v3
