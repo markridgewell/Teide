@@ -48,6 +48,7 @@ jobs:
           --out-dir benchmark_results \
           --out-report report.txt \
           --compare benchmark/tools/compare.py \
+          --repetitions ${{inputs.repetitions}} \
           --sw-render \
           -DTEIDE_USE_VCPKG=OFF \
           -DCMAKE_PREFIX_PATH=${{steps.packages.outputs.install-dir}} \

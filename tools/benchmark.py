@@ -32,7 +32,12 @@ def git_switch(ref):
     return GitSwitcher(ref)
 
 
-def run_benchmark(bin_dir: Path, out_file: Path, build: bool = False, sw_render: bool = True):
+def run_benchmark(
+        bin_dir: Path,
+        out_file: Path,
+        repetitions: int,
+        sw_render: bool,
+        build: bool = False):
     if build:
         print(f"Building in binary directory {bin_dir}")
         print(run_process(['cmake', '--build', bin_dir, '--config', 'Release']))
@@ -44,7 +49,7 @@ def run_benchmark(bin_dir: Path, out_file: Path, build: bool = False, sw_render:
     valid_paths = [i for i in full_paths if i.exists()]
     cmd = [valid_paths[0],
         f'--benchmark_out={out_file}',
-        '--benchmark_repetitions=20',
+        f'--benchmark_repetitions={repetitions}',
         '--benchmark_min_warmup_time=1',
         '--benchmark_enable_random_interleaving=true']
     if sw_render:
@@ -53,7 +58,14 @@ def run_benchmark(bin_dir: Path, out_file: Path, build: bool = False, sw_render:
     print(f"Results stored in file {out_file}")
 
 
-def benchmark_commit(ref_name, preset, out_dir: Path, definitions: list[str], sw_render: bool = True):
+def benchmark_commit(
+        ref_name: str,
+        preset: str,
+        out_dir: Path,
+        definitions: list[str],
+        repetitions: int,
+        sw_render: bool
+    ) -> Path:
     commit_hash = run_process(['git', 'rev-parse', ref_name]).strip()
     out_file = out_dir / (commit_hash + '.json')
     print(f"Benchmarking commit {commit_hash}...")
@@ -66,7 +78,7 @@ def benchmark_commit(ref_name, preset, out_dir: Path, definitions: list[str], sw
         shutil.rmtree(bin_dir, ignore_errors=True)
         print(run_process(['cmake', '--preset', preset, '-B', bin_dir, '-DTEIDE_BUILD_TESTS=OFF', '-DTEIDE_BUILD_EXAMPLES=OFF'] + ['-D'+x for x in definitions]))
 
-        run_benchmark(bin_dir, out_file, build=True, sw_render=sw_render)
+        run_benchmark(bin_dir, out_file, build=True, repetitions=repetitions, sw_render=sw_render)
     return out_file
 
 
@@ -77,6 +89,7 @@ def benchmark_compare(
         out_dir: Path,
         compare: str,
         definitions: list[str],
+        repetitions: int,
         sw_render: bool = True,
         out_json: Path = None,
         out_report: Path = None,
@@ -85,9 +98,9 @@ def benchmark_compare(
     # Run benchmarks
     if not out_json:
         out_json = out_dir / (ref1_name + '_' + ref2_name + '.json')
-    result1 = benchmark_commit(ref1_name, preset, out_dir, definitions, sw_render)
+    result1 = benchmark_commit(ref1_name, preset, out_dir, definitions, repetitions, sw_render)
     print()
-    result2 = benchmark_commit(ref2_name, preset, out_dir, definitions, sw_render)
+    result2 = benchmark_commit(ref2_name, preset, out_dir, definitions, repetitions, sw_render)
     print()
 
     # Run comparison and report results
@@ -115,13 +128,15 @@ def benchmark_compare(
 
 
 def add_build_options(cmd):
-    cmd.add_argument('-p', '--preset', required=True)
-    cmd.add_argument('-o', '--out-dir', required=True, type=Path)
+    cmd.add_argument('-p', '--preset', metavar='NAME', required=True, help="Name of preset to use to build benchmarks")
+    cmd.add_argument('-o', '--out-dir', metavar='PATH', required=True, type=Path, help="Path to output directory to store benchmark results")
     cmd.add_argument('-D', dest='definitions', default=[], action='append')
 
 
-def add_common_options(cmd):
-    cmd.add_argument('--sw-render', action='store_true')
+def add_run_options(cmd):
+    default_repetitions: int = 10
+    cmd.add_argument('--repetitions', metavar='N', type=int, default=default_repetitions, help=f"Number of repetitions (default {default_repetitions})")
+    cmd.add_argument('--sw-render', action='store_true', help="Enable software rendering when running benchmarks")
 
 
 if __name__ == '__main__':
@@ -133,14 +148,14 @@ if __name__ == '__main__':
     cmd.add_argument('-b', '--bin-dir', required=True)
     cmd.add_argument('-o', '--out-file', required=True)
     cmd.add_argument('--build', action='store_true')
-    add_common_options(cmd)
+    add_run_options(cmd)
     cmd.set_defaults(func=run_benchmark)
 
     cmd = subparsers.add_parser('commit',
         help="Run benchmarks on a commit")
     cmd.add_argument('ref_name')
     add_build_options(cmd)
-    add_common_options(cmd)
+    add_run_options(cmd)
     cmd.set_defaults(func=benchmark_commit)
 
     default_compare = os.environ.get('BENCHMARK_COMPARE')
@@ -150,11 +165,11 @@ if __name__ == '__main__':
     cmd.add_argument('ref1_name')
     cmd.add_argument('ref2_name')
     add_build_options(cmd)
-    add_common_options(cmd)
+    add_run_options(cmd)
     cmd.add_argument('--compare', required=default_compare==None, default=default_compare)
-    cmd.add_argument('--out-json', type=Path, help="Json file to write comparison data into")
-    cmd.add_argument('--out-report', type=Path, help="Plain text file to write comparison report into")
-    cmd.add_argument('--out-summary', type=Path, help="Markdown file to write comparison summary into")
+    cmd.add_argument('--out-json', metavar='FILENAME', type=Path, help="Json file to write comparison data into")
+    cmd.add_argument('--out-report', metavar='FILENAME', type=Path, help="Plain text file to write comparison report into")
+    cmd.add_argument('--out-summary', metavar='FILENAME', type=Path, help="Markdown file to write comparison summary into")
     cmd.set_defaults(func=benchmark_compare)
 
     opts = parser.parse_args()
