@@ -59,7 +59,7 @@ jobs:
       env:
         GH_TOKEN: ${{github.token}}
       run: |
-        gh pr comment ${{github.ref_name}} --body-file report.txt --edit-last
+        gh pr comment ${{github.ref_name}} --body-file report.txt
 
     - name: Save output
       uses: actions/upload-artifact@v3
