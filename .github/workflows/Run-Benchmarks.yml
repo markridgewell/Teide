@@ -46,12 +46,17 @@ jobs:
         python tools/benchmark.py compare \
           --preset g++-13 \
           --out-dir benchmark_results \
+          --out-report report.txt \
           --compare benchmark/tools/compare.py \
           --sw-render \
           -DTEIDE_USE_VCPKG=OFF \
           -DCMAKE_PREFIX_PATH=${{steps.packages.outputs.install-dir}} \
           -DTEIDE_PRECOMPILED_HEADERS=ON \
           "$base_ref" "${{github.sha}}"
+
+    - name: Write PR comment
+      run: |
+        gh pr comment ${{github.ref_name}} --body-file report.txt --edit-last
 
     - name: Save output
       uses: actions/upload-artifact@v3
