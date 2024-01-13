@@ -55,6 +55,8 @@ jobs:
           "$base_ref" "${{github.sha}}"
 
     - name: Write PR comment
+      env:
+        GH_TOKEN: ${{github.token}}
       run: |
         gh pr comment ${{github.ref_name}} --body-file report.txt --edit-last
 
