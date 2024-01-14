@@ -59,11 +59,31 @@ jobs:
       env:
         GH_TOKEN: ${{github.token}}
       run: |
+        ## Get the ID of the previous comment, if present
+        comment_id=$( \
+          gh pr view ${{github.ref_name}} \
+            --json comments \
+            --jq '.comments[] \
+              | select(.author.login == "github-actions") \
+              | select(.body|startswith("##")) \
+              | .url'
+          | sed 's/^.*issuecomment-//'
+
         echo "## Benchmark Report" > comment.md
-        echo "```" >> comment.md
+        echo '```' >> comment.md
         cat report.txt >> comment.md
-        echo "```" >> comment.md
-        gh pr comment ${{github.ref_name}} --body-file comment.md
+        echo '```' >> comment.md
+
+        if [[ -z "${comment_id}" ]]; then
+          gh pr comment ${{github.ref_name}} --body-file comment.md
+        else
+          gh api \
+            --method PATCH \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            /repos/{owner}/{repo}/issues/comments/${comment_id} \
+            -f body=@comment.md
+        fi
 
     - name: Save output
       uses: actions/upload-artifact@v3
