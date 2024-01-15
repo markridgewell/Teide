@@ -60,13 +60,17 @@ jobs:
       env:
         GH_TOKEN: ${{github.token}}
       run: |
-        echo "## Benchmark Report" > comment.md
-        cat summary.md >> comment.md
-        echo "<details><summary>Full report</summary>" >> comment.md
-        echo '```' >> comment.md
-        cat report.txt >> comment.md
-        echo '```' >> comment.md
-        echo "</details>" >> comment.md
+        (
+          echo "## Benchmark Report"
+          cat summary.md
+          echo "<details><summary>Full report</summary>"
+          echo ""
+          echo '```'
+          cat report.txt
+          echo '```'
+          echo ""
+          echo "</details>"
+        ) >> comment.md
 
         bash .github/scripts/update-comment.sh ${{github.ref_name}} github-actions comment.md
 
