@@ -82,6 +82,10 @@ def benchmark_commit(
     return out_file
 
 
+def to_string(f: float, precision: int):
+    return f'{f:.{precision}f}'
+
+
 def benchmark_compare(
         ref1_name: str,
         ref2_name: str,
@@ -116,19 +120,48 @@ def benchmark_compare(
         print(out_report)
 
     # Write summary
+    if not out_summary:
+        return
     with open(out_json) as f:
         results = json.load(f)
     test_names = [i['name'] for i in results if 'time_pvalue' in i['utest']]
-    print(test_names)
 
     def lookup(name: str):
         return next(filter(lambda x: x['name'] == name, results), None)
 
+    headers = ["Benchmark", "Result", "Time Old", "Time New", "P-value"]
+    rows = []
     for name in test_names:
         utest = lookup(name)['utest']
         time_pvalue = utest['time_pvalue']
         measurements = lookup(name+'_mean')['measurements'][0]
-        print(name, time_pvalue, measurements)
+        time = measurements['time']
+        if time_pvalue > 0.1:
+            continue
+        else:
+            faster = time > 0
+            result = '{} {:0.2f}% {}'.format("🟢" if faster else "🔴", abs(time * 100), "faster" if time > 0 else "slower")
+        rows += [[name, result, to_string(measurements['real_time'] / 1000, 0) + 'ms', to_string(measurements['real_time_other'] / 1000, 0) + 'ms', to_string(time_pvalue, 4)]]
+
+    num_results = len(rows)
+    if num_results > 0:
+        preamble = "{} benchmark result{} with statistically significant differences:".format(num_results, "s" if num_results > 1 else "")
+    else:
+        preamble = "No benchmark results with statistically significant differences!"
+
+    with open(out_summary, 'w') as f:
+        f.write(preamble)
+        f.write("\n\n")
+        if not rows:
+            return
+
+        rows.insert(0, headers)
+        col_widths = [[len(j) for j in i] for i in rows]
+        col_widths = [max(*i) for i in zip(*col_widths)]
+        rows.insert(1, ['-' * i for i in col_widths])
+        for row in rows:
+            padded_row = ['{:{}}'.format(*i) for i in zip(row, col_widths)]
+            f.write('| ' + ' | '.join(padded_row) + ' |\n')
 
 
 def add_build_options(cmd):

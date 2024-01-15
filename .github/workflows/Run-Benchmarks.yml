@@ -47,6 +47,7 @@ jobs:
           --preset g++-13 \
           --out-dir benchmark_results \
           --out-report report.txt \
+          --out-summary summary.md \
           --compare benchmark/tools/compare.py \
           --repetitions ${{inputs.repetitions}} \
           --sw-render \
@@ -60,9 +61,12 @@ jobs:
         GH_TOKEN: ${{github.token}}
       run: |
         echo "## Benchmark Report" > comment.md
+        cat summary.md >> comment.md
+        echo "<details><summary>Full report</summary>" >> comment.md
         echo '```' >> comment.md
         cat report.txt >> comment.md
         echo '```' >> comment.md
+        echo "</details>" >> comment.md
 
         bash .github/scripts/update-comment.sh ${{github.ref_name}} github-actions comment.md
 
