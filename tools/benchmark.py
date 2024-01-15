@@ -139,8 +139,8 @@ def benchmark_compare(
         if time_pvalue > 0.1:
             continue
         else:
-            faster = time > 0
-            result = '{} {:0.2f}% {}'.format("🟢" if faster else "🔴", abs(time * 100), "faster" if time > 0 else "slower")
+            faster = time < 0
+            result = '{} {:0.2f}% {}'.format("🟢" if faster else "🔴", abs(time * 100), "faster" if faster else "slower")
         rows += [[name, result, to_string(measurements['real_time'] / 1000, 0) + 'ms', to_string(measurements['real_time_other'] / 1000, 0) + 'ms', to_string(time_pvalue, 4)]]
 
     num_results = len(rows)
