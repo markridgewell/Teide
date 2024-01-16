@@ -20,7 +20,7 @@
 namespace Teide
 {
 
-class GraphicsDevice;
+class Device;
 
 struct ViewportRegion
 {

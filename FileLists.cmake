@@ -12,9 +12,9 @@ set(sources
     include/Teide/Buffer.h
     include/Teide/BytesView.h
     include/Teide/Definitions.h
+    include/Teide/Device.h
     include/Teide/Format.h
     include/Teide/ForwardDeclare.h
-    include/Teide/GraphicsDevice.h
     include/Teide/Hash.h
     include/Teide/Mesh.h
     include/Teide/MeshData.h
@@ -56,8 +56,8 @@ set(sources
     src/Teide/VulkanBuffer.cpp
     src/Teide/VulkanBuffer.h
     src/Teide/VulkanConfig.h
-    src/Teide/VulkanGraphicsDevice.cpp
-    src/Teide/VulkanGraphicsDevice.h
+    src/Teide/VulkanDevice.cpp
+    src/Teide/VulkanDevice.h
     src/Teide/VulkanLoader.cpp
     src/Teide/VulkanLoader.h
     src/Teide/VulkanMesh.h

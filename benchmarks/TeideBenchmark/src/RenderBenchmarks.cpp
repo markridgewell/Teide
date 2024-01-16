@@ -1,7 +1,7 @@
 
 #include "ShaderCompiler/ShaderCompiler.h"
 #include "Teide/Buffer.h"
-#include "Teide/GraphicsDevice.h"
+#include "Teide/Device.h"
 #include "Teide/Renderer.h"
 
 #include <benchmark/benchmark.h>
@@ -76,7 +76,7 @@ void BM_RenderNothing(benchmark::State& state)
 
     const Teide::RenderTargetInfo renderTarget = CreateRenderTargetInfo(static_cast<Teide::uint32>(state.range(0)));
 
-    const Teide::GraphicsDevicePtr device = Teide::CreateHeadlessDevice();
+    const Teide::DevicePtr device = Teide::CreateHeadlessDevice();
     const Teide::RendererPtr renderer = device->CreateRenderer(nullptr);
 
     for (auto _ [[maybe_unused]] : state)
@@ -92,7 +92,7 @@ void BM_RenderToTexture(benchmark::State& state)
 
     const Teide::RenderTargetInfo renderTarget = CreateRenderTargetInfo(static_cast<Teide::uint32>(state.range(0)));
 
-    const Teide::GraphicsDevicePtr device = Teide::CreateHeadlessDevice();
+    const Teide::DevicePtr device = Teide::CreateHeadlessDevice();
     const Teide::RendererPtr renderer = device->CreateRenderer(nullptr);
 
     const auto vertices = Teide::MakeBytes<float>({-1.0f, -1.0f, 3.0f, -1.0f, -1.0f, 3.0f});

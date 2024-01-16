@@ -2,7 +2,7 @@
 #include "Teide/Texture.h"
 
 #include "Teide/CommandBuffer.h"
-#include "Teide/GraphicsDevice.h"
+#include "Teide/Device.h"
 #include "Teide/TestUtils.h"
 #include "Teide/TextureData.h"
 
@@ -13,7 +13,7 @@ using namespace Teide;
 
 TEST(TextureTest, GenerateMipmaps)
 {
-    auto device = CreateTestGraphicsDevice();
+    auto device = CreateTestDevice();
     const TextureData textureData = {
         .size = {2, 2},
         .format = Format::Byte4Norm,

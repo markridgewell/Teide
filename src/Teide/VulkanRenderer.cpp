@@ -3,7 +3,7 @@
 
 #include "Vulkan.h"
 #include "VulkanBuffer.h"
-#include "VulkanGraphicsDevice.h"
+#include "VulkanDevice.h"
 #include "VulkanMesh.h"
 #include "VulkanParameterBlock.h"
 #include "VulkanPipeline.h"
@@ -92,7 +92,7 @@ GPU         |          0           |           1          |          0          
 This allows the CPU and GPU to work concurrently, while ensuring they never work on the same frame at the same time.
 */
 
-VulkanRenderer::VulkanRenderer(VulkanGraphicsDevice& device, const QueueFamilies& queueFamilies, ShaderEnvironmentPtr shaderEnvironment) :
+VulkanRenderer::VulkanRenderer(VulkanDevice& device, const QueueFamilies& queueFamilies, ShaderEnvironmentPtr shaderEnvironment) :
     m_device{device},
     m_graphicsQueue{device.GetVulkanDevice().getQueue(queueFamilies.graphicsFamily, 0)},
     m_shaderEnvironment{std::move(shaderEnvironment)}

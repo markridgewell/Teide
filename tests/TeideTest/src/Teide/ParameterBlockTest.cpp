@@ -68,7 +68,7 @@ TEST(ParameterBlockTest, LayoutHasDescriptorsAndPushConstants)
 
 TEST(ParameterBlockTest, ConstructUniformBufferWithoutData)
 {
-    auto device = CreateTestGraphicsDevice();
+    auto device = CreateTestDevice();
 
     // Create a pblock layout with a 4-byte uniform buffer
     const Teide::ParameterBlockLayoutData layout = {

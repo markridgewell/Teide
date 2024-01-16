@@ -7,7 +7,7 @@
 #include "GeoLib/Vector.h"
 #include "ShaderCompiler/ShaderCompiler.h"
 #include "Teide/Buffer.h"
-#include "Teide/GraphicsDevice.h"
+#include "Teide/Device.h"
 #include "Teide/Mesh.h"
 #include "Teide/Renderer.h"
 
@@ -65,7 +65,7 @@ protected:
 
     Teide::ShaderData CompileShader(const ShaderSourceData& data);
 
-    Teide::GraphicsDevice& GetDevice();
+    Teide::Device& GetDevice();
 
 private:
     static void CompareImageToReference(const Teide::TextureData& image, const testing::TestInfo& testInfo);
@@ -75,7 +75,7 @@ private:
     static std::filesystem::path s_outputDir;
 
     RenderDoc m_renderDoc;
-    Teide::GraphicsDevicePtr m_device;
+    Teide::DevicePtr m_device;
     Teide::ShaderEnvironmentPtr m_shaderEnv;
     Teide::RendererPtr m_renderer;
     ShaderCompiler m_shaderCompiler;

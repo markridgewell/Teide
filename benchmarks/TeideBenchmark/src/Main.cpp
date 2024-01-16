@@ -1,5 +1,5 @@
 
-#include "Teide/GraphicsDevice.h"
+#include "Teide/Device.h"
 
 #include <benchmark/benchmark.h>
 

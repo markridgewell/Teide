@@ -6,8 +6,8 @@
 #include "GeoLib/Matrix.h"
 #include "GeoLib/Vector.h"
 #include "ShaderCompiler/ShaderCompiler.h"
+#include "Teide/Device.h"
 #include "Teide/ForwardDeclare.h"
-#include "Teide/GraphicsDevice.h"
 #include "Teide/Surface.h"
 
 #include <SDL.h>
@@ -58,7 +58,7 @@ private:
 
     SDL_Window* m_window;
 
-    Teide::GraphicsDevicePtr m_device;
+    Teide::DevicePtr m_device;
     Teide::SurfacePtr m_surface;
     Teide::ShaderEnvironmentPtr m_shaderEnvironment;
     ShaderCompiler m_shaderCompiler;

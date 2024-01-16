@@ -10,7 +10,7 @@
 #include "VulkanTexture.h"
 
 #include "Teide/BasicTypes.h"
-#include "Teide/GraphicsDevice.h"
+#include "Teide/Device.h"
 #include "Teide/Hash.h"
 #include "Teide/Renderer.h"
 #include "Teide/Surface.h"
@@ -33,19 +33,19 @@ class DescriptorPool;
 
 using VulkanParameterBlockLayoutPtr = std::shared_ptr<const VulkanParameterBlockLayout>;
 
-class VulkanGraphicsDevice : public GraphicsDevice
+class VulkanDevice : public Device
 {
 public:
-    explicit VulkanGraphicsDevice(
+    explicit VulkanDevice(
         VulkanLoader loader, vk::UniqueInstance instance, Teide::PhysicalDevice physicalDevice,
         const GraphicsSettings& settings = {});
 
-    VulkanGraphicsDevice(const VulkanGraphicsDevice&) = delete;
-    VulkanGraphicsDevice(VulkanGraphicsDevice&&) = delete;
-    VulkanGraphicsDevice& operator=(const VulkanGraphicsDevice&) = delete;
-    VulkanGraphicsDevice& operator=(VulkanGraphicsDevice&&) = delete;
+    VulkanDevice(const VulkanDevice&) = delete;
+    VulkanDevice(VulkanDevice&&) = delete;
+    VulkanDevice& operator=(const VulkanDevice&) = delete;
+    VulkanDevice& operator=(VulkanDevice&&) = delete;
 
-    ~VulkanGraphicsDevice() override;
+    ~VulkanDevice() override;
 
     SurfacePtr CreateSurface(SDL_Window* window, bool multisampled) override;
     RendererPtr CreateRenderer(ShaderEnvironmentPtr shaderEnvironment) override;
@@ -164,6 +164,6 @@ private:
     Scheduler m_scheduler;
 };
 
-using VulkanGraphicsDevicePtr = std::unique_ptr<VulkanGraphicsDevice>;
+using VulkanDevicePtr = std::unique_ptr<VulkanDevice>;
 
 } // namespace Teide

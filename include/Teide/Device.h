@@ -20,7 +20,7 @@ struct GraphicsSettings
     uint32 numThreads = std::thread::hardware_concurrency();
 };
 
-class GraphicsDevice : AbstractBase
+class Device : AbstractBase
 {
 public:
     virtual SurfacePtr CreateSurface(SDL_Window* window, bool multisampled) = 0;
@@ -35,15 +35,15 @@ public:
     virtual ParameterBlockPtr CreateParameterBlock(const ParameterBlockData& data, const char* name) = 0;
 };
 
-using GraphicsDevicePtr = std::unique_ptr<GraphicsDevice>;
+using DevicePtr = std::unique_ptr<Device>;
 
 struct DeviceAndSurface
 {
-    GraphicsDevicePtr device;
+    DevicePtr device;
     SurfacePtr surface;
 };
 
 DeviceAndSurface CreateDeviceAndSurface(SDL_Window* window, bool multisampled = false, const GraphicsSettings& settings = {});
-GraphicsDevicePtr CreateHeadlessDevice(const GraphicsSettings& settings = {});
+DevicePtr CreateHeadlessDevice(const GraphicsSettings& settings = {});
 
 } // namespace Teide
