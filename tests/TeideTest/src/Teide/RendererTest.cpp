@@ -69,8 +69,8 @@ protected:
     };
 
 
-    DevicePtr m_device;         // NOLINT(cppcoreguidelines-non-private-member-variables-in-classes)
-    RendererPtr m_renderer;     // NOLINT(cppcoreguidelines-non-private-member-variables-in-classes)
+    DevicePtr m_device;     // NOLINT(cppcoreguidelines-non-private-member-variables-in-classes)
+    RendererPtr m_renderer; // NOLINT(cppcoreguidelines-non-private-member-variables-in-classes)
 
 private:
     ShaderCompiler m_shaderCompiler;
