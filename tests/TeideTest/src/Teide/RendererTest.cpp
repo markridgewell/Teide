@@ -6,7 +6,7 @@
 
 #include "ShaderCompiler/ShaderCompiler.h"
 #include "Teide/Buffer.h"
-#include "Teide/GraphicsDevice.h"
+#include "Teide/Device.h"
 #include "Teide/Mesh.h"
 #include "Teide/Texture.h"
 #include "Teide/TextureData.h"
@@ -22,7 +22,7 @@ namespace
 class RendererTest : public testing::Test
 {
 public:
-    RendererTest() : m_device{CreateTestGraphicsDevice()}, m_renderer{m_device->CreateRenderer(nullptr)} {}
+    RendererTest() : m_device{CreateTestDevice()}, m_renderer{m_device->CreateRenderer(nullptr)} {}
 
     void CreateRenderer(const ShaderEnvironmentData& data)
     {
@@ -69,8 +69,8 @@ protected:
     };
 
 
-    GraphicsDevicePtr m_device; // NOLINT(cppcoreguidelines-non-private-member-variables-in-classes)
-    RendererPtr m_renderer;     // NOLINT(cppcoreguidelines-non-private-member-variables-in-classes)
+    DevicePtr m_device;     // NOLINT(cppcoreguidelines-non-private-member-variables-in-classes)
+    RendererPtr m_renderer; // NOLINT(cppcoreguidelines-non-private-member-variables-in-classes)
 
 private:
     ShaderCompiler m_shaderCompiler;

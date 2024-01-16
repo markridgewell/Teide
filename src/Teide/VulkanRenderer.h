@@ -5,7 +5,7 @@
 #include "DescriptorPool.h"
 #include "ThreadUtils.h"
 #include "Vulkan.h"
-#include "VulkanGraphicsDevice.h"
+#include "VulkanDevice.h"
 #include "VulkanParameterBlock.h"
 #include "VulkanSurface.h"
 
@@ -25,7 +25,7 @@ namespace Teide
 class VulkanRenderer final : public Renderer
 {
 public:
-    explicit VulkanRenderer(VulkanGraphicsDevice& device, const QueueFamilies& queueFamilies, ShaderEnvironmentPtr shaderEnvironment);
+    explicit VulkanRenderer(VulkanDevice& device, const QueueFamilies& queueFamilies, ShaderEnvironmentPtr shaderEnvironment);
 
     VulkanRenderer(const VulkanRenderer&) = delete;
     VulkanRenderer(VulkanRenderer&&) = delete;
@@ -92,7 +92,7 @@ private:
         return GetCurrentFrame().threadResources.at(m_device.GetScheduler().GetThreadIndex());
     }
 
-    VulkanGraphicsDevice& m_device;
+    VulkanDevice& m_device;
     vk::Queue m_graphicsQueue;
     vk::Queue m_presentQueue;
     std::array<vk::UniqueSemaphore, MaxFramesInFlight> m_renderFinished;

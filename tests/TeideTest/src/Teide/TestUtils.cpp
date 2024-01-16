@@ -9,7 +9,7 @@
 #    include <windows.h>
 #endif
 
-Teide::VulkanGraphicsDevicePtr CreateTestGraphicsDevice()
+Teide::VulkanDevicePtr CreateTestDevice()
 {
     using namespace Teide;
 
@@ -17,7 +17,7 @@ Teide::VulkanGraphicsDevicePtr CreateTestGraphicsDevice()
     vk::UniqueInstance instance = CreateInstance(loader);
     auto physicalDevice = FindPhysicalDevice(instance.get());
 
-    return std::make_unique<VulkanGraphicsDevice>(std::move(loader), std::move(instance), std::move(physicalDevice));
+    return std::make_unique<VulkanDevice>(std::move(loader), std::move(instance), std::move(physicalDevice));
 }
 
 std::optional<std::uint32_t> GetTransferQueueIndex(vk::PhysicalDevice physicalDevice)

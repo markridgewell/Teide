@@ -9,7 +9,7 @@
 #include "ShaderCompiler/ShaderCompiler.h"
 #include "Teide/Buffer.h"
 #include "Teide/Definitions.h"
-#include "Teide/GraphicsDevice.h"
+#include "Teide/Device.h"
 #include "Teide/Mesh.h"
 #include "Teide/Renderer.h"
 #include "Teide/Shader.h"

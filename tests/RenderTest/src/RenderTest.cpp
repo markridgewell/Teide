@@ -318,7 +318,7 @@ Teide::ShaderData RenderTest::CompileShader(const ShaderSourceData& data)
     return m_shaderCompiler.Compile(data);
 }
 
-Teide::GraphicsDevice& RenderTest::GetDevice()
+Teide::Device& RenderTest::GetDevice()
 {
     return *m_device;
 }

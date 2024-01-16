@@ -3,7 +3,7 @@
 
 #include "Teide/Visitable.h"
 #include "Teide/Vulkan.h"
-#include "Teide/VulkanGraphicsDevice.h"
+#include "Teide/VulkanDevice.h"
 
 #include <gtest/gtest.h>
 
@@ -16,7 +16,7 @@
 
 inline bool g_windowless = false;
 
-Teide::VulkanGraphicsDevicePtr CreateTestGraphicsDevice();
+Teide::VulkanDevicePtr CreateTestDevice();
 
 std::optional<std::uint32_t> GetTransferQueueIndex(vk::PhysicalDevice physicalDevice);
 Teide::PhysicalDevice FindPhysicalDevice(vk::Instance instance);
