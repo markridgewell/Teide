@@ -147,7 +147,7 @@ def benchmark_compare(
     if num_results > 0:
         preamble = "{} benchmark result{} with statistically significant differences:".format(num_results, "s" if num_results > 1 else "")
     else:
-        preamble = "No benchmark results with statistically significant differences!"
+        preamble = "All benchmark results are statistically equivalent to baseline."
 
     with open(out_summary, 'w') as f:
         f.write(preamble)
