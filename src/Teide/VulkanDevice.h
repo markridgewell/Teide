@@ -15,6 +15,7 @@
 #include "Teide/Renderer.h"
 #include "Teide/Surface.h"
 
+#include <spdlog/spdlog.h>
 #include <vulkan/vulkan_hash.hpp>
 
 #include <compare>
@@ -33,7 +34,7 @@ class DescriptorPool;
 
 using VulkanParameterBlockLayoutPtr = std::shared_ptr<const VulkanParameterBlockLayout>;
 
-class VulkanDevice : public Device
+class VulkanDevice : public Device, public RefCounter
 {
 public:
     explicit VulkanDevice(
@@ -61,6 +62,26 @@ public:
 
     vk::PhysicalDeviceProperties GetProperties() const { return m_physicalDevice.physicalDevice.getProperties(); }
 
+    void AddRef(uint64 index) override
+    {
+        auto& texture = m_textures.at(index);
+        ++texture.refCount;
+        spdlog::debug("Adding ref to texture {} (now {})", index, texture.refCount);
+    }
+
+    void DecRef(uint64 index) override
+    {
+        auto& texture = m_textures.at(index);
+        --texture.refCount;
+        spdlog::debug("Decrementing ref from texture {} (now {})", index, texture.refCount);
+        if (texture.refCount == 0)
+        {
+            // Add texture to unused pool
+            spdlog::debug("Destroying texture {}", index);
+            texture = {};
+        }
+    }
+
     // Internal
     vk::Device GetVulkanDevice() { return m_device.get(); }
     vma::Allocator& GetAllocator() { return m_allocator.get(); }
@@ -70,6 +91,12 @@ public:
     auto& GetImpl(T& obj)
     {
         return dynamic_cast<const typename VulkanImpl<std::remove_const_t<T>>::type&>(obj);
+    }
+
+    const VulkanTexture& GetImpl(const Texture& obj)
+    {
+        const auto index = static_cast<uint64>(obj);
+        return m_textures.at(index);
     }
 
     template <class T>
@@ -160,6 +187,8 @@ private:
     vk::UniqueCommandPool m_surfaceCommandPool;
 
     vma::UniqueAllocator m_allocator;
+
+    std::vector<VulkanTexture> m_textures;
 
     Scheduler m_scheduler;
 };

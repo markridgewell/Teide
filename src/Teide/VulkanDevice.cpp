@@ -668,7 +668,7 @@ auto VulkanDevice::CreateTextureImpl(
     };
     auto sampler = m_device->createSamplerUnique(samplerInfo, s_allocator);
 
-    auto ret = VulkanTextureData{
+    auto ret = VulkanTexture{
         .image = vk::UniqueImage(image.release(), m_device.get()),
         .allocation = std::move(allocation),
         .imageView = std::move(imageView),
@@ -686,7 +686,7 @@ auto VulkanDevice::CreateTextureImpl(
         SetDebugName(ret.sampler, "{}:Sampler", debugName);
     }
 
-    return {VulkanTexture(std::move(ret)), initialState};
+    return {.texture = std::move(ret), .state = initialState};
 }
 
 void VulkanDevice::SetBufferData(VulkanBuffer& buffer, BytesView data)
@@ -817,7 +817,9 @@ TexturePtr VulkanDevice::CreateTexture(const TextureData& data, const char* name
         texture.TransitionToShaderInput(state, cmdBuffer);
     }
 
-    return std::make_shared<const VulkanTexture>(std::move(texture));
+    const auto index = static_cast<uint64>(m_textures.size());
+    m_textures.push_back(std::move(texture));
+    return std::make_shared<const Texture>(index, *this, data);
 }
 
 TexturePtr VulkanDevice::CreateRenderableTexture(const TextureData& data, const char* name)
@@ -848,7 +850,9 @@ TexturePtr VulkanDevice::CreateRenderableTexture(const TextureData& data, const 
         texture.TransitionToDepthStencilTarget(state, cmdBuffer);
     }
 
-    return std::make_shared<VulkanTexture>(std::move(texture));
+    const auto index = static_cast<uint64>(m_textures.size());
+    m_textures.push_back(std::move(texture));
+    return std::make_shared<const Texture>(index, *this, data);
 }
 
 MeshPtr VulkanDevice::CreateMesh(const MeshData& data, const char* name)

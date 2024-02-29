@@ -15,8 +15,10 @@ struct TextureState
     vk::PipelineStageFlags lastPipelineStageUsage = vk::PipelineStageFlagBits::eTopOfPipe;
 };
 
-struct VulkanTextureData
+struct VulkanTexture
 {
+    uint32 refCount = 1;
+
     vk::UniqueImage image;
     vma::UniqueAllocation allocation;
     vk::UniqueImageView imageView;
@@ -25,16 +27,6 @@ struct VulkanTextureData
     Format format = Format::Unknown;
     uint32 mipLevelCount = 1;
     uint32 sampleCount = 1;
-};
-
-struct VulkanTexture : public Texture, VulkanTextureData
-{
-    explicit VulkanTexture(VulkanTextureData data) : VulkanTextureData{std::move(data)} {}
-
-    Geo::Size2i GetSize() const override { return size; }
-    Format GetFormat() const override { return format; }
-    uint32 GetMipLevelCount() const override { return mipLevelCount; }
-    uint32 GetSampleCount() const override { return sampleCount; }
 
     void GenerateMipmaps(TextureState& state, vk::CommandBuffer cmdBuffer);
 
