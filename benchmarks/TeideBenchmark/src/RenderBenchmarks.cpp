@@ -58,7 +58,7 @@ constexpr Teide::RenderTargetInfo CreateRenderTargetInfo(Teide::uint32 size)
     return CreateRenderTargetInfo(Geo::Size2i{size});
 }
 
-Teide::TexturePtr
+Teide::Texture
 Render(const Teide::RendererPtr& renderer, const Teide::RenderTargetInfo& renderTarget, std::vector<Teide::RenderObject> objects)
 {
     const Teide::RenderList renderList = {
@@ -66,7 +66,7 @@ Render(const Teide::RendererPtr& renderer, const Teide::RenderTargetInfo& render
         .objects = std::move(objects),
     };
 
-    return renderer->RenderToTexture(renderTarget, renderList).colorTexture;
+    return renderer->RenderToTexture(renderTarget, renderList).colorTexture.value();
 }
 
 

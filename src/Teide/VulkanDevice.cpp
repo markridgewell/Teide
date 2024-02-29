@@ -791,7 +791,7 @@ ShaderPtr VulkanDevice::CreateShader(const ShaderData& data, const char* name)
     return std::make_shared<const VulkanShader>(std::move(shader));
 }
 
-TexturePtr VulkanDevice::CreateTexture(const TextureData& data, const char* name)
+Texture VulkanDevice::CreateTexture(const TextureData& data, const char* name)
 {
     spdlog::debug("Creating texture '{}' of size {}x{}", name, data.size.x, data.size.y);
     auto task = m_scheduler.ScheduleGpu([data, name, this](CommandBuffer& cmdBuffer) { //
@@ -800,7 +800,7 @@ TexturePtr VulkanDevice::CreateTexture(const TextureData& data, const char* name
     return task.get();
 }
 
-TexturePtr VulkanDevice::CreateTexture(const TextureData& data, const char* name, CommandBuffer& cmdBuffer)
+Texture VulkanDevice::CreateTexture(const TextureData& data, const char* name, CommandBuffer& cmdBuffer)
 {
     const auto usage = vk::ImageUsageFlagBits::eSampled;
 
@@ -819,10 +819,10 @@ TexturePtr VulkanDevice::CreateTexture(const TextureData& data, const char* name
 
     const auto index = static_cast<uint64>(m_textures.size());
     m_textures.push_back(std::move(texture));
-    return std::make_shared<const Texture>(index, *this, data);
+    return Texture(index, *this, data);
 }
 
-TexturePtr VulkanDevice::CreateRenderableTexture(const TextureData& data, const char* name)
+Texture VulkanDevice::CreateRenderableTexture(const TextureData& data, const char* name)
 {
     spdlog::debug("Creating renderable texture '{}' of size {}x{}", name, data.size.x, data.size.y);
     auto task = m_scheduler.ScheduleGpu([data, name, this](CommandBuffer& cmdBuffer) { //
@@ -831,7 +831,7 @@ TexturePtr VulkanDevice::CreateRenderableTexture(const TextureData& data, const 
     return task.get();
 }
 
-TexturePtr VulkanDevice::CreateRenderableTexture(const TextureData& data, const char* name, CommandBuffer& cmdBuffer)
+Texture VulkanDevice::CreateRenderableTexture(const TextureData& data, const char* name, CommandBuffer& cmdBuffer)
 {
     const bool isColorTarget = !HasDepthOrStencilComponent(data.format);
     const auto renderUsage
@@ -852,7 +852,7 @@ TexturePtr VulkanDevice::CreateRenderableTexture(const TextureData& data, const 
 
     const auto index = static_cast<uint64>(m_textures.size());
     m_textures.push_back(std::move(texture));
-    return std::make_shared<const Texture>(index, *this, data);
+    return Texture(index, *this, data);
 }
 
 MeshPtr VulkanDevice::CreateMesh(const MeshData& data, const char* name)
@@ -912,7 +912,7 @@ PipelinePtr VulkanDevice::CreatePipeline(const PipelineData& data)
 
 vk::UniqueDescriptorSet VulkanDevice::CreateUniqueDescriptorSet(
     vk::DescriptorPool pool, vk::DescriptorSetLayout layout, const Buffer* uniformBuffer,
-    std::span<const TexturePtr> textures, const char* name)
+    std::span<const Texture> textures, const char* name)
 {
     const vk::DescriptorSetAllocateInfo allocInfo = {
         .descriptorPool = pool,
@@ -928,7 +928,7 @@ vk::UniqueDescriptorSet VulkanDevice::CreateUniqueDescriptorSet(
     return descriptorSet;
 }
 
-void VulkanDevice::WriteDescriptorSet(vk::DescriptorSet descriptorSet, const Buffer* uniformBuffer, std::span<const TexturePtr> textures)
+void VulkanDevice::WriteDescriptorSet(vk::DescriptorSet descriptorSet, const Buffer* uniformBuffer, std::span<const Texture> textures)
 {
     const auto numUniformBuffers = uniformBuffer ? 1 : 0;
 
@@ -962,12 +962,7 @@ void VulkanDevice::WriteDescriptorSet(vk::DescriptorSet descriptorSet, const Buf
     imageInfos.reserve(textures.size());
     for (const auto& texture : textures)
     {
-        if (!texture)
-        {
-            continue;
-        }
-
-        const auto& textureImpl = GetImpl(*texture);
+        const VulkanTexture& textureImpl = GetImpl(texture);
 
         imageInfos.push_back({
             .sampler = textureImpl.sampler.get(),

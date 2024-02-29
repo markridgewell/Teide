@@ -267,10 +267,10 @@ RenderToTextureResult VulkanRenderer::RenderToTexture(const RenderTargetInfo& re
 {
     TEIDE_ASSERT(renderTarget.captureColor || renderTarget.captureDepthStencil, "Nothing to capture in RTT pass");
 
-    const auto CreateRenderableTexture = [&](std::optional<Format> format, const char* name) -> TexturePtr {
+    const auto CreateRenderableTexture = [&](std::optional<Format> format, const char* name) -> std::optional<Texture> {
         if (!format)
         {
-            return nullptr;
+            return std::nullopt;
         }
 
         const TextureData data = {
@@ -290,15 +290,13 @@ RenderToTextureResult VulkanRenderer::RenderToTexture(const RenderTargetInfo& re
     const auto depthStencil = CreateRenderableTexture(fb.depthStencilFormat, "depthStencil");
 
     ScheduleGpu([this, renderList = std::move(renderList), renderTarget, color, depthStencil](CommandBuffer& commandBuffer) {
-        commandBuffer.AddReference(depthStencil);
-
         std::vector<vk::ImageView> attachments;
 
         TextureState colorTextureState;
         TextureState depthStencilTextureState;
 
-        const auto addAttachment = [&](const TexturePtr& texture, TextureState& textureState) {
-            const auto& textureImpl = m_device.GetImpl(*texture);
+        const auto addAttachment = [&](const Texture& texture, TextureState& textureState) {
+            const auto& textureImpl = m_device.GetImpl(texture);
             commandBuffer.AddReference(texture);
             textureImpl.TransitionToRenderTarget(textureState, commandBuffer);
             attachments.push_back(textureImpl.imageView.get());
@@ -306,11 +304,11 @@ RenderToTextureResult VulkanRenderer::RenderToTexture(const RenderTargetInfo& re
 
         if (color)
         {
-            addAttachment(color, colorTextureState);
+            addAttachment(*color, colorTextureState);
         }
         if (depthStencil)
         {
-            addAttachment(depthStencil, depthStencilTextureState);
+            addAttachment(*depthStencil, depthStencilTextureState);
         }
 
         const RenderPassDesc renderPassDesc = {
@@ -335,8 +333,8 @@ RenderToTextureResult VulkanRenderer::RenderToTexture(const RenderTargetInfo& re
     });
 
     return {
-        .colorTexture = renderTarget.captureColor ? color : nullptr,
-        .depthStencilTexture = renderTarget.captureDepthStencil ? depthStencil : nullptr,
+        .colorTexture = renderTarget.captureColor ? color : std::nullopt,
+        .depthStencilTexture = renderTarget.captureDepthStencil ? depthStencil : std::nullopt,
     };
 }
 
@@ -362,9 +360,9 @@ void VulkanRenderer::RenderToSurface(Surface& surface, RenderList renderList)
     }
 }
 
-Task<TextureData> VulkanRenderer::CopyTextureData(TexturePtr texture)
+Task<TextureData> VulkanRenderer::CopyTextureData(Texture texture)
 {
-    const auto& textureImpl = m_device.GetImpl(*texture);
+    const VulkanTexture& textureImpl = m_device.GetImpl(texture);
 
     const TextureData textureData = {
         .size = textureImpl.size,
@@ -380,7 +378,7 @@ Task<TextureData> VulkanRenderer::CopyTextureData(TexturePtr texture)
             bufferSize, vk::BufferUsageFlagBits::eTransferDst,
             vma::AllocationCreateFlagBits::eMapped | vma::AllocationCreateFlagBits::eHostAccessRandom);
 
-        const auto& textureImpl = m_device.GetImpl(*texture);
+        const VulkanTexture& textureImpl = m_device.GetImpl(texture);
 
         commandBuffer.AddReference(texture);
 

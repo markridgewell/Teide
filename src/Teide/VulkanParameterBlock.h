@@ -6,6 +6,7 @@
 
 #include "Teide/ParameterBlock.h"
 #include "Teide/ShaderData.h"
+#include "Teide/Texture.h"
 
 #include <memory>
 #include <optional>
@@ -47,7 +48,7 @@ struct VulkanImpl<ParameterBlockLayout>
 struct VulkanParameterBlock : public ParameterBlock
 {
     std::shared_ptr<VulkanBuffer> uniformBuffer;
-    std::vector<TexturePtr> textures;
+    std::vector<Texture> textures;
     vk::UniqueDescriptorSet descriptorSet;
     std::vector<byte> pushConstantData;
 
@@ -60,7 +61,7 @@ struct VulkanParameterBlock : public ParameterBlock
 struct TransientParameterBlock
 {
     std::shared_ptr<VulkanBuffer> uniformBuffer;
-    std::vector<TexturePtr> textures;
+    std::vector<Texture> textures;
     vk::DescriptorSet descriptorSet;
 };
 

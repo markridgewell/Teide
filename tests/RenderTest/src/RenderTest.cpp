@@ -228,7 +228,7 @@ void RenderTest::RunTest(const SceneUniforms& sceneUniforms, Teide::RenderList r
     m_renderDoc.StartFrameCapture();
     m_renderer->BeginFrame({.uniformData = Teide::ToBytes(sceneUniforms)});
 
-    const auto output = m_renderer->RenderToTexture(RenderTarget, std::move(renderList)).colorTexture;
+    const Teide::Texture output = m_renderer->RenderToTexture(RenderTarget, std::move(renderList)).colorTexture.value();
 
     const Teide::TextureData outputData = m_renderer->CopyTextureData(output).get();
 
@@ -255,7 +255,7 @@ Teide::MeshPtr RenderTest::CreateQuadMesh()
     return m_device->CreateMesh(meshData, "Quad");
 }
 
-Teide::TexturePtr RenderTest::CreateNullShadowmapTexture()
+Teide::Texture RenderTest::CreateNullShadowmapTexture()
 {
     // Create checkerboard texture
     constexpr auto pixels = 1.0f;
@@ -275,7 +275,7 @@ Teide::TexturePtr RenderTest::CreateNullShadowmapTexture()
     return m_device->CreateTexture(textureData, "NullShadowMap");
 }
 
-Teide::TexturePtr RenderTest::CreateCheckerTexture()
+Teide::Texture RenderTest::CreateCheckerTexture()
 {
     // Create checkerboard texture
     constexpr auto c0 = std::uint32_t{0xffffffff};

@@ -6,6 +6,8 @@
 #include "Teide/BasicTypes.h"
 #include "Teide/TextureData.h"
 
+#include <functional>
+
 namespace Teide
 {
 
@@ -63,6 +65,11 @@ public:
     uint32 GetMipLevelCount() const { return m_props.mipLevelCount; }
     uint32 GetSampleCount() const { return m_props.sampleCount; }
 
+    bool operator==(const Texture& other) const
+    {
+        return m_index == other.m_index && m_owner == other.m_owner;
+    }
+
     explicit operator uint64() const { return m_index; }
 
 private:
@@ -72,3 +79,12 @@ private:
 };
 
 } // namespace Teide
+
+template <>
+struct std::hash<Teide::Texture>
+{
+    std::size_t operator()(const Teide::Texture& v) const
+    {
+        return std::hash<Teide::uint64>{}(static_cast<Teide::uint64>(v));
+    }
+};

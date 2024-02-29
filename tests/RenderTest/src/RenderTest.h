@@ -59,8 +59,8 @@ protected:
 
     Teide::ShaderPtr CreateModelShader();
     Teide::MeshPtr CreateQuadMesh();
-    Teide::TexturePtr CreateNullShadowmapTexture();
-    Teide::TexturePtr CreateCheckerTexture();
+    Teide::Texture CreateNullShadowmapTexture();
+    Teide::Texture CreateCheckerTexture();
     Teide::PipelinePtr CreatePipeline(Teide::ShaderPtr shader, const Teide::MeshPtr& mesh);
 
     Teide::ShaderData CompileShader(const ShaderSourceData& data);

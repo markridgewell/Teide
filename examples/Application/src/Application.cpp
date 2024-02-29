@@ -157,8 +157,7 @@ void Application::OnRender()
     //
     // Pass 0. Draw shadows
     //
-    Teide::TexturePtr shadowMap;
-    {
+    Teide::Texture shadowMap = [&] {
         // Update view uniforms
         const ViewUniforms viewUniforms = {
             .viewProj = m_shadowMatrix,
@@ -200,8 +199,8 @@ void Application::OnRender()
         };
 
         const auto shadowResult = m_renderer->RenderToTexture(shadowRenderTarget, std::move(renderList));
-        shadowMap = shadowResult.depthStencilTexture;
-    }
+        return shadowResult.depthStencilTexture.value();
+    }();
 
     //
     // Pass 1. Draw scene

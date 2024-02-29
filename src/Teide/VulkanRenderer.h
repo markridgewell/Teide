@@ -44,7 +44,7 @@ public:
     RenderToTextureResult RenderToTexture(const RenderTargetInfo& renderTarget, RenderList renderList) override;
     void RenderToSurface(Surface& surface, RenderList renderList) override;
 
-    Task<TextureData> CopyTextureData(TexturePtr texture) override;
+    Task<TextureData> CopyTextureData(Texture texture) override;
 
 private:
     void SetupDescriptorPools();

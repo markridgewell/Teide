@@ -23,7 +23,6 @@ TEST(TextureTest, GenerateMipmaps)
     };
 
     const auto texture = device->CreateTexture(textureData, "Texture");
-    ASSERT_THAT(texture.get(), NotNull());
 
     auto renderer = device->CreateRenderer(nullptr);
     auto task = renderer->CopyTextureData(texture);
