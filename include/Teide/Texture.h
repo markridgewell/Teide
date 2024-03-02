@@ -7,6 +7,7 @@
 #include "Teide/TextureData.h"
 
 #include <functional>
+#include <utility>
 
 namespace Teide
 {
@@ -21,7 +22,8 @@ public:
 class Texture final
 {
 public:
-    explicit Texture(uint64 index, RefCounter& owner, TextureData data) : m_index{index}, m_owner{&owner}, m_props{data}
+    explicit Texture(uint64 index, RefCounter& owner, TextureData data) :
+        m_index{index}, m_owner{&owner}, m_props{std::move(data)}
     {}
 
     Texture(const Texture& other) : m_index{other.m_index}, m_owner{other.m_owner}, m_props{other.m_props}
@@ -65,7 +67,10 @@ public:
     uint32 GetMipLevelCount() const { return m_props.mipLevelCount; }
     uint32 GetSampleCount() const { return m_props.sampleCount; }
 
-    bool operator==(const Texture& other) const { return m_index == other.m_index && m_owner == other.m_owner; }
+    bool operator==(const Texture& other) const
+    {
+        return m_index == other.m_index && m_owner == other.m_owner;
+    }
 
     explicit operator uint64() const { return m_index; }
 
