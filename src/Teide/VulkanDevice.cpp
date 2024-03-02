@@ -817,8 +817,12 @@ Texture VulkanDevice::CreateTexture(const TextureData& data, const char* name, C
         texture.TransitionToShaderInput(state, cmdBuffer);
     }
 
-    const auto index = static_cast<uint64>(m_textures.size());
-    m_textures.push_back(std::move(texture));
+    const auto index = m_textures.Lock([&texture, name](auto& textures) {
+        const auto index = static_cast<uint64>(textures.size());
+        spdlog::debug("Creating texture {} ({})", index, name);
+        textures.push_back(std::move(texture));
+        return index;
+    });
     return Texture(index, *this, data);
 }
 
@@ -850,8 +854,12 @@ Texture VulkanDevice::CreateRenderableTexture(const TextureData& data, const cha
         texture.TransitionToDepthStencilTarget(state, cmdBuffer);
     }
 
-    const auto index = static_cast<uint64>(m_textures.size());
-    m_textures.push_back(std::move(texture));
+    const auto index = m_textures.Lock([&texture, name](auto& textures) {
+        const auto index = static_cast<uint64>(textures.size());
+        spdlog::debug("Creating texture {} ({})", index, name);
+        textures.push_back(std::move(texture));
+        return index;
+    });
     return Texture(index, *this, data);
 }
 

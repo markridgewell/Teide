@@ -18,7 +18,7 @@ public:
     explicit Synchronized(T&& object) : m_object{std::move(object)} {}
 
     template <class F>
-    auto Lock(const F& callable)
+    decltype(auto) Lock(const F& callable)
     {
         const auto lock = std::scoped_lock(m_mutex);
         return std::invoke(callable, m_object);

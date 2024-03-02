@@ -3,6 +3,7 @@
 
 #include "CommandBuffer.h"
 #include "Scheduler.h"
+#include "ThreadUtils.h"
 #include "Vulkan.h"
 #include "VulkanBuffer.h"
 #include "VulkanLoader.h"
@@ -20,6 +21,7 @@
 
 #include <compare>
 #include <concepts>
+#include <deque>
 #include <optional>
 #include <thread>
 #include <type_traits>
@@ -64,22 +66,26 @@ public:
 
     void AddRef(uint64 index) override
     {
-        auto& texture = m_textures.at(index);
-        ++texture.refCount;
-        spdlog::debug("Adding ref to texture {} (now {})", index, texture.refCount);
+        m_textures.Lock([index](auto& textures) {
+            auto& texture = textures.at(index);
+            ++texture.refCount;
+            spdlog::debug("Adding ref to texture {} (now {})", index, texture.refCount);
+        });
     }
 
     void DecRef(uint64 index) override
     {
-        auto& texture = m_textures.at(index);
-        --texture.refCount;
-        spdlog::debug("Decrementing ref from texture {} (now {})", index, texture.refCount);
-        if (texture.refCount == 0)
-        {
-            // Add texture to unused pool
-            spdlog::debug("Destroying texture {}", index);
-            texture = {};
-        }
+        m_textures.Lock([index](auto& textures) {
+            auto& texture = textures.at(index);
+            --texture.refCount;
+            spdlog::debug("Decrementing ref from texture {} (now {})", index, texture.refCount);
+            if (texture.refCount == 0)
+            {
+                // Add texture to unused pool
+                spdlog::debug("Destroying texture {}", index);
+                texture = {};
+            }
+        });
     }
 
     // Internal
@@ -96,13 +102,13 @@ public:
     const VulkanTexture& GetImpl(Texture& obj)
     {
         const auto index = static_cast<uint64>(obj);
-        return m_textures.at(index);
+        return m_textures.Lock([index](auto& textures) -> const VulkanTexture& { return textures.at(index); });
     }
 
     const VulkanTexture& GetImpl(const Texture& obj)
     {
         const auto index = static_cast<uint64>(obj);
-        return m_textures.at(index);
+        return m_textures.Lock([index](auto& textures) -> const VulkanTexture& { return textures.at(index); });
     }
 
     template <class T>
@@ -194,7 +200,7 @@ private:
 
     vma::UniqueAllocator m_allocator;
 
-    std::vector<VulkanTexture> m_textures;
+    Synchronized<std::deque<VulkanTexture>> m_textures;
 
     Scheduler m_scheduler;
 };
