@@ -67,10 +67,7 @@ public:
     uint32 GetMipLevelCount() const { return m_props.mipLevelCount; }
     uint32 GetSampleCount() const { return m_props.sampleCount; }
 
-    bool operator==(const Texture& other) const
-    {
-        return m_index == other.m_index && m_owner == other.m_owner;
-    }
+    bool operator==(const Texture& other) const { return m_index == other.m_index && m_owner == other.m_owner; }
 
     explicit operator uint64() const { return m_index; }
 
