@@ -15,6 +15,7 @@ set(sources
     include/Teide/Device.h
     include/Teide/Format.h
     include/Teide/ForwardDeclare.h
+    include/Teide/Handle.h
     include/Teide/Hash.h
     include/Teide/Mesh.h
     include/Teide/MeshData.h
@@ -43,6 +44,7 @@ set(sources
     src/Teide/Format.cpp
     src/Teide/GpuExecutor.cpp
     src/Teide/GpuExecutor.h
+    src/Teide/ResourceMap.h
     src/Teide/Scheduler.cpp
     src/Teide/Scheduler.h
     src/Teide/ShaderData.cpp

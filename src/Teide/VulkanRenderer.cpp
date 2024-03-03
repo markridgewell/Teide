@@ -365,10 +365,10 @@ Task<TextureData> VulkanRenderer::CopyTextureData(Texture texture)
     const VulkanTexture& textureImpl = m_device.GetImpl(texture);
 
     const TextureData textureData = {
-        .size = textureImpl.size,
-        .format = textureImpl.format,
-        .mipLevelCount = textureImpl.mipLevelCount,
-        .sampleCount = textureImpl.sampleCount,
+        .size = textureImpl.properties.size,
+        .format = textureImpl.properties.format,
+        .mipLevelCount = textureImpl.properties.mipLevelCount,
+        .sampleCount = textureImpl.properties.sampleCount,
     };
 
     const auto bufferSize = GetByteSize(textureData);
@@ -387,10 +387,10 @@ Task<TextureData> VulkanRenderer::CopyTextureData(Texture texture)
             .lastPipelineStageUsage = vk::PipelineStageFlagBits::eFragmentShader,
         };
         textureImpl.TransitionToTransferSrc(textureState, commandBuffer);
-        const auto extent = vk::Extent3D{textureImpl.size.x, textureImpl.size.y, 1};
+        const auto extent = vk::Extent3D{textureImpl.properties.size.x, textureImpl.properties.size.y, 1};
         CopyImageToBuffer(
-            commandBuffer, textureImpl.image.get(), buffer.buffer.get(), textureImpl.format, extent,
-            textureImpl.mipLevelCount);
+            commandBuffer, textureImpl.image.get(), buffer.buffer.get(), textureImpl.properties.format, extent,
+            textureImpl.properties.mipLevelCount);
         textureImpl.TransitionToShaderInput(textureState, commandBuffer);
 
         return std::make_shared<VulkanBuffer>(std::move(buffer));

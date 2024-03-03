@@ -480,6 +480,7 @@ VulkanDevice::VulkanDevice(
     m_surfaceCommandPool{
         CreateCommandPool(m_physicalDevice.queueFamilies.graphicsFamily, m_device.get(), "SurfaceCommandPool")},
     m_allocator{CreateAllocator(m_loader, m_instance.get(), m_device.get(), m_physicalDevice.physicalDevice)},
+    m_textures{"texture"},
     m_scheduler(m_settings.numThreads, m_device.get(), m_graphicsQueue, m_physicalDevice.queueFamilies.graphicsFamily)
 {
     if constexpr (IsDebugBuild)
@@ -673,10 +674,12 @@ auto VulkanDevice::CreateTextureImpl(
         .allocation = std::move(allocation),
         .imageView = std::move(imageView),
         .sampler = std::move(sampler),
-        .size = {imageExtent.width, imageExtent.height},
-        .format = data.format,
-        .mipLevelCount = data.mipLevelCount,
-        .sampleCount = data.sampleCount,
+        .properties = {
+            .size = {imageExtent.width, imageExtent.height},
+            .format = data.format,
+            .mipLevelCount = data.mipLevelCount,
+            .sampleCount = data.sampleCount,
+        },
     };
 
     if (debugName)
@@ -817,13 +820,7 @@ Texture VulkanDevice::CreateTexture(const TextureData& data, const char* name, C
         texture.TransitionToShaderInput(state, cmdBuffer);
     }
 
-    const auto index = m_textures.Lock([&texture, name](auto& textures) {
-        const auto index = static_cast<uint64>(textures.size());
-        spdlog::debug("Creating texture {} ({})", index, name);
-        textures.push_back(std::move(texture));
-        return index;
-    });
-    return Texture(index, *this, data);
+    return m_textures.Insert(std::move(texture));
 }
 
 Texture VulkanDevice::CreateRenderableTexture(const TextureData& data, const char* name)
@@ -854,13 +851,7 @@ Texture VulkanDevice::CreateRenderableTexture(const TextureData& data, const cha
         texture.TransitionToDepthStencilTarget(state, cmdBuffer);
     }
 
-    const auto index = m_textures.Lock([&texture, name](auto& textures) {
-        const auto index = static_cast<uint64>(textures.size());
-        spdlog::debug("Creating texture {} ({})", index, name);
-        textures.push_back(std::move(texture));
-        return index;
-    });
-    return Texture(index, *this, data);
+    return m_textures.Insert(std::move(texture));
 }
 
 MeshPtr VulkanDevice::CreateMesh(const MeshData& data, const char* name)
@@ -975,8 +966,9 @@ void VulkanDevice::WriteDescriptorSet(vk::DescriptorSet descriptorSet, const Buf
         imageInfos.push_back({
             .sampler = textureImpl.sampler.get(),
             .imageView = textureImpl.imageView.get(),
-            .imageLayout = HasDepthOrStencilComponent(textureImpl.format) ? vk::ImageLayout::eDepthStencilReadOnlyOptimal
-                                                                          : vk::ImageLayout::eShaderReadOnlyOptimal,
+            .imageLayout = HasDepthOrStencilComponent(textureImpl.properties.format)
+                ? vk::ImageLayout::eDepthStencilReadOnlyOptimal
+                : vk::ImageLayout::eShaderReadOnlyOptimal,
         });
 
         descriptorWrites.push_back({

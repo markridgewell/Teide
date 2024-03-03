@@ -23,10 +23,7 @@ struct VulkanTexture
     vma::UniqueAllocation allocation;
     vk::UniqueImageView imageView;
     vk::UniqueSampler sampler;
-    Geo::Size2i size;
-    Format format = Format::Unknown;
-    uint32 mipLevelCount = 1;
-    uint32 sampleCount = 1;
+    TextureProperties properties;
 
     void GenerateMipmaps(TextureState& state, vk::CommandBuffer cmdBuffer);
 

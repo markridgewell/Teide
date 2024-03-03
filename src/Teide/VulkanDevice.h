@@ -14,14 +14,13 @@
 #include "Teide/Device.h"
 #include "Teide/Hash.h"
 #include "Teide/Renderer.h"
+#include "Teide/ResourceMap.h"
 #include "Teide/Surface.h"
 
-#include <spdlog/spdlog.h>
 #include <vulkan/vulkan_hash.hpp>
 
 #include <compare>
 #include <concepts>
-#include <deque>
 #include <optional>
 #include <thread>
 #include <type_traits>
@@ -36,7 +35,7 @@ class DescriptorPool;
 
 using VulkanParameterBlockLayoutPtr = std::shared_ptr<const VulkanParameterBlockLayout>;
 
-class VulkanDevice : public Device, public RefCounter
+class VulkanDevice : public Device
 {
 public:
     explicit VulkanDevice(
@@ -64,30 +63,6 @@ public:
 
     vk::PhysicalDeviceProperties GetProperties() const { return m_physicalDevice.physicalDevice.getProperties(); }
 
-    void AddRef(uint64 index) override
-    {
-        m_textures.Lock([index](auto& textures) {
-            auto& texture = textures.at(index);
-            ++texture.refCount;
-            spdlog::debug("Adding ref to texture {} (now {})", index, texture.refCount);
-        });
-    }
-
-    void DecRef(uint64 index) override
-    {
-        m_textures.Lock([index](auto& textures) {
-            auto& texture = textures.at(index);
-            --texture.refCount;
-            spdlog::debug("Decrementing ref from texture {} (now {})", index, texture.refCount);
-            if (texture.refCount == 0)
-            {
-                // Add texture to unused pool
-                spdlog::debug("Destroying texture {}", index);
-                texture = {};
-            }
-        });
-    }
-
     // Internal
     vk::Device GetVulkanDevice() { return m_device.get(); }
     vma::Allocator& GetAllocator() { return m_allocator.get(); }
@@ -99,17 +74,9 @@ public:
         return dynamic_cast<const typename VulkanImpl<std::remove_const_t<T>>::type&>(obj);
     }
 
-    const VulkanTexture& GetImpl(Texture& obj)
-    {
-        const auto index = static_cast<uint64>(obj);
-        return m_textures.Lock([index](auto& textures) -> const VulkanTexture& { return textures.at(index); });
-    }
+    const VulkanTexture& GetImpl(Texture& obj) { return m_textures.Get(obj); }
 
-    const VulkanTexture& GetImpl(const Texture& obj)
-    {
-        const auto index = static_cast<uint64>(obj);
-        return m_textures.Lock([index](auto& textures) -> const VulkanTexture& { return textures.at(index); });
-    }
+    const VulkanTexture& GetImpl(const Texture& obj) { return m_textures.Get(obj); }
 
     template <class T>
     auto GetImpl(const std::shared_ptr<T>& ptr)
@@ -200,7 +167,7 @@ private:
 
     vma::UniqueAllocator m_allocator;
 
-    Synchronized<std::deque<VulkanTexture>> m_textures;
+    ResourceMap<Texture, VulkanTexture> m_textures;
 
     Scheduler m_scheduler;
 };
