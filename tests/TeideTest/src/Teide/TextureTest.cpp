@@ -1,15 +1,27 @@
 
 #include "Teide/Texture.h"
 
+#include "TestData.h"
+#include "TestUtils.h"
+
 #include "Teide/CommandBuffer.h"
 #include "Teide/Device.h"
-#include "Teide/TestUtils.h"
 #include "Teide/TextureData.h"
 
 #include <gmock/gmock.h>
 
 using namespace testing;
 using namespace Teide;
+
+TEST(TextureTest, CompareHandles)
+{
+    auto device = CreateTestDevice();
+    Texture texture1 = device->CreateTexture(OnePixelWhiteTexture, "Tex1");
+    Texture texture2 = texture1;
+    EXPECT_THAT(texture1, Eq(texture2));
+    Handle texture3 = device->CreateTexture(OnePixelWhiteTexture, "Tex2");
+    EXPECT_THAT(texture1, Ne(texture3));
+}
 
 TEST(TextureTest, GenerateMipmaps)
 {

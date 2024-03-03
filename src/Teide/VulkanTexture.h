@@ -17,8 +17,6 @@ struct TextureState
 
 struct VulkanTexture
 {
-    uint32 refCount = 1;
-
     vk::UniqueImage image;
     vma::UniqueAllocation allocation;
     vk::UniqueImageView imageView;

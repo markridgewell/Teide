@@ -1,6 +1,7 @@
 
 #include "ShaderCompiler/ShaderCompiler.h"
 #include "Teide/ShaderData.h"
+#include "Teide/TextureData.h"
 
 #include <string>
 
@@ -125,4 +126,12 @@ inline const ShaderSourceData ViewTextureShader = {
         }},
         .source = ViewTexturePixelShader,
     },
+};
+
+inline const Teide::TextureData OnePixelWhiteTexture = {
+    .size = {1, 1},
+    .format = Teide::Format::Byte4Norm,
+    .mipLevelCount = 1,
+    .sampleCount = 1,
+    .pixels = {std::byte{0xff}, std::byte{0xff}, std::byte{0xff}, std::byte{0xff}},
 };
