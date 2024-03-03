@@ -74,9 +74,12 @@ public:
         return dynamic_cast<const typename VulkanImpl<std::remove_const_t<T>>::type&>(obj);
     }
 
-    const VulkanTexture& GetImpl(Texture& obj) { return m_textures.Get(obj); }
-
-    const VulkanTexture& GetImpl(const Texture& obj) { return m_textures.Get(obj); }
+    template <class T>
+        requires std::same_as<std::remove_const_t<T>, Texture>
+    const VulkanTexture& GetImpl(T& obj)
+    {
+        return m_textures.Get(obj);
+    }
 
     template <class T>
     auto GetImpl(const std::shared_ptr<T>& ptr)

@@ -81,7 +81,7 @@ void BM_RenderNothing(benchmark::State& state)
 
     for (auto _ [[maybe_unused]] : state)
     {
-        const auto texture = Render(renderer, renderTarget, {});
+        const auto texture [[maybe_unused]] = Render(renderer, renderTarget, {});
     }
 }
 BENCHMARK(BM_RenderNothing)->Arg(8); //->Arg(256)->Arg(4096);
@@ -115,7 +115,7 @@ void BM_RenderToTexture(benchmark::State& state)
 
     for (auto _ [[maybe_unused]] : state)
     {
-        const auto texture = Render(renderer, renderTarget, renderObjects);
+        const auto texture [[maybe_unused]] = Render(renderer, renderTarget, renderObjects);
     }
 }
 BENCHMARK(BM_RenderToTexture)->Arg(8); //->Arg(256)->Arg(4096);
