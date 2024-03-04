@@ -30,6 +30,8 @@ public:
         other.m_owner = nullptr;
     }
 
+    // Self-assignment is handled by adding and then decrementing ref count
+    // NOLINTNEXTLINE(bugprone-unhandled-self-assignment)
     Handle& operator=(const Handle& other)
     {
         other.m_owner->AddRef(other.m_index);
