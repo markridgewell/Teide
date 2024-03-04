@@ -85,6 +85,7 @@ TEST(ResourceMapTest, DestroyResourceByAssigning)
     TestHandle handle = map.Insert(TestResource{{42}, 102});
     const TestResource& resource = map.Get(handle);
     handle = map.Insert({});
+    static_cast<void>(handle);
     EXPECT_THAT(resource.properties.value, Eq(0));
     EXPECT_THAT(resource.hiddenValue, Eq(0));
 }
@@ -96,9 +97,11 @@ TEST(ResourceMapTest, CopyHandleAndDestroyResourceByAssigning)
     const TestResource& resource = map.Get(handle);
     TestHandle handle2 = handle;
     handle = map.Insert({});
+    static_cast<void>(handle);
     EXPECT_THAT(resource.properties.value, Eq(42));
     EXPECT_THAT(resource.hiddenValue, Eq(102));
     handle2 = map.Insert({});
+    static_cast<void>(handle2);
     EXPECT_THAT(resource.properties.value, Eq(0));
     EXPECT_THAT(resource.hiddenValue, Eq(0));
 }
