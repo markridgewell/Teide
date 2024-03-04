@@ -161,7 +161,7 @@ uint32 GpuExecutor::AddCommandBufferSlot()
 
 void GpuExecutor::SubmitCommandBuffer(uint32 index, vk::CommandBuffer commandBuffer, OnCompleteFunction func)
 {
-    m_queue.Lock([&](Queue& queue) { queue.Submit(index, commandBuffer, std::move(func)); });
+    m_queue.Lock(&Queue::Submit, index, commandBuffer, std::move(func));
 }
 
 //---------------------------------------------------------------------------------------------------------------------

@@ -17,11 +17,11 @@ public:
     explicit Synchronized(const T& object) : m_object{object} {}
     explicit Synchronized(T&& object) : m_object{std::move(object)} {}
 
-    template <class F>
-    decltype(auto) Lock(const F& callable)
+    template <class F, class... Args>
+    decltype(auto) Lock(const F& callable, Args&&... args)
     {
         const auto lock = std::scoped_lock(m_mutex);
-        return std::invoke(callable, m_object);
+        return std::invoke(callable, m_object, std::forward<Args>(args)...);
     }
 
 private:
