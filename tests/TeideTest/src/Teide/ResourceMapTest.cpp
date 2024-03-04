@@ -27,6 +27,18 @@ struct TestHandle : public Handle<TestProperties>
 
 using Map = ResourceMap<TestHandle, TestResource>;
 
+template <class T>
+T& Copy(T& obj)
+{
+    return obj;
+}
+
+template <class T>
+T&& Move(T&& obj)
+{
+    return static_cast<T&&>(obj);
+}
+
 TEST(ResourceMapTest, AddResource)
 {
     auto map = Map("test");
@@ -96,7 +108,7 @@ TEST(ResourceMapTest, SelfCopyAssignment)
     auto map = Map("test");
     TestHandle handle = map.Insert(TestResource{{42}, 102});
     const TestResource& resource = map.Get(handle);
-    handle = handle;
+    handle = Copy(handle);
     EXPECT_THAT(resource.properties.value, Eq(42));
     EXPECT_THAT(resource.hiddenValue, Eq(102));
 }
@@ -106,7 +118,7 @@ TEST(ResourceMapTest, SelfMoveAssignment)
     auto map = Map("test");
     TestHandle handle = map.Insert(TestResource{{42}, 102});
     const TestResource& resource = map.Get(handle);
-    handle = std::move(handle);
+    handle = Move(handle);
     EXPECT_THAT(resource.properties.value, Eq(42));
     EXPECT_THAT(resource.hiddenValue, Eq(102));
 }
