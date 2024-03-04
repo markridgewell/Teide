@@ -76,20 +76,6 @@ private:
     ShaderCompiler m_shaderCompiler;
 };
 
-TEST_F(RendererTest, RenderFullscreenTri)
-{
-    const auto renderTarget = CreateRenderTargetInfo({2, 2});
-    const auto fullscreenTri = CreateFullscreenTri(renderTarget);
-
-    const RenderList renderList = {
-        .clearState = {.colorValue = Color{1.0f, 0.0f, 0.0f, 1.0f}},
-        .objects = {fullscreenTri},
-    };
-
-    const auto texture = m_renderer->RenderToTexture(renderTarget, renderList).colorTexture;
-    EXPECT_THAT(texture, NotNull());
-}
-
 TEST_F(RendererTest, RenderNothingAndCheckPixels)
 {
     const auto renderTarget = CreateRenderTargetInfo({2, 2});
@@ -98,7 +84,7 @@ TEST_F(RendererTest, RenderNothingAndCheckPixels)
         .clearState = {.colorValue = Color{1.0f, 0.0f, 0.0f, 1.0f}},
     };
 
-    const auto texture = m_renderer->RenderToTexture(renderTarget, renderList).colorTexture;
+    const Texture texture = m_renderer->RenderToTexture(renderTarget, renderList).colorTexture.value();
 
     const TextureData outputData = m_renderer->CopyTextureData(texture).get();
 
@@ -121,7 +107,7 @@ TEST_F(RendererTest, RenderFullscreenTriAndCheckPixels)
         .objects = {fullscreenTri},
     };
 
-    const auto texture = m_renderer->RenderToTexture(renderTarget, renderList).colorTexture;
+    const Texture texture = m_renderer->RenderToTexture(renderTarget, renderList).colorTexture.value();
 
     const TextureData outputData = m_renderer->CopyTextureData(texture).get();
 
@@ -160,7 +146,7 @@ TEST_F(RendererTest, RenderWithViewParameters)
         .format = Format::Byte4Norm,
         .pixels = MakeBytes<uint8>({20, 20, 20, 255, 20, 20, 20, 255, 20, 20, 20, 255, 20, 20, 20, 255}),
     };
-    TexturePtr texture = m_device->CreateTexture(textureData, "initialTexture");
+    Texture texture = m_device->CreateTexture(textureData, "initialTexture");
 
     const RenderList renderList = {
         .clearState = {.colorValue = Color{1.0f, 0.0f, 0.0f, 1.0f}},
@@ -168,7 +154,7 @@ TEST_F(RendererTest, RenderWithViewParameters)
         .objects = {RenderObject{.mesh = mesh, .pipeline = pipeline}},
     };
 
-    texture = m_renderer->RenderToTexture(renderTarget, renderList).colorTexture;
+    texture = m_renderer->RenderToTexture(renderTarget, renderList).colorTexture.value();
 
     const TextureData outputData = m_renderer->CopyTextureData(texture).get();
 
@@ -207,7 +193,7 @@ TEST_F(RendererTest, RenderMultipleFramesWithViewParameters)
         .format = Format::Byte4Norm,
         .pixels = MakeBytes<uint8>({20, 20, 20, 255, 20, 20, 20, 255, 20, 20, 20, 255, 20, 20, 20, 255}),
     };
-    TexturePtr texture = m_device->CreateTexture(textureData, "initialTexture");
+    Texture texture = m_device->CreateTexture(textureData, "initialTexture");
 
     constexpr int numFrames = 100;
     for (int i = 0; i < numFrames; i++)
@@ -220,7 +206,7 @@ TEST_F(RendererTest, RenderMultipleFramesWithViewParameters)
             .objects = {RenderObject{.mesh = mesh, .pipeline = pipeline}},
         };
 
-        texture = m_renderer->RenderToTexture(renderTarget, renderList).colorTexture;
+        texture = m_renderer->RenderToTexture(renderTarget, renderList).colorTexture.value();
 
         m_renderer->EndFrame();
     }
@@ -262,7 +248,7 @@ TEST_F(RendererTest, RenderMultiplePassesWithViewParameters)
         .format = Format::Byte4Norm,
         .pixels = MakeBytes<uint8>({20, 20, 20, 255, 20, 20, 20, 255, 20, 20, 20, 255, 20, 20, 20, 255}),
     };
-    TexturePtr texture = m_device->CreateTexture(textureData, "initialTexture");
+    Texture texture = m_device->CreateTexture(textureData, "initialTexture");
 
     constexpr int numPasses = 100;
     for (int i = 0; i < numPasses; i++)
@@ -273,7 +259,7 @@ TEST_F(RendererTest, RenderMultiplePassesWithViewParameters)
             .objects = {RenderObject{.mesh = mesh, .pipeline = pipeline}},
         };
 
-        texture = m_renderer->RenderToTexture(renderTarget, renderList).colorTexture;
+        texture = m_renderer->RenderToTexture(renderTarget, renderList).colorTexture.value();
     }
 
     const TextureData outputData = m_renderer->CopyTextureData(texture).get();
@@ -313,7 +299,7 @@ TEST_F(RendererTest, RenderMultipleFramesWithMultiplePassesWithViewParameters)
         .format = Format::Byte4Norm,
         .pixels = MakeBytes<uint8>({20, 20, 20, 255, 20, 20, 20, 255, 20, 20, 20, 255, 20, 20, 20, 255}),
     };
-    TexturePtr texture = m_device->CreateTexture(textureData, "initialTexture");
+    Texture texture = m_device->CreateTexture(textureData, "initialTexture");
 
     constexpr int numFrames = 10;
     constexpr int numPasses = 10;
@@ -329,7 +315,7 @@ TEST_F(RendererTest, RenderMultipleFramesWithMultiplePassesWithViewParameters)
                 .objects = {RenderObject{.mesh = mesh, .pipeline = pipeline}},
             };
 
-            texture = m_renderer->RenderToTexture(renderTarget, renderList).colorTexture;
+            texture = m_renderer->RenderToTexture(renderTarget, renderList).colorTexture.value();
         }
 
         m_renderer->EndFrame();

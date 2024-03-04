@@ -14,7 +14,7 @@ namespace Teide
 struct ShaderParameters
 {
     std::vector<byte> uniformData;
-    std::vector<TexturePtr> textures;
+    std::vector<Texture> textures;
 };
 
 class ParameterBlockLayout : AbstractBase

@@ -10,6 +10,7 @@
 #include "Teide/Pipeline.h"
 #include "Teide/Surface.h"
 #include "Teide/Task.h"
+#include "Teide/Texture.h"
 
 #include <array>
 #include <compare>
@@ -61,8 +62,8 @@ struct RenderList
 
 struct RenderToTextureResult
 {
-    TexturePtr colorTexture;
-    TexturePtr depthStencilTexture;
+    std::optional<Texture> colorTexture;
+    std::optional<Texture> depthStencilTexture;
 };
 
 struct RenderTargetInfo
@@ -95,7 +96,7 @@ public:
     virtual RenderToTextureResult RenderToTexture(const RenderTargetInfo& renderTarget, RenderList renderList) = 0;
     virtual void RenderToSurface(Surface& surface, RenderList renderList) = 0;
 
-    virtual Task<TextureData> CopyTextureData(TexturePtr texture) = 0;
+    virtual Task<TextureData> CopyTextureData(Texture texture) = 0;
 };
 
 using RendererPtr = std::unique_ptr<Renderer>;

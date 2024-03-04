@@ -480,6 +480,7 @@ VulkanDevice::VulkanDevice(
     m_surfaceCommandPool{
         CreateCommandPool(m_physicalDevice.queueFamilies.graphicsFamily, m_device.get(), "SurfaceCommandPool")},
     m_allocator{CreateAllocator(m_loader, m_instance.get(), m_device.get(), m_physicalDevice.physicalDevice)},
+    m_textures{"texture"},
     m_scheduler(m_settings.numThreads, m_device.get(), m_graphicsQueue, m_physicalDevice.queueFamilies.graphicsFamily)
 {
     if constexpr (IsDebugBuild)
@@ -668,15 +669,17 @@ auto VulkanDevice::CreateTextureImpl(
     };
     auto sampler = m_device->createSamplerUnique(samplerInfo, s_allocator);
 
-    auto ret = VulkanTextureData{
+    auto ret = VulkanTexture{
         .image = vk::UniqueImage(image.release(), m_device.get()),
         .allocation = std::move(allocation),
         .imageView = std::move(imageView),
         .sampler = std::move(sampler),
-        .size = {imageExtent.width, imageExtent.height},
-        .format = data.format,
-        .mipLevelCount = data.mipLevelCount,
-        .sampleCount = data.sampleCount,
+        .properties = {
+            .size = {imageExtent.width, imageExtent.height},
+            .format = data.format,
+            .mipLevelCount = data.mipLevelCount,
+            .sampleCount = data.sampleCount,
+        },
     };
 
     if (debugName)
@@ -686,7 +689,7 @@ auto VulkanDevice::CreateTextureImpl(
         SetDebugName(ret.sampler, "{}:Sampler", debugName);
     }
 
-    return {VulkanTexture(std::move(ret)), initialState};
+    return {.texture = std::move(ret), .state = initialState};
 }
 
 void VulkanDevice::SetBufferData(VulkanBuffer& buffer, BytesView data)
@@ -791,7 +794,7 @@ ShaderPtr VulkanDevice::CreateShader(const ShaderData& data, const char* name)
     return std::make_shared<const VulkanShader>(std::move(shader));
 }
 
-TexturePtr VulkanDevice::CreateTexture(const TextureData& data, const char* name)
+Texture VulkanDevice::CreateTexture(const TextureData& data, const char* name)
 {
     spdlog::debug("Creating texture '{}' of size {}x{}", name, data.size.x, data.size.y);
     auto task = m_scheduler.ScheduleGpu([data, name, this](CommandBuffer& cmdBuffer) { //
@@ -800,7 +803,7 @@ TexturePtr VulkanDevice::CreateTexture(const TextureData& data, const char* name
     return task.get();
 }
 
-TexturePtr VulkanDevice::CreateTexture(const TextureData& data, const char* name, CommandBuffer& cmdBuffer)
+Texture VulkanDevice::CreateTexture(const TextureData& data, const char* name, CommandBuffer& cmdBuffer)
 {
     const auto usage = vk::ImageUsageFlagBits::eSampled;
 
@@ -817,10 +820,10 @@ TexturePtr VulkanDevice::CreateTexture(const TextureData& data, const char* name
         texture.TransitionToShaderInput(state, cmdBuffer);
     }
 
-    return std::make_shared<const VulkanTexture>(std::move(texture));
+    return m_textures.Insert(std::move(texture));
 }
 
-TexturePtr VulkanDevice::CreateRenderableTexture(const TextureData& data, const char* name)
+Texture VulkanDevice::CreateRenderableTexture(const TextureData& data, const char* name)
 {
     spdlog::debug("Creating renderable texture '{}' of size {}x{}", name, data.size.x, data.size.y);
     auto task = m_scheduler.ScheduleGpu([data, name, this](CommandBuffer& cmdBuffer) { //
@@ -829,7 +832,7 @@ TexturePtr VulkanDevice::CreateRenderableTexture(const TextureData& data, const 
     return task.get();
 }
 
-TexturePtr VulkanDevice::CreateRenderableTexture(const TextureData& data, const char* name, CommandBuffer& cmdBuffer)
+Texture VulkanDevice::CreateRenderableTexture(const TextureData& data, const char* name, CommandBuffer& cmdBuffer)
 {
     const bool isColorTarget = !HasDepthOrStencilComponent(data.format);
     const auto renderUsage
@@ -848,7 +851,7 @@ TexturePtr VulkanDevice::CreateRenderableTexture(const TextureData& data, const 
         texture.TransitionToDepthStencilTarget(state, cmdBuffer);
     }
 
-    return std::make_shared<VulkanTexture>(std::move(texture));
+    return m_textures.Insert(std::move(texture));
 }
 
 MeshPtr VulkanDevice::CreateMesh(const MeshData& data, const char* name)
@@ -908,7 +911,7 @@ PipelinePtr VulkanDevice::CreatePipeline(const PipelineData& data)
 
 vk::UniqueDescriptorSet VulkanDevice::CreateUniqueDescriptorSet(
     vk::DescriptorPool pool, vk::DescriptorSetLayout layout, const Buffer* uniformBuffer,
-    std::span<const TexturePtr> textures, const char* name)
+    std::span<const Texture> textures, const char* name)
 {
     const vk::DescriptorSetAllocateInfo allocInfo = {
         .descriptorPool = pool,
@@ -924,7 +927,7 @@ vk::UniqueDescriptorSet VulkanDevice::CreateUniqueDescriptorSet(
     return descriptorSet;
 }
 
-void VulkanDevice::WriteDescriptorSet(vk::DescriptorSet descriptorSet, const Buffer* uniformBuffer, std::span<const TexturePtr> textures)
+void VulkanDevice::WriteDescriptorSet(vk::DescriptorSet descriptorSet, const Buffer* uniformBuffer, std::span<const Texture> textures)
 {
     const auto numUniformBuffers = uniformBuffer ? 1 : 0;
 
@@ -958,18 +961,14 @@ void VulkanDevice::WriteDescriptorSet(vk::DescriptorSet descriptorSet, const Buf
     imageInfos.reserve(textures.size());
     for (const auto& texture : textures)
     {
-        if (!texture)
-        {
-            continue;
-        }
-
-        const auto& textureImpl = GetImpl(*texture);
+        const VulkanTexture& textureImpl = GetImpl(texture);
 
         imageInfos.push_back({
             .sampler = textureImpl.sampler.get(),
             .imageView = textureImpl.imageView.get(),
-            .imageLayout = HasDepthOrStencilComponent(textureImpl.format) ? vk::ImageLayout::eDepthStencilReadOnlyOptimal
-                                                                          : vk::ImageLayout::eShaderReadOnlyOptimal,
+            .imageLayout = HasDepthOrStencilComponent(textureImpl.properties.format)
+                ? vk::ImageLayout::eDepthStencilReadOnlyOptimal
+                : vk::ImageLayout::eShaderReadOnlyOptimal,
         });
 
         descriptorWrites.push_back({

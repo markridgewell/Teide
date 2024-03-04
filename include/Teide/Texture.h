@@ -2,20 +2,44 @@
 #pragma once
 
 #include "GeoLib/Vector.h"
-#include "Teide/AbstractBase.h"
 #include "Teide/BasicTypes.h"
+#include "Teide/Handle.h"
 #include "Teide/TextureData.h"
+
+#include <functional>
+#include <utility>
 
 namespace Teide
 {
 
-class Texture : AbstractBase
+struct TextureProperties
+{
+    Geo::Size2i size;
+    Format format = Format::Unknown;
+    uint32 mipLevelCount = 1;
+    uint32 sampleCount = 1;
+};
+
+class Texture final : public Handle<TextureProperties>
 {
 public:
-    virtual Geo::Size2i GetSize() const = 0;
-    virtual Format GetFormat() const = 0;
-    virtual uint32 GetMipLevelCount() const = 0;
-    virtual uint32 GetSampleCount() const = 0;
+    using Handle::Handle;
+
+    Geo::Size2i GetSize() const { return (*this)->size; }
+    Format GetFormat() const { return (*this)->format; }
+    uint32 GetMipLevelCount() const { return (*this)->mipLevelCount; }
+    uint32 GetSampleCount() const { return (*this)->sampleCount; }
+
+    bool operator==(const Texture&) const = default;
 };
 
 } // namespace Teide
+
+template <>
+struct std::hash<Teide::Texture>
+{
+    std::size_t operator()(const Teide::Texture& v) const
+    {
+        return std::hash<Teide::uint64>{}(static_cast<Teide::uint64>(v));
+    }
+};

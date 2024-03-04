@@ -3,6 +3,7 @@
 
 #include "CommandBuffer.h"
 #include "Scheduler.h"
+#include "ThreadUtils.h"
 #include "Vulkan.h"
 #include "VulkanBuffer.h"
 #include "VulkanLoader.h"
@@ -13,6 +14,7 @@
 #include "Teide/Device.h"
 #include "Teide/Hash.h"
 #include "Teide/Renderer.h"
+#include "Teide/ResourceMap.h"
 #include "Teide/Surface.h"
 
 #include <vulkan/vulkan_hash.hpp>
@@ -54,7 +56,7 @@ public:
 
     ShaderEnvironmentPtr CreateShaderEnvironment(const ShaderEnvironmentData& data, const char* name) override;
     ShaderPtr CreateShader(const ShaderData& data, const char* name) override;
-    TexturePtr CreateTexture(const TextureData& data, const char* name) override;
+    Texture CreateTexture(const TextureData& data, const char* name) override;
     MeshPtr CreateMesh(const MeshData& data, const char* name) override;
     PipelinePtr CreatePipeline(const PipelineData& data) override;
     ParameterBlockPtr CreateParameterBlock(const ParameterBlockData& data, const char* name) override;
@@ -70,6 +72,13 @@ public:
     auto& GetImpl(T& obj)
     {
         return dynamic_cast<const typename VulkanImpl<std::remove_const_t<T>>::type&>(obj);
+    }
+
+    template <class T>
+        requires std::same_as<std::remove_const_t<T>, Texture>
+    const VulkanTexture& GetImpl(T& obj)
+    {
+        return m_textures.Get(obj);
     }
 
     template <class T>
@@ -96,9 +105,9 @@ public:
     SurfacePtr CreateSurface(vk::UniqueSurfaceKHR surface, SDL_Window* window, bool multisampled);
     BufferPtr CreateBuffer(const BufferData& data, const char* name, CommandBuffer& cmdBuffer);
     VulkanBuffer CreateTransientBuffer(const BufferData& data, const char* name);
-    TexturePtr CreateTexture(const TextureData& data, const char* name, CommandBuffer& cmdBuffer);
-    TexturePtr CreateRenderableTexture(const TextureData& data, const char* name);
-    TexturePtr CreateRenderableTexture(const TextureData& data, const char* name, CommandBuffer& cmdBuffer);
+    Texture CreateTexture(const TextureData& data, const char* name, CommandBuffer& cmdBuffer);
+    Texture CreateRenderableTexture(const TextureData& data, const char* name);
+    Texture CreateRenderableTexture(const TextureData& data, const char* name, CommandBuffer& cmdBuffer);
     MeshPtr CreateMesh(const MeshData& data, const char* name, CommandBuffer& cmdBuffer);
     ParameterBlockPtr
     CreateParameterBlock(const ParameterBlockData& data, const char* name, CommandBuffer& cmdBuffer, uint32 threadIndex);
@@ -135,8 +144,8 @@ private:
 
     vk::UniqueDescriptorSet CreateUniqueDescriptorSet(
         vk::DescriptorPool pool, vk::DescriptorSetLayout layout, const Buffer* uniformBuffer,
-        std::span<const TexturePtr> textures, const char* name);
-    void WriteDescriptorSet(vk::DescriptorSet descriptorSet, const Buffer* uniformBuffer, std::span<const TexturePtr> textures);
+        std::span<const Texture> textures, const char* name);
+    void WriteDescriptorSet(vk::DescriptorSet descriptorSet, const Buffer* uniformBuffer, std::span<const Texture> textures);
 
     VulkanParameterBlockLayoutPtr CreateParameterBlockLayout(const ParameterBlockDesc& desc, int set);
 
@@ -160,6 +169,8 @@ private:
     vk::UniqueCommandPool m_surfaceCommandPool;
 
     vma::UniqueAllocator m_allocator;
+
+    ResourceMap<Texture, VulkanTexture> m_textures;
 
     Scheduler m_scheduler;
 };

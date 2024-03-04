@@ -13,6 +13,7 @@ set(sources
     src/Teide/HashTest.cpp
     src/Teide/ParameterBlockTest.cpp
     src/Teide/RendererTest.cpp
+    src/Teide/ResourceMapTest.cpp
     src/Teide/SchedulerTest.cpp
     src/Teide/ShaderDataTest.cpp
     src/Teide/SurfaceTest.cpp

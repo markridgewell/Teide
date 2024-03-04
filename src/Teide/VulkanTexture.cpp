@@ -31,13 +31,13 @@ void VulkanTexture::GenerateMipmaps(TextureState& state, vk::CommandBuffer cmdBu
 
     const auto origin = vk::Offset3D{0, 0, 0};
     auto prevMipSize = vk::Offset3D{
-        static_cast<int32>(size.x),
-        static_cast<int32>(size.y),
+        static_cast<int32>(properties.size.x),
+        static_cast<int32>(properties.size.y),
         static_cast<int32>(1),
     };
 
     // Iterate all mip levels starting at 1
-    for (uint32_t i = 1; i < mipLevelCount; i++)
+    for (uint32_t i = 1; i < properties.mipLevelCount; i++)
     {
         const vk::Offset3D currMipSize = {
             prevMipSize.x > 1 ? prevMipSize.x / 2 : 1,
@@ -89,7 +89,7 @@ void VulkanTexture::GenerateMipmaps(TextureState& state, vk::CommandBuffer cmdBu
     // Transition final mip level to be ready for reading in shader
     const auto finalBarrier = makeBarrier(
         vk::AccessFlagBits::eTransferWrite, vk::AccessFlagBits::eShaderRead, vk::ImageLayout::eTransferDstOptimal,
-        vk::ImageLayout::eShaderReadOnlyOptimal, mipLevelCount - 1);
+        vk::ImageLayout::eShaderReadOnlyOptimal, properties.mipLevelCount - 1);
 
     cmdBuffer.pipelineBarrier(
         vk::PipelineStageFlagBits::eTransfer, vk::PipelineStageFlagBits::eFragmentShader, {}, {}, {}, finalBarrier);
@@ -122,8 +122,8 @@ void VulkanTexture::DoTransition(
     }
 
     TransitionImageLayout(
-        cmdBuffer, image.get(), format, mipLevelCount, state.layout, newLayout, state.lastPipelineStageUsage,
-        newPipelineStageFlags);
+        cmdBuffer, image.get(), properties.format, properties.mipLevelCount, state.layout, newLayout,
+        state.lastPipelineStageUsage, newPipelineStageFlags);
 
     state.layout = newLayout;
     state.lastPipelineStageUsage = newPipelineStageFlags;
@@ -131,7 +131,7 @@ void VulkanTexture::DoTransition(
 
 void VulkanTexture::TransitionToRenderTarget(TextureState& state, vk::CommandBuffer cmdBuffer) const
 {
-    if (HasDepthOrStencilComponent(format))
+    if (HasDepthOrStencilComponent(properties.format))
     {
         TransitionToDepthStencilTarget(state, cmdBuffer);
     }
@@ -143,14 +143,14 @@ void VulkanTexture::TransitionToRenderTarget(TextureState& state, vk::CommandBuf
 
 void VulkanTexture::TransitionToColorTarget(TextureState& state, vk::CommandBuffer cmdBuffer) const
 {
-    TEIDE_ASSERT(!HasDepthOrStencilComponent(format));
+    TEIDE_ASSERT(!HasDepthOrStencilComponent(properties.format));
 
     DoTransition(state, cmdBuffer, vk::ImageLayout::eColorAttachmentOptimal, vk::PipelineStageFlagBits::eColorAttachmentOutput);
 }
 
 void VulkanTexture::TransitionToDepthStencilTarget(TextureState& state, vk::CommandBuffer cmdBuffer) const
 {
-    TEIDE_ASSERT(HasDepthOrStencilComponent(format));
+    TEIDE_ASSERT(HasDepthOrStencilComponent(properties.format));
 
     DoTransition(
         state, cmdBuffer, vk::ImageLayout::eDepthStencilAttachmentOptimal,

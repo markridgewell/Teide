@@ -58,7 +58,7 @@ constexpr Teide::RenderTargetInfo CreateRenderTargetInfo(Teide::uint32 size)
     return CreateRenderTargetInfo(Geo::Size2i{size});
 }
 
-Teide::TexturePtr
+Teide::Texture
 Render(const Teide::RendererPtr& renderer, const Teide::RenderTargetInfo& renderTarget, std::vector<Teide::RenderObject> objects)
 {
     const Teide::RenderList renderList = {
@@ -66,7 +66,7 @@ Render(const Teide::RendererPtr& renderer, const Teide::RenderTargetInfo& render
         .objects = std::move(objects),
     };
 
-    return renderer->RenderToTexture(renderTarget, renderList).colorTexture;
+    return renderer->RenderToTexture(renderTarget, renderList).colorTexture.value();
 }
 
 
@@ -81,7 +81,8 @@ void BM_RenderNothing(benchmark::State& state)
 
     for (auto _ [[maybe_unused]] : state)
     {
-        const auto texture = Render(renderer, renderTarget, {});
+        auto texture = Render(renderer, renderTarget, {});
+        benchmark::DoNotOptimize(texture);
     }
 }
 BENCHMARK(BM_RenderNothing)->Arg(8); //->Arg(256)->Arg(4096);
@@ -115,7 +116,8 @@ void BM_RenderToTexture(benchmark::State& state)
 
     for (auto _ [[maybe_unused]] : state)
     {
-        const auto texture = Render(renderer, renderTarget, renderObjects);
+        auto texture = Render(renderer, renderTarget, renderObjects);
+        benchmark::DoNotOptimize(texture);
     }
 }
 BENCHMARK(BM_RenderToTexture)->Arg(8); //->Arg(256)->Arg(4096);

@@ -83,11 +83,10 @@ TEST_F(DeviceTest, CreateTexture)
         .pixels = HexToBytes("ff 00 00 ff 00 ff 00 ff ff 00 ff ff 00 00 ff ff"),
     };
     const auto texture = m_device->CreateTexture(textureData, "Texture");
-    EXPECT_THAT(texture.get(), NotNull());
-    EXPECT_THAT(texture->GetSize(), Eq(Geo::Size2i{2, 2}));
-    EXPECT_THAT(texture->GetFormat(), Eq(Format::Byte4Srgb));
-    EXPECT_THAT(texture->GetMipLevelCount(), Eq(1u));
-    EXPECT_THAT(texture->GetSampleCount(), Eq(1u));
+    EXPECT_THAT(texture.GetSize(), Eq(Geo::Size2i{2, 2}));
+    EXPECT_THAT(texture.GetFormat(), Eq(Format::Byte4Srgb));
+    EXPECT_THAT(texture.GetMipLevelCount(), Eq(1u));
+    EXPECT_THAT(texture.GetSampleCount(), Eq(1u));
 }
 
 TEST_F(DeviceTest, CreateTextureWithNullName)
@@ -100,11 +99,10 @@ TEST_F(DeviceTest, CreateTextureWithNullName)
         .pixels = HexToBytes("ff 00 00 ff 00 ff 00 ff ff 00 ff ff 00 00 ff ff"),
     };
     const auto texture = m_device->CreateTexture(textureData, nullptr);
-    EXPECT_THAT(texture.get(), NotNull());
-    EXPECT_THAT(texture->GetSize(), Eq(Geo::Size2i{2, 2}));
-    EXPECT_THAT(texture->GetFormat(), Eq(Format::Byte4Srgb));
-    EXPECT_THAT(texture->GetMipLevelCount(), Eq(1u));
-    EXPECT_THAT(texture->GetSampleCount(), Eq(1u));
+    EXPECT_THAT(texture.GetSize(), Eq(Geo::Size2i{2, 2}));
+    EXPECT_THAT(texture.GetFormat(), Eq(Format::Byte4Srgb));
+    EXPECT_THAT(texture.GetMipLevelCount(), Eq(1u));
+    EXPECT_THAT(texture.GetSampleCount(), Eq(1u));
 }
 
 TEST_F(DeviceTest, CreateMesh)

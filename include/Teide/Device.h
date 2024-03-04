@@ -29,7 +29,7 @@ public:
     virtual BufferPtr CreateBuffer(const BufferData& data, const char* name) = 0;
     virtual ShaderEnvironmentPtr CreateShaderEnvironment(const ShaderEnvironmentData& data, const char* name) = 0;
     virtual ShaderPtr CreateShader(const ShaderData& data, const char* name) = 0;
-    virtual TexturePtr CreateTexture(const TextureData& data, const char* name) = 0;
+    virtual Texture CreateTexture(const TextureData& data, const char* name) = 0;
     virtual MeshPtr CreateMesh(const MeshData& data, const char* name) = 0;
     virtual PipelinePtr CreatePipeline(const PipelineData& data) = 0;
     virtual ParameterBlockPtr CreateParameterBlock(const ParameterBlockData& data, const char* name) = 0;
