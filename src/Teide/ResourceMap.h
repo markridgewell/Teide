@@ -44,7 +44,7 @@ private:
     public:
         explicit Impl(std::string_view resourceType) : m_resourceType{resourceType} {}
 
-        std::pair<uint32, const Slot&> Insert(ResourceT resource)
+        std::pair<uint64, const Slot&> Insert(ResourceT resource)
         {
             const auto index = static_cast<uint64>(m_list.size());
             spdlog::debug("Creating {} {}", m_resourceType, index);

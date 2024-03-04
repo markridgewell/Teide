@@ -34,7 +34,7 @@ T& Copy(T& obj)
 }
 
 template <class T>
-T&& Move(T&& obj)
+T&& Move(T&& obj) // NOLINT(cppcoreguidelines-missing-std-forward)
 {
     return static_cast<T&&>(obj);
 }
@@ -129,10 +129,10 @@ TEST(ResourceMapTest, SelfMoveAssignment)
 TEST(ResourceMapTest, CompareHandles)
 {
     auto map = Map("test");
-    Handle handle1 = map.Insert({});
-    Handle handle2 = handle1;
+    const Handle handle1 = map.Insert({});
+    const Handle handle2 = Copy(handle1);
     EXPECT_THAT(handle1, Eq(handle2));
-    Handle handle3 = map.Insert({});
+    const Handle handle3 = map.Insert({});
     EXPECT_THAT(handle1, Ne(handle3));
 }
 

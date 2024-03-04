@@ -16,10 +16,10 @@ using namespace Teide;
 TEST(TextureTest, CompareHandles)
 {
     auto device = CreateTestDevice();
-    Texture texture1 = device->CreateTexture(OnePixelWhiteTexture, "Tex1");
-    Texture texture2 = texture1;
+    const Texture texture1 = device->CreateTexture(OnePixelWhiteTexture, "Tex1");
+    const Texture texture2 = texture1; // NOLINT(performance-unnecessary-copy-initialization)
     EXPECT_THAT(texture1, Eq(texture2));
-    Handle texture3 = device->CreateTexture(OnePixelWhiteTexture, "Tex2");
+    const Handle texture3 = device->CreateTexture(OnePixelWhiteTexture, "Tex2");
     EXPECT_THAT(texture1, Ne(texture3));
 }
 
