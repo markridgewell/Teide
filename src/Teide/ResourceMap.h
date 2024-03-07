@@ -26,13 +26,12 @@ public:
         m_impl(Impl(resourceType, keepAliveFrames))
     {}
 
-    HandleT Insert(ResourceT resource)
-    {
-        const auto& [index, slot] = m_impl.Lock(&Impl::Insert, std::move(resource));
-        return HandleT(index, *this, slot.resource.properties);
-    }
+    HandleT Insert(ResourceT resource) { return m_impl.Lock(&Impl::Insert, *this, std::move(resource)); }
 
-    ResourceT* FindUnused(const PropertiesType& properties) { return m_impl.Lock(&Impl::FindUnused, properties); }
+    [[nodiscard]] std::optional<HandleT> TryReuse(const PropertiesType& properties)
+    {
+        return m_impl.Lock(&Impl::TryReuse, *this, properties);
+    }
 
     void NextFrame() { m_impl.Lock(&Impl::NextFrame); }
 
@@ -72,26 +71,26 @@ private:
             m_resourceType{resourceType}, m_keepAliveFrames{keepAliveFrames}
         {}
 
-        std::pair<uint64, const Slot&> Insert(ResourceT resource)
+        [[nodiscard]] HandleT Insert(RefCounter& self, ResourceT resource)
         {
             const auto index = static_cast<uint64>(m_list.size());
             spdlog::debug("Creating {} {}", m_resourceType, index);
             const auto& slot = m_list.emplace_back(std::move(resource));
-            return {index, slot};
+            return HandleT(index, self, slot.resource.properties);
         }
 
-        ResourceT* FindUnused(const PropertiesType& properties)
+        [[nodiscard]] std::optional<HandleT> TryReuse(RefCounter& self, const PropertiesType& properties)
         {
             const auto it = m_unusedPool.find(properties);
             if (it == m_unusedPool.end())
             {
-                return nullptr;
+                return std::nullopt;
             }
-            const auto index = it->second;
+            const uint64 index = it->second.index;
             m_unusedPool.erase(it);
             spdlog::debug("Reusing {} {}", m_resourceType, index);
             const auto& slot = m_list[index];
-            return {index, slot};
+            return HandleT(index, self, slot.resource.properties);
         }
 
         void NextFrame()

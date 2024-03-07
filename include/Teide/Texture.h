@@ -18,6 +18,9 @@ struct TextureProperties
     Format format = Format::Unknown;
     uint32 mipLevelCount = 1;
     uint32 sampleCount = 1;
+
+    void Visit(auto f) const { return f(size, format, mipLevelCount, sampleCount); }
+    bool operator==(const TextureProperties&) const = default;
 };
 
 class Texture final : public Handle<TextureProperties>

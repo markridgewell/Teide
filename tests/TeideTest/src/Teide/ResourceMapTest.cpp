@@ -36,12 +36,6 @@ T& Copy(T& obj)
     return obj;
 }
 
-template <class T>
-T&& Move(T&& obj) // NOLINT(cppcoreguidelines-missing-std-forward)
-{
-    return static_cast<T&&>(obj);
-}
-
 TEST(ResourceMapTest, AddResource)
 {
     auto map = Map("test");
@@ -157,6 +151,39 @@ TEST(ResourceMapTest, CopyHandleAndDestroyResourceByAssigning)
     EXPECT_THAT(resource.hiddenValue, Eq(0));
 }
 
+TEST(ResourceMapTest, ReuseResource)
+{
+    auto map = Map("test", 1);
+    const TestProperties props = {42};
+    std::optional<TestHandle> handle = map.Insert(TestResource{props, 102});
+    handle.reset();
+    std::optional<TestHandle> handle2 = map.TryReuse(props);
+    EXPECT_THAT(handle2, Ne(handle));
+    const TestResource& resource2 = map.Get(*handle2);
+    EXPECT_THAT(resource2.properties, Eq(props));
+    EXPECT_THAT(resource2.hiddenValue, 102);
+}
+
+TEST(ResourceMapTest, FailToReuseInUseResource)
+{
+    auto map = Map("test", 1);
+    const TestProperties props = {42};
+    std::optional<TestHandle> handle = map.Insert(TestResource{props, 102});
+    std::optional<TestHandle> handle2 = map.TryReuse(props);
+    EXPECT_THAT(handle2, Eq(std::nullopt));
+}
+
+TEST(ResourceMapTest, FailToReuseDestroyedResource)
+{
+    auto map = Map("test", 1);
+    const TestProperties props = {42};
+    std::optional<TestHandle> handle = map.Insert(TestResource{props, 102});
+    handle.reset();
+    map.NextFrame();
+    std::optional<TestHandle> handle2 = map.TryReuse(props);
+    EXPECT_THAT(handle2, Eq(std::nullopt));
+}
+
 TEST(ResourceMapTest, SelfCopyAssignment)
 {
     auto map = Map("test");
@@ -172,7 +199,7 @@ TEST(ResourceMapTest, SelfMoveAssignment)
     auto map = Map("test");
     TestHandle handle = map.Insert(TestResource{{42}, 102});
     const TestResource& resource = map.Get(handle);
-    handle = Move(handle);
+    handle = static_cast<TestHandle&&>(handle);
     EXPECT_THAT(resource.properties.value, Eq(42));
     EXPECT_THAT(resource.hiddenValue, Eq(102));
 }
