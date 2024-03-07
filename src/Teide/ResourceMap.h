@@ -48,10 +48,12 @@ private:
         ResourceT resource;
 
         explicit Slot(ResourceT resource) : resource{std::move(resource)} {}
+
         Slot(const Slot&) = default;
         Slot(Slot&&) noexcept = default;
         Slot& operator=(const Slot&) = default;
         Slot& operator=(Slot&&) noexcept = default;
+        ~Slot() noexcept = default;
 
         void Reset() { resource = {}; }
     };

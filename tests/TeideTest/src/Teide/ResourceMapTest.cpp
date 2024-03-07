@@ -168,8 +168,9 @@ TEST(ResourceMapTest, FailToReuseInUseResource)
 {
     auto map = Map("test", 1);
     const TestProperties props = {42};
-    std::optional<TestHandle> handle = map.Insert(TestResource{props, 102});
-    std::optional<TestHandle> handle2 = map.TryReuse(props);
+    const auto handle = map.Insert(TestResource{props, 102});
+    (void)handle;
+    const auto handle2 = map.TryReuse(props);
     EXPECT_THAT(handle2, Eq(std::nullopt));
 }
 
@@ -180,8 +181,8 @@ TEST(ResourceMapTest, FailToReuseDestroyedResource)
     std::optional<TestHandle> handle = map.Insert(TestResource{props, 102});
     handle.reset();
     map.NextFrame();
-    std::optional<TestHandle> handle2 = map.TryReuse(props);
-    EXPECT_THAT(handle2, Eq(std::nullopt));
+    handle = map.TryReuse(props);
+    EXPECT_THAT(handle, Eq(std::nullopt));
 }
 
 TEST(ResourceMapTest, SelfCopyAssignment)
