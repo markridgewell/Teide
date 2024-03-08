@@ -109,6 +109,7 @@ jobs:
         -DTEIDE_SANITIZER=${{matrix.sanitizer}}
         -DCMAKE_CONFIGURATION_TYPES=${{matrix.buildtype}}
         -DCMAKE_TRY_COMPILE_CONFIGURATION=${{matrix.buildtype}}
+        ${{ runner.debug && '-DTEIDE_TEST_VERBOSE=ON' || '' }}
         ${{env.EXTRA_CMAKE_FLAGS}}
 
     - name: Save CMake trace
