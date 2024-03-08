@@ -16,9 +16,8 @@ struct TestProperties
     bool operator==(const TestProperties&) const = default;
 };
 
-struct TestResource
+struct TestResource : Resource<TestProperties>
 {
-    TestProperties properties;
     int hiddenValue = 0;
 };
 
@@ -155,7 +154,7 @@ TEST(ResourceMapTest, ReuseResource)
 {
     auto map = Map("test", 1);
     const TestProperties props = {42};
-    std::optional<TestHandle> handle = map.Insert(TestResource{props, 102});
+    std::optional<TestHandle> handle = map.Insert(TestResource{{props}, 102});
     handle.reset();
     std::optional<TestHandle> handle2 = map.TryReuse(props);
     EXPECT_THAT(handle2, Ne(handle));
@@ -168,7 +167,7 @@ TEST(ResourceMapTest, FailToReuseInUseResource)
 {
     auto map = Map("test", 1);
     const TestProperties props = {42};
-    const auto handle = map.Insert(TestResource{props, 102});
+    const auto handle = map.Insert(TestResource{{props}, 102});
     (void)handle;
     const auto handle2 = map.TryReuse(props);
     EXPECT_THAT(handle2, Eq(std::nullopt));
@@ -178,7 +177,7 @@ TEST(ResourceMapTest, FailToReuseDestroyedResource)
 {
     auto map = Map("test", 1);
     const TestProperties props = {42};
-    std::optional<TestHandle> handle = map.Insert(TestResource{props, 102});
+    std::optional<TestHandle> handle = map.Insert(TestResource{{props}, 102});
     handle.reset();
     map.NextFrame();
     handle = map.TryReuse(props);

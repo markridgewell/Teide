@@ -16,26 +16,35 @@
 namespace Teide
 {
 
+template <class T>
+struct Resource
+{
+    using PropertiesType = T;
+    T properties;
+};
+
 template <class HandleT, class ResourceT>
 class ResourceMap : public RefCounter
 {
 public:
-    using PropertiesType = HandleT::Type;
+    using HandleType = HandleT;
+    using ResourceType = ResourceT;
+    using PropertiesType = ResourceType::PropertiesType;
 
     explicit ResourceMap(std::string_view resourceType, uint32 keepAliveFrames = 3) :
         m_impl(Impl(resourceType, keepAliveFrames))
     {}
 
-    HandleT Insert(ResourceT resource) { return m_impl.Lock(&Impl::Insert, *this, std::move(resource)); }
+    HandleType Insert(ResourceType resource) { return m_impl.Lock(&Impl::Insert, *this, std::move(resource)); }
 
-    [[nodiscard]] std::optional<HandleT> TryReuse(const PropertiesType& properties)
+    [[nodiscard]] std::optional<HandleType> TryReuse(const PropertiesType& properties)
     {
         return m_impl.Lock(&Impl::TryReuse, *this, properties);
     }
 
     void NextFrame() { m_impl.Lock(&Impl::NextFrame); }
 
-    ResourceT& Get(const HandleT& handle) { return m_impl.Lock(&Impl::Get, handle); }
+    ResourceType& Get(const HandleType& handle) { return m_impl.Lock(&Impl::Get, handle); }
 
     void AddRef(uint64 index) noexcept override { m_impl.Lock(&Impl::AddRef, index); }
 
@@ -45,9 +54,9 @@ private:
     struct Slot
     {
         uint32 refCount = 1;
-        ResourceT resource;
+        ResourceType resource;
 
-        explicit Slot(ResourceT resource) : resource{std::move(resource)} {}
+        explicit Slot(ResourceType resource) : resource{std::move(resource)} {}
 
         Slot(const Slot&) = default;
         Slot(Slot&&) noexcept = default;
@@ -73,15 +82,15 @@ private:
             m_resourceType{resourceType}, m_keepAliveFrames{keepAliveFrames}
         {}
 
-        [[nodiscard]] HandleT Insert(RefCounter& self, ResourceT resource)
+        [[nodiscard]] HandleType Insert(RefCounter& self, ResourceType resource)
         {
             const auto index = static_cast<uint64>(m_list.size());
             spdlog::debug("Creating {} {}", m_resourceType, index);
             const auto& slot = m_list.emplace_back(std::move(resource));
-            return HandleT(index, self, slot.resource.properties);
+            return HandleType(index, self, slot.resource.properties);
         }
 
-        [[nodiscard]] std::optional<HandleT> TryReuse(RefCounter& self, const PropertiesType& properties)
+        [[nodiscard]] std::optional<HandleType> TryReuse(RefCounter& self, const PropertiesType& properties)
         {
             const auto it = m_unusedPool.find(properties);
             if (it == m_unusedPool.end())
@@ -92,7 +101,7 @@ private:
             m_unusedPool.erase(it);
             spdlog::debug("Reusing {} {}", m_resourceType, index);
             const auto& slot = m_list[index];
-            return HandleT(index, self, slot.resource.properties);
+            return HandleType(index, self, slot.resource.properties);
         }
 
         void NextFrame()
@@ -109,7 +118,7 @@ private:
             std::erase_if(m_unusedPool, [](const auto& entry) { return entry.second.framesLeft == 0; });
         }
 
-        ResourceT& Get(const HandleT& handle)
+        ResourceType& Get(const HandleType& handle)
         {
             const auto index = static_cast<uint64>(handle);
             return m_list.at(index).resource;

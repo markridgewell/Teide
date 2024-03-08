@@ -76,7 +76,7 @@ public:
 
     template <class T>
         requires std::same_as<std::remove_const_t<T>, Texture>
-    const VulkanTexture& GetImpl(T& obj)
+    VulkanTexture& GetImpl(T& obj)
     {
         return m_textures.Get(obj);
     }
@@ -89,7 +89,7 @@ public:
 
     struct TextureAndState
     {
-        VulkanTexture texture;
+        Texture texture;
         TextureState state;
     };
 
@@ -141,6 +141,8 @@ private:
         bool operator==(const FramebufferDesc&) const = default;
         void Visit(auto f) const { return f(renderPass, size, attachments); }
     };
+
+    Texture CreateOrReuseTexture(const VulkanTextureProperties& properties, vk::ImageLayout initialLayout);
 
     vk::UniqueDescriptorSet CreateUniqueDescriptorSet(
         vk::DescriptorPool pool, vk::DescriptorSetLayout layout, const Buffer* uniformBuffer,
