@@ -1,6 +1,7 @@
 
 #pragma once
 
+#include "Teide/Assert.h"
 #include "Teide/BasicTypes.h"
 #include "Teide/Handle.h"
 #include "Teide/Hash.h"
@@ -100,7 +101,9 @@ private:
             const uint64 index = it->second.index;
             m_unusedPool.erase(it);
             spdlog::debug("Reusing {} {}", m_resourceType, index);
-            const auto& slot = m_list[index];
+            auto& slot = m_list[index];
+            TEIDE_ASSERT(slot.refCount == 0);
+            slot.refCount = 1;
             return HandleType(index, self, slot.resource.properties);
         }
 
@@ -111,6 +114,7 @@ private:
                 --framesLeft;
                 if (framesLeft == 0)
                 {
+                    TEIDE_ASSERT(m_list[index].refCount == 0);
                     spdlog::debug("Destroying {} {}", m_resourceType, index);
                     m_list[index].Reset();
                 }
@@ -121,6 +125,7 @@ private:
         ResourceType& Get(const HandleType& handle)
         {
             const auto index = static_cast<uint64>(handle);
+            TEIDE_ASSERT(m_list[index].refCount > 0);
             return m_list.at(index).resource;
         }
 
@@ -134,6 +139,7 @@ private:
         void DecRef(uint64 index) noexcept
         {
             auto& slot = m_list[index];
+            TEIDE_ASSERT(slot.refCount > 0);
             --slot.refCount;
             spdlog::debug("Decrementing ref from {} {} (now {})", m_resourceType, index, slot.refCount);
             if (slot.refCount == 0)
