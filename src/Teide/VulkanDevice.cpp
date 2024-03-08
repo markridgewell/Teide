@@ -622,7 +622,7 @@ auto VulkanDevice::CreateTextureImpl(
         .sampleCount = data.sampleCount,
     };
 
-    const auto texture = CreateOrReuseTexture({properties, usage}, initialState.layout);
+    auto texture = CreateOrReuseTexture({properties, usage}, initialState.layout);
 
     auto& textureImpl = GetImpl(texture);
     textureImpl.sampler = CreateSampler(m_device.get(), data.samplerState);
