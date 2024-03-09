@@ -59,6 +59,12 @@ jobs:
           extra-packages: ninja-build clang++-17
           sanitizer: UBSAN
           name-suffix: -ubsan
+        - preset: clang++-17
+          buildtype: Debug
+          runner: ubuntu-latest
+          extra-packages: ninja-build clang++-17
+          sanitizer: MSAN
+          name-suffix: -msan
 
     name: ${{startsWith(matrix.runner, 'windows') && 'Windows' || 'Linux'}}-${{matrix.buildtype}}-${{matrix.preset}}${{matrix.name-suffix}}
     runs-on: ${{matrix.runner}}
@@ -67,6 +73,9 @@ jobs:
       job_name: ${{startsWith(matrix.runner, 'windows') && 'Windows' || 'Linux'}}-${{matrix.buildtype}}-${{matrix.preset}}${{matrix.name-suffix}}
       CMAKE_BUILD_TYPE: ${{matrix.buildtype}}
       RT_OUTPUT_DIR: build/${{matrix.preset}}/tests/RenderTest/RenderTestOutput
+      LIBCXX_DIR: ${{github.workspace}}/build/${{matrix.preset}}/libcxx
+      LIBCXX_INCLUDE_DIR: ${{github.workspace}}/build/${{matrix.preset}}/libcxx/include
+      LIBCXX_LIB_DIR: ${{github.workspace}}/build/${{matrix.preset}}/libcxx/lib
 
     outputs:
       rendertest-failures: ${{steps.rendertest.outputs.failure == 'true'}}
