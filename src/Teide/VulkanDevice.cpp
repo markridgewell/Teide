@@ -657,7 +657,7 @@ auto VulkanDevice::CreateTextureImpl(
         SetDebugName(textureImpl.sampler, "{}:Sampler", debugName);
     }
 
-    return {.texture = std::move(texture), .state = initialState};
+    return {std::move(texture), initialState};
 }
 
 void VulkanDevice::SetBufferData(VulkanBuffer& buffer, BytesView data)

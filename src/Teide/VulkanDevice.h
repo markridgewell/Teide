@@ -91,6 +91,8 @@ public:
     {
         Texture texture;
         TextureState state;
+
+        TextureAndState(Texture texture, TextureState state) : texture{std::move(texture)}, state{state} {}
     };
 
     TextureAndState
