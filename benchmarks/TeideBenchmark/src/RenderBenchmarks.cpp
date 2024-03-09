@@ -85,7 +85,7 @@ void BM_RenderNothing(benchmark::State& state)
         benchmark::DoNotOptimize(texture);
     }
 }
-BENCHMARK(BM_RenderNothing)->Arg(8); //->Arg(256)->Arg(4096);
+BENCHMARK(BM_RenderNothing)->Arg(8)->Arg(256)->Arg(4096);
 
 void BM_RenderToTexture(benchmark::State& state)
 {
@@ -120,4 +120,4 @@ void BM_RenderToTexture(benchmark::State& state)
         benchmark::DoNotOptimize(texture);
     }
 }
-BENCHMARK(BM_RenderToTexture)->Arg(8); //->Arg(256)->Arg(4096);
+BENCHMARK(BM_RenderToTexture)->Arg(8)->Arg(256)->Arg(4096);
