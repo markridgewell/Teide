@@ -101,7 +101,9 @@ def benchmark_compare(
     ):
     # Run benchmarks
     if not out_json:
-        out_json = out_dir / (ref1_name + '_' + ref2_name + '.json')
+        ref1_hash = run_process(['git', 'rev-parse', ref1_name]).strip()
+        ref2_hash = run_process(['git', 'rev-parse', ref2_name]).strip()
+        out_json = out_dir / (ref1_hash + '_' + ref2_hash + '.json')
     result1 = benchmark_commit(ref1_name, preset, out_dir, definitions, repetitions, sw_render)
     print()
     result2 = benchmark_commit(ref2_name, preset, out_dir, definitions, repetitions, sw_render)

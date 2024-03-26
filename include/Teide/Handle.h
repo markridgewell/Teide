@@ -18,6 +18,8 @@ template <class T>
 class Handle
 {
 public:
+    using Type = T;
+
     explicit Handle(uint64 index, RefCounter& owner, const T& data) : m_index{index}, m_owner{&owner}, m_data{&data} {}
 
     Handle(const Handle& other) : m_index{other.m_index}, m_owner{other.m_owner}, m_data{other.m_data}

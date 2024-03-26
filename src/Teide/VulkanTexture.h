@@ -1,6 +1,7 @@
 
 #pragma once
 
+#include "ResourceMap.h"
 #include "Vulkan.h"
 
 #include "GeoLib/Vector.h"
@@ -9,19 +10,23 @@
 namespace Teide
 {
 
+struct VulkanTextureProperties : TextureProperties
+{
+    vk::ImageUsageFlags usage;
+};
+
 struct TextureState
 {
     vk::ImageLayout layout = vk::ImageLayout::eUndefined;
     vk::PipelineStageFlags lastPipelineStageUsage = vk::PipelineStageFlagBits::eTopOfPipe;
 };
 
-struct VulkanTexture
+struct VulkanTexture : Resource<VulkanTextureProperties>
 {
     vk::UniqueImage image;
     vma::UniqueAllocation allocation;
     vk::UniqueImageView imageView;
     vk::UniqueSampler sampler;
-    TextureProperties properties;
 
     void GenerateMipmaps(TextureState& state, vk::CommandBuffer cmdBuffer);
 

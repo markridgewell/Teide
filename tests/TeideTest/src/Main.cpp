@@ -31,6 +31,7 @@ bool AssertDie(std::string_view msg, std::string_view expression, Teide::SourceL
     {
         std::cout << "Assertion failed: " << expression << ": " << msg << '\n';
     }
+    std::cout.flush();
     std::terminate();
 }
 
