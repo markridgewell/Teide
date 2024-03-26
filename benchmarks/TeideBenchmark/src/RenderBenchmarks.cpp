@@ -78,7 +78,12 @@ void CreateTexture(benchmark::State& state)
 
     for (auto _ [[maybe_unused]] : state)
     {
-        auto texture = device->CreateTexture({.size = size}, "");
+        auto texture = device->CreateTexture(
+            {
+                .size = size,
+                .format = Teide::Format::Byte4,
+            },
+            "");
         benchmark::DoNotOptimize(texture);
     }
 }
