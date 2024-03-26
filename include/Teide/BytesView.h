@@ -12,9 +12,7 @@ namespace Teide
 
 template <class T>
 concept Span = requires(T t) {
-    {
-        std::span{t}
-    };
+    { std::span{t} };
 };
 
 template <class T>
