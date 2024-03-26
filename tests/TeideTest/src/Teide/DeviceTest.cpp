@@ -73,6 +73,24 @@ TEST_F(DeviceTest, CreateShaderWithNullName)
     EXPECT_THAT(shader.get(), NotNull());
 }
 
+TEST_F(DeviceTest, CreateAndReuseTexture)
+{
+    const TextureData textureData = {
+        .size = {2, 2},
+        .format = Format::Byte4Srgb,
+        .mipLevelCount = 1,
+        .sampleCount = 1,
+        .pixels = HexToBytes("ff 00 00 ff 00 ff 00 ff ff 00 ff ff 00 00 ff ff"),
+    };
+    std::optional<Texture> texture1 = m_device->CreateTexture(textureData, "Texture1");
+    texture1.reset();
+    const Texture texture2 = m_device->CreateTexture(textureData, "Texture2");
+    EXPECT_THAT(texture2.GetSize(), Eq(Geo::Size2i{2, 2}));
+    EXPECT_THAT(texture2.GetFormat(), Eq(Format::Byte4Srgb));
+    EXPECT_THAT(texture2.GetMipLevelCount(), Eq(1u));
+    EXPECT_THAT(texture2.GetSampleCount(), Eq(1u));
+}
+
 TEST_F(DeviceTest, CreateTexture)
 {
     const TextureData textureData = {
