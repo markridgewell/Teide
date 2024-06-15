@@ -33,7 +33,7 @@ jobs:
     - name: Install dependencies
       uses: ./.github/actions/install-dependencies
       with:
-        extra-packages: ninja-build g++-13
+        extra-packages: ninja-build g++-14
 
     - name: Install google benchmark tools
       run: |
@@ -44,7 +44,7 @@ jobs:
       run: |
         base_ref=$(git merge-base "${{github.sha}}" "origin/${{inputs.base-branch}}")
         python tools/benchmark.py compare \
-          --preset g++-13 \
+          --preset g++-14 \
           --out-dir benchmark_results \
           --out-report report.txt \
           --out-summary summary.md \
