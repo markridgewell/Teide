@@ -42,16 +42,12 @@ jobs:
         sudo apt-get update
         sudo apt-get install python3.11
         python3.11 --version
-        echo "Creating virtual environment..."
-        python3.11 -m venv ./venv
-        source ./venv/bin/activate
-        pip install -r benchmark/tools/requirements.txt
+        python3.11 -m pip install -r benchmark/tools/requirements.txt
 
     - name: Run benchmark script
       run: |
-        source ./venv/bin/activate
         base_ref=$(git merge-base "${{github.sha}}" "origin/${{inputs.base-branch}}")
-        python tools/benchmark.py compare \
+        python3.11 tools/benchmark.py compare \
           --preset g++-14 \
           --out-dir benchmark_results \
           --out-report report.txt \
