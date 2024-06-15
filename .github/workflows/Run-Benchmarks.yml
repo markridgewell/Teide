@@ -38,13 +38,13 @@ jobs:
     - name: Install google benchmark tools
       run: |
         git clone https://github.com/google/benchmark.git
-        python --version
+        sudo add-apt-repository ppa:deadsnakes/ppa
+        sudo apt-get update
+        sudo apt-get install python3.11
+        python3.11 --version
         echo "Creating virtual environment..."
-        python -m venv ./venv
+        python3.11 -m venv ./venv
         source ./venv/bin/activate
-        python -m ensurepip --upgrade
-        pip install --upgrade pip
-        pip install --upgrade setuptools
         pip install -r benchmark/tools/requirements.txt
 
     - name: Run benchmark script
