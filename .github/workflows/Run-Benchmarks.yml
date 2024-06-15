@@ -38,12 +38,13 @@ jobs:
     - name: Install google benchmark tools
       run: |
         git clone https://github.com/google/benchmark.git
-        python -m pip install -r benchmark/tools/requirements.txt
+        python -m venv ./venv
+        ./venv/pip install -r benchmark/tools/requirements.txt
 
     - name: Run benchmark script
       run: |
         base_ref=$(git merge-base "${{github.sha}}" "origin/${{inputs.base-branch}}")
-        python tools/benchmark.py compare \
+        ./venv/python tools/benchmark.py compare \
           --preset g++-14 \
           --out-dir benchmark_results \
           --out-report report.txt \
