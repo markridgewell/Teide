@@ -27,7 +27,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        preset: [msvc2022, msvc2022-clang, g++-14, clang++-17]
+        preset: [msvc2022, msvc2022-clang, g++-14, clang++-18]
         buildtype: [Debug, Release]
         sanitizer: [OFF]
         include:
@@ -41,22 +41,22 @@ jobs:
         - preset: g++-14
           runner: ubuntu-24.04
           extra-packages: ninja-build g++-14
-        - preset: clang++-17
+        - preset: clang++-18
           runner: ubuntu-24.04
-          extra-packages: ninja-build clang++-17
+          extra-packages: ninja-build clang++-18
           coverage: ${{toJSON(inputs.coverage) != 'false' && 'ON' || 'OFF'}}
 
         # Additional jobs
-        - preset: clang++-17
+        - preset: clang++-18
           buildtype: Debug
           runner: ubuntu-24.04
-          extra-packages: ninja-build clang++-17
+          extra-packages: ninja-build clang++-18
           sanitizer: ASAN
           name-suffix: -asan
-        - preset: clang++-17
+        - preset: clang++-18
           buildtype: Debug
           runner: ubuntu-24.04
-          extra-packages: ninja-build clang++-17
+          extra-packages: ninja-build clang++-18
           sanitizer: UBSAN
           name-suffix: -ubsan
 
