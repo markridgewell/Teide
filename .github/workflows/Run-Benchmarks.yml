@@ -38,9 +38,13 @@ jobs:
     - name: Install google benchmark tools
       run: |
         git clone https://github.com/google/benchmark.git
+        python --version
+        echo "Creating virtual environment..."
         python -m venv ./venv
-        ./venv/bin/pip install setuptools
-        ./venv/bin/pip install -r benchmark/tools/requirements.txt
+        ./venv/bin/python --version
+        ./venv/bin/pip --version
+        ./venv/bin/python -m pip install setuptools
+        ./venv/bin/python -m pip install -r benchmark/tools/requirements.txt
 
     - name: Run benchmark script
       run: |
