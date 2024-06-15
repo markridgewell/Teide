@@ -27,7 +27,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        preset: [msvc2022, msvc2022-clang, g++-13, clang++-17]
+        preset: [msvc2022, msvc2022-clang, g++-14, clang++-17]
         buildtype: [Debug, Release]
         sanitizer: [OFF]
         include:
@@ -38,9 +38,9 @@ jobs:
           coverage: ${{toJSON(inputs.coverage) != 'false' && 'ON' || 'OFF'}}
         - preset: msvc2022-clang
           runner: windows-2022
-        - preset: g++-13
+        - preset: g++-14
           runner: ubuntu-latest
-          extra-packages: ninja-build g++-13
+          extra-packages: ninja-build g++-14
         - preset: clang++-17
           runner: ubuntu-latest
           extra-packages: ninja-build clang++-17
