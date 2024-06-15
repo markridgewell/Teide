@@ -41,15 +41,17 @@ jobs:
         python --version
         echo "Creating virtual environment..."
         python -m venv ./venv
-        ./venv/bin/python --version
-        ./venv/bin/pip --version
-        ./venv/bin/python -m pip install setuptools
-        ./venv/bin/python -m pip install -r benchmark/tools/requirements.txt
+        source ./venv/bin/activate
+        python -m ensurepip --upgrade
+        pip install --upgrade pip
+        pip install --upgrade setuptools
+        pip install -r benchmark/tools/requirements.txt
 
     - name: Run benchmark script
       run: |
+        source ./venv/bin/activate
         base_ref=$(git merge-base "${{github.sha}}" "origin/${{inputs.base-branch}}")
-        ./venv/bin/python tools/benchmark.py compare \
+        python tools/benchmark.py compare \
           --preset g++-14 \
           --out-dir benchmark_results \
           --out-report report.txt \
