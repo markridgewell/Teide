@@ -39,6 +39,7 @@ jobs:
       run: |
         git clone https://github.com/google/benchmark.git
         python -m venv ./venv
+        ./venv/bin/pip install setuptools
         ./venv/bin/pip install -r benchmark/tools/requirements.txt
 
     - name: Run benchmark script
