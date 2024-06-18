@@ -30,6 +30,23 @@ if(LINUX)
     # Set triplet taking sanitizer into account
     if(TEIDE_SANITIZER STREQUAL "UBSAN")
         set(VCPKG_TARGET_TRIPLET "${ARCH}-${ENVIRONMENT}-ubsan")
+    elseif(TEIDE_SANITIZER STREQUAL "MSAN")
+        if(NOT CMAKE_CXX_COMPILER MATCHES "clang")
+            message(SEND_ERROR "Memory Sanitizer requires Clang")
+        endif()
+        find_package(customlibcxx REQUIRED)
+
+        if(NOT LIBCXX_DIR)
+            message(SEND_ERROR "LIBCXX_DIR not set!")
+        endif()
+
+        set(ENV{LIBCXX_INCLUDE_DIR} "${LIBCXX_DIR}/include")
+        set(ENV{LIBCXX_LIB_DIR} "${LIBCXX_DIR}/lib")
+        message("Setting env var LIBCXX_INCLUDE_DIR to $ENV{LIBCXX_INCLUDE_DIR}")
+        message("Setting env var LIBCXX_LIB_DIR to $ENV{LIBCXX_LIB_DIR}")
+
+        set(VCPKG_TARGET_TRIPLET "${ARCH}-${ENVIRONMENT}-msan")
+        set(VCPKG_CHAINLOAD_TOOLCHAIN_FILE "${CMAKE_CURRENT_SOURCE_DIR}/tools/cmake/toolchains/clang-msan.cmake")
     else()
         set(VCPKG_TARGET_TRIPLET "${ARCH}-${ENVIRONMENT}")
     endif()

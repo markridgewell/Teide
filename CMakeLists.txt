@@ -19,7 +19,7 @@ option(TEIDE_TEST_WINDOWLESS "Disable tests requiring a windowing system" OFF)
 option(TEIDE_CLANG_TIDY "Enable static analysis with clang-tidy" OFF)
 option(TEIDE_CPPCHECK "Enable static analysis with Cppcheck" OFF)
 option(TEIDE_PRECOMPILED_HEADERS "Enable precompiled headers when building" OFF)
-option_enum(TEIDE_SANITIZER "Name of a sanitizer to enable, or OFF to disable" "OFF;ASAN;UBSAN")
+option_enum(TEIDE_SANITIZER "Name of a sanitizer to enable, or OFF to disable" "OFF;ASAN;UBSAN;MSAN")
 
 cmake_dependent_option(
     TEIDE_UNIT_TEST_SW_RENDER
@@ -48,7 +48,6 @@ project(
 
 enable_testing()
 
-list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/tools/cmake/modules)
 set(SCRIPTS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/tools/cmake/scripts)
 
 find_package(Vulkan REQUIRED)
