@@ -61,6 +61,7 @@ find_package(spdlog REQUIRED)
 find_package(glslang REQUIRED)
 find_package(Taskflow REQUIRED)
 find_package(function2 REQUIRED)
+find_package(stdexec REQUIRED)
 find_package(RenderDoc)
 
 if(NOT TARGET SDL2_image::SDL2_image)
@@ -92,6 +93,7 @@ td_add_library(
         fmt::fmt
         Taskflow::Taskflow
         function2::function2
+        STDEXEC::stdexec
         glslang::SPIRV
         glslang::glslang)
 target_include_directories(Teide SYSTEM PRIVATE "${GENERATED_INCLUDE_DIR}")
