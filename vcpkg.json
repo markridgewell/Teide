@@ -1,10 +1,11 @@
 {
   "name": "teide",
   "version": "0.0.0",
+  "builtin-baseline": "2b14b606cea54573eec11080a3ac00737958b6d6",
   "dependencies": [
-    "vulkan",
-    "vulkan-headers",
-    "vulkan-memory-allocator-hpp",
+    "fmt",
+    "function2",
+    "glslang",
     {
       "name": "sdl2",
       "features": [
@@ -12,13 +13,39 @@
       ]
     },
     "sdl2-image",
-    "fmt",
     "spdlog",
-    "glslang",
     "taskflow",
-    "function2"
+    "vulkan",
+    "vulkan-headers",
+    "vulkan-memory-allocator-hpp",
+    "stdexec"
   ],
   "features": {
+    "benchmarks": {
+      "description": "Build benchmarks",
+      "dependencies": [
+        "benchmark"
+      ]
+    },
+    "examples": {
+      "description": "Build examples",
+      "dependencies": [
+        "assimp"
+      ]
+    },
+    "swiftshader": {
+      "description": "Build with Swiftshader support",
+      "dependencies": [
+        {
+          "name": "llvm",
+          "default-features": false,
+          "features": [
+            "enable-rtti"
+          ]
+        },
+        "swiftshader"
+      ]
+    },
     "tests": {
       "description": "Build tests",
       "dependencies": [
@@ -28,32 +55,6 @@
           "platform": "windows & !uwp"
         }
       ]
-    },
-    "examples": {
-      "description": "Build examples",
-      "dependencies": [
-        "assimp"
-      ]
-    },
-    "benchmarks": {
-      "description": "Build benchmarks",
-      "dependencies": [
-        "benchmark"
-      ]
-    },
-    "swiftshader": {
-      "description": "Build with Swiftshader support",
-      "dependencies": [
-        "swiftshader",
-        {
-          "name": "llvm",
-          "default-features": false,
-          "features": [
-            "enable-rtti"
-          ]
-        }
-      ]
     }
-  },
-  "builtin-baseline": "2b14b606cea54573eec11080a3ac00737958b6d6"
+  }
 }
