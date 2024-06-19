@@ -35,8 +35,12 @@ cmake_dependent_option(
     OFF)
 
 if(TEIDE_USE_VCPKG)
-    include(tools/cmake/Triplet.cmake)
-    message(STATUS "Target triplet for vcpkg determined to be ${VCPKG_TARGET_TRIPLET}")
+    if(DEFINED VCPKG_TARGET_TRIPLET)
+        message(STATUS "Using pre-defined vcpkg target triplet ${VCPKG_TARGET_TRIPLET}")
+    else()
+        include(tools/cmake/Triplet.cmake)
+        message(STATUS "Target triplet for vcpkg determined to be ${VCPKG_TARGET_TRIPLET}")
+    endif()
     set(CMAKE_TOOLCHAIN_FILE "${CMAKE_SOURCE_DIR}/external/vcpkg/scripts/buildsystems/vcpkg.cmake")
 endif()
 
