@@ -11,8 +11,7 @@ on:
     - 'vcpkg.json'
     - 'vcpkg-configuration.json'
     - 'external/ports/**'
-    - 'cmake/triplets/*.cmake'
-    - 'cmake/toolchains/*.cmake'
+    - 'tools/cmake/triplets/*.cmake'
 
 env:
   VULKAN_SDK: ./VULKAN_SDK
