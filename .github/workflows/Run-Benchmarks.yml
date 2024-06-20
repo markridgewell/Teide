@@ -17,7 +17,7 @@ on:
 jobs:
   benchmark:
     name: Run-Benchmarks
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     steps:
     - name: Checkout
@@ -33,17 +33,21 @@ jobs:
     - name: Install dependencies
       uses: ./.github/actions/install-dependencies
       with:
-        extra-packages: ninja-build g++-14
+        extra-packages: ninja-build
 
     - name: Install google benchmark tools
       run: |
         git clone https://github.com/google/benchmark.git
-        python -m pip install -r benchmark/tools/requirements.txt
+        sudo add-apt-repository ppa:deadsnakes/ppa
+        sudo apt-get update
+        sudo apt-get install python3.11
+        python3.11 --version
+        python3.11 -m pip install -r benchmark/tools/requirements.txt
 
     - name: Run benchmark script
       run: |
         base_ref=$(git merge-base "${{github.sha}}" "origin/${{inputs.base-branch}}")
-        python tools/benchmark.py compare \
+        python3.11 tools/benchmark.py compare \
           --preset g++-14 \
           --out-dir benchmark_results \
           --out-report report.txt \
