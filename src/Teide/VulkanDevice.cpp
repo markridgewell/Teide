@@ -650,8 +650,8 @@ auto VulkanDevice::CreateTextureImpl(
             .levelCount = data.mipLevelCount,
             .baseArrayLayer = 0,
             .layerCount = 1,
-            },
-        };
+        },
+    };
     auto imageView = m_device->createImageViewUnique(viewInfo, s_allocator);
 
     const auto& ss = data.samplerState;
@@ -666,6 +666,8 @@ auto VulkanDevice::CreateTextureImpl(
         .maxAnisotropy = ss.maxAnisotropy.value_or(0.0f),
         .compareEnable = ss.compareOp.has_value(),
         .compareOp = ToVulkan(ss.compareOp.value_or(CompareOp::Never)),
+        .minLod = 0,
+        .maxLod = VK_LOD_CLAMP_NONE,
     };
     auto sampler = m_device->createSamplerUnique(samplerInfo, s_allocator);
 

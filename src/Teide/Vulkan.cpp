@@ -598,7 +598,7 @@ vk::Filter ToVulkan(Filter filter)
 {
     static constexpr StaticMap<Filter, vk::Filter, 2> map{
         {Filter::Nearest, vk::Filter::eNearest},
-        {Filter::Linear, vk::Filter::eNearest},
+        {Filter::Linear, vk::Filter::eLinear},
     };
 
     return map.at(filter);
@@ -608,7 +608,7 @@ vk::SamplerMipmapMode ToVulkan(MipmapMode mode)
 {
     static constexpr StaticMap<MipmapMode, vk::SamplerMipmapMode, 2> map = {
         {MipmapMode::Nearest, vk::SamplerMipmapMode::eNearest},
-        {MipmapMode::Linear, vk::SamplerMipmapMode::eNearest},
+        {MipmapMode::Linear, vk::SamplerMipmapMode::eLinear},
     };
 
     return map.at(mode);
