@@ -30,7 +30,7 @@ TEST_F(RenderTest, BasicLighting)
     const ObjectUniforms objectUniforms = {};
 
     const auto quadMesh = CreateQuadMesh();
-    const auto checkerTexture = CreateCheckerTexture();
+    const auto checkerTexture = CreateCheckerTexture(Filter::Nearest, false);
     const auto shadowTexture = CreateNullShadowmapTexture();
     const auto shader = CreateModelShader();
     const auto pipeline = CreatePipeline(shader, quadMesh);
@@ -89,7 +89,7 @@ TEST_F(RenderTest, MipMapping)
     const ObjectUniforms objectUniforms = {};
 
     const auto planeMesh = CreatePlaneMesh({planeSize, planeSize}, {planeSize, planeSize});
-    const auto checkerTexture = CreateCheckerTexture();
+    const auto checkerTexture = CreateCheckerTexture(Filter::Linear, true);
     const auto shadowTexture = CreateNullShadowmapTexture();
     const auto shader = CreateModelShader();
     const auto pipeline = CreatePipeline(shader, planeMesh);

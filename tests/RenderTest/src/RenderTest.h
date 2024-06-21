@@ -62,7 +62,7 @@ protected:
     Teide::MeshPtr CreateQuadMesh();
     Teide::MeshPtr CreatePlaneMesh(Geo::Size2 size, Geo::Vector2 tiling);
     Teide::Texture CreateNullShadowmapTexture();
-    Teide::Texture CreateCheckerTexture();
+    Teide::Texture CreateCheckerTexture(Teide::Filter filter, bool mipmaps);
     Teide::PipelinePtr CreatePipeline(Teide::ShaderPtr shader, const Teide::MeshPtr& mesh);
 
     Teide::ShaderData CompileShader(const ShaderSourceData& data);

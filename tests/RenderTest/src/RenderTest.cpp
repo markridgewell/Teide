@@ -311,7 +311,7 @@ Teide::Texture RenderTest::CreateNullShadowmapTexture()
     return m_device->CreateTexture(textureData, "NullShadowMap");
 }
 
-Teide::Texture RenderTest::CreateCheckerTexture()
+Teide::Texture RenderTest::CreateCheckerTexture(Teide::Filter filter, bool mipmaps)
 {
     // Create checkerboard texture
     constexpr usize size = 256;
@@ -331,10 +331,10 @@ Teide::Texture RenderTest::CreateCheckerTexture()
     const Teide::TextureData textureData = {
         .size = {size, size},
         .format = Teide::Format::Byte4Srgb,
-        .mipLevelCount = static_cast<uint32>(std::floor(std::log2(size))) + 1,
+        .mipLevelCount = mipmaps ? static_cast<uint32>(std::floor(std::log2(size))) + 1 : 1,
         .samplerState = {
-            .magFilter = Teide::Filter::Linear,
-            .minFilter = Teide::Filter::Linear,
+            .magFilter = filter,
+            .minFilter = filter,
             .mipmapMode = Teide::MipmapMode::Linear,
         },
         .pixels = Teide::ToBytes(pixels),
