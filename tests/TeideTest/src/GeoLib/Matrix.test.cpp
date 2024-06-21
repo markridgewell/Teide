@@ -242,7 +242,13 @@ TEST(MatrixTest, MultiplyMatrix1x4Matrix4x1)
     EXPECT_THAT(a * b, Eq(expected));
 }
 
-TEST(MatrixTest, Matrix4Rotation)
+TEST(MatrixTest, TranslationMatrix)
+{
+    EXPECT_THAT(Translation(Vector3(1, 2, 3)) * Vector4(0, 2, 0, 1), ApproxEq(Vector4(1, 4, 3, 1)));
+    EXPECT_THAT(Translation(Vector2(-10, 10)) * Vector3(3, 5, 1), ApproxEq(Vector3(-7, 15, 1)));
+}
+
+TEST(MatrixTest, RotationMatrix)
 {
     EXPECT_THAT(Matrix4::RotationX(90.0_deg) * Vector4(0, 2, 0, 1), ApproxEq(Vector4(0, 0, 2, 1)));
     EXPECT_THAT(Matrix4::RotationX(90.0_deg) * Vector4(1, 2, 3, 1), ApproxEq(Vector4(1, -3, 2, 1)));
