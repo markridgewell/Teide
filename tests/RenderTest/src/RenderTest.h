@@ -15,7 +15,8 @@
 
 #include <filesystem>
 
-static constexpr Geo::Size2i RenderSize = {1024, 1024};
+constexpr Geo::Size2i RenderSize = {1024, 1024};
+constexpr float RenderAspectRatio = static_cast<float>(RenderSize.x) / static_cast<float>(RenderSize.y);
 
 struct Vertex
 {
@@ -59,6 +60,7 @@ protected:
 
     Teide::ShaderPtr CreateModelShader();
     Teide::MeshPtr CreateQuadMesh();
+    Teide::MeshPtr CreatePlaneMesh(Geo::Size2 size, Geo::Vector2 tiling);
     Teide::Texture CreateNullShadowmapTexture();
     Teide::Texture CreateCheckerTexture();
     Teide::PipelinePtr CreatePipeline(Teide::ShaderPtr shader, const Teide::MeshPtr& mesh);
@@ -68,7 +70,7 @@ protected:
     Teide::Device& GetDevice();
 
 private:
-    static void CompareImageToReference(const Teide::TextureData& image, const testing::TestInfo& testInfo);
+    static void CompareImageToReference(const Teide::TextureData& image, const std::filesystem::path& referenceFile);
 
     static bool s_updateReferences;
     static std::filesystem::path s_referenceDir;
