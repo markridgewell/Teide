@@ -237,13 +237,14 @@ void RenderTest::RunTest(const SceneUniforms& sceneUniforms, Teide::RenderList r
     m_renderer->EndFrame();
     m_renderDoc.EndFrameCapture();
 
-    const std::string testName = testing::UnitTest::GetInstance()->current_test_info()->name();
+    const auto& currentTest = *testing::UnitTest::GetInstance()->current_test_info();
+    const std::string testName = currentTest.name();
     const std::filesystem::path outputFile = (s_outputDir / testName).replace_extension(".out.png");
     const std::filesystem::path referenceFile = s_referenceDir / (testName + ".png");
 
     CompareImageToReference(outputData, referenceFile);
 
-    if (testing::UnitTest::GetInstance()->Failed())
+    if (currentTest.result()->Failed())
     {
         const std::filesystem::path testOutputDir = s_outputDir;
         create_directories(testOutputDir);
