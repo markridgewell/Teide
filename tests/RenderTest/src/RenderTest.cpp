@@ -319,7 +319,7 @@ Teide::Texture RenderTest::CreateCheckerTexture(Teide::Filter filter, bool mipma
     constexpr auto color0 = uint32{0xffff00ff};
     constexpr auto color1 = uint32{0xffffffff};
 
-    std::array<uint32, size * size> pixels;
+    std::array<uint32, size * size> pixels{};
     for (usize i = 0; i < size * size; i++)
     {
         const auto x = i % size;
