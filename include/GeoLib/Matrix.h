@@ -298,4 +298,15 @@ Matrix<T, 4, 4> Orthographic(T left, T right, T bottom, T top, T nclip, T fclip)
     };
 }
 
+template <class T, Extent N>
+Matrix<T, N + 1, N + 1> Translation(Vector<T, N, VectorTag> offset)
+{
+    Matrix<T, N + 1, N + 1> ret;
+    for (Extent i = 0; i < N; i++)
+    {
+        ret[i][N] = offset[i];
+    }
+    return ret;
+}
+
 } // namespace Geo
