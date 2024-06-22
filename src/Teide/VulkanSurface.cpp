@@ -337,7 +337,7 @@ void VulkanSurface::CreateDepthBuffer()
             .usage = vma::MemoryUsage::eAutoPreferDevice,
         });
     m_depthImage = vk::UniqueImage(image.release(), m_device);
-    m_colorMemory = std::move(allocation);
+    m_depthMemory = std::move(allocation);
     SetDebugName(m_depthImage, "DepthImage");
 
     // Create image view
