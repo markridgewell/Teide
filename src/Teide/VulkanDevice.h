@@ -128,7 +128,7 @@ private:
     {
         FramebufferLayout framebufferLayout;
         RenderPassInfo renderPassInfo;
-        FramebufferUsage usage;
+        FramebufferUsage usage = FramebufferUsage::ShaderInput;
 
         bool operator==(const RenderPassDesc&) const = default;
         void Visit(auto f) const { return f(framebufferLayout, renderPassInfo, usage); }
