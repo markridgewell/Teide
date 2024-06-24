@@ -237,7 +237,7 @@ TEST_F(RendererTest, RenderMultisampledFullscreenTriWithDepthNoResolve)
         .framebufferLayout = {
             .colorFormat = Format::Byte4Srgb,
             .depthStencilFormat = Format::Depth16,
-            .sampleCount = 2,
+            .sampleCount = 4,
             .captureColor = true,
             .captureDepthStencil = true,
             .resolveColor = false,
