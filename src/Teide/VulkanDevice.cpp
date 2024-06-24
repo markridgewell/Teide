@@ -1009,7 +1009,7 @@ VulkanDevice::CreateRenderPass(const FramebufferLayout& framebufferLayout, const
         = framebufferLayout.captureDepthStencil ? vk::AttachmentStoreOp::eStore : vk::AttachmentStoreOp::eDontCare,
     };
 
-    const auto desc = RenderPassDesc{framebufferLayout, renderPassInfo};
+    const auto desc = RenderPassDesc{framebufferLayout, renderPassInfo, usage};
 
     const auto lock = std::scoped_lock(m_renderPassCacheMutex);
     const auto [it, inserted] = m_renderPassCache.emplace(desc, nullptr);
