@@ -39,7 +39,7 @@ public:
     Format GetColorFormat() const override { return m_framebufferLayout.colorFormat.value(); }
     Format GetDepthFormat() const override { return m_framebufferLayout.depthStencilFormat.value(); }
     uint32 GetSampleCount() const override { return m_msaaSampleCount; }
-    virtual FramebufferLayout GetFramebufferLayout() const { return m_framebufferLayout; }
+    FramebufferLayout GetFramebufferLayout() const override { return m_framebufferLayout; }
 
     void OnResize() override;
 

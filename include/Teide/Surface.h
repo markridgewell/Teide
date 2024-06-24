@@ -4,6 +4,7 @@
 #include "GeoLib/Vector.h"
 #include "Teide/AbstractBase.h"
 #include "Teide/BasicTypes.h"
+#include "Teide/PipelineData.h"
 #include "Teide/TextureData.h"
 
 #include <memory>
