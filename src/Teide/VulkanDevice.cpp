@@ -993,18 +993,20 @@ VulkanParameterBlockLayoutPtr VulkanDevice::CreateParameterBlockLayout(const Par
 
 vk::RenderPass VulkanDevice::CreateRenderPassLayout(const FramebufferLayout& framebufferLayout)
 {
-    return CreateRenderPass(framebufferLayout, {});
+    return CreateRenderPass(framebufferLayout, {}, {});
 }
 
-vk::RenderPass VulkanDevice::CreateRenderPass(const FramebufferLayout& framebufferLayout, const ClearState& clearState)
+vk::RenderPass
+VulkanDevice::CreateRenderPass(const FramebufferLayout& framebufferLayout, const ClearState& clearState, FramebufferUsage usage)
 {
     const RenderPassInfo renderPassInfo = {
         .colorLoadOp = clearState.colorValue ? vk::AttachmentLoadOp::eClear : vk::AttachmentLoadOp::eDontCare,
-        .colorStoreOp = vk::AttachmentStoreOp::eStore,
+        .colorStoreOp = framebufferLayout.captureColor ? vk::AttachmentStoreOp::eStore : vk::AttachmentStoreOp::eDontCare,
         .depthLoadOp = clearState.depthValue ? vk::AttachmentLoadOp::eClear : vk::AttachmentLoadOp::eDontCare,
-        .depthStoreOp = vk::AttachmentStoreOp::eStore,
+        .depthStoreOp = framebufferLayout.captureDepthStencil ? vk::AttachmentStoreOp::eStore : vk::AttachmentStoreOp::eDontCare,
         .stencilLoadOp = clearState.stencilValue ? vk::AttachmentLoadOp::eClear : vk::AttachmentLoadOp::eDontCare,
-        .stencilStoreOp = vk::AttachmentStoreOp::eStore,
+        .stencilStoreOp
+        = framebufferLayout.captureDepthStencil ? vk::AttachmentStoreOp::eStore : vk::AttachmentStoreOp::eDontCare,
     };
 
     const auto desc = RenderPassDesc{framebufferLayout, renderPassInfo};
@@ -1013,7 +1015,7 @@ vk::RenderPass VulkanDevice::CreateRenderPass(const FramebufferLayout& framebuff
     const auto [it, inserted] = m_renderPassCache.emplace(desc, nullptr);
     if (inserted)
     {
-        it->second = Teide::CreateRenderPass(m_device.get(), framebufferLayout, renderPassInfo);
+        it->second = Teide::CreateRenderPass(m_device.get(), framebufferLayout, usage, renderPassInfo);
     }
     return it->second.get();
 }

@@ -18,7 +18,7 @@ namespace Teide
 
 namespace
 {
-    constexpr auto VulkanApiVersion = VK_API_VERSION_1_0;
+    constexpr auto VulkanApiVersion = VK_API_VERSION_1_2;
     constexpr bool BreakOnVulkanWarning = false;
     constexpr bool BreakOnVulkanError = true;
 
@@ -189,6 +189,32 @@ namespace
     TransitionAccessMasks GetTransitionAccessMasks(vk::ImageLayout oldLayout, vk::ImageLayout newLayout)
     {
         return {GetTransitionAccessMask(oldLayout), GetTransitionAccessMask(newLayout)};
+    }
+
+    vk::ImageLayout GetColorImageLayout(FramebufferUsage usage)
+    {
+        switch (usage)
+        {
+            case FramebufferUsage::PresentSrc: return vk::ImageLayout::ePresentSrcKHR;
+            case FramebufferUsage::ShaderInput: return vk::ImageLayout::eShaderReadOnlyOptimal;
+        }
+        return vk::ImageLayout::eUndefined;
+    }
+
+    vk::ImageLayout GetDepthStencilImageLayout(FramebufferUsage usage)
+    {
+        switch (usage)
+        {
+            case FramebufferUsage::PresentSrc: return vk::ImageLayout::eDepthStencilAttachmentOptimal;
+            case FramebufferUsage::ShaderInput: return vk::ImageLayout::eDepthStencilReadOnlyOptimal;
+        }
+        return vk::ImageLayout::eUndefined;
+    }
+
+    template <class T>
+    T* ToPointer(std::optional<T>& opt)
+    {
+        return opt.has_value() ? &opt.value() : nullptr;
     }
 } // namespace
 
@@ -466,22 +492,26 @@ void CopyImageToBuffer(
     }
 }
 
-vk::UniqueRenderPass CreateRenderPass(vk::Device device, const FramebufferLayout& layout)
+vk::UniqueRenderPass CreateRenderPass(vk::Device device, const FramebufferLayout& layout, FramebufferUsage usage)
 {
-    return CreateRenderPass(device, layout, {});
+    return CreateRenderPass(device, layout, usage, {});
 }
 
-vk::UniqueRenderPass CreateRenderPass(vk::Device device, const FramebufferLayout& layout, const RenderPassInfo& renderPassInfo)
+vk::UniqueRenderPass
+CreateRenderPass(vk::Device device, const FramebufferLayout& layout, FramebufferUsage usage, const RenderPassInfo& renderPassInfo)
 {
     TEIDE_ASSERT(layout.colorFormat.has_value() || layout.depthStencilFormat.has_value());
 
     const bool multisampling = layout.sampleCount != 1;
+    const bool resolveColor = multisampling && layout.resolveColor;
+    const bool resolveDepthStencil = multisampling && layout.resolveDepthStencil;
     const bool loadColor = renderPassInfo.colorLoadOp == vk::AttachmentLoadOp::eLoad;
 
-    std::vector<vk::AttachmentDescription> attachments;
-    std::vector<vk::AttachmentReference> colorAttachmentRefs;
-    std::vector<vk::AttachmentReference> resolveAttachmentRefs;
-    std::optional<vk::AttachmentReference> depthStencilAttachmentRef;
+    std::vector<vk::AttachmentDescription2> attachments;
+    std::vector<vk::AttachmentReference2> colorAttachmentRefs;
+    std::vector<vk::AttachmentReference2> resolveAttachmentRefs;
+    std::optional<vk::AttachmentReference2> depthStencilAttachmentRef;
+    std::optional<vk::AttachmentReference2> depthStencilResolveAttachmentRef;
 
     if (layout.colorFormat.has_value())
     {
@@ -498,7 +528,7 @@ vk::UniqueRenderPass CreateRenderPass(vk::Device device, const FramebufferLayout
             .loadOp = renderPassInfo.colorLoadOp,
             .storeOp = multisampling ? vk::AttachmentStoreOp::eDontCare : renderPassInfo.colorStoreOp,
             .initialLayout = loadColor ? vk::ImageLayout::eColorAttachmentOptimal : vk::ImageLayout::eUndefined,
-            .finalLayout = vk::ImageLayout::eColorAttachmentOptimal,
+            .finalLayout = resolveColor ? vk::ImageLayout::eColorAttachmentOptimal : GetColorImageLayout(usage),
         });
     }
 
@@ -506,29 +536,27 @@ vk::UniqueRenderPass CreateRenderPass(vk::Device device, const FramebufferLayout
     {
         TEIDE_ASSERT(*layout.depthStencilFormat != Format::Unknown);
 
-        depthStencilAttachmentRef = vk::AttachmentReference{
+        depthStencilAttachmentRef = vk::AttachmentReference2{
             .attachment = size32(attachments),
             .layout = vk::ImageLayout::eDepthStencilAttachmentOptimal,
         };
-
-        const auto storeOp = (!layout.colorFormat.has_value() && !multisampling) ? vk::AttachmentStoreOp::eStore
-                                                                                 : vk::AttachmentStoreOp::eDontCare;
 
         attachments.push_back({
             .format = ToVulkan(*layout.depthStencilFormat),
             .samples = vk::SampleCountFlagBits{layout.sampleCount},
             .loadOp = vk::AttachmentLoadOp::eClear,
-            .storeOp = storeOp,
+            .storeOp = multisampling ? vk::AttachmentStoreOp::eDontCare : renderPassInfo.depthStoreOp,
             .stencilLoadOp = vk::AttachmentLoadOp::eDontCare,
-            .stencilStoreOp = storeOp,
+            .stencilStoreOp = multisampling ? vk::AttachmentStoreOp::eDontCare : renderPassInfo.stencilStoreOp,
             .initialLayout = vk::ImageLayout::eUndefined,
-            .finalLayout = vk::ImageLayout::eDepthStencilAttachmentOptimal,
+            .finalLayout
+            = resolveDepthStencil ? vk::ImageLayout::eDepthStencilAttachmentOptimal : GetDepthStencilImageLayout(usage),
         });
     }
 
-    if (multisampling)
+    if (resolveColor)
     {
-        TEIDE_ASSERT(layout.colorFormat.has_value());
+        TEIDE_ASSERT(layout.colorFormat.has_value() && layout.captureColor);
 
         resolveAttachmentRefs.push_back({
             .attachment = size32(attachments),
@@ -541,19 +569,46 @@ vk::UniqueRenderPass CreateRenderPass(vk::Device device, const FramebufferLayout
             .loadOp = vk::AttachmentLoadOp::eDontCare,
             .storeOp = renderPassInfo.colorStoreOp,
             .initialLayout = vk::ImageLayout::eUndefined,
-            .finalLayout = vk::ImageLayout::eColorAttachmentOptimal,
+            .finalLayout = GetColorImageLayout(usage),
         });
     }
 
-    const vk::SubpassDescription subpass = {
-        .pipelineBindPoint = vk::PipelineBindPoint::eGraphics,
-        .colorAttachmentCount = size32(colorAttachmentRefs),
-        .pColorAttachments = data(colorAttachmentRefs),
-        .pResolveAttachments = data(resolveAttachmentRefs),
-        .pDepthStencilAttachment = depthStencilAttachmentRef ? &depthStencilAttachmentRef.value() : nullptr,
+    if (resolveDepthStencil)
+    {
+        TEIDE_ASSERT(layout.depthStencilFormat.has_value() && layout.captureDepthStencil);
+
+        depthStencilResolveAttachmentRef = vk::AttachmentReference2{
+            .attachment = size32(attachments),
+            .layout = vk::ImageLayout::eDepthStencilAttachmentOptimal,
+            .aspectMask = vk::ImageAspectFlagBits::eDepth | vk::ImageAspectFlagBits::eStencil,
+        };
+
+        attachments.push_back({
+            .format = ToVulkan(*layout.depthStencilFormat),
+            .samples = vk::SampleCountFlagBits::e1,
+            .loadOp = vk::AttachmentLoadOp::eDontCare,
+            .storeOp = renderPassInfo.depthStoreOp,
+            .initialLayout = vk::ImageLayout::eUndefined,
+            .finalLayout = GetDepthStencilImageLayout(usage),
+        });
+    }
+
+    const vk::StructureChain subpass = {
+        vk::SubpassDescription2{
+            .pipelineBindPoint = vk::PipelineBindPoint::eGraphics,
+            .colorAttachmentCount = size32(colorAttachmentRefs),
+            .pColorAttachments = data(colorAttachmentRefs),
+            .pResolveAttachments = data(resolveAttachmentRefs),
+            .pDepthStencilAttachment = ToPointer(depthStencilAttachmentRef),
+        },
+        vk::SubpassDescriptionDepthStencilResolve{
+            .depthResolveMode = vk::ResolveModeFlagBits::eAverage,
+            .stencilResolveMode = vk::ResolveModeFlagBits::eAverage,
+            .pDepthStencilResolveAttachment = ToPointer(depthStencilResolveAttachmentRef),
+        },
     };
 
-    const vk::SubpassDependency dependency = {
+    const vk::SubpassDependency2 dependency = {
         .srcSubpass = VK_SUBPASS_EXTERNAL,
         .dstSubpass = 0,
         .srcStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput | vk::PipelineStageFlagBits::eEarlyFragmentTests,
@@ -562,16 +617,16 @@ vk::UniqueRenderPass CreateRenderPass(vk::Device device, const FramebufferLayout
         .dstAccessMask = vk ::AccessFlagBits::eColorAttachmentWrite | vk::AccessFlagBits::eDepthStencilAttachmentWrite,
     };
 
-    const vk::RenderPassCreateInfo createInfo = {
+    const vk::RenderPassCreateInfo2 createInfo = {
         .attachmentCount = size32(attachments),
         .pAttachments = data(attachments),
         .subpassCount = 1,
-        .pSubpasses = &subpass,
+        .pSubpasses = &subpass.get<vk::SubpassDescription2>(),
         .dependencyCount = 1,
         .pDependencies = &dependency,
     };
 
-    return device.createRenderPassUnique(createInfo, s_allocator);
+    return device.createRenderPass2Unique(createInfo, s_allocator);
 }
 
 vk::UniqueFramebuffer

@@ -234,7 +234,6 @@ void VulkanRenderer::EndFrame()
     const vkex::SubmitInfo submitInfo = {
         .waitSemaphores = transform(images, &SurfaceImage::imageAvailable),
         .waitDstStageMask = transform(images, [=](auto&&) { return waitStage; }),
-        .commandBuffers = transform(images, &SurfaceImage::prePresentCommandBuffer),
         .signalSemaphores = m_renderFinished[m_frameNumber].get(),
     };
     m_graphicsQueue.submit(submitInfo.map(), fenceToSignal);
@@ -265,9 +264,18 @@ void VulkanRenderer::WaitForGpu()
 
 RenderToTextureResult VulkanRenderer::RenderToTexture(const RenderTargetInfo& renderTarget, RenderList renderList)
 {
-    TEIDE_ASSERT(renderTarget.captureColor || renderTarget.captureDepthStencil, "Nothing to capture in RTT pass");
+    TEIDE_ASSERT(
+        renderTarget.framebufferLayout.captureColor || renderTarget.framebufferLayout.captureDepthStencil,
+        "Nothing to capture in RTT pass");
+    TEIDE_ASSERT(
+        renderTarget.framebufferLayout.captureColor || !renderTarget.framebufferLayout.resolveColor,
+        "Cannot resolve color unless also capturing color");
+    TEIDE_ASSERT(
+        renderTarget.framebufferLayout.captureDepthStencil || !renderTarget.framebufferLayout.resolveDepthStencil,
+        "Cannot resolve depth/stencil unless also capturing depth/stencil");
 
-    const auto CreateRenderableTexture = [&](std::optional<Format> format, const char* name) -> std::optional<Texture> {
+    const auto CreateRenderableTexture
+        = [&](std::optional<Format> format, uint32 sampleCount, const char* name) -> std::optional<Texture> {
         if (!format)
         {
             return std::nullopt;
@@ -277,7 +285,7 @@ RenderToTextureResult VulkanRenderer::RenderToTexture(const RenderTargetInfo& re
             .size = renderTarget.size,
             .format = *format,
             .mipLevelCount = 1,
-            .sampleCount = renderTarget.framebufferLayout.sampleCount,
+            .sampleCount = sampleCount,
             .samplerState = renderTarget.samplerState,
         };
 
@@ -286,55 +294,54 @@ RenderToTextureResult VulkanRenderer::RenderToTexture(const RenderTargetInfo& re
     };
 
     const auto& fb = renderTarget.framebufferLayout;
-    const auto color = CreateRenderableTexture(fb.colorFormat, "color");
-    const auto depthStencil = CreateRenderableTexture(fb.depthStencilFormat, "depthStencil");
+    const auto sampleCount = renderTarget.framebufferLayout.sampleCount;
+    const auto color = CreateRenderableTexture(fb.colorFormat, sampleCount, "color");
+    const auto depthStencil = CreateRenderableTexture(fb.depthStencilFormat, sampleCount, "depthStencil");
+    const auto colorResolved = sampleCount > 1 && renderTarget.framebufferLayout.resolveColor
+        ? CreateRenderableTexture(fb.colorFormat, 1, "colorResolved")
+        : std::nullopt;
+    const auto depthStencilResolved = sampleCount > 1 && renderTarget.framebufferLayout.resolveDepthStencil
+        ? CreateRenderableTexture(fb.depthStencilFormat, 1, "depthStencilResolved")
+        : std::nullopt;
 
-    ScheduleGpu([this, renderList = std::move(renderList), renderTarget, color, depthStencil](CommandBuffer& commandBuffer) {
+    ScheduleGpu([this, renderList = std::move(renderList), renderTarget, color, depthStencil, colorResolved,
+                 depthStencilResolved](CommandBuffer& commandBuffer) {
         std::vector<vk::ImageView> attachments;
 
-        TextureState colorTextureState;
-        TextureState depthStencilTextureState;
-
-        const auto addAttachment = [&](const Texture& texture, TextureState& textureState) {
-            const auto& textureImpl = m_device.GetImpl(texture);
-            commandBuffer.AddReference(texture);
-            textureImpl.TransitionToRenderTarget(textureState, commandBuffer);
-            attachments.push_back(textureImpl.imageView.get());
+        const auto addAttachment = [&](const std::optional<Texture>& texture) {
+            if (texture.has_value())
+            {
+                const auto& textureImpl = m_device.GetImpl(*texture);
+                commandBuffer.AddReference(*texture);
+                TextureState textureState{};
+                textureImpl.TransitionToRenderTarget(textureState, commandBuffer);
+                attachments.push_back(textureImpl.imageView.get());
+            }
         };
 
-        if (color)
-        {
-            addAttachment(*color, colorTextureState);
-        }
-        if (depthStencil)
-        {
-            addAttachment(*depthStencil, depthStencilTextureState);
-        }
+        addAttachment(color);
+        addAttachment(depthStencil);
+        addAttachment(colorResolved);
+        addAttachment(depthStencilResolved);
 
         const RenderPassDesc renderPassDesc = {
             .framebufferLayout = renderTarget.framebufferLayout,
             .renderOverrides = renderList.renderOverrides,
         };
 
-        const auto renderPass = m_device.CreateRenderPass(renderTarget.framebufferLayout, renderList.clearState);
+        const auto renderPass = m_device.CreateRenderPass(
+            renderTarget.framebufferLayout, renderList.clearState, FramebufferUsage::ShaderInput);
         const auto framebuffer
             = m_device.CreateFramebuffer(renderPass, renderTarget.framebufferLayout, renderTarget.size, attachments);
 
         RecordRenderListCommands(commandBuffer, renderList, renderPass, renderPassDesc, framebuffer);
-
-        if (color && renderTarget.captureColor)
-        {
-            m_device.GetImpl(*color).TransitionToShaderInput(colorTextureState, commandBuffer);
-        }
-        if (depthStencil && renderTarget.captureDepthStencil)
-        {
-            m_device.GetImpl(*depthStencil).TransitionToShaderInput(depthStencilTextureState, commandBuffer);
-        }
     });
 
     return {
-        .colorTexture = renderTarget.captureColor ? color : std::nullopt,
-        .depthStencilTexture = renderTarget.captureDepthStencil ? depthStencil : std::nullopt,
+        .colorTexture = renderTarget.framebufferLayout.captureColor ? (colorResolved ? colorResolved : color) : std::nullopt,
+        .depthStencilTexture = renderTarget.framebufferLayout.captureDepthStencil
+            ? (depthStencilResolved ? depthStencilResolved : depthStencil)
+            : std::nullopt,
     };
 }
 
@@ -353,7 +360,8 @@ void VulkanRenderer::RenderToSurface(Surface& surface, RenderList renderList)
                 .renderOverrides = renderList.renderOverrides,
             };
 
-            const auto renderPass = m_device.CreateRenderPass(framebuffer.layout, renderList.clearState);
+            const auto renderPass
+                = m_device.CreateRenderPass(framebuffer.layout, renderList.clearState, FramebufferUsage::PresentSrc);
 
             RecordRenderListCommands(commandBuffer, renderList, renderPass, renderPassDesc, framebuffer);
         });
@@ -362,6 +370,8 @@ void VulkanRenderer::RenderToSurface(Surface& surface, RenderList renderList)
 
 Task<TextureData> VulkanRenderer::CopyTextureData(Texture texture)
 {
+    TEIDE_ASSERT(texture.GetSampleCount() == 1, "Cannot copy data of a multisampled texture");
+
     const VulkanTexture& textureImpl = m_device.GetImpl(texture);
 
     const TextureData textureData = {
@@ -382,8 +392,9 @@ Task<TextureData> VulkanRenderer::CopyTextureData(Texture texture)
 
         commandBuffer.AddReference(texture);
 
+        const bool isDepthStencil = HasDepthOrStencilComponent(textureImpl.properties.format);
         TextureState textureState = {
-            .layout = vk::ImageLayout::eShaderReadOnlyOptimal,
+            .layout = isDepthStencil ? vk::ImageLayout::eDepthStencilReadOnlyOptimal : vk::ImageLayout::eShaderReadOnlyOptimal,
             .lastPipelineStageUsage = vk::PipelineStageFlagBits::eFragmentShader,
         };
         textureImpl.TransitionToTransferSrc(textureState, commandBuffer);

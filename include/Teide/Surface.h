@@ -18,6 +18,7 @@ public:
     virtual Format GetColorFormat() const = 0;
     virtual Format GetDepthFormat() const = 0;
     virtual uint32 GetSampleCount() const = 0;
+    virtual FramebufferLayout GetFramebufferLayout() const = 0;
 
     virtual void OnResize() = 0;
 };

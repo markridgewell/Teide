@@ -34,6 +34,14 @@ void PrintTo(const Visitable auto& obj, std::ostream* os)
         *os << '}';
     });
 }
+
+inline void PrintTo(const RenderTargetInfo& value, ::std::ostream* os)
+{
+    *os << "size={" << value.size << "}, ";
+    *os << "frameBufferLayout={";
+    PrintTo(value.framebufferLayout, os);
+    *os << "}";
+}
 } // namespace Teide
 
 namespace std

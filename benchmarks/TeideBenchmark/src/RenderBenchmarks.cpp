@@ -45,11 +45,11 @@ constexpr Teide::RenderTargetInfo CreateRenderTargetInfo(Geo::Size2i size)
         .framebufferLayout = {
             .colorFormat = Teide::Format::Byte4Srgb,
             .depthStencilFormat = std::nullopt,
-            .sampleCount=1,
+            .sampleCount = 1,
+            .captureColor = true,
+            .captureDepthStencil = false,
         },
         .samplerState = {},
-        .captureColor = true,
-        .captureDepthStencil = false,
     };
 }
 

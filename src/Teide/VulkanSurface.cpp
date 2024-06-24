@@ -252,14 +252,9 @@ std::optional<SurfaceImage> VulkanSurface::AcquireNextImage(vk::Fence fence)
         .image = m_swapchainImages[imageIndex],
         .framebuffer = {
             .framebuffer = m_swapchainFramebuffers[imageIndex].get(),
-            .layout = {
-                .colorFormat = m_colorFormat,
-                .depthStencilFormat = m_depthFormat,
-                .sampleCount = m_msaaSampleCount,
-            },
+            .layout = m_framebufferLayout,
             .size = m_surfaceExtent,
         },
-        .prePresentCommandBuffer = m_transitionToPresentSrc[imageIndex].get(),
     };
 
     return ret;
@@ -314,10 +309,7 @@ void VulkanSurface::CreateColorBuffer(vk::Format format)
 
 void VulkanSurface::CreateDepthBuffer()
 {
-    const auto formatCandidates = std::array{Format::Depth32, Format::Depth32Stencil8, Format::Depth24Stencil8};
-    m_depthFormat = FindSupportedFormat(
-        m_physicalDevice, formatCandidates, vk::ImageTiling::eOptimal, vk::FormatFeatureFlagBits::eDepthStencilAttachment);
-    const auto format = ToVulkan(m_depthFormat);
+    const auto format = ToVulkan(m_framebufferLayout.depthStencilFormat.value());
 
     // Create image
     auto [image, allocation] = m_allocator.createImageUnique(
@@ -361,7 +353,18 @@ void VulkanSurface::CreateSwapchainAndImages()
 {
     const auto surfaceCapabilities = m_physicalDevice.getSurfaceCapabilitiesKHR(m_surface.get());
     const auto surfaceFormat = ChooseSurfaceFormat(m_physicalDevice.getSurfaceFormatsKHR(m_surface.get()));
-    m_colorFormat = FromVulkan(surfaceFormat.format);
+    const auto depthFormatCandidates = std::array{Format::Depth32, Format::Depth32Stencil8, Format::Depth24Stencil8};
+
+    m_framebufferLayout = {
+        .colorFormat = FromVulkan(surfaceFormat.format),
+        .depthStencilFormat = FindSupportedFormat(
+            m_physicalDevice, depthFormatCandidates, vk::ImageTiling::eOptimal,
+            vk::FormatFeatureFlagBits::eDepthStencilAttachment),
+        .sampleCount = m_msaaSampleCount,
+        .captureColor = true,
+        .resolveColor = m_msaaSampleCount > 1,
+    };
+
     m_surfaceExtent = ChooseSwapExtent(surfaceCapabilities, m_window);
     m_swapchain = CreateSwapchain(
         m_physicalDevice, m_queueFamilyIndices, m_surface.get(), surfaceFormat, m_surfaceExtent, m_device,
@@ -376,33 +379,10 @@ void VulkanSurface::CreateSwapchainAndImages()
     }
     CreateDepthBuffer();
 
-    const FramebufferLayout framebufferLayout = {
-        .colorFormat = FromVulkan(surfaceFormat.format),
-        .depthStencilFormat = m_depthFormat,
-        .sampleCount = m_msaaSampleCount,
-    };
-    m_renderPass = CreateRenderPass(m_device, framebufferLayout);
+    m_renderPass = CreateRenderPass(m_device, m_framebufferLayout, FramebufferUsage::PresentSrc);
     SetDebugName(m_renderPass, "SwapchainRenderPass");
     m_swapchainFramebuffers = CreateFramebuffers(
         m_swapchainImageViews, m_colorImageView.get(), m_depthImageView.get(), m_renderPass.get(), m_surfaceExtent, m_device);
-
-    // Create command buffers for transitioning images to present source
-    const vk::CommandBufferAllocateInfo cmdBufferAllocInfo = {
-        .commandPool = m_commandPool,
-        .commandBufferCount = size32(m_swapchainImages),
-    };
-    m_transitionToPresentSrc.clear();
-    m_transitionToPresentSrc = m_device.allocateCommandBuffersUnique(cmdBufferAllocInfo);
-    for (uint32 i = 0; i < size32(m_swapchainImages); i++)
-    {
-        const auto cmdBuffer = *m_transitionToPresentSrc[i];
-        cmdBuffer.begin(vk::CommandBufferBeginInfo{});
-        TransitionImageLayout(
-            cmdBuffer, m_swapchainImages[i], Format::Unknown, 1, vk::ImageLayout::eColorAttachmentOptimal,
-            vk::ImageLayout::ePresentSrcKHR, vk::PipelineStageFlagBits::eColorAttachmentOutput,
-            vk::PipelineStageFlagBits::eTopOfPipe);
-        cmdBuffer.end();
-    }
 }
 
 void VulkanSurface::RecreateSwapchain()
