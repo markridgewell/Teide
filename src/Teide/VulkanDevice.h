@@ -118,7 +118,8 @@ public:
     void UpdateTransientParameterBlock(TransientParameterBlock& pblock, const ParameterBlockData& data);
 
     vk::RenderPass CreateRenderPassLayout(const FramebufferLayout& framebufferLayout);
-    vk::RenderPass CreateRenderPass(const FramebufferLayout& framebufferLayout, const ClearState& clearState);
+    vk::RenderPass
+    CreateRenderPass(const FramebufferLayout& framebufferLayout, const ClearState& clearState, FramebufferUsage usage);
     Framebuffer CreateFramebuffer(
         vk::RenderPass renderPass, const FramebufferLayout& layout, Geo::Size2i size, std::vector<vk::ImageView> attachments);
 
@@ -127,9 +128,10 @@ private:
     {
         FramebufferLayout framebufferLayout;
         RenderPassInfo renderPassInfo;
+        FramebufferUsage usage = FramebufferUsage::ShaderInput;
 
         bool operator==(const RenderPassDesc&) const = default;
-        void Visit(auto f) const { return f(framebufferLayout, renderPassInfo); }
+        void Visit(auto f) const { return f(framebufferLayout, renderPassInfo, usage); }
     };
 
     struct FramebufferDesc

@@ -51,6 +51,7 @@ struct ObjectUniforms
 constexpr Teide::FramebufferLayout ShadowFramebufferLayout = {
     .depthStencilFormat = Teide::Format::Depth16,
     .sampleCount = 1,
+    .captureDepthStencil = true,
 };
 
 constexpr Teide::RenderOverrides ShadowRenderOverrides = {
@@ -195,7 +196,6 @@ void Application::OnRender()
                 .maxAnisotropy = 8.0f,
                 .compareOp = Teide::CompareOp::Less,
             },
-            .captureDepthStencil = true,
         };
 
         const auto shadowResult = m_renderer->RenderToTexture(shadowRenderTarget, std::move(renderList));
@@ -385,19 +385,14 @@ void Application::CreatePipelines()
         .shader = m_material.shader,
         .vertexLayout = m_mesh->GetVertexLayout(),
         .renderStates = MakeRenderStates(),
-        .renderPasses = {
-            {
-                .framebufferLayout = {
-                    .colorFormat = m_surface->GetColorFormat(),
-                    .depthStencilFormat = m_surface->GetDepthFormat(),
-                    .sampleCount = m_surface->GetSampleCount(),
-                },
-            },
-            {
-                .framebufferLayout = ShadowFramebufferLayout,
-                .renderOverrides = ShadowRenderOverrides,
-            }
-        },
+        .renderPasses
+        = {{
+               .framebufferLayout = m_surface->GetFramebufferLayout(),
+           },
+           {
+               .framebufferLayout = ShadowFramebufferLayout,
+               .renderOverrides = ShadowRenderOverrides,
+           }},
     });
 }
 

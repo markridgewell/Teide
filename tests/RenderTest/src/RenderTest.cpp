@@ -190,10 +190,10 @@ constexpr Teide::RenderTargetInfo RenderTarget = {
         .colorFormat = Teide::Format::Byte4Srgb,
         .depthStencilFormat = std::nullopt,
         .sampleCount = 1,
+        .captureColor = true,
+        .captureDepthStencil = false,
     },
     .samplerState = {},
-    .captureColor = true,
-    .captureDepthStencil = false,
 };
 
 } // namespace
