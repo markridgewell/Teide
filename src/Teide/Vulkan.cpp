@@ -614,10 +614,10 @@ vk::UniqueRenderPass CreateRenderPass(
             .pDepthStencilAttachment = ToPointer(depthStencilAttachmentRef),
         },
         vk::SubpassDescriptionDepthStencilResolve{
-            .depthResolveMode = resolveProperties.supportedDepthResolveModes & vk::ResolveModeFlagBits::eAverage
+            .depthResolveMode = (resolveProperties.supportedDepthResolveModes & vk::ResolveModeFlagBits::eAverage)
                 ? vk::ResolveModeFlagBits::eAverage
                 : vk::ResolveModeFlagBits::eSampleZero,
-            .stencilResolveMode = resolveProperties.supportedStencilResolveModes & vk::ResolveModeFlagBits::eAverage
+            .stencilResolveMode = (resolveProperties.supportedStencilResolveModes & vk::ResolveModeFlagBits::eAverage)
                 ? vk::ResolveModeFlagBits::eAverage
                 : vk::ResolveModeFlagBits::eSampleZero,
             .pDepthStencilResolveAttachment = ToPointer(depthStencilResolveAttachmentRef),
