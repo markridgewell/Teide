@@ -1,8 +1,13 @@
 
 #pragma once
 
+#include "Teide/BasicTypes.h"
+#include "Teide/Definitions.h"
+
+#include <atomic>
 #include <functional>
 #include <mutex>
+#include <span>
 #include <string>
 
 namespace Teide
@@ -27,6 +32,55 @@ public:
 private:
     T m_object;
     std::mutex m_mutex;
+};
+
+template <class T>
+class ThreadMap
+{
+public:
+    explicit ThreadMap(uint32 threadCount) : m_entries(threadCount) {}
+
+    template <class F, class... Args>
+    decltype(auto) LockCurrent(const F& callable, Args&&... args)
+    {
+        auto& object = GetCurrentObject();
+        return std::invoke(callable, object, std::forward<Args>(args)...);
+    }
+
+    template <class F, class... Args>
+    void LockAll(const F& callable, const Args&... args)
+    {
+        for (Entry& entry : m_entries)
+        {
+            std::invoke(callable, entry.second, args...);
+        }
+    }
+
+private:
+    using Entry = std::pair<std::thread::id, T>;
+
+    T& GetCurrentObject()
+    {
+        const auto usedEntries = std::span(m_entries).subspan(0, std::min(m_size.load(), m_entries.size()));
+        const auto it = std::ranges::find(usedEntries, std::this_thread::get_id(), &Entry::first);
+        if (it != usedEntries.end())
+        {
+            return it->second;
+        }
+
+        const auto index = m_size.fetch_add(1);
+        if (index >= m_entries.size())
+        {
+            --m_size;
+            throw std::length_error("Exceeded capacity of ThreadMap");
+        }
+
+        m_entries[index].first = std::this_thread::get_id();
+        return m_entries[index].second;
+    }
+
+    std::atomic<usize> m_size = 0;
+    std::vector<Entry> m_entries;
 };
 
 void SetCurrentTheadName(const std::string& name);

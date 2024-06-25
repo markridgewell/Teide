@@ -24,24 +24,8 @@ namespace
 } // namespace
 
 GpuExecutor::GpuExecutor(uint32 numThreads, vk::Device device, vk::Queue queue, uint32 queueFamilyIndex) :
-    m_device{device}, m_queue{Queue(device, queue)}
+    m_frameResources(numThreads, device, queueFamilyIndex), m_device{device}, m_queue{Queue(device, queue)}
 {
-    std::ranges::generate(m_frameResources, [&]() {
-        std::vector<ThreadResources> ret;
-        ret.resize(numThreads);
-        uint32 i = 0;
-        std::ranges::generate(ret, [&] {
-            ThreadResources res;
-            res.commandPool = CreateCommandPool(queueFamilyIndex, device);
-            SetDebugName(res.commandPool, "RenderThread{}:CommandPool", i);
-            res.threadIndex = i;
-            i++;
-            return res;
-        });
-
-        return ret;
-    });
-
     m_schedulerThread = std::thread([this] {
         SetCurrentTheadName("GpuExecutor");
         constexpr auto timeout = std::chrono::milliseconds{2};
@@ -104,10 +88,9 @@ void GpuExecutor::WaitForTasks()
 
 void GpuExecutor::NextFrame()
 {
-    m_frameNumber = (m_frameNumber + 1) % MaxFramesInFlight;
+    m_frameResources.NextFrame();
 
-    auto& frameResources = m_frameResources[m_frameNumber];
-    for (auto& threadResources : frameResources)
+    for (auto& threadResources : m_frameResources.Current().threadResources)
     {
         threadResources.Reset(m_device);
     }
@@ -126,9 +109,23 @@ void GpuExecutor::ThreadResources::Reset(vk::Device device)
     }
 }
 
+GpuExecutor::FrameResources::FrameResources(uint32 numThreads, vk::Device device, uint32_t queueFamilyIndex)
+{
+    threadResources.resize(numThreads);
+    uint32 i = 0;
+    std::ranges::generate(threadResources, [&] {
+        ThreadResources res;
+        res.commandPool = CreateCommandPool(queueFamilyIndex, device);
+        SetDebugName(res.commandPool, "RenderThread{}:CommandPool", i);
+        res.threadIndex = i;
+        i++;
+        return res;
+    });
+}
+
 CommandBuffer& GpuExecutor::GetCommandBuffer(uint32 threadIndex)
 {
-    auto& threadResources = m_frameResources[m_frameNumber][threadIndex];
+    auto& threadResources = m_frameResources.Current().threadResources[threadIndex];
 
     if (threadResources.numUsedCommandBuffers == threadResources.commandBuffers.size())
     {
