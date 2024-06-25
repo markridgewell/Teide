@@ -7,8 +7,8 @@
 #include "Teide/Definitions.h"
 #include "Teide/Pipeline.h"
 #include "Teide/Renderer.h"
-#include "Teide/StaticMap.h"
 #include "Teide/TextureData.h"
+#include "Teide/Util/StaticMap.h"
 
 #include <SDL_vulkan.h>
 #include <spdlog/spdlog.h>
@@ -228,6 +228,14 @@ vk::DebugUtilsMessengerCreateInfoEXT GetDebugCreateInfo()
         .messageType = MessageType::eGeneral | MessageType::eValidation | MessageType::ePerformance,
         .pfnUserCallback = DebugCallback,
     };
+}
+
+PhysicalDevice::PhysicalDevice(vk::PhysicalDevice pd, const QueueFamilies qf) : physicalDevice{pd}, queueFamilies{qf}
+{
+    const auto props = pd.getProperties2<vk::PhysicalDeviceProperties2, vk::PhysicalDeviceDepthStencilResolveProperties>();
+
+    properties = props.get<vk::PhysicalDeviceProperties2>().properties;
+    depthStencilResolveProperties = props.get<vk::PhysicalDeviceDepthStencilResolveProperties>();
 }
 
 void EnableVulkanLayer(
@@ -492,13 +500,15 @@ void CopyImageToBuffer(
     }
 }
 
-vk::UniqueRenderPass CreateRenderPass(vk::Device device, const FramebufferLayout& layout, FramebufferUsage usage)
+vk::UniqueRenderPass CreateRenderPass(
+    vk::Device device, const PhysicalDevice& physicalDevice, const FramebufferLayout& layout, FramebufferUsage usage)
 {
-    return CreateRenderPass(device, layout, usage, {});
+    return CreateRenderPass(device, physicalDevice, layout, usage, {});
 }
 
-vk::UniqueRenderPass
-CreateRenderPass(vk::Device device, const FramebufferLayout& layout, FramebufferUsage usage, const RenderPassInfo& renderPassInfo)
+vk::UniqueRenderPass CreateRenderPass(
+    vk::Device device, const PhysicalDevice& physicalDevice, const FramebufferLayout& layout, FramebufferUsage usage,
+    const RenderPassInfo& renderPassInfo)
 {
     TEIDE_ASSERT(layout.colorFormat.has_value() || layout.depthStencilFormat.has_value());
 
@@ -593,6 +603,8 @@ CreateRenderPass(vk::Device device, const FramebufferLayout& layout, Framebuffer
         });
     }
 
+    const auto& resolveProperties = physicalDevice.depthStencilResolveProperties;
+
     const vk::StructureChain subpass = {
         vk::SubpassDescription2{
             .pipelineBindPoint = vk::PipelineBindPoint::eGraphics,
@@ -602,8 +614,12 @@ CreateRenderPass(vk::Device device, const FramebufferLayout& layout, Framebuffer
             .pDepthStencilAttachment = ToPointer(depthStencilAttachmentRef),
         },
         vk::SubpassDescriptionDepthStencilResolve{
-            .depthResolveMode = vk::ResolveModeFlagBits::eAverage,
-            .stencilResolveMode = vk::ResolveModeFlagBits::eAverage,
+            .depthResolveMode = resolveProperties.supportedDepthResolveModes & vk::ResolveModeFlagBits::eAverage
+                ? vk::ResolveModeFlagBits::eAverage
+                : vk::ResolveModeFlagBits::eSampleZero,
+            .stencilResolveMode = resolveProperties.supportedStencilResolveModes & vk::ResolveModeFlagBits::eAverage
+                ? vk::ResolveModeFlagBits::eAverage
+                : vk::ResolveModeFlagBits::eSampleZero,
             .pDepthStencilResolveAttachment = ToPointer(depthStencilResolveAttachmentRef),
         },
     };

@@ -61,8 +61,6 @@ public:
     PipelinePtr CreatePipeline(const PipelineData& data) override;
     ParameterBlockPtr CreateParameterBlock(const ParameterBlockData& data, const char* name) override;
 
-    vk::PhysicalDeviceProperties GetProperties() const { return m_physicalDevice.physicalDevice.getProperties(); }
-
     // Internal
     vk::Device GetVulkanDevice() { return m_device.get(); }
     vma::Allocator& GetAllocator() { return m_allocator.get(); }
