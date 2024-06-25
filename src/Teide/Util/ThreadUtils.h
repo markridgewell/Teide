@@ -4,6 +4,7 @@
 #include "Teide/BasicTypes.h"
 #include "Teide/Definitions.h"
 
+#include <algorithm>
 #include <atomic>
 #include <functional>
 #include <mutex>
