@@ -9,6 +9,7 @@
 #include <mutex>
 #include <span>
 #include <string>
+#include <thread>
 
 namespace Teide
 {
