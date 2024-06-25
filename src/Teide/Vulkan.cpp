@@ -230,7 +230,7 @@ vk::DebugUtilsMessengerCreateInfoEXT GetDebugCreateInfo()
     };
 }
 
-PhysicalDevice::PhysicalDevice(vk::PhysicalDevice pd, const QueueFamilies qf) : physicalDevice{pd}, queueFamilies{qf}
+PhysicalDevice::PhysicalDevice(vk::PhysicalDevice pd, const QueueFamilies& qf) : physicalDevice{pd}, queueFamilies{qf}
 {
     const auto props = pd.getProperties2<vk::PhysicalDeviceProperties2, vk::PhysicalDeviceDepthStencilResolveProperties>();
 

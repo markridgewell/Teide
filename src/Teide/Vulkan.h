@@ -43,7 +43,7 @@ struct QueueFamilies
 
 struct PhysicalDevice
 {
-    explicit PhysicalDevice(vk::PhysicalDevice pd, const QueueFamilies qf);
+    explicit PhysicalDevice(vk::PhysicalDevice pd, const QueueFamilies& qf);
 
     vk::PhysicalDevice physicalDevice;
     vk::PhysicalDeviceProperties properties;
