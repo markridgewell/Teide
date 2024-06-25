@@ -4,6 +4,7 @@
 #include "CommandBuffer.h"
 
 #include "Teide/BasicTypes.h"
+#include "Teide/Util/FrameArray.h"
 #include "Teide/Util/ThreadUtils.h"
 #include "Teide/VulkanConfig.h"
 
@@ -52,8 +53,12 @@ private:
         void Reset(vk::Device device);
     };
 
-    std::array<std::vector<ThreadResources>, MaxFramesInFlight> m_frameResources;
-    uint32 m_frameNumber = 0;
+    struct FrameResources
+    {
+        explicit FrameResources(uint32 numThreads, vk::Device device, uint32_t queueFamilyIndex);
+
+        std::vector<ThreadResources> threadResources;
+    };
 
     class Queue
     {
@@ -92,6 +97,8 @@ private:
 
         std::vector<InFlightSubmit> m_inFlightSubmits;
     };
+
+    FrameArray<FrameResources, MaxFramesInFlight> m_frameResources;
 
     const std::thread::id m_mainThread = std::this_thread::get_id();
 

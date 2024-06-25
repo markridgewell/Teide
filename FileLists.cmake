@@ -48,6 +48,7 @@ set(sources
     src/Teide/Scheduler.h
     src/Teide/ShaderData.cpp
     src/Teide/TextureData.cpp
+    src/Teide/Util/FrameArray.h
     src/Teide/Util/ResourceMap.h
     src/Teide/Util/StaticMap.h
     src/Teide/Util/ThreadUtils.cpp

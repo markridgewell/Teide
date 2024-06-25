@@ -13,11 +13,13 @@
 #include "Teide/ForwardDeclare.h"
 #include "Teide/Pipeline.h"
 #include "Teide/Surface.h"
+#include "Teide/Util/FrameArray.h"
 #include "Teide/Util/ThreadUtils.h"
 
 #include <array>
 #include <deque>
 #include <mutex>
+#include <vector>
 
 namespace Teide
 {
@@ -34,7 +36,6 @@ public:
 
     ~VulkanRenderer() override;
 
-    uint32 GetFrameNumber() const override;
     void BeginFrame(ShaderParameters sceneParameters) override;
     void EndFrame() override;
 
@@ -47,15 +48,13 @@ public:
     Task<TextureData> CopyTextureData(Texture texture) override;
 
 private:
-    void SetupDescriptorPools();
-
     template <std::invocable<CommandBuffer&> F>
     auto ScheduleGpu(F&& f) -> TaskForCallable<F, CommandBuffer&>
     {
         return m_device.GetScheduler().ScheduleGpu(std::forward<F>(f));
     }
 
-    const TransientParameterBlock& GetSceneParameterBlock() const { return GetCurrentFrame().sceneParameters; }
+    const TransientParameterBlock& GetSceneParameterBlock() const { return m_frameResources.Current().sceneParameters; }
 
     TransientParameterBlock* CreateViewParameterBlock(const ParameterBlockData& data, const char* name);
 
@@ -77,34 +76,25 @@ private:
 
     struct FrameResources
     {
-        TransientParameterBlock sceneParameters;
-        std::vector<ThreadResources> threadResources;
-    };
+        explicit FrameResources(VulkanDevice& device, DescriptorPool& sceneDescriptorPool, const ShaderEnvironmentPtr& shaderEnvironment);
 
-    const FrameResources& GetCurrentFrame() const { return m_frameResources.at(m_frameNumber); }
-    FrameResources& GetCurrentFrame() { return m_frameResources.at(m_frameNumber); }
-    const ThreadResources& GetCurrentThread() const
-    {
-        return GetCurrentFrame().threadResources.at(m_device.GetScheduler().GetThreadIndex());
-    }
-    ThreadResources& GetCurrentThread()
-    {
-        return GetCurrentFrame().threadResources.at(m_device.GetScheduler().GetThreadIndex());
-    }
+        vk::UniqueSemaphore renderFinished;
+        vk::UniqueFence inFlightFence;
+
+        TransientParameterBlock sceneParameters;
+        ThreadMap<ThreadResources> threadResources;
+    };
 
     VulkanDevice& m_device;
     vk::Queue m_graphicsQueue;
     vk::Queue m_presentQueue;
-    std::array<vk::UniqueSemaphore, MaxFramesInFlight> m_renderFinished;
-    std::array<vk::UniqueFence, MaxFramesInFlight> m_inFlightFences;
-    uint32_t m_frameNumber = 0;
 
     ShaderEnvironmentPtr m_shaderEnvironment;
 
     Synchronized<std::vector<SurfaceImage>> m_surfacesToPresent;
 
-    std::optional<DescriptorPool> m_sceneDescriptorPool;
-    std::array<FrameResources, MaxFramesInFlight> m_frameResources;
+    DescriptorPool m_sceneDescriptorPool;
+    FrameArray<FrameResources, MaxFramesInFlight> m_frameResources;
 };
 
 } // namespace Teide
