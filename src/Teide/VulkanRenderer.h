@@ -3,7 +3,6 @@
 
 #include "CommandBuffer.h"
 #include "DescriptorPool.h"
-#include "ThreadUtils.h"
 #include "Vulkan.h"
 #include "VulkanDevice.h"
 #include "VulkanParameterBlock.h"
@@ -14,6 +13,7 @@
 #include "Teide/ForwardDeclare.h"
 #include "Teide/Pipeline.h"
 #include "Teide/Surface.h"
+#include "Teide/Util/ThreadUtils.h"
 
 #include <array>
 #include <deque>

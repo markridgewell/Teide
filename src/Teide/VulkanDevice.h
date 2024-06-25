@@ -3,7 +3,6 @@
 
 #include "CommandBuffer.h"
 #include "Scheduler.h"
-#include "ThreadUtils.h"
 #include "Vulkan.h"
 #include "VulkanBuffer.h"
 #include "VulkanLoader.h"
@@ -14,8 +13,9 @@
 #include "Teide/Device.h"
 #include "Teide/Hash.h"
 #include "Teide/Renderer.h"
-#include "Teide/ResourceMap.h"
 #include "Teide/Surface.h"
+#include "Teide/Util/ResourceMap.h"
+#include "Teide/Util/ThreadUtils.h"
 
 #include <vulkan/vulkan_hash.hpp>
 
