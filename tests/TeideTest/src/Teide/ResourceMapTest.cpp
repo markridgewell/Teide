@@ -1,5 +1,5 @@
 
-#include "Teide/ResourceMap.h"
+#include "Teide/Util/ResourceMap.h"
 
 #include <gmock/gmock.h>
 

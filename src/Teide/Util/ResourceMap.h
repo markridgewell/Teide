@@ -3,7 +3,7 @@
 
 #include "Teide/BasicTypes.h"
 #include "Teide/Handle.h"
-#include "Teide/ThreadUtils.h"
+#include "Teide/Util/ThreadUtils.h"
 
 #include <spdlog/spdlog.h>
 

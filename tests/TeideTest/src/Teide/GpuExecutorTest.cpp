@@ -22,12 +22,10 @@ namespace
 class GpuExecutorTest : public testing::Test
 {
 public:
+    GpuExecutorTest() : m_instance{CreateInstance(m_loader)}, m_physicalDevice{FindPhysicalDevice(m_instance.get())} {}
+
     void SetUp() override
     {
-        m_instance = CreateInstance(m_loader);
-        ASSERT_TRUE(m_instance);
-        m_physicalDevice = FindPhysicalDevice(m_instance.get());
-        ASSERT_TRUE(m_physicalDevice.physicalDevice);
         m_device = CreateDevice(m_loader, m_physicalDevice);
         ASSERT_TRUE(m_device);
         m_queue = m_device->getQueue(m_physicalDevice.queueFamilies.transferFamily, 0);

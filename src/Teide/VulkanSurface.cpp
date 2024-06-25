@@ -180,12 +180,10 @@ namespace
 } // namespace
 
 VulkanSurface::VulkanSurface(
-    SDL_Window* window, vk::UniqueSurfaceKHR surface, vk::Device device, vk::PhysicalDevice physicalDevice,
-    std::vector<uint32> queueFamilyIndices, vk::CommandPool commandPool, vma::Allocator allocator, vk::Queue queue,
-    bool multisampled) :
+    SDL_Window* window, vk::UniqueSurfaceKHR surface, vk::Device device, const PhysicalDevice& physicalDevice,
+    vk::CommandPool commandPool, vma::Allocator allocator, vk::Queue queue, bool multisampled) :
     m_device{device},
     m_physicalDevice{physicalDevice},
-    m_queueFamilyIndices{std::move(queueFamilyIndices)},
     m_commandPool{commandPool},
     m_allocator{allocator},
     m_queue{queue},
@@ -196,7 +194,7 @@ VulkanSurface::VulkanSurface(
 
     if (multisampled)
     {
-        const auto deviceLimits = physicalDevice.getProperties().limits;
+        const auto deviceLimits = physicalDevice.properties.limits;
         const auto supportedSampleCounts
             = deviceLimits.framebufferColorSampleCounts & deviceLimits.framebufferDepthSampleCounts;
         m_msaaSampleCount = std::bit_floor(static_cast<uint32>(supportedSampleCounts));
@@ -351,14 +349,14 @@ void VulkanSurface::CreateDepthBuffer()
 
 void VulkanSurface::CreateSwapchainAndImages()
 {
-    const auto surfaceCapabilities = m_physicalDevice.getSurfaceCapabilitiesKHR(m_surface.get());
-    const auto surfaceFormat = ChooseSurfaceFormat(m_physicalDevice.getSurfaceFormatsKHR(m_surface.get()));
+    const auto surfaceCapabilities = m_physicalDevice.physicalDevice.getSurfaceCapabilitiesKHR(m_surface.get());
+    const auto surfaceFormat = ChooseSurfaceFormat(m_physicalDevice.physicalDevice.getSurfaceFormatsKHR(m_surface.get()));
     const auto depthFormatCandidates = std::array{Format::Depth32, Format::Depth32Stencil8, Format::Depth24Stencil8};
 
     m_framebufferLayout = {
         .colorFormat = FromVulkan(surfaceFormat.format),
         .depthStencilFormat = FindSupportedFormat(
-            m_physicalDevice, depthFormatCandidates, vk::ImageTiling::eOptimal,
+            m_physicalDevice.physicalDevice, depthFormatCandidates, vk::ImageTiling::eOptimal,
             vk::FormatFeatureFlagBits::eDepthStencilAttachment),
         .sampleCount = m_msaaSampleCount,
         .captureColor = true,
@@ -367,8 +365,8 @@ void VulkanSurface::CreateSwapchainAndImages()
 
     m_surfaceExtent = ChooseSwapExtent(surfaceCapabilities, m_window);
     m_swapchain = CreateSwapchain(
-        m_physicalDevice, m_queueFamilyIndices, m_surface.get(), surfaceFormat, m_surfaceExtent, m_device,
-        m_swapchain.get());
+        m_physicalDevice.physicalDevice, m_physicalDevice.queueFamilyIndices, m_surface.get(), surfaceFormat,
+        m_surfaceExtent, m_device, m_swapchain.get());
     m_swapchainImages = m_device.getSwapchainImagesKHR(m_swapchain.get());
     m_swapchainImageViews = CreateSwapchainImageViews(surfaceFormat.format, m_swapchainImages, m_device);
     m_imagesInFlight.resize(m_swapchainImages.size());
@@ -379,7 +377,7 @@ void VulkanSurface::CreateSwapchainAndImages()
     }
     CreateDepthBuffer();
 
-    m_renderPass = CreateRenderPass(m_device, m_framebufferLayout, FramebufferUsage::PresentSrc);
+    m_renderPass = CreateRenderPass(m_device, m_physicalDevice, m_framebufferLayout, FramebufferUsage::PresentSrc);
     SetDebugName(m_renderPass, "SwapchainRenderPass");
     m_swapchainFramebuffers = CreateFramebuffers(
         m_swapchainImageViews, m_colorImageView.get(), m_depthImageView.get(), m_renderPass.get(), m_surfaceExtent, m_device);

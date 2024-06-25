@@ -176,11 +176,7 @@ namespace
                 return {};
             }
 
-            const PhysicalDevice physicalDevice = {
-                .physicalDevice = pd,
-                .properties = pd.getProperties(),
-                .queueFamilies = *queueFamilies,
-            };
+            const auto physicalDevice = PhysicalDevice(pd, *queueFamilies);
             if (!IsDeviceSuitable(physicalDevice, surface))
             {
                 return {};
@@ -732,8 +728,8 @@ SurfacePtr VulkanDevice::CreateSurface(vk::UniqueSurfaceKHR surface, SDL_Window*
     TEIDE_ASSERT(m_physicalDevice.queueFamilies.presentFamily.has_value());
 
     return std::make_unique<VulkanSurface>(
-        window, std::move(surface), m_device.get(), m_physicalDevice.physicalDevice, m_physicalDevice.queueFamilyIndices,
-        m_surfaceCommandPool.get(), m_allocator.get(), m_graphicsQueue, multisampled);
+        window, std::move(surface), m_device.get(), m_physicalDevice, m_surfaceCommandPool.get(), m_allocator.get(),
+        m_graphicsQueue, multisampled);
 }
 
 BufferPtr VulkanDevice::CreateBuffer(const BufferData& data, const char* name, CommandBuffer& cmdBuffer)
@@ -1015,7 +1011,7 @@ VulkanDevice::CreateRenderPass(const FramebufferLayout& framebufferLayout, const
     const auto [it, inserted] = m_renderPassCache.emplace(desc, nullptr);
     if (inserted)
     {
-        it->second = Teide::CreateRenderPass(m_device.get(), framebufferLayout, usage, renderPassInfo);
+        it->second = Teide::CreateRenderPass(m_device.get(), m_physicalDevice, framebufferLayout, usage, renderPassInfo);
     }
     return it->second.get();
 }

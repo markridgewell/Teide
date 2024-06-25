@@ -44,14 +44,14 @@ set(sources
     src/Teide/Format.cpp
     src/Teide/GpuExecutor.cpp
     src/Teide/GpuExecutor.h
-    src/Teide/ResourceMap.h
     src/Teide/Scheduler.cpp
     src/Teide/Scheduler.h
     src/Teide/ShaderData.cpp
-    src/Teide/StaticMap.h
     src/Teide/TextureData.cpp
-    src/Teide/ThreadUtils.cpp
-    src/Teide/ThreadUtils.h
+    src/Teide/Util/ResourceMap.h
+    src/Teide/Util/StaticMap.h
+    src/Teide/Util/ThreadUtils.cpp
+    src/Teide/Util/ThreadUtils.h
     src/Teide/VmaImpl.cpp
     src/Teide/Vulkan.cpp
     src/Teide/Vulkan.h

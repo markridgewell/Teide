@@ -3,7 +3,6 @@
 
 #include "CommandBuffer.h"
 #include "Scheduler.h"
-#include "ThreadUtils.h"
 #include "Vulkan.h"
 #include "VulkanBuffer.h"
 #include "VulkanLoader.h"
@@ -14,8 +13,9 @@
 #include "Teide/Device.h"
 #include "Teide/Hash.h"
 #include "Teide/Renderer.h"
-#include "Teide/ResourceMap.h"
 #include "Teide/Surface.h"
+#include "Teide/Util/ResourceMap.h"
+#include "Teide/Util/ThreadUtils.h"
 
 #include <vulkan/vulkan_hash.hpp>
 
@@ -60,8 +60,6 @@ public:
     MeshPtr CreateMesh(const MeshData& data, const char* name) override;
     PipelinePtr CreatePipeline(const PipelineData& data) override;
     ParameterBlockPtr CreateParameterBlock(const ParameterBlockData& data, const char* name) override;
-
-    vk::PhysicalDeviceProperties GetProperties() const { return m_physicalDevice.physicalDevice.getProperties(); }
 
     // Internal
     vk::Device GetVulkanDevice() { return m_device.get(); }

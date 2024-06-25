@@ -1,5 +1,5 @@
 
-#include "Teide/ThreadUtils.h"
+#include "Teide/Util/ThreadUtils.h"
 
 #if defined(NDEBUG)
 void Teide::SetCurrentTheadName(const std::string& name [[maybe_unused]])
