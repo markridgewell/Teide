@@ -114,7 +114,7 @@ GpuExecutor::ThreadResources::ThreadResources(uint32& i, vk::Device device, uint
 {
     commandPool = CreateCommandPool(queueFamilyIndex, device);
     SetDebugName(commandPool, "RenderThread{}:CommandPool", i);
-    
+
     i++;
 }
 
