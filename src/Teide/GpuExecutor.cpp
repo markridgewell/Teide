@@ -107,7 +107,7 @@ void GpuExecutor::ThreadResources::Reset(vk::Device device)
 }
 
 GpuExecutor::FrameResources::FrameResources(uint32 numThreads, vk::Device device, uint32_t queueFamilyIndex) :
-    threadResources{numThreads, [&, i = 0u] mutable { return ThreadResources(i, device, queueFamilyIndex); }}
+    threadResources{numThreads, [&, i = 0u]() mutable { return ThreadResources(i, device, queueFamilyIndex); }}
 {}
 
 GpuExecutor::ThreadResources::ThreadResources(uint32& i, vk::Device device, uint32 queueFamilyIndex) : threadIndex(i)

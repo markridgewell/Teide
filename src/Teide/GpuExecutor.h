@@ -52,8 +52,6 @@ private:
 
         ThreadResources(uint32& i, vk::Device device, uint32 queueFamilyIndex);
 
-        ThreadResources(ThreadResources&&) = default;
-
         void Reset(vk::Device device);
     };
 
