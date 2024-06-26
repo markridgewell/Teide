@@ -110,9 +110,9 @@ GpuExecutor::FrameResources::FrameResources(uint32 numThreads, vk::Device device
     threadResources{numThreads, [&, i = 0u]() mutable { return ThreadResources(i, device, queueFamilyIndex); }}
 {}
 
-GpuExecutor::ThreadResources::ThreadResources(uint32& i, vk::Device device, uint32 queueFamilyIndex) : threadIndex(i)
+GpuExecutor::ThreadResources::ThreadResources(uint32& i, vk::Device device, uint32 queueFamilyIndex) :
+    commandPool{CreateCommandPool(queueFamilyIndex, device)}, threadIndex(i)
 {
-    commandPool = CreateCommandPool(queueFamilyIndex, device);
     SetDebugName(commandPool, "RenderThread{}:CommandPool", i);
 
     i++;
