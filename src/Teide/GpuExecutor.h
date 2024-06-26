@@ -35,7 +35,7 @@ public:
     void NextFrame();
 
     uint32 AddCommandBufferSlot();
-    CommandBuffer& GetCommandBuffer(uint32 threadIndex);
+    CommandBuffer& GetCommandBuffer();
     void SubmitCommandBuffer(uint32 index, vk::CommandBuffer commandBuffer, OnCompleteFunction func = nullptr);
 
     void WaitForTasks();
@@ -50,6 +50,10 @@ private:
         uint32 numUsedCommandBuffers = 0;
         uint32 threadIndex = 0;
 
+        ThreadResources(uint32& i, vk::Device device, uint32 queueFamilyIndex);
+
+        ThreadResources(ThreadResources&&) = default;
+
         void Reset(vk::Device device);
     };
 
@@ -57,7 +61,7 @@ private:
     {
         explicit FrameResources(uint32 numThreads, vk::Device device, uint32_t queueFamilyIndex);
 
-        std::vector<ThreadResources> threadResources;
+        ThreadMap<ThreadResources> threadResources;
     };
 
     class Queue

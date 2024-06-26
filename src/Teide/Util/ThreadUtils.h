@@ -11,6 +11,7 @@
 #include <span>
 #include <string>
 #include <thread>
+#include <type_traits>
 
 namespace Teide
 {
@@ -40,7 +41,19 @@ template <class T>
 class ThreadMap
 {
 public:
-    explicit ThreadMap(uint32 threadCount) : m_entries(threadCount) {}
+    explicit ThreadMap(uint32 threadCount)
+        requires std::is_default_constructible_v<T>
+        : ThreadMap(threadCount, [] { return T(); })
+    {}
+
+    explicit ThreadMap(uint32 threadCount, std::function<T()> initFunc) : m_initFunc{std::move(initFunc)}
+    {
+        m_entries.reserve(threadCount);
+        for (uint32 i = 0; i < threadCount; i++)
+        {
+            m_entries.emplace_back(std::this_thread::get_id(), m_initFunc());
+        }
+    }
 
     template <class F, class... Args>
     decltype(auto) LockCurrent(const F& callable, Args&&... args)
@@ -83,6 +96,7 @@ private:
 
     std::atomic<usize> m_size = 0;
     std::vector<Entry> m_entries;
+    std::function<T()> m_initFunc;
 };
 
 void SetCurrentTheadName(const std::string& name);

@@ -90,10 +90,7 @@ void GpuExecutor::NextFrame()
 {
     m_frameResources.NextFrame();
 
-    for (auto& threadResources : m_frameResources.Current().threadResources)
-    {
-        threadResources.Reset(m_device);
-    }
+    m_frameResources.Current().threadResources.LockAll([this](auto& threadResources) { threadResources.Reset(m_device); });
 }
 
 void GpuExecutor::ThreadResources::Reset(vk::Device device)
@@ -109,46 +106,44 @@ void GpuExecutor::ThreadResources::Reset(vk::Device device)
     }
 }
 
-GpuExecutor::FrameResources::FrameResources(uint32 numThreads, vk::Device device, uint32_t queueFamilyIndex)
+GpuExecutor::FrameResources::FrameResources(uint32 numThreads, vk::Device device, uint32_t queueFamilyIndex) :
+    threadResources{numThreads, [&, i = 0u] mutable { return ThreadResources(i, device, queueFamilyIndex); }}
+{}
+
+GpuExecutor::ThreadResources::ThreadResources(uint32& i, vk::Device device, uint32 queueFamilyIndex)
 {
-    threadResources.resize(numThreads);
-    uint32 i = 0;
-    std::ranges::generate(threadResources, [&] {
-        ThreadResources res;
-        res.commandPool = CreateCommandPool(queueFamilyIndex, device);
-        SetDebugName(res.commandPool, "RenderThread{}:CommandPool", i);
-        res.threadIndex = i;
-        i++;
-        return res;
-    });
+    commandPool = CreateCommandPool(queueFamilyIndex, device);
+    SetDebugName(commandPool, "RenderThread{}:CommandPool", i);
+    threadIndex = i;
+    i++;
 }
 
-CommandBuffer& GpuExecutor::GetCommandBuffer(uint32 threadIndex)
+CommandBuffer& GpuExecutor::GetCommandBuffer()
 {
-    auto& threadResources = m_frameResources.Current().threadResources[threadIndex];
-
-    if (threadResources.numUsedCommandBuffers == threadResources.commandBuffers.size())
-    {
-        const vk::CommandBufferAllocateInfo allocateInfo = {
-            .commandPool = threadResources.commandPool.get(),
-            .level = vk::CommandBufferLevel::ePrimary,
-            .commandBufferCount = std::max(1u, static_cast<uint32>(threadResources.commandBuffers.size())),
-        };
-
-        auto newCommandBuffers = m_device.allocateCommandBuffersUnique(allocateInfo);
-        const auto numCBs = static_cast<uint32>(threadResources.commandBuffers.size());
-        for (uint32 i = 0; i < newCommandBuffers.size(); i++)
+    return m_frameResources.Current().threadResources.LockCurrent([this](auto& threadResources) -> CommandBuffer& {
+        if (threadResources.numUsedCommandBuffers == threadResources.commandBuffers.size())
         {
-            SetCommandBufferDebugName(newCommandBuffers[i], threadIndex, i + numCBs);
-            threadResources.commandBuffers.emplace_back(std::move(newCommandBuffers[i]));
+            const vk::CommandBufferAllocateInfo allocateInfo = {
+                .commandPool = threadResources.commandPool.get(),
+                .level = vk::CommandBufferLevel::ePrimary,
+                .commandBufferCount = std::max(1u, static_cast<uint32>(threadResources.commandBuffers.size())),
+            };
+
+            auto newCommandBuffers = m_device.allocateCommandBuffersUnique(allocateInfo);
+            const auto numCBs = static_cast<uint32>(threadResources.commandBuffers.size());
+            for (uint32 i = 0; i < newCommandBuffers.size(); i++)
+            {
+                SetCommandBufferDebugName(newCommandBuffers[i], threadResources.threadIndex, i + numCBs);
+                threadResources.commandBuffers.emplace_back(std::move(newCommandBuffers[i]));
+            }
         }
-    }
 
-    const auto commandBufferIndex = threadResources.numUsedCommandBuffers++;
-    CommandBuffer& commandBuffer = threadResources.commandBuffers.at(commandBufferIndex);
-    commandBuffer.Get()->begin(vk::CommandBufferBeginInfo{});
+        const auto commandBufferIndex = threadResources.numUsedCommandBuffers++;
+        CommandBuffer& commandBuffer = threadResources.commandBuffers.at(commandBufferIndex);
+        commandBuffer.Get()->begin(vk::CommandBufferBeginInfo{});
 
-    return commandBuffer;
+        return commandBuffer;
+    });
 }
 
 uint32 GpuExecutor::AddCommandBufferSlot()
