@@ -14,7 +14,7 @@ jobs:
     steps:
     - uses: actions/checkout@v3
       with:
-        lfs: true
+        lfs: false
         # [Required] Access token with `workflow` scope.
         token: ${{secrets.GITHUB_TOKEN}}
 
