@@ -18,7 +18,7 @@ jobs:
         # [Required] Access token with `workflow` scope.
         token: ${{secrets.GITHUB_TOKEN}}
 
-    - run: rm .git/hooks/post-checkout
+    - run: rm -r .git/hooks/
 
     - name: Run GitHub Actions Version Updater
       uses: saadmk11/github-actions-version-updater@v0.8.1
