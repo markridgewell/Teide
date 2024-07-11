@@ -69,7 +69,7 @@ private:
 };
 
 
-TEST_F(SchedulerTest, ScheduleNoArguments)
+TEST_F(SchedulerTest, Schedule)
 {
     auto scheduler = CreateScheduler();
     const auto task = scheduler.Schedule([]() { return 42; });
@@ -80,26 +80,6 @@ TEST_F(SchedulerTest, ScheduleNoArguments)
 
     const auto result = task.get();
     EXPECT_THAT(result, Eq(42));
-}
-
-TEST_F(SchedulerTest, ScheduleWorkerIndexArgument)
-{
-    auto scheduler = CreateScheduler();
-    std::uint32_t storage = 0;
-    const auto task1 = scheduler.Schedule([&](std::uint32_t workerIndex) { storage = workerIndex; });
-    const auto task2 = scheduler.Schedule([&](std::uint32_t workerIndex) { return workerIndex < 2; });
-
-    ASSERT_THAT(task1.valid(), IsTrue());
-    ASSERT_THAT(task2.valid(), IsTrue());
-    task1.wait();
-    task2.wait();
-    EXPECT_THAT(task1.wait_for(0s), Eq(std::future_status::ready));
-    EXPECT_THAT(task2.wait_for(0s), Eq(std::future_status::ready));
-
-    EXPECT_THAT(storage, Lt(2u));
-
-    const auto result = task2.get();
-    EXPECT_THAT(result, IsTrue());
 }
 
 TEST_F(SchedulerTest, ScheduleChain)

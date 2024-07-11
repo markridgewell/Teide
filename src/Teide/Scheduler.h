@@ -23,12 +23,6 @@ public:
         return m_cpuExecutor.LaunchTask(std::forward<F>(f));
     }
 
-    template <std::invocable<uint32> F>
-    auto Schedule(F&& f) -> TaskForCallable<F, uint32>
-    {
-        return m_cpuExecutor.LaunchTask(std::forward<F>(f));
-    }
-
     template <std::invocable<CommandBuffer&> F>
     auto ScheduleGpu(F&& f) -> TaskForCallable<F, CommandBuffer&> // NOLINT(cppcoreguidelines-missing-std-forward)
     {
@@ -80,7 +74,6 @@ public:
     void WaitForGpu();
 
     uint32 GetThreadCount() const { return m_cpuExecutor.GetThreadCount(); }
-    uint32 GetThreadIndex() const { return m_cpuExecutor.GetThreadIndex(); }
 
 private:
     CpuExecutor m_cpuExecutor;
