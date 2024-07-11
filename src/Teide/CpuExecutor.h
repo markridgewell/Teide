@@ -55,15 +55,6 @@ public:
         return LaunchTaskImpl(std::forward<F>(f));
     }
 
-    template <std::invocable<uint32> F>
-    auto LaunchTask(F&& f) -> TaskForCallable<F, uint32> // NOLINT(cppcoreguidelines-missing-std-forward)
-    {
-        return LaunchTaskImpl([this, f = std::forward<F>(f)]() mutable {
-            const auto taskIndex = static_cast<uint32>(m_executor.this_worker_id());
-            return std::forward<F>(f)(taskIndex);
-        });
-    }
-
     template <std::invocable<> F>
     auto LaunchTask(F&& f, Task<> dependency) -> TaskForCallable<F>
     {
@@ -87,7 +78,6 @@ public:
     }
 
     uint32 GetThreadCount() const { return static_cast<uint32>(m_executor.num_workers()); }
-    uint32 GetThreadIndex() const { return static_cast<uint32>(m_executor.this_worker_id()); }
 
     void WaitForTasks();
 

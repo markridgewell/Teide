@@ -29,23 +29,6 @@ TEST(CpuExecutorTest, LaunchOneTask)
     EXPECT_THAT(result, Eq(42));
 }
 
-TEST(CpuExecutorTest, LaunchOneTaskWithWorkerID)
-{
-    auto executor = CpuExecutor(2);
-
-    uint32 result[4] = {9999, 9999, 9999, 9999};
-    for (uint32& i : result)
-    {
-        executor.LaunchTask([&i](uint32 workerID) {
-            sleep_for(100ms);
-            i = workerID;
-        });
-    }
-    executor.WaitForTasks();
-
-    EXPECT_THAT(result, ElementsAre(Le(2u), Le(2u), Le(2u), Le(2u)));
-}
-
 TEST(CpuExecutorTest, LaunchIndependentTasks)
 {
     auto executor = CpuExecutor(2);
