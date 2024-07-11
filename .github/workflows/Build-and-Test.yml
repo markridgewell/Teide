@@ -74,7 +74,7 @@ jobs:
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4.1.7
       with:
         lfs: true
         submodules: false
@@ -113,7 +113,7 @@ jobs:
 
     - name: Save CMake trace
       if: inputs.profile-cmake
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4.3.4
       with:
         name: CMakeTrace-${{env.job_name}}
         path: ./CMakeTrace.json
@@ -140,7 +140,7 @@ jobs:
 
     - name: Save render test output
       if: failure() && steps.test.outcome == 'failure'
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4.3.4
       with:
         name: RenderTestOutput-${{env.job_name}}
         path: ${{env.RT_OUTPUT_DIR}}
@@ -158,14 +158,14 @@ jobs:
 
     - name: Save test log
       if: failure() && steps.test.outcome == 'failure'
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4.3.4
       with:
         name: TestLog-${{env.job_name}}
         path: build/${{matrix.preset}}/Testing/Temporary/LastTest.log
 
     - name: Upload coverage report
       if: matrix.coverage == 'ON'
-      uses: codecov/codecov-action@v3
+      uses: codecov/codecov-action@v4.5.0
       with:
         directory: build/${{matrix.preset}}/coverage/output
         fail_ci_if_error: false
@@ -174,7 +174,7 @@ jobs:
 
     - name: Save coverage report
       if: matrix.coverage == 'ON'
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4.3.4
       with:
         name: CoverageReport-${{env.job_name}}
         path: build/${{matrix.preset}}/coverage/output
@@ -191,7 +191,7 @@ jobs:
       ANY_FAILED: "${{needs.unified.outputs.rendertest-failures}}"
 
     steps:
-    - uses: actions/download-artifact@v3
+    - uses: actions/download-artifact@v4.1.8
       if: needs.unified.outputs.rendertest-failures
       with:
         path: artifacts
