@@ -4,6 +4,8 @@ set(CMAKE_CXX_COMPILER clang++-17)
 
 message("Using clang-msan toolchain")
 
+find_package(customlibcxx REQUIRED)
+
 if(DEFINED ENV{LIBCXX_INCLUDE_DIR})
     message("Environment variable LIBCXX_INCLUDE_DIR is set.")
     set(LIBCXX_INCLUDE_DIR $ENV{LIBCXX_INCLUDE_DIR})
@@ -13,7 +15,7 @@ else()
         set(ENV{LIBCXX_INCLUDE_DIR} ${LIBCXX_INCLUDE_DIR})
     else()
         # Neither environment nor CMake variable is set.
-        message(SEND_ERROR "LIBCXX_INCLUDE_DIR variable not set")
+        message(FATAL_ERROR "LIBCXX_INCLUDE_DIR variable not set")
     endif()
 endif()
 
@@ -26,7 +28,7 @@ else()
         set(ENV{LIBCXX_LIB_DIR} ${LIBCXX_LIB_DIR})
     else()
         # Neither environment nor CMake variable is set.
-        message(SEND_ERROR "LIBCXX_LIB_DIR variable not set")
+        message(FATAL_ERROR "LIBCXX_LIB_DIR variable not set")
     endif()
 endif()
 
