@@ -12,33 +12,8 @@ else()
 endif()
 
 find_package(customlibcxx REQUIRED)
-
-if(DEFINED ENV{LIBCXX_INCLUDE_DIR})
-    message("Environment variable LIBCXX_INCLUDE_DIR is set.")
-    set(LIBCXX_INCLUDE_DIR $ENV{LIBCXX_INCLUDE_DIR})
-else()
-    if(LIBCXX_INCLUDE_DIR)
-        message("Environment variable LIBCXX_INCLUDE_DIR is not set, but CMake variable is set.")
-        set(ENV{LIBCXX_INCLUDE_DIR} ${LIBCXX_INCLUDE_DIR})
-    else()
-        # Neither environment nor CMake variable is set.
-        message(FATAL_ERROR "LIBCXX_INCLUDE_DIR variable not set")
-    endif()
-endif()
-
-if(DEFINED ENV{LIBCXX_LIB_DIR})
-    message("Environment variable LIBCXX_LIB_DIR is set.")
-    set(LIBCXX_LIB_DIR $ENV{LIBCXX_LIB_DIR})
-else()
-    if(LIBCXX_LIB_DIR)
-        message("Environment variable LIBCXX_LIB_DIR is not set, but CMake variable is set.")
-        set(ENV{LIBCXX_LIB_DIR} ${LIBCXX_LIB_DIR})
-    else()
-        # Neither environment nor CMake variable is set.
-        message(FATAL_ERROR "LIBCXX_LIB_DIR variable not set")
-    endif()
-endif()
-
+set(LIBCXX_INCLUDE_DIR "${LIBCXX_DIR}/include")
+set(LIBCXX_LIB_DIR "${LIBCXX_DIR}/lib")
 message("LIBCXX_INCLUDE_DIR: ${LIBCXX_INCLUDE_DIR}")
 message("LIBCXX_LIB_DIR: ${LIBCXX_LIB_DIR}")
 
