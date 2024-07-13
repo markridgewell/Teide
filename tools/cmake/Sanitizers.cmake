@@ -1,3 +1,18 @@
+function(setup_sanitizer sanitizer)
+    if(sanitizer STREQUAL "MSAN")
+        if(NOT CMAKE_CXX_COMPILER MATCHES "clang")
+            message(SEND_ERROR "Memory Sanitizer requires Clang. Detected compiler: ${CMAKE_CXX_COMPILER}")
+        endif()
+
+        find_package(customlibcxx REQUIRED)
+
+        set(ENV{LIBCXX_INCLUDE_DIR} "${LIBCXX_DIR}/include")
+        set(ENV{LIBCXX_LIB_DIR} "${LIBCXX_DIR}/lib")
+        message("Setting env var LIBCXX_INCLUDE_DIR to $ENV{LIBCXX_INCLUDE_DIR}")
+        message("Setting env var LIBCXX_LIB_DIR to $ENV{LIBCXX_LIB_DIR}")
+    endif()
+endfunction()
+
 function(target_enable_sanitizer target sanitizer)
     if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
         if(sanitizer STREQUAL "ASAN")

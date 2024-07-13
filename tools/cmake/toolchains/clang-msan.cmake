@@ -4,16 +4,8 @@ set(CMAKE_CXX_COMPILER clang++-18)
 
 message("Using clang-msan toolchain")
 
-if(DEFINED ENV{CMAKE_MODULE_PATH})
-    message("Environment variable CMAKE_MODULE_PATH is set.")
-    set(CMAKE_MODULE_PATH $ENV{CMAKE_MODULE_PATH})
-else()
-    message(FATAL_ERROR "Environment variable CMAKE_MODULE_PATH is not set.")
-endif()
-
-find_package(customlibcxx REQUIRED)
-set(LIBCXX_INCLUDE_DIR "${LIBCXX_DIR}/include")
-set(LIBCXX_LIB_DIR "${LIBCXX_DIR}/lib")
+set(LIBCXX_INCLUDE_DIR $ENV{LIBCXX_INCLUDE_DIR})
+set(LIBCXX_LIB_DIR $ENV{LIBCXX_LIB_DIR})
 message("LIBCXX_INCLUDE_DIR: ${LIBCXX_INCLUDE_DIR}")
 message("LIBCXX_LIB_DIR: ${LIBCXX_LIB_DIR}")
 
