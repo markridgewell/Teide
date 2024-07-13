@@ -2,7 +2,7 @@
 #include "CpuExecutor.h"
 
 #include "Teide/Assert.h"
-#include "Teide/ThreadUtils.h"
+#include "Teide/Util/ThreadUtils.h"
 
 #include <spdlog/spdlog.h>
 

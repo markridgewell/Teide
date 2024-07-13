@@ -43,8 +43,11 @@ struct QueueFamilies
 
 struct PhysicalDevice
 {
+    explicit PhysicalDevice(vk::PhysicalDevice pd, const QueueFamilies& qf);
+
     vk::PhysicalDevice physicalDevice;
     vk::PhysicalDeviceProperties properties;
+    vk::PhysicalDeviceDepthStencilResolveProperties depthStencilResolveProperties;
     std::vector<const char*> requiredExtensions;
 
     QueueFamilies queueFamilies;
@@ -72,6 +75,12 @@ struct Framebuffer
     vk::Framebuffer framebuffer;
     FramebufferLayout layout;
     Geo::Size2i size;
+};
+
+enum class FramebufferUsage
+{
+    ShaderInput,
+    PresentSrc
 };
 
 enum class Required : bool
@@ -176,8 +185,11 @@ void CopyImageToBuffer(
     vk::CommandBuffer cmdBuffer, vk::Image source, vk::Buffer destination, Format imageFormat, vk::Extent3D imageExtent,
     uint32 numMipLevels);
 
-vk::UniqueRenderPass CreateRenderPass(vk::Device device, const FramebufferLayout& layout);
-vk::UniqueRenderPass CreateRenderPass(vk::Device device, const FramebufferLayout& layout, const RenderPassInfo& renderPassInfo);
+vk::UniqueRenderPass CreateRenderPass(
+    vk::Device device, const PhysicalDevice& physicalDevice, const FramebufferLayout& layout, FramebufferUsage usage);
+vk::UniqueRenderPass CreateRenderPass(
+    vk::Device device, const PhysicalDevice& physicalDevice, const FramebufferLayout& layout, FramebufferUsage usage,
+    const RenderPassInfo& renderPassInfo);
 vk::UniqueFramebuffer
 CreateFramebuffer(vk::Device device, vk::RenderPass renderPass, Geo::Size2i size, std::span<const vk::ImageView> imageViews);
 

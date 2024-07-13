@@ -3,7 +3,7 @@
 
 #include "Teide/Visitable.h"
 #include "Teide/Vulkan.h"
-#include "Teide/VulkanGraphicsDevice.h"
+#include "Teide/VulkanDevice.h"
 
 #include <gtest/gtest.h>
 
@@ -16,7 +16,7 @@
 
 inline bool g_windowless = false;
 
-Teide::VulkanGraphicsDevicePtr CreateTestGraphicsDevice();
+Teide::VulkanDevicePtr CreateTestDevice();
 
 std::optional<std::uint32_t> GetTransferQueueIndex(vk::PhysicalDevice physicalDevice);
 Teide::PhysicalDevice FindPhysicalDevice(vk::Instance instance);
@@ -33,6 +33,14 @@ void PrintTo(const Visitable auto& obj, std::ostream* os)
         ((*os << ',', testing::internal::UniversalPrint(tail, os)), ...);
         *os << '}';
     });
+}
+
+inline void PrintTo(const RenderTargetInfo& value, ::std::ostream* os)
+{
+    *os << "size={" << value.size << "}, ";
+    *os << "frameBufferLayout={";
+    PrintTo(value.framebufferLayout, os);
+    *os << "}";
 }
 } // namespace Teide
 

@@ -61,19 +61,19 @@
       "generator": "Ninja Multi-Config"
     },
     {
-      "name": "g++-13",
+      "name": "g++-14",
       "inherits": "ninja",
-      "displayName": "Ninja with GCC 13",
+      "displayName": "Ninja with GCC 14",
       "cacheVariables": {
-        "CMAKE_CXX_COMPILER": "g++-13"
+        "CMAKE_CXX_COMPILER": "g++-14"
       }
     },
     {
-      "name": "clang++-17",
+      "name": "clang++-18",
       "inherits": "ninja",
       "displayName": "Ninja with Clang 17",
       "cacheVariables": {
-        "CMAKE_CXX_COMPILER": "clang++-17"
+        "CMAKE_CXX_COMPILER": "clang++-18"
       }
     }
   ],
@@ -95,12 +95,12 @@
       "configurePreset": "ninja"
     },
     {
-      "name": "g++-13",
-      "configurePreset": "g++-13"
+      "name": "g++-14",
+      "configurePreset": "g++-14"
     },
     {
-      "name": "clang++-17",
-      "configurePreset": "clang++-17"
+      "name": "clang++-18",
+      "configurePreset": "clang++-18"
     }
   ],
   "testPresets": [
@@ -121,12 +121,12 @@
       "configurePreset": "ninja"
     },
     {
-      "name": "g++-13",
-      "configurePreset": "g++-13"
+      "name": "g++-14",
+      "configurePreset": "g++-14"
     },
     {
-      "name": "clang++-17",
-      "configurePreset": "clang++-17"
+      "name": "clang++-18",
+      "configurePreset": "clang++-18"
     }
   ]
 }

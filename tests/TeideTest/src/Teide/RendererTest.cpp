@@ -6,7 +6,7 @@
 
 #include "ShaderCompiler/ShaderCompiler.h"
 #include "Teide/Buffer.h"
-#include "Teide/GraphicsDevice.h"
+#include "Teide/Device.h"
 #include "Teide/Mesh.h"
 #include "Teide/Texture.h"
 #include "Teide/TextureData.h"
@@ -22,7 +22,7 @@ namespace
 class RendererTest : public testing::Test
 {
 public:
-    RendererTest() : m_device{CreateTestGraphicsDevice()}, m_renderer{m_device->CreateRenderer(nullptr)} {}
+    RendererTest() : m_device{CreateTestDevice()}, m_renderer{m_device->CreateRenderer(nullptr)} {}
 
     void CreateRenderer(const ShaderEnvironmentData& data)
     {
@@ -31,21 +31,6 @@ public:
 
 protected:
     ShaderData CompileShader(const ShaderSourceData& data) { return m_shaderCompiler.Compile(data); }
-
-    static RenderTargetInfo CreateRenderTargetInfo(Geo::Size2i size, Format format = Format::Byte4Srgb)
-    {
-        return {
-            .size = size,
-            .framebufferLayout = {
-                .colorFormat = format,
-                .depthStencilFormat = std::nullopt,
-                .sampleCount=1,
-            },
-            .samplerState = {},
-            .captureColor = true,
-            .captureDepthStencil = false,
-        };
-    }
 
     RenderObject CreateFullscreenTri(const Teide::RenderTargetInfo& renderTarget)
     {
@@ -68,75 +53,213 @@ protected:
         return RenderObject{.mesh = mesh, .pipeline = pipeline};
     };
 
+    RenderToTextureResult RenderFullscreenTri(const Teide::RenderTargetInfo& renderTarget)
+    {
+        const auto fullscreenTri = CreateFullscreenTri(renderTarget);
 
-    GraphicsDevicePtr m_device; // NOLINT(cppcoreguidelines-non-private-member-variables-in-classes)
-    RendererPtr m_renderer;     // NOLINT(cppcoreguidelines-non-private-member-variables-in-classes)
+        const RenderList renderList = {
+            .clearState = {
+                .colorValue = Color{1.0f, 0.0f, 0.0f, 1.0f},
+                .depthValue = 1.0f,
+            },
+            .objects = {fullscreenTri},
+        };
+
+        return m_renderer->RenderToTexture(renderTarget, renderList);
+    }
+
+    DevicePtr m_device;     // NOLINT(cppcoreguidelines-non-private-member-variables-in-classes)
+    RendererPtr m_renderer; // NOLINT(cppcoreguidelines-non-private-member-variables-in-classes)
 
 private:
     ShaderCompiler m_shaderCompiler;
 };
 
+MATCHER_P(MatchesColorTarget, renderTarget, "")
+{
+    (void)result_listener;
+    return arg.size == renderTarget.size && arg.format == renderTarget.framebufferLayout.colorFormat
+        && arg.mipLevelCount == 1 && arg.sampleCount == renderTarget.framebufferLayout.sampleCount;
+}
+
+MATCHER_P(MatchesDepthTarget, renderTarget, "")
+{
+    (void)result_listener;
+    return arg.size == renderTarget.size && arg.format == renderTarget.framebufferLayout.depthStencilFormat
+        && arg.mipLevelCount == 1 && arg.sampleCount == renderTarget.framebufferLayout.sampleCount;
+}
+
+MATCHER_P(MatchesResolvedColorTarget, renderTarget, "")
+{
+    (void)result_listener;
+    return arg.size == renderTarget.size && arg.format == renderTarget.framebufferLayout.colorFormat
+        && arg.mipLevelCount == 1 && arg.sampleCount == 1;
+}
+
+MATCHER_P(MatchesResolvedDepthTarget, renderTarget, "")
+{
+    (void)result_listener;
+    return arg.size == renderTarget.size && arg.format == renderTarget.framebufferLayout.depthStencilFormat
+        && arg.mipLevelCount == 1 && arg.sampleCount == 1;
+}
+
+auto BytesEq(std::string_view bytesStr)
+{
+    return ContainerEq(HexToBytes(bytesStr));
+}
+
+TEST_F(RendererTest, RenderNothing)
+{
+    const RenderTargetInfo renderTarget = {
+        .size = {2,2},
+        .framebufferLayout = {
+            .colorFormat = Format::Byte4Srgb,
+            .captureColor = true,
+        },
+    };
+    const RenderList renderList = {
+        .clearState = {.colorValue = Color{1.0f, 0.0f, 0.0f, 1.0f}},
+    };
+
+    const Texture texture = m_renderer->RenderToTexture(renderTarget, renderList).colorTexture.value();
+    const TextureData outputData = m_renderer->CopyTextureData(texture).get();
+
+    EXPECT_THAT(outputData, MatchesColorTarget(renderTarget));
+    EXPECT_THAT(outputData.pixels, BytesEq("ff 00 00 ff ff 00 00 ff ff 00 00 ff ff 00 00 ff"));
+}
+
 TEST_F(RendererTest, RenderFullscreenTri)
 {
-    const auto renderTarget = CreateRenderTargetInfo({2, 2});
-    const auto fullscreenTri = CreateFullscreenTri(renderTarget);
-
-    const RenderList renderList = {
-        .clearState = {.colorValue = Color{1.0f, 0.0f, 0.0f, 1.0f}},
-        .objects = {fullscreenTri},
+    const RenderTargetInfo renderTarget = {
+        .size = {2,2},
+        .framebufferLayout = {
+            .colorFormat = Format::Byte4Srgb,
+            .captureColor = true,
+        },
     };
 
-    const auto texture = m_renderer->RenderToTexture(renderTarget, renderList).colorTexture;
-    EXPECT_THAT(texture, NotNull());
-}
-
-TEST_F(RendererTest, RenderNothingAndCheckPixels)
-{
-    const auto renderTarget = CreateRenderTargetInfo({2, 2});
-
-    const RenderList renderList = {
-        .clearState = {.colorValue = Color{1.0f, 0.0f, 0.0f, 1.0f}},
-    };
-
-    const auto texture = m_renderer->RenderToTexture(renderTarget, renderList).colorTexture;
-
+    const Texture texture = RenderFullscreenTri(renderTarget).colorTexture.value();
     const TextureData outputData = m_renderer->CopyTextureData(texture).get();
 
-    EXPECT_THAT(outputData.size, Eq(Geo::Size2i{2, 2}));
-    EXPECT_THAT(outputData.format, Eq(Format::Byte4Srgb));
-    EXPECT_THAT(outputData.mipLevelCount, Eq(1u));
-    EXPECT_THAT(outputData.sampleCount, Eq(1u));
-
-    const auto expectedPixels = HexToBytes("ff 00 00 ff ff 00 00 ff ff 00 00 ff ff 00 00 ff");
-    EXPECT_THAT(outputData.pixels, ContainerEq(expectedPixels));
+    EXPECT_THAT(outputData, MatchesColorTarget(renderTarget));
+    EXPECT_THAT(outputData.pixels, BytesEq("ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff"));
 }
 
-TEST_F(RendererTest, RenderFullscreenTriAndCheckPixels)
+TEST_F(RendererTest, RenderMultisampledFullscreenTri)
 {
-    const auto renderTarget = CreateRenderTargetInfo({2, 2});
-    const auto fullscreenTri = CreateFullscreenTri(renderTarget);
-
-    const RenderList renderList = {
-        .clearState = {.colorValue = Color{1.0f, 0.0f, 0.0f, 1.0f}},
-        .objects = {fullscreenTri},
+    const RenderTargetInfo renderTarget = {
+        .size = {2,2},
+        .framebufferLayout = {
+            .colorFormat = Format::Byte4Srgb,
+            .sampleCount = 4,
+            .captureColor = true,
+            .resolveColor = true,
+        },
     };
 
-    const auto texture = m_renderer->RenderToTexture(renderTarget, renderList).colorTexture;
-
+    const Texture texture = RenderFullscreenTri(renderTarget).colorTexture.value();
     const TextureData outputData = m_renderer->CopyTextureData(texture).get();
 
-    EXPECT_THAT(outputData.size, Eq(Geo::Size2i{2, 2}));
-    EXPECT_THAT(outputData.format, Eq(Format::Byte4Srgb));
-    EXPECT_THAT(outputData.mipLevelCount, Eq(1u));
-    EXPECT_THAT(outputData.sampleCount, Eq(1u));
+    EXPECT_THAT(outputData, MatchesResolvedColorTarget(renderTarget));
+    EXPECT_THAT(outputData.pixels, BytesEq("ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff"));
+}
 
-    const auto expectedPixels = HexToBytes("ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff");
-    EXPECT_THAT(outputData.pixels, ContainerEq(expectedPixels));
+TEST_F(RendererTest, RenderMultisampledFullscreenTriDepthOnly)
+{
+    const RenderTargetInfo renderTarget = {
+        .size = {2,2},
+        .framebufferLayout = {
+            .depthStencilFormat = Format::Depth16,
+            .sampleCount = 4,
+            .captureDepthStencil = true,
+            .resolveDepthStencil = true,
+        },
+    };
+
+    const Texture texture = RenderFullscreenTri(renderTarget).depthStencilTexture.value();
+    const TextureData outputData = m_renderer->CopyTextureData(texture).get();
+
+    EXPECT_THAT(outputData, MatchesResolvedDepthTarget(renderTarget));
+    EXPECT_THAT(outputData.pixels, BytesEq("00 00 00 00 00 00 00 00"));
+}
+
+TEST_F(RendererTest, RenderMultisampledFullscreenTriWithDepth)
+{
+    const RenderTargetInfo renderTarget = {
+        .size = {2, 2},
+        .framebufferLayout = {
+            .colorFormat = Format::Byte4Srgb,
+            .depthStencilFormat = Format::Depth16,
+            .sampleCount = 4,
+            .captureColor = true,
+            .captureDepthStencil = true,
+            .resolveColor = true,
+            .resolveDepthStencil = true,
+        },
+    };
+    const auto [color, depth] = RenderFullscreenTri(renderTarget);
+
+    const TextureData colorData = m_renderer->CopyTextureData(*color).get();
+    EXPECT_THAT(colorData, MatchesResolvedColorTarget(renderTarget));
+    EXPECT_THAT(colorData.pixels, BytesEq("ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff"));
+
+    const TextureData depthData = m_renderer->CopyTextureData(*depth).get();
+    EXPECT_THAT(depthData, MatchesResolvedDepthTarget(renderTarget));
+    EXPECT_THAT(depthData.pixels, BytesEq("00 00 00 00 00 00 00 00"));
+}
+
+TEST_F(RendererTest, RenderMultisampledFullscreenTriWithDepthCaptureColor)
+{
+    const RenderTargetInfo renderTarget = {
+        .size = {2,2},
+        .framebufferLayout = {
+            .colorFormat = Format::Byte4Srgb,
+            .depthStencilFormat = Format::Depth16,
+            .sampleCount = 4,
+            .captureColor = true,
+            .captureDepthStencil = true,
+            .resolveColor = true,
+            .resolveDepthStencil = true,
+        },
+    };
+
+    const Texture texture = RenderFullscreenTri(renderTarget).depthStencilTexture.value();
+    const TextureData outputData = m_renderer->CopyTextureData(texture).get();
+
+    EXPECT_THAT(outputData, MatchesResolvedDepthTarget(renderTarget));
+    EXPECT_THAT(outputData.pixels, BytesEq("00 00 00 00 00 00 00 00"));
+}
+
+TEST_F(RendererTest, RenderMultisampledFullscreenTriWithDepthNoResolve)
+{
+    const RenderTargetInfo renderTarget = {
+        .size = {2, 2},
+        .framebufferLayout = {
+            .colorFormat = Format::Byte4Srgb,
+            .depthStencilFormat = Format::Depth16,
+            .sampleCount = 4,
+            .captureColor = true,
+            .captureDepthStencil = true,
+            .resolveColor = false,
+            .resolveDepthStencil = false,
+        },
+    };
+    const auto [color, depth] = RenderFullscreenTri(renderTarget);
+
+    // Can't copy the pixels of a multisampled texture, but we can confirm it returns... something
+    EXPECT_THAT(color, Ne(std::nullopt));
+    EXPECT_THAT(depth, Ne(std::nullopt));
 }
 
 TEST_F(RendererTest, RenderWithViewParameters)
 {
-    const auto renderTarget = CreateRenderTargetInfo({2, 2}, Format::Byte4Norm);
+    const RenderTargetInfo renderTarget = {
+        .size = {2,2},
+        .framebufferLayout = {
+            .colorFormat = Format::Byte4Norm,
+            .captureColor = true,
+        },
+    };
 
     const auto vertices = MakeBytes<float>({-1.0f, -1.0f, 3.0f, -1.0f, -1.0f, 3.0f});
     const auto mesh = m_device->CreateMesh({.vertexData = vertices, .vertexCount = 3}, "Mesh");
@@ -160,7 +283,7 @@ TEST_F(RendererTest, RenderWithViewParameters)
         .format = Format::Byte4Norm,
         .pixels = MakeBytes<uint8>({20, 20, 20, 255, 20, 20, 20, 255, 20, 20, 20, 255, 20, 20, 20, 255}),
     };
-    TexturePtr texture = m_device->CreateTexture(textureData, "initialTexture");
+    Texture texture = m_device->CreateTexture(textureData, "initialTexture");
 
     const RenderList renderList = {
         .clearState = {.colorValue = Color{1.0f, 0.0f, 0.0f, 1.0f}},
@@ -168,22 +291,22 @@ TEST_F(RendererTest, RenderWithViewParameters)
         .objects = {RenderObject{.mesh = mesh, .pipeline = pipeline}},
     };
 
-    texture = m_renderer->RenderToTexture(renderTarget, renderList).colorTexture;
-
+    texture = m_renderer->RenderToTexture(renderTarget, renderList).colorTexture.value();
     const TextureData outputData = m_renderer->CopyTextureData(texture).get();
 
-    EXPECT_THAT(outputData.size, Eq(Geo::Size2i{2, 2}));
-    EXPECT_THAT(outputData.format, Eq(Format::Byte4Norm));
-    EXPECT_THAT(outputData.mipLevelCount, Eq(1u));
-    EXPECT_THAT(outputData.sampleCount, Eq(1u));
-
-    const auto expectedPixels = HexToBytes("15 15 15 ff 15 15 15 ff 15 15 15 ff 15 15 15 ff");
-    EXPECT_THAT(outputData.pixels, ContainerEq(expectedPixels));
+    EXPECT_THAT(outputData, MatchesColorTarget(renderTarget));
+    EXPECT_THAT(outputData.pixels, BytesEq("15 15 15 ff 15 15 15 ff 15 15 15 ff 15 15 15 ff"));
 }
 
 TEST_F(RendererTest, RenderMultipleFramesWithViewParameters)
 {
-    const auto renderTarget = CreateRenderTargetInfo({2, 2}, Format::Byte4Norm);
+    const RenderTargetInfo renderTarget = {
+        .size = {2,2},
+        .framebufferLayout = {
+            .colorFormat = Format::Byte4Norm,
+            .captureColor = true,
+        },
+    };
 
     const auto vertices = MakeBytes<float>({-1.0f, -1.0f, 3.0f, -1.0f, -1.0f, 3.0f});
     const auto mesh = m_device->CreateMesh({.vertexData = vertices, .vertexCount = 3}, "Mesh");
@@ -207,7 +330,7 @@ TEST_F(RendererTest, RenderMultipleFramesWithViewParameters)
         .format = Format::Byte4Norm,
         .pixels = MakeBytes<uint8>({20, 20, 20, 255, 20, 20, 20, 255, 20, 20, 20, 255, 20, 20, 20, 255}),
     };
-    TexturePtr texture = m_device->CreateTexture(textureData, "initialTexture");
+    Texture texture = m_device->CreateTexture(textureData, "initialTexture");
 
     constexpr int numFrames = 100;
     for (int i = 0; i < numFrames; i++)
@@ -220,25 +343,26 @@ TEST_F(RendererTest, RenderMultipleFramesWithViewParameters)
             .objects = {RenderObject{.mesh = mesh, .pipeline = pipeline}},
         };
 
-        texture = m_renderer->RenderToTexture(renderTarget, renderList).colorTexture;
+        texture = m_renderer->RenderToTexture(renderTarget, renderList).colorTexture.value();
 
         m_renderer->EndFrame();
     }
 
     const TextureData outputData = m_renderer->CopyTextureData(texture).get();
 
-    EXPECT_THAT(outputData.size, Eq(Geo::Size2i{2, 2}));
-    EXPECT_THAT(outputData.format, Eq(Format::Byte4Norm));
-    EXPECT_THAT(outputData.mipLevelCount, Eq(1u));
-    EXPECT_THAT(outputData.sampleCount, Eq(1u));
-
-    const auto expectedPixels = HexToBytes("78 78 78 ff 78 78 78 ff 78 78 78 ff 78 78 78 ff");
-    EXPECT_THAT(outputData.pixels, ContainerEq(expectedPixels));
+    EXPECT_THAT(outputData, MatchesColorTarget(renderTarget));
+    EXPECT_THAT(outputData.pixels, BytesEq("78 78 78 ff 78 78 78 ff 78 78 78 ff 78 78 78 ff"));
 }
 
 TEST_F(RendererTest, RenderMultiplePassesWithViewParameters)
 {
-    const auto renderTarget = CreateRenderTargetInfo({2, 2}, Format::Byte4Norm);
+    const RenderTargetInfo renderTarget = {
+        .size = {2,2},
+        .framebufferLayout = {
+            .colorFormat = Format::Byte4Norm,
+            .captureColor = true,
+        },
+    };
 
     const auto vertices = MakeBytes<float>({-1.0f, -1.0f, 3.0f, -1.0f, -1.0f, 3.0f});
     const auto mesh = m_device->CreateMesh({.vertexData = vertices, .vertexCount = 3}, "Mesh");
@@ -262,7 +386,7 @@ TEST_F(RendererTest, RenderMultiplePassesWithViewParameters)
         .format = Format::Byte4Norm,
         .pixels = MakeBytes<uint8>({20, 20, 20, 255, 20, 20, 20, 255, 20, 20, 20, 255, 20, 20, 20, 255}),
     };
-    TexturePtr texture = m_device->CreateTexture(textureData, "initialTexture");
+    Texture texture = m_device->CreateTexture(textureData, "initialTexture");
 
     constexpr int numPasses = 100;
     for (int i = 0; i < numPasses; i++)
@@ -273,23 +397,24 @@ TEST_F(RendererTest, RenderMultiplePassesWithViewParameters)
             .objects = {RenderObject{.mesh = mesh, .pipeline = pipeline}},
         };
 
-        texture = m_renderer->RenderToTexture(renderTarget, renderList).colorTexture;
+        texture = m_renderer->RenderToTexture(renderTarget, renderList).colorTexture.value();
     }
 
     const TextureData outputData = m_renderer->CopyTextureData(texture).get();
 
-    EXPECT_THAT(outputData.size, Eq(Geo::Size2i{2, 2}));
-    EXPECT_THAT(outputData.format, Eq(Format::Byte4Norm));
-    EXPECT_THAT(outputData.mipLevelCount, Eq(1u));
-    EXPECT_THAT(outputData.sampleCount, Eq(1u));
-
-    const auto expectedPixels = HexToBytes("78 78 78 ff 78 78 78 ff 78 78 78 ff 78 78 78 ff");
-    EXPECT_THAT(outputData.pixels, ContainerEq(expectedPixels));
+    EXPECT_THAT(outputData, MatchesColorTarget(renderTarget));
+    EXPECT_THAT(outputData.pixels, BytesEq("78 78 78 ff 78 78 78 ff 78 78 78 ff 78 78 78 ff"));
 }
 
 TEST_F(RendererTest, RenderMultipleFramesWithMultiplePassesWithViewParameters)
 {
-    const auto renderTarget = CreateRenderTargetInfo({2, 2}, Format::Byte4Norm);
+    const RenderTargetInfo renderTarget = {
+        .size = {2,2},
+        .framebufferLayout = {
+            .colorFormat = Format::Byte4Norm,
+            .captureColor = true,
+        },
+    };
 
     const auto vertices = MakeBytes<float>({-1.0f, -1.0f, 3.0f, -1.0f, -1.0f, 3.0f});
     const auto mesh = m_device->CreateMesh({.vertexData = vertices, .vertexCount = 3}, "Mesh");
@@ -313,7 +438,7 @@ TEST_F(RendererTest, RenderMultipleFramesWithMultiplePassesWithViewParameters)
         .format = Format::Byte4Norm,
         .pixels = MakeBytes<uint8>({20, 20, 20, 255, 20, 20, 20, 255, 20, 20, 20, 255, 20, 20, 20, 255}),
     };
-    TexturePtr texture = m_device->CreateTexture(textureData, "initialTexture");
+    Texture texture = m_device->CreateTexture(textureData, "initialTexture");
 
     constexpr int numFrames = 10;
     constexpr int numPasses = 10;
@@ -329,7 +454,7 @@ TEST_F(RendererTest, RenderMultipleFramesWithMultiplePassesWithViewParameters)
                 .objects = {RenderObject{.mesh = mesh, .pipeline = pipeline}},
             };
 
-            texture = m_renderer->RenderToTexture(renderTarget, renderList).colorTexture;
+            texture = m_renderer->RenderToTexture(renderTarget, renderList).colorTexture.value();
         }
 
         m_renderer->EndFrame();
@@ -337,13 +462,8 @@ TEST_F(RendererTest, RenderMultipleFramesWithMultiplePassesWithViewParameters)
 
     const TextureData outputData = m_renderer->CopyTextureData(texture).get();
 
-    EXPECT_THAT(outputData.size, Eq(Geo::Size2i{2, 2}));
-    EXPECT_THAT(outputData.format, Eq(Format::Byte4Norm));
-    EXPECT_THAT(outputData.mipLevelCount, Eq(1u));
-    EXPECT_THAT(outputData.sampleCount, Eq(1u));
-
-    const auto expectedPixels = HexToBytes("78 78 78 ff 78 78 78 ff 78 78 78 ff 78 78 78 ff");
-    EXPECT_THAT(outputData.pixels, ContainerEq(expectedPixels));
+    EXPECT_THAT(outputData, MatchesColorTarget(renderTarget));
+    EXPECT_THAT(outputData.pixels, BytesEq("78 78 78 ff 78 78 78 ff 78 78 78 ff 78 78 78 ff"));
 }
 
 } // namespace

@@ -24,24 +24,8 @@ namespace
 } // namespace
 
 GpuExecutor::GpuExecutor(uint32 numThreads, vk::Device device, vk::Queue queue, uint32 queueFamilyIndex) :
-    m_device{device}, m_queue{Queue(device, queue)}
+    m_frameResources(numThreads, device, queueFamilyIndex), m_device{device}, m_queue{Queue(device, queue)}
 {
-    std::ranges::generate(m_frameResources, [&]() {
-        std::vector<ThreadResources> ret;
-        ret.resize(numThreads);
-        uint32 i = 0;
-        std::ranges::generate(ret, [&] {
-            ThreadResources res;
-            res.commandPool = CreateCommandPool(queueFamilyIndex, device);
-            SetDebugName(res.commandPool, "RenderThread{}:CommandPool", i);
-            res.threadIndex = i;
-            i++;
-            return res;
-        });
-
-        return ret;
-    });
-
     m_schedulerThread = std::thread([this] {
         SetCurrentTheadName("GpuExecutor");
         constexpr auto timeout = std::chrono::milliseconds{2};
@@ -104,13 +88,9 @@ void GpuExecutor::WaitForTasks()
 
 void GpuExecutor::NextFrame()
 {
-    m_frameNumber = (m_frameNumber + 1) % MaxFramesInFlight;
+    m_frameResources.NextFrame();
 
-    auto& frameResources = m_frameResources[m_frameNumber];
-    for (auto& threadResources : frameResources)
-    {
-        threadResources.Reset(m_device);
-    }
+    m_frameResources.Current().threadResources.LockAll([this](auto& threadResources) { threadResources.Reset(m_device); });
 }
 
 void GpuExecutor::ThreadResources::Reset(vk::Device device)
@@ -126,32 +106,44 @@ void GpuExecutor::ThreadResources::Reset(vk::Device device)
     }
 }
 
-CommandBuffer& GpuExecutor::GetCommandBuffer(uint32 threadIndex)
+GpuExecutor::FrameResources::FrameResources(uint32 numThreads, vk::Device device, uint32_t queueFamilyIndex) :
+    threadResources{numThreads, [&, i = 0u]() mutable { return ThreadResources(i, device, queueFamilyIndex); }}
+{}
+
+GpuExecutor::ThreadResources::ThreadResources(uint32& i, vk::Device device, uint32 queueFamilyIndex) :
+    commandPool{CreateCommandPool(queueFamilyIndex, device)}, threadIndex(i)
 {
-    auto& threadResources = m_frameResources[m_frameNumber][threadIndex];
+    SetDebugName(commandPool, "RenderThread{}:CommandPool", i);
 
-    if (threadResources.numUsedCommandBuffers == threadResources.commandBuffers.size())
-    {
-        const vk::CommandBufferAllocateInfo allocateInfo = {
-            .commandPool = threadResources.commandPool.get(),
-            .level = vk::CommandBufferLevel::ePrimary,
-            .commandBufferCount = std::max(1u, static_cast<uint32>(threadResources.commandBuffers.size())),
-        };
+    i++;
+}
 
-        auto newCommandBuffers = m_device.allocateCommandBuffersUnique(allocateInfo);
-        const auto numCBs = static_cast<uint32>(threadResources.commandBuffers.size());
-        for (uint32 i = 0; i < newCommandBuffers.size(); i++)
+CommandBuffer& GpuExecutor::GetCommandBuffer()
+{
+    return m_frameResources.Current().threadResources.LockCurrent([this](auto& threadResources) -> CommandBuffer& {
+        if (threadResources.numUsedCommandBuffers == threadResources.commandBuffers.size())
         {
-            SetCommandBufferDebugName(newCommandBuffers[i], threadIndex, i + numCBs);
-            threadResources.commandBuffers.emplace_back(std::move(newCommandBuffers[i]));
+            const vk::CommandBufferAllocateInfo allocateInfo = {
+                .commandPool = threadResources.commandPool.get(),
+                .level = vk::CommandBufferLevel::ePrimary,
+                .commandBufferCount = std::max(1u, static_cast<uint32>(threadResources.commandBuffers.size())),
+            };
+
+            auto newCommandBuffers = m_device.allocateCommandBuffersUnique(allocateInfo);
+            const auto numCBs = static_cast<uint32>(threadResources.commandBuffers.size());
+            for (uint32 i = 0; i < newCommandBuffers.size(); i++)
+            {
+                SetCommandBufferDebugName(newCommandBuffers[i], threadResources.threadIndex, i + numCBs);
+                threadResources.commandBuffers.emplace_back(std::move(newCommandBuffers[i]));
+            }
         }
-    }
 
-    const auto commandBufferIndex = threadResources.numUsedCommandBuffers++;
-    CommandBuffer& commandBuffer = threadResources.commandBuffers.at(commandBufferIndex);
-    commandBuffer.Get()->begin(vk::CommandBufferBeginInfo{});
+        const auto commandBufferIndex = threadResources.numUsedCommandBuffers++;
+        CommandBuffer& commandBuffer = threadResources.commandBuffers.at(commandBufferIndex);
+        commandBuffer.Get()->begin(vk::CommandBufferBeginInfo{});
 
-    return commandBuffer;
+        return commandBuffer;
+    });
 }
 
 uint32 GpuExecutor::AddCommandBufferSlot()
@@ -161,7 +153,7 @@ uint32 GpuExecutor::AddCommandBufferSlot()
 
 void GpuExecutor::SubmitCommandBuffer(uint32 index, vk::CommandBuffer commandBuffer, OnCompleteFunction func)
 {
-    m_queue.Lock([&](Queue& queue) { queue.Submit(index, commandBuffer, std::move(func)); });
+    m_queue.Lock(&Queue::Submit, index, commandBuffer, std::move(func));
 }
 
 //---------------------------------------------------------------------------------------------------------------------

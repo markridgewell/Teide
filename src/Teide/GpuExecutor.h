@@ -4,7 +4,8 @@
 #include "CommandBuffer.h"
 
 #include "Teide/BasicTypes.h"
-#include "Teide/ThreadUtils.h"
+#include "Teide/Util/FrameArray.h"
+#include "Teide/Util/ThreadUtils.h"
 #include "Teide/VulkanConfig.h"
 
 #include <function2/function2.hpp>
@@ -34,7 +35,7 @@ public:
     void NextFrame();
 
     uint32 AddCommandBufferSlot();
-    CommandBuffer& GetCommandBuffer(uint32 threadIndex);
+    CommandBuffer& GetCommandBuffer();
     void SubmitCommandBuffer(uint32 index, vk::CommandBuffer commandBuffer, OnCompleteFunction func = nullptr);
 
     void WaitForTasks();
@@ -49,11 +50,17 @@ private:
         uint32 numUsedCommandBuffers = 0;
         uint32 threadIndex = 0;
 
+        ThreadResources(uint32& i, vk::Device device, uint32 queueFamilyIndex);
+
         void Reset(vk::Device device);
     };
 
-    std::array<std::vector<ThreadResources>, MaxFramesInFlight> m_frameResources;
-    uint32 m_frameNumber = 0;
+    struct FrameResources
+    {
+        explicit FrameResources(uint32 numThreads, vk::Device device, uint32_t queueFamilyIndex);
+
+        ThreadMap<ThreadResources> threadResources;
+    };
 
     class Queue
     {
@@ -92,6 +99,8 @@ private:
 
         std::vector<InFlightSubmit> m_inFlightSubmits;
     };
+
+    FrameArray<FrameResources, MaxFramesInFlight> m_frameResources;
 
     const std::thread::id m_mainThread = std::this_thread::get_id();
 

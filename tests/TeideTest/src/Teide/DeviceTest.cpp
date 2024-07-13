@@ -1,5 +1,5 @@
 
-#include "Teide/GraphicsDevice.h"
+#include "Teide/Device.h"
 
 #include "TestData.h"
 #include "TestUtils.h"
@@ -19,21 +19,21 @@ using namespace Teide;
 
 namespace
 {
-class GraphicsDeviceTest : public testing::Test
+class DeviceTest : public testing::Test
 {
 public:
-    GraphicsDeviceTest() : m_device{CreateTestGraphicsDevice()} {}
+    DeviceTest() : m_device{CreateTestDevice()} {}
 
 protected:
     ShaderData CompileShader(const ShaderSourceData& data) { return m_shaderCompiler.Compile(data); }
 
-    GraphicsDevicePtr m_device; // NOLINT(cppcoreguidelines-non-private-member-variables-in-classes)
+    DevicePtr m_device; // NOLINT(cppcoreguidelines-non-private-member-variables-in-classes)
 
 private:
     ShaderCompiler m_shaderCompiler;
 };
 
-TEST_F(GraphicsDeviceTest, CreateBuffer)
+TEST_F(DeviceTest, CreateBuffer)
 {
     const auto contents = std::vector<std::byte>{std::byte{1}, std::byte{2}, std::byte{3}, std::byte{4}};
     const BufferData bufferData = {
@@ -46,7 +46,7 @@ TEST_F(GraphicsDeviceTest, CreateBuffer)
     EXPECT_THAT(buffer->GetSize(), Eq(contents.size() * sizeof(contents[0])));
 }
 
-TEST_F(GraphicsDeviceTest, CreateBufferWithNullName)
+TEST_F(DeviceTest, CreateBufferWithNullName)
 {
     const auto contents = std::vector<std::byte>{std::byte{1}, std::byte{2}, std::byte{3}, std::byte{4}};
     const BufferData bufferData = {
@@ -59,21 +59,39 @@ TEST_F(GraphicsDeviceTest, CreateBufferWithNullName)
     EXPECT_THAT(buffer->GetSize(), Eq(contents.size() * sizeof(contents[0])));
 }
 
-TEST_F(GraphicsDeviceTest, CreateShader)
+TEST_F(DeviceTest, CreateShader)
 {
     const auto shaderData = CompileShader(SimpleShader);
     const auto shader = m_device->CreateShader(shaderData, "Shader");
     EXPECT_THAT(shader.get(), NotNull());
 }
 
-TEST_F(GraphicsDeviceTest, CreateShaderWithNullName)
+TEST_F(DeviceTest, CreateShaderWithNullName)
 {
     const auto shaderData = CompileShader(SimpleShader);
     const auto shader = m_device->CreateShader(shaderData, nullptr);
     EXPECT_THAT(shader.get(), NotNull());
 }
 
-TEST_F(GraphicsDeviceTest, CreateTexture)
+TEST_F(DeviceTest, CreateAndReuseTexture)
+{
+    const TextureData textureData = {
+        .size = {2, 2},
+        .format = Format::Byte4Srgb,
+        .mipLevelCount = 1,
+        .sampleCount = 1,
+        .pixels = HexToBytes("ff 00 00 ff 00 ff 00 ff ff 00 ff ff 00 00 ff ff"),
+    };
+    std::optional<Texture> texture1 = m_device->CreateTexture(textureData, "Texture1");
+    texture1.reset();
+    const Texture texture2 = m_device->CreateTexture(textureData, "Texture2");
+    EXPECT_THAT(texture2.GetSize(), Eq(Geo::Size2i{2, 2}));
+    EXPECT_THAT(texture2.GetFormat(), Eq(Format::Byte4Srgb));
+    EXPECT_THAT(texture2.GetMipLevelCount(), Eq(1u));
+    EXPECT_THAT(texture2.GetSampleCount(), Eq(1u));
+}
+
+TEST_F(DeviceTest, CreateTexture)
 {
     const TextureData textureData = {
         .size = {2, 2},
@@ -83,14 +101,13 @@ TEST_F(GraphicsDeviceTest, CreateTexture)
         .pixels = HexToBytes("ff 00 00 ff 00 ff 00 ff ff 00 ff ff 00 00 ff ff"),
     };
     const auto texture = m_device->CreateTexture(textureData, "Texture");
-    EXPECT_THAT(texture.get(), NotNull());
-    EXPECT_THAT(texture->GetSize(), Eq(Geo::Size2i{2, 2}));
-    EXPECT_THAT(texture->GetFormat(), Eq(Format::Byte4Srgb));
-    EXPECT_THAT(texture->GetMipLevelCount(), Eq(1u));
-    EXPECT_THAT(texture->GetSampleCount(), Eq(1u));
+    EXPECT_THAT(texture.GetSize(), Eq(Geo::Size2i{2, 2}));
+    EXPECT_THAT(texture.GetFormat(), Eq(Format::Byte4Srgb));
+    EXPECT_THAT(texture.GetMipLevelCount(), Eq(1u));
+    EXPECT_THAT(texture.GetSampleCount(), Eq(1u));
 }
 
-TEST_F(GraphicsDeviceTest, CreateTextureWithNullName)
+TEST_F(DeviceTest, CreateTextureWithNullName)
 {
     const TextureData textureData = {
         .size = {2, 2},
@@ -100,14 +117,13 @@ TEST_F(GraphicsDeviceTest, CreateTextureWithNullName)
         .pixels = HexToBytes("ff 00 00 ff 00 ff 00 ff ff 00 ff ff 00 00 ff ff"),
     };
     const auto texture = m_device->CreateTexture(textureData, nullptr);
-    EXPECT_THAT(texture.get(), NotNull());
-    EXPECT_THAT(texture->GetSize(), Eq(Geo::Size2i{2, 2}));
-    EXPECT_THAT(texture->GetFormat(), Eq(Format::Byte4Srgb));
-    EXPECT_THAT(texture->GetMipLevelCount(), Eq(1u));
-    EXPECT_THAT(texture->GetSampleCount(), Eq(1u));
+    EXPECT_THAT(texture.GetSize(), Eq(Geo::Size2i{2, 2}));
+    EXPECT_THAT(texture.GetFormat(), Eq(Format::Byte4Srgb));
+    EXPECT_THAT(texture.GetMipLevelCount(), Eq(1u));
+    EXPECT_THAT(texture.GetSampleCount(), Eq(1u));
 }
 
-TEST_F(GraphicsDeviceTest, CreateMesh)
+TEST_F(DeviceTest, CreateMesh)
 {
     const MeshData meshData = {
         .vertexData = MakeBytes<float>({1, 2, 3, 4, 5, 6}),
@@ -122,7 +138,7 @@ TEST_F(GraphicsDeviceTest, CreateMesh)
     EXPECT_THAT(mesh->GetIndexCount(), 0);
 }
 
-TEST_F(GraphicsDeviceTest, CreateMeshWithNullName)
+TEST_F(DeviceTest, CreateMeshWithNullName)
 {
     const MeshData meshData = {
         .vertexData = MakeBytes<float>({1, 2, 3, 4, 5, 6}),
@@ -137,7 +153,7 @@ TEST_F(GraphicsDeviceTest, CreateMeshWithNullName)
     EXPECT_THAT(mesh->GetIndexCount(), 0);
 }
 
-TEST_F(GraphicsDeviceTest, CreateMeshWithIndices)
+TEST_F(DeviceTest, CreateMeshWithIndices)
 {
     const MeshData meshData = {
         .vertexData = MakeBytes<float>({1, 2, 3, 4, 5, 6}),
@@ -154,7 +170,7 @@ TEST_F(GraphicsDeviceTest, CreateMeshWithIndices)
     EXPECT_THAT(mesh->GetIndexCount(), 3);
 }
 
-TEST_F(GraphicsDeviceTest, CreatePipeline)
+TEST_F(DeviceTest, CreatePipeline)
 {
     const auto shaderData = CompileShader(SimpleShader);
 
@@ -178,7 +194,7 @@ TEST_F(GraphicsDeviceTest, CreatePipeline)
     EXPECT_THAT(pipeline.get(), NotNull());
 }
 
-TEST_F(GraphicsDeviceTest, CreateParameterBlockWithUniforms)
+TEST_F(DeviceTest, CreateParameterBlockWithUniforms)
 {
     const auto shaderData = CompileShader(ShaderWithMaterialParams);
     const auto shader = m_device->CreateShader(shaderData, "Shader");
@@ -195,7 +211,7 @@ TEST_F(GraphicsDeviceTest, CreateParameterBlockWithUniforms)
     EXPECT_THAT(pblock->GetPushConstantSize(), Eq(0u));
 }
 
-TEST_F(GraphicsDeviceTest, CreateParameterBlockWithPushConstants)
+TEST_F(DeviceTest, CreateParameterBlockWithPushConstants)
 {
     const auto shaderData = CompileShader(ShaderWithObjectParams);
     const auto shader = m_device->CreateShader(shaderData, "Shader");

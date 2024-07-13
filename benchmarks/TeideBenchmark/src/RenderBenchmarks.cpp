@@ -1,7 +1,7 @@
 
 #include "ShaderCompiler/ShaderCompiler.h"
 #include "Teide/Buffer.h"
-#include "Teide/GraphicsDevice.h"
+#include "Teide/Device.h"
 #include "Teide/Renderer.h"
 
 #include <benchmark/benchmark.h>
@@ -45,11 +45,11 @@ constexpr Teide::RenderTargetInfo CreateRenderTargetInfo(Geo::Size2i size)
         .framebufferLayout = {
             .colorFormat = Teide::Format::Byte4Srgb,
             .depthStencilFormat = std::nullopt,
-            .sampleCount=1,
+            .sampleCount = 1,
+            .captureColor = true,
+            .captureDepthStencil = false,
         },
         .samplerState = {},
-        .captureColor = true,
-        .captureDepthStencil = false,
     };
 }
 
@@ -58,7 +58,7 @@ constexpr Teide::RenderTargetInfo CreateRenderTargetInfo(Teide::uint32 size)
     return CreateRenderTargetInfo(Geo::Size2i{size});
 }
 
-Teide::TexturePtr
+Teide::Texture
 Render(const Teide::RendererPtr& renderer, const Teide::RenderTargetInfo& renderTarget, std::vector<Teide::RenderObject> objects)
 {
     const Teide::RenderList renderList = {
@@ -66,33 +66,53 @@ Render(const Teide::RendererPtr& renderer, const Teide::RenderTargetInfo& render
         .objects = std::move(objects),
     };
 
-    return renderer->RenderToTexture(renderTarget, renderList).colorTexture;
+    return renderer->RenderToTexture(renderTarget, renderList).colorTexture.value();
 }
 
+void CreateTexture(benchmark::State& state)
+{
+    spdlog::set_level(spdlog::level::err);
 
-void BM_RenderNothing(benchmark::State& state)
+    const Teide::DevicePtr device = Teide::CreateHeadlessDevice();
+    const Geo::Size2i size{static_cast<Teide::uint32>(state.range(0))};
+
+    for (auto _ [[maybe_unused]] : state)
+    {
+        auto texture = device->CreateTexture(
+            {
+                .size = size,
+                .format = Teide::Format::Byte4,
+            },
+            "");
+        benchmark::DoNotOptimize(texture);
+    }
+}
+BENCHMARK(CreateTexture)->Arg(8); //->Arg(256)->Arg(4096);
+
+void RenderNothing(benchmark::State& state)
 {
     spdlog::set_level(spdlog::level::err);
 
     const Teide::RenderTargetInfo renderTarget = CreateRenderTargetInfo(static_cast<Teide::uint32>(state.range(0)));
 
-    const Teide::GraphicsDevicePtr device = Teide::CreateHeadlessDevice();
+    const Teide::DevicePtr device = Teide::CreateHeadlessDevice();
     const Teide::RendererPtr renderer = device->CreateRenderer(nullptr);
 
     for (auto _ [[maybe_unused]] : state)
     {
-        const auto texture = Render(renderer, renderTarget, {});
+        auto texture = Render(renderer, renderTarget, {});
+        benchmark::DoNotOptimize(texture);
     }
 }
-BENCHMARK(BM_RenderNothing)->Arg(8); //->Arg(256)->Arg(4096);
+BENCHMARK(RenderNothing)->Arg(8); //->Arg(256)->Arg(4096);
 
-void BM_RenderToTexture(benchmark::State& state)
+void RenderToTexture(benchmark::State& state)
 {
     spdlog::set_level(spdlog::level::err);
 
     const Teide::RenderTargetInfo renderTarget = CreateRenderTargetInfo(static_cast<Teide::uint32>(state.range(0)));
 
-    const Teide::GraphicsDevicePtr device = Teide::CreateHeadlessDevice();
+    const Teide::DevicePtr device = Teide::CreateHeadlessDevice();
     const Teide::RendererPtr renderer = device->CreateRenderer(nullptr);
 
     const auto vertices = Teide::MakeBytes<float>({-1.0f, -1.0f, 3.0f, -1.0f, -1.0f, 3.0f});
@@ -115,7 +135,8 @@ void BM_RenderToTexture(benchmark::State& state)
 
     for (auto _ [[maybe_unused]] : state)
     {
-        const auto texture = Render(renderer, renderTarget, renderObjects);
+        auto texture = Render(renderer, renderTarget, renderObjects);
+        benchmark::DoNotOptimize(texture);
     }
 }
-BENCHMARK(BM_RenderToTexture)->Arg(8); //->Arg(256)->Arg(4096);
+BENCHMARK(RenderToTexture)->Arg(8); //->Arg(256)->Arg(4096);

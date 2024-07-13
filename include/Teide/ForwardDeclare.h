@@ -27,7 +27,6 @@ class ParameterBlock;
 using BufferPtr = std::shared_ptr<const Buffer>;
 using ShaderPtr = std::shared_ptr<const Shader>;
 using ShaderEnvironmentPtr = std::shared_ptr<const ShaderEnvironment>;
-using TexturePtr = std::shared_ptr<const Texture>;
 using MeshPtr = std::shared_ptr<const Mesh>;
 using PipelinePtr = std::shared_ptr<const Pipeline>;
 using ParameterBlockLayoutPtr = std::shared_ptr<const ParameterBlockLayout>;

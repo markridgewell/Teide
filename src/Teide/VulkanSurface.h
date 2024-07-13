@@ -25,21 +25,20 @@ struct SurfaceImage
     vk::Semaphore imageAvailable;
     vk::Image image;
     Framebuffer framebuffer;
-    vk::CommandBuffer prePresentCommandBuffer;
 };
 
 class VulkanSurface : public Surface
 {
 public:
     VulkanSurface(
-        SDL_Window* window, vk::UniqueSurfaceKHR surface, vk::Device device, vk::PhysicalDevice physicalDevice,
-        std::vector<uint32_t> queueFamilyIndices, vk::CommandPool commandPool, vma::Allocator allocator,
-        vk::Queue queue, bool multisampled);
+        SDL_Window* window, vk::UniqueSurfaceKHR surface, vk::Device device, const PhysicalDevice& physicalDevice,
+        vk::CommandPool commandPool, vma::Allocator allocator, vk::Queue queue, bool multisampled);
 
     Geo::Size2i GetExtent() const override { return m_surfaceExtent; }
-    Format GetColorFormat() const override { return m_colorFormat; }
-    Format GetDepthFormat() const override { return m_depthFormat; }
+    Format GetColorFormat() const override { return m_framebufferLayout.colorFormat.value(); }
+    Format GetDepthFormat() const override { return m_framebufferLayout.depthStencilFormat.value(); }
     uint32 GetSampleCount() const override { return m_msaaSampleCount; }
+    FramebufferLayout GetFramebufferLayout() const override { return m_framebufferLayout; }
 
     void OnResize() override;
 
@@ -57,8 +56,7 @@ private:
     void RecreateSwapchain();
 
     vk::Device m_device;
-    vk::PhysicalDevice m_physicalDevice;
-    std::vector<uint32_t> m_queueFamilyIndices;
+    const PhysicalDevice& m_physicalDevice;
     vk::CommandPool m_commandPool;
     vma::Allocator m_allocator;
     vk::Queue m_queue;
@@ -69,13 +67,11 @@ private:
     vk::UniqueSwapchainKHR m_swapchain;
     std::vector<vk::Image> m_swapchainImages;
     std::vector<vk::UniqueImageView> m_swapchainImageViews;
-    std::vector<vk::UniqueCommandBuffer> m_transitionToPresentSrc;
+    FramebufferLayout m_framebufferLayout;
     uint32 m_msaaSampleCount = 1;
-    Format m_colorFormat = Format::Unknown;
     vk::UniqueImage m_colorImage;
     vma::UniqueAllocation m_colorMemory;
     vk::UniqueImageView m_colorImageView;
-    Format m_depthFormat = Format::Unknown;
     vk::UniqueImage m_depthImage;
     vma::UniqueAllocation m_depthMemory;
     vk::UniqueImageView m_depthImageView;

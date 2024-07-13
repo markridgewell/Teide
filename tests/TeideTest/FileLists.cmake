@@ -7,12 +7,13 @@ set(sources
     src/ShaderCompiler/ShaderCompilerTest.cpp
     src/Teide/AssertTest.cpp
     src/Teide/CpuExecutorTest.cpp
+    src/Teide/DeviceTest.cpp
     src/Teide/FormatTest.cpp
     src/Teide/GpuExecutorTest.cpp
-    src/Teide/GraphicsDeviceTest.cpp
     src/Teide/HashTest.cpp
     src/Teide/ParameterBlockTest.cpp
     src/Teide/RendererTest.cpp
+    src/Teide/ResourceMapTest.cpp
     src/Teide/SchedulerTest.cpp
     src/Teide/ShaderDataTest.cpp
     src/Teide/SurfaceTest.cpp

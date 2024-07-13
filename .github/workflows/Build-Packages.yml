@@ -11,8 +11,7 @@ on:
     - 'vcpkg.json'
     - 'vcpkg-configuration.json'
     - 'external/ports/**'
-    - 'cmake/triplets/*.cmake'
-    - 'cmake/toolchains/*.cmake'
+    - 'tools/cmake/triplets/*.cmake'
 
 env:
   VULKAN_SDK: ./VULKAN_SDK
@@ -24,17 +23,17 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        preset: [msvc2022, clang++-17]
+        preset: [msvc2022, clang++-18]
         sanitizer: ['OFF']
         include:
         - preset: msvc2022
           runner: windows-2022
-        - preset: clang++-17
+        - preset: clang++-18
           runner: ubuntu-latest
-          extra-packages: ninja-build clang++-17
-        - preset: clang++-17
+          extra-packages: ninja-build clang++-18
+        - preset: clang++-18
           runner: ubuntu-latest
-          extra-packages: ninja-build clang++-17
+          extra-packages: ninja-build clang++-18
           sanitizer: UBSAN
           name-suffix: -ubsan
 

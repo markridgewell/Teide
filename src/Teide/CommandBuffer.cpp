@@ -9,7 +9,7 @@ namespace Teide
 CommandBuffer::CommandBuffer(vk::UniqueCommandBuffer commandBuffer) : m_cmdBuffer(std::move(commandBuffer))
 {}
 
-void CommandBuffer::AddReference(const TexturePtr& p)
+void CommandBuffer::AddReference(const Texture& p)
 {
     m_referencedTextures.insert(p);
 }

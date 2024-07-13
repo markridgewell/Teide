@@ -9,7 +9,7 @@
 #    include <windows.h>
 #endif
 
-Teide::VulkanGraphicsDevicePtr CreateTestGraphicsDevice()
+Teide::VulkanDevicePtr CreateTestDevice()
 {
     using namespace Teide;
 
@@ -17,7 +17,7 @@ Teide::VulkanGraphicsDevicePtr CreateTestGraphicsDevice()
     vk::UniqueInstance instance = CreateInstance(loader);
     auto physicalDevice = FindPhysicalDevice(instance.get());
 
-    return std::make_unique<VulkanGraphicsDevice>(std::move(loader), std::move(instance), std::move(physicalDevice));
+    return std::make_unique<VulkanDevice>(std::move(loader), std::move(instance), std::move(physicalDevice));
 }
 
 std::optional<std::uint32_t> GetTransferQueueIndex(vk::PhysicalDevice physicalDevice)
@@ -38,10 +38,7 @@ Teide::PhysicalDevice FindPhysicalDevice(vk::Instance instance)
 {
     // Look for a discrete GPU
     auto physicalDevices = instance.enumeratePhysicalDevices();
-    if (physicalDevices.empty())
-    {
-        return {};
-    }
+    TEIDE_ASSERT(!physicalDevices.empty());
 
     // Prefer discrete GPUs to integrated GPUs
     std::ranges::sort(physicalDevices, [](vk::PhysicalDevice a, vk::PhysicalDevice b) {
@@ -54,18 +51,13 @@ Teide::PhysicalDevice FindPhysicalDevice(vk::Instance instance)
         // Check that all required queue families are supported
         return GetTransferQueueIndex(device).has_value();
     });
-    if (it == physicalDevices.end())
-    {
-        return {};
-    }
+    TEIDE_ASSERT(it != physicalDevices.end());
 
     const uint32_t transferQueueIndex = GetTransferQueueIndex(*it).value();
 
-    return {
-        .physicalDevice = *it,
-        .queueFamilies = {.transferFamily = transferQueueIndex},
-        .queueFamilyIndices = {transferQueueIndex},
-    };
+    auto ret = Teide::PhysicalDevice(*it, {.transferFamily = transferQueueIndex});
+    ret.queueFamilyIndices = {transferQueueIndex};
+    return ret;
 }
 
 std::vector<std::byte> HexToBytes(std::string_view hexString)

@@ -7,6 +7,8 @@
 #include <cstring>
 #include <utility>
 
+using namespace Teide::BasicTypes;
+
 namespace
 {
 
@@ -46,7 +48,7 @@ constexpr auto QuadVertices = std::array<Vertex, 4>{{
     {{-0.5f, 0.5f, 0.0f}, {0.0f, 1.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f, 1.0f}},
 }};
 
-constexpr auto QuadIndices = std::array<uint16_t, 6>{{0, 1, 2, 2, 3, 0}};
+constexpr auto QuadIndices = std::array<uint16, 6>{{0, 1, 2, 2, 3, 0}};
 
 using Type = Teide::ShaderVariableType::BaseType;
 
@@ -188,10 +190,10 @@ constexpr Teide::RenderTargetInfo RenderTarget = {
         .colorFormat = Teide::Format::Byte4Srgb,
         .depthStencilFormat = std::nullopt,
         .sampleCount = 1,
+        .captureColor = true,
+        .captureDepthStencil = false,
     },
     .samplerState = {},
-    .captureColor = true,
-    .captureDepthStencil = false,
 };
 
 } // namespace
@@ -228,14 +230,27 @@ void RenderTest::RunTest(const SceneUniforms& sceneUniforms, Teide::RenderList r
     m_renderDoc.StartFrameCapture();
     m_renderer->BeginFrame({.uniformData = Teide::ToBytes(sceneUniforms)});
 
-    const auto output = m_renderer->RenderToTexture(RenderTarget, std::move(renderList)).colorTexture;
+    const Teide::Texture output = m_renderer->RenderToTexture(RenderTarget, std::move(renderList)).colorTexture.value();
 
     const Teide::TextureData outputData = m_renderer->CopyTextureData(output).get();
 
     m_renderer->EndFrame();
     m_renderDoc.EndFrameCapture();
 
-    CompareImageToReference(outputData, *testing::UnitTest::GetInstance()->current_test_info());
+    const auto& currentTest = *testing::UnitTest::GetInstance()->current_test_info();
+    const std::string testName = currentTest.name();
+    const std::filesystem::path outputFile = (s_outputDir / testName).replace_extension(".out.png");
+    const std::filesystem::path referenceFile = s_referenceDir / (testName + ".png");
+
+    CompareImageToReference(outputData, referenceFile);
+
+    if (currentTest.result()->Failed())
+    {
+        const std::filesystem::path testOutputDir = s_outputDir;
+        create_directories(testOutputDir);
+        WritePng(outputFile, outputData.size, outputData.pixels);
+        copy_file(referenceFile, testOutputDir / (testName + ".ref.png"));
+    }
 }
 
 Teide::ShaderPtr RenderTest::CreateModelShader()
@@ -255,7 +270,28 @@ Teide::MeshPtr RenderTest::CreateQuadMesh()
     return m_device->CreateMesh(meshData, "Quad");
 }
 
-Teide::TexturePtr RenderTest::CreateNullShadowmapTexture()
+Teide::MeshPtr RenderTest::CreatePlaneMesh(Geo::Size2 size, Geo::Vector2 tiling)
+{
+    const float x = size.x / 2.0f;
+    const float y = size.y / 2.0f;
+    const auto planeVertices = std::array<Vertex, 4>{{
+        {{-x, -y, 0.0f}, {0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f, 1.0f}},
+        {{x, -y, 0.0f}, {tiling.x, 0.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f, 1.0f}},
+        {{x, y, 0.0f}, {tiling.x, tiling.y}, {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f, 1.0f}},
+        {{-x, y, 0.0f}, {0.0f, tiling.y}, {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f, 1.0f}},
+    }};
+
+    const Teide::MeshData meshData = {
+        .vertexLayout = VertexLayoutDesc,
+        .vertexData = Teide::ToBytes(planeVertices),
+        .indexData = Teide::ToBytes(QuadIndices),
+        .aabb = {{-x, -x, 0.0f}, {y, y, 0.0f}},
+    };
+
+    return m_device->CreateMesh(meshData, "Plane");
+}
+
+Teide::Texture RenderTest::CreateNullShadowmapTexture()
 {
     // Create checkerboard texture
     constexpr auto pixels = 1.0f;
@@ -275,27 +311,32 @@ Teide::TexturePtr RenderTest::CreateNullShadowmapTexture()
     return m_device->CreateTexture(textureData, "NullShadowMap");
 }
 
-Teide::TexturePtr RenderTest::CreateCheckerTexture()
+Teide::Texture RenderTest::CreateCheckerTexture(Teide::Filter filter, bool mipmaps)
 {
     // Create checkerboard texture
-    constexpr auto c0 = std::uint32_t{0xffffffff};
-    constexpr auto c1 = std::uint32_t{0xffff00ff};
-    constexpr auto pixels = std::array{
-        c0, c1, c0, c1, c0, c1, c0, c1, //
-        c1, c0, c1, c0, c1, c0, c1, c0, //
-        c0, c1, c0, c1, c0, c1, c0, c1, //
-        c1, c0, c1, c0, c1, c0, c1, c0, //
-        c0, c1, c0, c1, c0, c1, c0, c1, //
-        c1, c0, c1, c0, c1, c0, c1, c0, //
-        c0, c1, c0, c1, c0, c1, c0, c1, //
-        c1, c0, c1, c0, c1, c0, c1, c0,
-    };
+    constexpr usize size = 256;
+    constexpr auto checkSize = size / 8;
+    constexpr auto color0 = uint32{0xffff00ff};
+    constexpr auto color1 = uint32{0xffffffff};
+
+    std::array<uint32, size * size> pixels{};
+    for (usize i = 0; i < size * size; i++)
+    {
+        const auto x = i % size;
+        const auto y = i / size;
+
+        pixels[i] = ((x / checkSize) - (y / checkSize)) & 0x1 ? color0 : color1;
+    }
 
     const Teide::TextureData textureData = {
-        .size = {8, 8},
+        .size = {size, size},
         .format = Teide::Format::Byte4Srgb,
-        .mipLevelCount = static_cast<uint32_t>(std::floor(std::log2(8))) + 1,
-        .samplerState = {.magFilter = Teide::Filter::Nearest, .minFilter = Teide::Filter::Nearest},
+        .mipLevelCount = mipmaps ? static_cast<uint32>(std::floor(std::log2(size))) + 1 : 1,
+        .samplerState = {
+            .magFilter = filter,
+            .minFilter = filter,
+            .mipmapMode = Teide::MipmapMode::Linear,
+        },
         .pixels = Teide::ToBytes(pixels),
     };
 
@@ -318,18 +359,14 @@ Teide::ShaderData RenderTest::CompileShader(const ShaderSourceData& data)
     return m_shaderCompiler.Compile(data);
 }
 
-Teide::GraphicsDevice& RenderTest::GetDevice()
+Teide::Device& RenderTest::GetDevice()
 {
     return *m_device;
 }
 
 
-void RenderTest::CompareImageToReference(const Teide::TextureData& image, const testing::TestInfo& testInfo)
+void RenderTest::CompareImageToReference(const Teide::TextureData& image, const std::filesystem::path& referenceFile)
 {
-    const std::string testName = testInfo.name();
-    const std::filesystem::path outputFile = (s_outputDir / testName).replace_extension(".out.png");
-    const std::filesystem::path referenceFile = s_referenceDir / (testName + ".png");
-
     if (s_updateReferences)
     {
         WritePng(referenceFile, image.size, image.pixels);
@@ -350,11 +387,6 @@ void RenderTest::CompareImageToReference(const Teide::TextureData& image, const 
 
     if (image.size != referenceSize || image.pixels != referenceData)
     {
-        const std::filesystem::path testOutputDir = s_outputDir;
-        create_directories(testOutputDir);
-        WritePng(outputFile, image.size, image.pixels);
-        copy_file(referenceFile, testOutputDir / (testName + ".ref.png"));
-
         FAIL() << "Rendered image does not match reference";
     }
 }

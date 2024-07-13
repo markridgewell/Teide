@@ -9,7 +9,7 @@
 #include "ShaderCompiler/ShaderCompiler.h"
 #include "Teide/Buffer.h"
 #include "Teide/Definitions.h"
-#include "Teide/GraphicsDevice.h"
+#include "Teide/Device.h"
 #include "Teide/Mesh.h"
 #include "Teide/Renderer.h"
 #include "Teide/Shader.h"
@@ -51,6 +51,7 @@ struct ObjectUniforms
 constexpr Teide::FramebufferLayout ShadowFramebufferLayout = {
     .depthStencilFormat = Teide::Format::Depth16,
     .sampleCount = 1,
+    .captureDepthStencil = true,
 };
 
 constexpr Teide::RenderOverrides ShadowRenderOverrides = {
@@ -157,8 +158,7 @@ void Application::OnRender()
     //
     // Pass 0. Draw shadows
     //
-    Teide::TexturePtr shadowMap;
-    {
+    Teide::Texture shadowMap = [&] {
         // Update view uniforms
         const ViewUniforms viewUniforms = {
             .viewProj = m_shadowMatrix,
@@ -196,12 +196,11 @@ void Application::OnRender()
                 .maxAnisotropy = 8.0f,
                 .compareOp = Teide::CompareOp::Less,
             },
-            .captureDepthStencil = true,
         };
 
         const auto shadowResult = m_renderer->RenderToTexture(shadowRenderTarget, std::move(renderList));
-        shadowMap = shadowResult.depthStencilTexture;
-    }
+        return shadowResult.depthStencilTexture.value();
+    }();
 
     //
     // Pass 1. Draw scene
@@ -386,19 +385,14 @@ void Application::CreatePipelines()
         .shader = m_material.shader,
         .vertexLayout = m_mesh->GetVertexLayout(),
         .renderStates = MakeRenderStates(),
-        .renderPasses = {
-            {
-                .framebufferLayout = {
-                    .colorFormat = m_surface->GetColorFormat(),
-                    .depthStencilFormat = m_surface->GetDepthFormat(),
-                    .sampleCount = m_surface->GetSampleCount(),
-                },
-            },
-            {
-                .framebufferLayout = ShadowFramebufferLayout,
-                .renderOverrides = ShadowRenderOverrides,
-            }
-        },
+        .renderPasses
+        = {{
+               .framebufferLayout = m_surface->GetFramebufferLayout(),
+           },
+           {
+               .framebufferLayout = ShadowFramebufferLayout,
+               .renderOverrides = ShadowRenderOverrides,
+           }},
     });
 }
 

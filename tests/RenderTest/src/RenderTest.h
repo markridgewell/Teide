@@ -7,7 +7,7 @@
 #include "GeoLib/Vector.h"
 #include "ShaderCompiler/ShaderCompiler.h"
 #include "Teide/Buffer.h"
-#include "Teide/GraphicsDevice.h"
+#include "Teide/Device.h"
 #include "Teide/Mesh.h"
 #include "Teide/Renderer.h"
 
@@ -15,7 +15,8 @@
 
 #include <filesystem>
 
-static constexpr Geo::Size2i RenderSize = {1024, 1024};
+constexpr Geo::Size2i RenderSize = {1024, 1024};
+constexpr float RenderAspectRatio = static_cast<float>(RenderSize.x) / static_cast<float>(RenderSize.y);
 
 struct Vertex
 {
@@ -59,23 +60,24 @@ protected:
 
     Teide::ShaderPtr CreateModelShader();
     Teide::MeshPtr CreateQuadMesh();
-    Teide::TexturePtr CreateNullShadowmapTexture();
-    Teide::TexturePtr CreateCheckerTexture();
+    Teide::MeshPtr CreatePlaneMesh(Geo::Size2 size, Geo::Vector2 tiling);
+    Teide::Texture CreateNullShadowmapTexture();
+    Teide::Texture CreateCheckerTexture(Teide::Filter filter, bool mipmaps);
     Teide::PipelinePtr CreatePipeline(Teide::ShaderPtr shader, const Teide::MeshPtr& mesh);
 
     Teide::ShaderData CompileShader(const ShaderSourceData& data);
 
-    Teide::GraphicsDevice& GetDevice();
+    Teide::Device& GetDevice();
 
 private:
-    static void CompareImageToReference(const Teide::TextureData& image, const testing::TestInfo& testInfo);
+    static void CompareImageToReference(const Teide::TextureData& image, const std::filesystem::path& referenceFile);
 
     static bool s_updateReferences;
     static std::filesystem::path s_referenceDir;
     static std::filesystem::path s_outputDir;
 
     RenderDoc m_renderDoc;
-    Teide::GraphicsDevicePtr m_device;
+    Teide::DevicePtr m_device;
     Teide::ShaderEnvironmentPtr m_shaderEnv;
     Teide::RendererPtr m_renderer;
     ShaderCompiler m_shaderCompiler;

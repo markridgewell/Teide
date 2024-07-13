@@ -3,7 +3,7 @@
 #include "TestUtils.h"
 
 #include "ShaderCompiler/ShaderCompiler.h"
-#include "Teide/GraphicsDevice.h"
+#include "Teide/Device.h"
 
 #include <SDL.h>
 #include <gmock/gmock.h>

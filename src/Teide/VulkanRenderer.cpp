@@ -3,7 +3,7 @@
 
 #include "Vulkan.h"
 #include "VulkanBuffer.h"
-#include "VulkanGraphicsDevice.h"
+#include "VulkanDevice.h"
 #include "VulkanMesh.h"
 #include "VulkanParameterBlock.h"
 #include "VulkanPipeline.h"
@@ -27,6 +27,8 @@ namespace Teide
 
 namespace
 {
+    constexpr uint32 ViewDescriptorPoolSize = 8;
+
     const vk::Optional<const vk::AllocationCallbacks> s_allocator = nullptr;
 
     vk::Viewport MakeViewport(Geo::Size2i size, const ViewportRegion& region = {})
@@ -65,6 +67,19 @@ namespace
         return clearValues;
     }
 
+    DescriptorPool MakeSceneDescriptorPool(VulkanDevice& device, const ShaderEnvironmentPtr& shaderEnvironment)
+    {
+        const auto vkdevice = device.GetVulkanDevice();
+
+        if (shaderEnvironment)
+        {
+            const auto scenePblockLayout = device.GetImpl(shaderEnvironment->GetScenePblockLayout());
+            return DescriptorPool(vkdevice, *scenePblockLayout, MaxFramesInFlight);
+        }
+
+        return DescriptorPool(vkdevice, {}, MaxFramesInFlight);
+    }
+
 } // namespace
 
 /*
@@ -92,10 +107,12 @@ GPU         |          0           |           1          |          0          
 This allows the CPU and GPU to work concurrently, while ensuring they never work on the same frame at the same time.
 */
 
-VulkanRenderer::VulkanRenderer(VulkanGraphicsDevice& device, const QueueFamilies& queueFamilies, ShaderEnvironmentPtr shaderEnvironment) :
+VulkanRenderer::VulkanRenderer(VulkanDevice& device, const QueueFamilies& queueFamilies, ShaderEnvironmentPtr shaderEnvironment) :
     m_device{device},
     m_graphicsQueue{device.GetVulkanDevice().getQueue(queueFamilies.graphicsFamily, 0)},
-    m_shaderEnvironment{std::move(shaderEnvironment)}
+    m_shaderEnvironment{std::move(shaderEnvironment)},
+    m_sceneDescriptorPool(MakeSceneDescriptorPool(device, m_shaderEnvironment)),
+    m_frameResources(device, m_sceneDescriptorPool, m_shaderEnvironment)
 {
     using std::ranges::generate;
     const auto vkdevice = device.GetVulkanDevice();
@@ -104,109 +121,52 @@ VulkanRenderer::VulkanRenderer(VulkanGraphicsDevice& device, const QueueFamilies
     {
         m_presentQueue = vkdevice.getQueue(*queueFamilies.presentFamily, 0);
     }
-
-    generate(m_renderFinished, [=] { return vkdevice.createSemaphoreUnique({}, s_allocator); });
-    generate(m_inFlightFences, [=] {
-        return vkdevice.createFenceUnique({.flags = vk::FenceCreateFlagBits::eSignaled}, s_allocator);
-    });
-
-    const auto numThreads = m_device.GetScheduler().GetThreadCount();
-    for (auto& frame : m_frameResources)
-    {
-        for (uint32 i = 0; i < numThreads; i++)
-        {
-            frame.threadResources.emplace_back();
-        }
-    }
-
-    if (m_shaderEnvironment)
-    {
-        SetupDescriptorPools();
-    }
 }
 
-void VulkanRenderer::SetupDescriptorPools()
-{
-    const auto vkdevice = m_device.GetVulkanDevice();
-
-    constexpr uint32 ViewDescriptorPoolSize = 8;
-    const auto scenePblockLayout = m_device.GetImpl(m_shaderEnvironment->GetScenePblockLayout());
-    const auto viewPblockLayout = m_device.GetImpl(m_shaderEnvironment->GetViewPblockLayout());
-
-    if (scenePblockLayout->HasDescriptors())
-    {
-        m_sceneDescriptorPool.emplace(vkdevice, *scenePblockLayout, MaxFramesInFlight);
-
-        const ParameterBlockData pblockData = {
-            .layout = scenePblockLayout,
-            .lifetime = ResourceLifetime::Transient,
-        };
-
-        for (auto& frame : m_frameResources)
-        {
-            frame.sceneParameters
-                = m_device.CreateTransientParameterBlock(pblockData, "Scene", m_sceneDescriptorPool.value());
-        }
-    }
-
-    for (auto& frame : m_frameResources)
-    {
-        for (auto& thread : frame.threadResources)
-        {
-            if (viewPblockLayout->HasDescriptors())
-            {
-                thread.viewDescriptorPool.emplace(vkdevice, *viewPblockLayout, ViewDescriptorPoolSize);
-            }
-        }
-    }
-}
 
 VulkanRenderer::~VulkanRenderer()
 {
     WaitForGpu();
 
-    std::array<vk::Fence, std::tuple_size_v<decltype(m_inFlightFences)>> fences;
-    std::ranges::transform(m_inFlightFences, fences.begin(), [](const auto& f) { return f.get(); });
-
+    // Wait for all frames' fences
     constexpr auto timeout = std::chrono::seconds{1};
-    if (m_device.GetVulkanDevice().waitForFences(fences, true, Timeout(timeout)) == vk::Result::eTimeout)
+    for (usize i = 0; i < MaxFramesInFlight; i++)
     {
-        spdlog::error("Timeout (>{}) while waiting for all in-flight command buffers to complete!", timeout);
+        const vk::Fence fence = m_frameResources.Current().inFlightFence.get();
+        m_frameResources.NextFrame();
+        if (m_device.GetVulkanDevice().waitForFences(fence, true, Timeout(timeout)) == vk::Result::eTimeout)
+        {
+            spdlog::error("Timeout (>{}) while waiting for all in-flight command buffers to complete!", timeout);
+        }
     }
-}
-
-uint32 VulkanRenderer::GetFrameNumber() const
-{
-    return m_frameNumber;
 }
 
 void VulkanRenderer::BeginFrame(ShaderParameters sceneParameters)
 {
-    m_frameNumber = (m_frameNumber + 1) % MaxFramesInFlight;
+    m_frameResources.NextFrame();
 
     constexpr uint64_t timeout = std::numeric_limits<uint64_t>::max();
 
-    [[maybe_unused]] const auto waitResult
-        = m_device.GetVulkanDevice().waitForFences(m_inFlightFences[m_frameNumber].get(), true, timeout);
+    const vk::Fence inFlightFence = m_frameResources.Current().inFlightFence.get();
+    [[maybe_unused]] const auto waitResult = m_device.GetVulkanDevice().waitForFences(inFlightFence, true, timeout);
     TEIDE_ASSERT(waitResult == vk::Result::eSuccess); // TODO check if waitForFences can fail with no timeout
 
     m_device.GetScheduler().NextFrame();
 
-    auto& frameResources = m_frameResources[m_frameNumber];
+    auto& frameResources = m_frameResources.Current();
     const ParameterBlockData pblockData = {
         .layout = m_shaderEnvironment ? m_shaderEnvironment->GetScenePblockLayout() : nullptr,
         .lifetime = ResourceLifetime::Transient,
         .parameters = std::move(sceneParameters),
     };
     m_device.UpdateTransientParameterBlock(frameResources.sceneParameters, pblockData);
-    for (auto& threadResources : frameResources.threadResources)
-    {
+    frameResources.threadResources.LockAll([](ThreadResources& threadResources) {
         if (threadResources.viewDescriptorPool)
         {
             threadResources.viewDescriptorPool->Reset();
         }
         threadResources.viewParameters.clear();
-    }
+    });
 }
 
 void VulkanRenderer::EndFrame()
@@ -225,7 +185,7 @@ void VulkanRenderer::EndFrame()
 
     TEIDE_ASSERT(m_presentQueue, "Can't present without a present queue");
 
-    auto fenceToSignal = m_inFlightFences[m_frameNumber].get();
+    auto fenceToSignal = m_frameResources.Current().inFlightFence.get();
 
     device.resetFences(fenceToSignal);
 
@@ -234,14 +194,13 @@ void VulkanRenderer::EndFrame()
     const vkex::SubmitInfo submitInfo = {
         .waitSemaphores = transform(images, &SurfaceImage::imageAvailable),
         .waitDstStageMask = transform(images, [=](auto&&) { return waitStage; }),
-        .commandBuffers = transform(images, &SurfaceImage::prePresentCommandBuffer),
-        .signalSemaphores = m_renderFinished[m_frameNumber].get(),
+        .signalSemaphores = m_frameResources.Current().renderFinished.get(),
     };
     m_graphicsQueue.submit(submitInfo.map(), fenceToSignal);
 
     // Present
     const vkex::PresentInfoKHR presentInfo = {
-        .waitSemaphores = m_renderFinished[m_frameNumber].get(),
+        .waitSemaphores = m_frameResources.Current().renderFinished.get(),
         .swapchains = transform(images, &SurfaceImage::swapchain),
         .imageIndices = transform(images, &SurfaceImage::imageIndex),
     };
@@ -265,19 +224,28 @@ void VulkanRenderer::WaitForGpu()
 
 RenderToTextureResult VulkanRenderer::RenderToTexture(const RenderTargetInfo& renderTarget, RenderList renderList)
 {
-    TEIDE_ASSERT(renderTarget.captureColor || renderTarget.captureDepthStencil, "Nothing to capture in RTT pass");
+    TEIDE_ASSERT(
+        renderTarget.framebufferLayout.captureColor || renderTarget.framebufferLayout.captureDepthStencil,
+        "Nothing to capture in RTT pass");
+    TEIDE_ASSERT(
+        renderTarget.framebufferLayout.captureColor || !renderTarget.framebufferLayout.resolveColor,
+        "Cannot resolve color unless also capturing color");
+    TEIDE_ASSERT(
+        renderTarget.framebufferLayout.captureDepthStencil || !renderTarget.framebufferLayout.resolveDepthStencil,
+        "Cannot resolve depth/stencil unless also capturing depth/stencil");
 
-    const auto CreateRenderableTexture = [&](std::optional<Format> format, const char* name) -> TexturePtr {
+    const auto CreateRenderableTexture
+        = [&](std::optional<Format> format, uint32 sampleCount, const char* name) -> std::optional<Texture> {
         if (!format)
         {
-            return nullptr;
+            return std::nullopt;
         }
 
         const TextureData data = {
             .size = renderTarget.size,
             .format = *format,
             .mipLevelCount = 1,
-            .sampleCount = renderTarget.framebufferLayout.sampleCount,
+            .sampleCount = sampleCount,
             .samplerState = renderTarget.samplerState,
         };
 
@@ -286,57 +254,54 @@ RenderToTextureResult VulkanRenderer::RenderToTexture(const RenderTargetInfo& re
     };
 
     const auto& fb = renderTarget.framebufferLayout;
-    const auto color = CreateRenderableTexture(fb.colorFormat, "color");
-    const auto depthStencil = CreateRenderableTexture(fb.depthStencilFormat, "depthStencil");
+    const auto sampleCount = renderTarget.framebufferLayout.sampleCount;
+    const auto color = CreateRenderableTexture(fb.colorFormat, sampleCount, "color");
+    const auto depthStencil = CreateRenderableTexture(fb.depthStencilFormat, sampleCount, "depthStencil");
+    const auto colorResolved = sampleCount > 1 && renderTarget.framebufferLayout.resolveColor
+        ? CreateRenderableTexture(fb.colorFormat, 1, "colorResolved")
+        : std::nullopt;
+    const auto depthStencilResolved = sampleCount > 1 && renderTarget.framebufferLayout.resolveDepthStencil
+        ? CreateRenderableTexture(fb.depthStencilFormat, 1, "depthStencilResolved")
+        : std::nullopt;
 
-    ScheduleGpu([this, renderList = std::move(renderList), renderTarget, color, depthStencil](CommandBuffer& commandBuffer) {
-        commandBuffer.AddReference(depthStencil);
-
+    ScheduleGpu([this, renderList = std::move(renderList), renderTarget, color, depthStencil, colorResolved,
+                 depthStencilResolved](CommandBuffer& commandBuffer) {
         std::vector<vk::ImageView> attachments;
 
-        TextureState colorTextureState;
-        TextureState depthStencilTextureState;
-
-        const auto addAttachment = [&](const TexturePtr& texture, TextureState& textureState) {
-            const auto& textureImpl = m_device.GetImpl(*texture);
-            commandBuffer.AddReference(texture);
-            textureImpl.TransitionToRenderTarget(textureState, commandBuffer);
-            attachments.push_back(textureImpl.imageView.get());
+        const auto addAttachment = [&](const std::optional<Texture>& texture) {
+            if (texture.has_value())
+            {
+                const auto& textureImpl = m_device.GetImpl(*texture);
+                commandBuffer.AddReference(*texture);
+                TextureState textureState{};
+                textureImpl.TransitionToRenderTarget(textureState, commandBuffer);
+                attachments.push_back(textureImpl.imageView.get());
+            }
         };
 
-        if (color)
-        {
-            addAttachment(color, colorTextureState);
-        }
-        if (depthStencil)
-        {
-            addAttachment(depthStencil, depthStencilTextureState);
-        }
+        addAttachment(color);
+        addAttachment(depthStencil);
+        addAttachment(colorResolved);
+        addAttachment(depthStencilResolved);
 
         const RenderPassDesc renderPassDesc = {
             .framebufferLayout = renderTarget.framebufferLayout,
             .renderOverrides = renderList.renderOverrides,
         };
 
-        const auto renderPass = m_device.CreateRenderPass(renderTarget.framebufferLayout, renderList.clearState);
+        const auto renderPass = m_device.CreateRenderPass(
+            renderTarget.framebufferLayout, renderList.clearState, FramebufferUsage::ShaderInput);
         const auto framebuffer
             = m_device.CreateFramebuffer(renderPass, renderTarget.framebufferLayout, renderTarget.size, attachments);
 
         RecordRenderListCommands(commandBuffer, renderList, renderPass, renderPassDesc, framebuffer);
-
-        if (color && renderTarget.captureColor)
-        {
-            m_device.GetImpl(*color).TransitionToShaderInput(colorTextureState, commandBuffer);
-        }
-        if (depthStencil && renderTarget.captureDepthStencil)
-        {
-            m_device.GetImpl(*depthStencil).TransitionToShaderInput(depthStencilTextureState, commandBuffer);
-        }
     });
 
     return {
-        .colorTexture = renderTarget.captureColor ? color : nullptr,
-        .depthStencilTexture = renderTarget.captureDepthStencil ? depthStencil : nullptr,
+        .colorTexture = renderTarget.framebufferLayout.captureColor ? (colorResolved ? colorResolved : color) : std::nullopt,
+        .depthStencilTexture = renderTarget.framebufferLayout.captureDepthStencil
+            ? (depthStencilResolved ? depthStencilResolved : depthStencil)
+            : std::nullopt,
     };
 }
 
@@ -355,22 +320,25 @@ void VulkanRenderer::RenderToSurface(Surface& surface, RenderList renderList)
                 .renderOverrides = renderList.renderOverrides,
             };
 
-            const auto renderPass = m_device.CreateRenderPass(framebuffer.layout, renderList.clearState);
+            const auto renderPass
+                = m_device.CreateRenderPass(framebuffer.layout, renderList.clearState, FramebufferUsage::PresentSrc);
 
             RecordRenderListCommands(commandBuffer, renderList, renderPass, renderPassDesc, framebuffer);
         });
     }
 }
 
-Task<TextureData> VulkanRenderer::CopyTextureData(TexturePtr texture)
+Task<TextureData> VulkanRenderer::CopyTextureData(Texture texture)
 {
-    const auto& textureImpl = m_device.GetImpl(*texture);
+    TEIDE_ASSERT(texture.GetSampleCount() == 1, "Cannot copy data of a multisampled texture");
+
+    const VulkanTexture& textureImpl = m_device.GetImpl(texture);
 
     const TextureData textureData = {
-        .size = textureImpl.size,
-        .format = textureImpl.format,
-        .mipLevelCount = textureImpl.mipLevelCount,
-        .sampleCount = textureImpl.sampleCount,
+        .size = textureImpl.properties.size,
+        .format = textureImpl.properties.format,
+        .mipLevelCount = textureImpl.properties.mipLevelCount,
+        .sampleCount = textureImpl.properties.sampleCount,
     };
 
     const auto bufferSize = GetByteSize(textureData);
@@ -380,19 +348,20 @@ Task<TextureData> VulkanRenderer::CopyTextureData(TexturePtr texture)
             bufferSize, vk::BufferUsageFlagBits::eTransferDst,
             vma::AllocationCreateFlagBits::eMapped | vma::AllocationCreateFlagBits::eHostAccessRandom);
 
-        const auto& textureImpl = m_device.GetImpl(*texture);
+        const VulkanTexture& textureImpl = m_device.GetImpl(texture);
 
         commandBuffer.AddReference(texture);
 
+        const bool isDepthStencil = HasDepthOrStencilComponent(textureImpl.properties.format);
         TextureState textureState = {
-            .layout = vk::ImageLayout::eShaderReadOnlyOptimal,
+            .layout = isDepthStencil ? vk::ImageLayout::eDepthStencilReadOnlyOptimal : vk::ImageLayout::eShaderReadOnlyOptimal,
             .lastPipelineStageUsage = vk::PipelineStageFlagBits::eFragmentShader,
         };
         textureImpl.TransitionToTransferSrc(textureState, commandBuffer);
-        const auto extent = vk::Extent3D{textureImpl.size.x, textureImpl.size.y, 1};
+        const auto extent = vk::Extent3D{textureImpl.properties.size.x, textureImpl.properties.size.y, 1};
         CopyImageToBuffer(
-            commandBuffer, textureImpl.image.get(), buffer.buffer.get(), textureImpl.format, extent,
-            textureImpl.mipLevelCount);
+            commandBuffer, textureImpl.image.get(), buffer.buffer.get(), textureImpl.properties.format, extent,
+            textureImpl.properties.mipLevelCount);
         textureImpl.TransitionToShaderInput(textureState, commandBuffer);
 
         return std::make_shared<VulkanBuffer>(std::move(buffer));
@@ -415,14 +384,16 @@ TransientParameterBlock* VulkanRenderer::CreateViewParameterBlock(const Paramete
         return nullptr;
     }
 
-    auto& threadResources = GetCurrentThread();
-    if (!threadResources.viewDescriptorPool.has_value())
-    {
-        return nullptr;
-    }
+    return m_frameResources.Current().threadResources.LockCurrent(
+        [this, &data, name](ThreadResources& threadResources) -> TransientParameterBlock* {
+            if (!threadResources.viewDescriptorPool.has_value())
+            {
+                return nullptr;
+            }
 
-    auto p = m_device.CreateTransientParameterBlock(data, name, *threadResources.viewDescriptorPool);
-    return &threadResources.viewParameters.emplace_back(std::move(p));
+            auto p = m_device.CreateTransientParameterBlock(data, name, *threadResources.viewDescriptorPool);
+            return &threadResources.viewParameters.emplace_back(std::move(p));
+        });
 }
 
 void VulkanRenderer::RecordRenderListCommands(
@@ -525,7 +496,7 @@ std::optional<SurfaceImage> VulkanRenderer::AddSurfaceToPresent(VulkanSurface& s
             return *it;
         }
 
-        if (const auto result = surface.AcquireNextImage(m_inFlightFences[m_frameNumber].get()))
+        if (const auto result = surface.AcquireNextImage(m_frameResources.Current().inFlightFence.get()))
         {
             return surfacesToPresent.emplace_back(*result);
         }
@@ -542,6 +513,38 @@ vk::DescriptorSet VulkanRenderer::GetDescriptorSet(const ParameterBlock* paramet
     }
     const auto& parameterBlockImpl = m_device.GetImpl(*parameterBlock);
     return parameterBlockImpl.descriptorSet.get();
+}
+
+VulkanRenderer::FrameResources::FrameResources(
+    VulkanDevice& device, DescriptorPool& sceneDescriptorPool, const ShaderEnvironmentPtr& shaderEnvironment) :
+    threadResources(device.GetScheduler().GetThreadCount())
+{
+    const auto vkdevice = device.GetVulkanDevice();
+
+    renderFinished = vkdevice.createSemaphoreUnique({}, s_allocator);
+    inFlightFence = vkdevice.createFenceUnique({.flags = vk::FenceCreateFlagBits::eSignaled}, s_allocator);
+
+    if (shaderEnvironment)
+    {
+        const auto scenePblockLayout = device.GetImpl(shaderEnvironment->GetScenePblockLayout());
+        const auto viewPblockLayout = device.GetImpl(shaderEnvironment->GetViewPblockLayout());
+
+        if (scenePblockLayout->HasDescriptors())
+        {
+            const ParameterBlockData pblockData = {
+                .layout = scenePblockLayout,
+                .lifetime = ResourceLifetime::Transient,
+            };
+            sceneParameters = device.CreateTransientParameterBlock(pblockData, "Scene", sceneDescriptorPool);
+        }
+
+        threadResources.LockAll([&vkdevice, &viewPblockLayout](ThreadResources& threadResources) {
+            if (viewPblockLayout->HasDescriptors())
+            {
+                threadResources.viewDescriptorPool.emplace(vkdevice, *viewPblockLayout, ViewDescriptorPoolSize);
+            }
+        });
+    }
 }
 
 } // namespace Teide

@@ -123,9 +123,16 @@ struct FramebufferLayout
     std::optional<Format> colorFormat;
     std::optional<Format> depthStencilFormat;
     uint32 sampleCount = 1;
+    bool captureColor = false;
+    bool captureDepthStencil = false;
+    bool resolveColor = false;
+    bool resolveDepthStencil = false;
 
     bool operator==(const FramebufferLayout& other) const = default;
-    void Visit(auto f) const { return f(colorFormat, depthStencilFormat, sampleCount); }
+    void Visit(auto f) const
+    {
+        return f(colorFormat, depthStencilFormat, sampleCount, captureColor, captureDepthStencil, resolveColor, resolveDepthStencil);
+    }
 };
 
 struct RenderOverrides
