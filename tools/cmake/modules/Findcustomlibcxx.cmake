@@ -21,7 +21,7 @@ FetchContent_GetProperties(customlibcxx)
 
 if(NOT customlibcxx_POPULATED)
     # Fetch the content using previously declared details
-    FetchContent_Populate(customlibcxx)
+    FetchContent_MakeAvailable(customlibcxx)
     set(SOURCE_DIR "${customlibcxx_SOURCE_DIR}")
     set(BINARY_DIR "${customlibcxx_BINARY_DIR}")
 
