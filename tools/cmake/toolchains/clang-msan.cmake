@@ -1,6 +1,6 @@
-set(CMAKE_ASM_COMPILER clang-17)
-set(CMAKE_C_COMPILER clang-17)
-set(CMAKE_CXX_COMPILER clang++-17)
+set(CMAKE_ASM_COMPILER clang-18)
+set(CMAKE_C_COMPILER clang-18)
+set(CMAKE_CXX_COMPILER clang++-18)
 
 message("Using clang-msan toolchain")
 
