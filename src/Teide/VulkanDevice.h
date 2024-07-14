@@ -121,6 +121,8 @@ public:
     Framebuffer CreateFramebuffer(
         vk::RenderPass renderPass, const FramebufferLayout& layout, Geo::Size2i size, std::vector<vk::ImageView> attachments);
 
+    VulkanParameterBlockLayoutPtr CreateParameterBlockLayout(const ParameterBlockDesc& desc, int set);
+
 private:
     struct RenderPassDesc
     {
@@ -146,8 +148,6 @@ private:
         vk::DescriptorPool pool, vk::DescriptorSetLayout layout, const Buffer* uniformBuffer,
         std::span<const Texture> textures, const char* name);
     void WriteDescriptorSet(vk::DescriptorSet descriptorSet, const Buffer* uniformBuffer, std::span<const Texture> textures);
-
-    VulkanParameterBlockLayoutPtr CreateParameterBlockLayout(const ParameterBlockDesc& desc, int set);
 
     VulkanLoader m_loader;
     vk::UniqueInstance m_instance;
