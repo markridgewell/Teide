@@ -18,7 +18,7 @@ namespace Teide
 
 namespace
 {
-    constexpr auto VulkanApiVersion = VK_API_VERSION_1_2;
+    constexpr auto VulkanApiVersion = VK_API_VERSION_1_0;
     constexpr bool BreakOnVulkanWarning = false;
     constexpr bool BreakOnVulkanError = true;
 
@@ -500,28 +500,26 @@ void CopyImageToBuffer(
     }
 }
 
-vk::UniqueRenderPass CreateRenderPass(
-    vk::Device device, const PhysicalDevice& physicalDevice, const FramebufferLayout& layout, FramebufferUsage usage)
+vk::UniqueRenderPass CreateRenderPass(vk::Device device, const FramebufferLayout& layout, FramebufferUsage usage)
 {
-    return CreateRenderPass(device, physicalDevice, layout, usage, {});
+    return CreateRenderPass(device, layout, usage, {});
 }
 
-vk::UniqueRenderPass CreateRenderPass(
-    vk::Device device, const PhysicalDevice& physicalDevice, const FramebufferLayout& layout, FramebufferUsage usage,
-    const RenderPassInfo& renderPassInfo)
+vk::UniqueRenderPass
+CreateRenderPass(vk::Device device, const FramebufferLayout& layout, FramebufferUsage usage, const RenderPassInfo& renderPassInfo)
 {
     TEIDE_ASSERT(layout.colorFormat.has_value() || layout.depthStencilFormat.has_value());
 
     const bool multisampling = layout.sampleCount != 1;
+    TEIDE_ASSERT(!(multisampling && layout.resolveDepthStencil), "Resolving depth/stencil targets not supported");
+
     const bool resolveColor = multisampling && layout.resolveColor;
-    const bool resolveDepthStencil = multisampling && layout.resolveDepthStencil;
     const bool loadColor = renderPassInfo.colorLoadOp == vk::AttachmentLoadOp::eLoad;
 
-    std::vector<vk::AttachmentDescription2> attachments;
-    std::vector<vk::AttachmentReference2> colorAttachmentRefs;
-    std::vector<vk::AttachmentReference2> resolveAttachmentRefs;
-    std::optional<vk::AttachmentReference2> depthStencilAttachmentRef;
-    std::optional<vk::AttachmentReference2> depthStencilResolveAttachmentRef;
+    std::vector<vk::AttachmentDescription> attachments;
+    std::vector<vk::AttachmentReference> colorAttachmentRefs;
+    std::vector<vk::AttachmentReference> resolveAttachmentRefs;
+    std::optional<vk::AttachmentReference> depthStencilAttachmentRef;
 
     if (layout.colorFormat.has_value())
     {
@@ -546,7 +544,7 @@ vk::UniqueRenderPass CreateRenderPass(
     {
         TEIDE_ASSERT(*layout.depthStencilFormat != Format::Unknown);
 
-        depthStencilAttachmentRef = vk::AttachmentReference2{
+        depthStencilAttachmentRef = vk::AttachmentReference{
             .attachment = size32(attachments),
             .layout = vk::ImageLayout::eDepthStencilAttachmentOptimal,
         };
@@ -559,8 +557,7 @@ vk::UniqueRenderPass CreateRenderPass(
             .stencilLoadOp = vk::AttachmentLoadOp::eDontCare,
             .stencilStoreOp = multisampling ? vk::AttachmentStoreOp::eDontCare : renderPassInfo.stencilStoreOp,
             .initialLayout = vk::ImageLayout::eUndefined,
-            .finalLayout
-            = resolveDepthStencil ? vk::ImageLayout::eDepthStencilAttachmentOptimal : GetDepthStencilImageLayout(usage),
+            .finalLayout = GetDepthStencilImageLayout(usage),
         });
     }
 
@@ -583,48 +580,15 @@ vk::UniqueRenderPass CreateRenderPass(
         });
     }
 
-    if (resolveDepthStencil)
-    {
-        TEIDE_ASSERT(layout.depthStencilFormat.has_value() && layout.captureDepthStencil);
-
-        depthStencilResolveAttachmentRef = vk::AttachmentReference2{
-            .attachment = size32(attachments),
-            .layout = vk::ImageLayout::eDepthStencilAttachmentOptimal,
-            .aspectMask = vk::ImageAspectFlagBits::eDepth | vk::ImageAspectFlagBits::eStencil,
-        };
-
-        attachments.push_back({
-            .format = ToVulkan(*layout.depthStencilFormat),
-            .samples = vk::SampleCountFlagBits::e1,
-            .loadOp = vk::AttachmentLoadOp::eDontCare,
-            .storeOp = renderPassInfo.depthStoreOp,
-            .initialLayout = vk::ImageLayout::eUndefined,
-            .finalLayout = GetDepthStencilImageLayout(usage),
-        });
-    }
-
-    const auto& resolveProperties = physicalDevice.depthStencilResolveProperties;
-
-    const vk::StructureChain subpass = {
-        vk::SubpassDescription2{
-            .pipelineBindPoint = vk::PipelineBindPoint::eGraphics,
-            .colorAttachmentCount = size32(colorAttachmentRefs),
-            .pColorAttachments = data(colorAttachmentRefs),
-            .pResolveAttachments = data(resolveAttachmentRefs),
-            .pDepthStencilAttachment = ToPointer(depthStencilAttachmentRef),
-        },
-        vk::SubpassDescriptionDepthStencilResolve{
-            .depthResolveMode = (resolveProperties.supportedDepthResolveModes & vk::ResolveModeFlagBits::eAverage)
-                ? vk::ResolveModeFlagBits::eAverage
-                : vk::ResolveModeFlagBits::eSampleZero,
-            .stencilResolveMode = (resolveProperties.supportedStencilResolveModes & vk::ResolveModeFlagBits::eAverage)
-                ? vk::ResolveModeFlagBits::eAverage
-                : vk::ResolveModeFlagBits::eSampleZero,
-            .pDepthStencilResolveAttachment = ToPointer(depthStencilResolveAttachmentRef),
-        },
+    const vk::SubpassDescription subpass = {
+        .pipelineBindPoint = vk::PipelineBindPoint::eGraphics,
+        .colorAttachmentCount = size32(colorAttachmentRefs),
+        .pColorAttachments = data(colorAttachmentRefs),
+        .pResolveAttachments = data(resolveAttachmentRefs),
+        .pDepthStencilAttachment = ToPointer(depthStencilAttachmentRef),
     };
 
-    const vk::SubpassDependency2 dependency = {
+    const vk::SubpassDependency dependency = {
         .srcSubpass = VK_SUBPASS_EXTERNAL,
         .dstSubpass = 0,
         .srcStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput | vk::PipelineStageFlagBits::eEarlyFragmentTests,
@@ -633,16 +597,16 @@ vk::UniqueRenderPass CreateRenderPass(
         .dstAccessMask = vk ::AccessFlagBits::eColorAttachmentWrite | vk::AccessFlagBits::eDepthStencilAttachmentWrite,
     };
 
-    const vk::RenderPassCreateInfo2 createInfo = {
+    const vk::RenderPassCreateInfo createInfo = {
         .attachmentCount = size32(attachments),
         .pAttachments = data(attachments),
         .subpassCount = 1,
-        .pSubpasses = &subpass.get<vk::SubpassDescription2>(),
+        .pSubpasses = &subpass,
         .dependencyCount = 1,
         .pDependencies = &dependency,
     };
 
-    return device.createRenderPass2Unique(createInfo, s_allocator);
+    return device.createRenderPassUnique(createInfo, s_allocator);
 }
 
 vk::UniqueFramebuffer

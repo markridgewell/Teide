@@ -377,7 +377,7 @@ void VulkanSurface::CreateSwapchainAndImages()
     }
     CreateDepthBuffer();
 
-    m_renderPass = CreateRenderPass(m_device, m_physicalDevice, m_framebufferLayout, FramebufferUsage::PresentSrc);
+    m_renderPass = CreateRenderPass(m_device, m_framebufferLayout, FramebufferUsage::PresentSrc);
     SetDebugName(m_renderPass, "SwapchainRenderPass");
     m_swapchainFramebuffers = CreateFramebuffers(
         m_swapchainImageViews, m_colorImageView.get(), m_depthImageView.get(), m_renderPass.get(), m_surfaceExtent, m_device);
