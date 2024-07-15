@@ -4,6 +4,7 @@
 #include "Teide/BasicTypes.h"
 #include "Teide/Renderer.h"
 
+#include <string>
 #include <vector>
 
 namespace Teide
@@ -19,8 +20,6 @@ struct VulkanGraph
     {
         RenderList renderList;
         std::vector<ResourceNodeRef> dependencies;
-
-        bool operator==(const RenderNode&) const noexcept = default;
     };
 
     struct TextureNode
@@ -29,8 +28,6 @@ struct VulkanGraph
         usize source;
 
         explicit TextureNode(Texture texture, CommandNodeRef source) : texture{texture}, source{source} {}
-
-        bool operator==(const TextureNode&) const noexcept = default;
     };
 
     std::vector<RenderNode> renderNodes;
@@ -38,4 +35,6 @@ struct VulkanGraph
 };
 
 void BuildGraph(VulkanGraph& graph, VulkanDevice& device);
+std::string VisualizeGraph(VulkanGraph& graph);
+
 } // namespace Teide

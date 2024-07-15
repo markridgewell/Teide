@@ -60,7 +60,7 @@ MATCHER_P(HasDependency, dep, "")
 {
     *result_listener << "where dependencies are: ";
     PrintDependencies(*result_listener, arg.dependencies);
-    return arg.dependencies.size() == 1 && arg.dependencies.front() == dep;
+    return arg.dependencies.size() == 1u && arg.dependencies.front() == dep;
 }
 
 TEST_F(VulkanGraphTest, DefaultConstructedGraphIsEmpty)
@@ -87,7 +87,7 @@ TEST_F(VulkanGraphTest, BuildingGraphWithOneRenderNodeHasNoEffect)
     BuildGraph(graph, *m_device);
 
     ASSERT_THAT(graph.renderNodes, ElementsAre(HasNoDependencies()));
-    ASSERT_THAT(graph.textureNodes, ElementsAre(HasSource(0)));
+    ASSERT_THAT(graph.textureNodes, ElementsAre(HasSource(0u)));
 }
 
 TEST_F(VulkanGraphTest, BuildingGraphWithTwoIndependentRenderNodesHasNoEffect)
@@ -101,7 +101,7 @@ TEST_F(VulkanGraphTest, BuildingGraphWithTwoIndependentRenderNodesHasNoEffect)
     BuildGraph(graph, *m_device);
 
     ASSERT_THAT(graph.renderNodes, ElementsAre(HasNoDependencies(), HasNoDependencies()));
-    ASSERT_THAT(graph.textureNodes, ElementsAre(HasSource(0), HasSource(1)));
+    ASSERT_THAT(graph.textureNodes, ElementsAre(HasSource(0u), HasSource(1u)));
 }
 
 TEST_F(VulkanGraphTest, BuildingGraphWithTwoDependentRenderNodesAddsConnection)
@@ -121,8 +121,8 @@ TEST_F(VulkanGraphTest, BuildingGraphWithTwoDependentRenderNodesAddsConnection)
 
     BuildGraph(graph, *m_device);
 
-    ASSERT_THAT(graph.renderNodes, ElementsAre(HasNoDependencies(), HasDependency(0)));
-    ASSERT_THAT(graph.textureNodes, ElementsAre(HasSource(0), HasSource(1)));
+    ASSERT_THAT(graph.renderNodes, ElementsAre(HasNoDependencies(), HasDependency(0u)));
+    ASSERT_THAT(graph.textureNodes, ElementsAre(HasSource(0u), HasSource(1u)));
 }
 
 TEST_F(VulkanGraphTest, BuildingGraphWithThreeDependentRenderNodesAddsConnections)

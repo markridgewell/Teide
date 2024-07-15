@@ -4,6 +4,7 @@
 #include "Teide/VulkanDevice.h"
 
 #include <algorithm>
+#include <format>
 #include <ranges>
 
 namespace Teide
@@ -47,5 +48,14 @@ void BuildGraph(VulkanGraph& graph, VulkanDevice& device)
             }
         }
     }
+}
+
+std::string VisualizeGraph(VulkanGraph& graph)
+{
+    std::string ret;
+    auto out = std::back_inserter(ret);
+    (void)graph;
+    (void)out;
+    return ret;
 }
 } // namespace Teide
