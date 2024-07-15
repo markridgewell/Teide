@@ -1011,7 +1011,7 @@ VulkanDevice::CreateRenderPass(const FramebufferLayout& framebufferLayout, const
     const auto [it, inserted] = m_renderPassCache.emplace(desc, nullptr);
     if (inserted)
     {
-        it->second = Teide::CreateRenderPass(m_device.get(), m_physicalDevice, framebufferLayout, usage, renderPassInfo);
+        it->second = Teide::CreateRenderPass(m_device.get(), framebufferLayout, usage, renderPassInfo);
     }
     return it->second.get();
 }

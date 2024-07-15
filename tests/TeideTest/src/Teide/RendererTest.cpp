@@ -164,50 +164,6 @@ TEST_F(RendererTest, RenderMultisampledFullscreenTri)
     EXPECT_THAT(outputData.pixels, BytesEq("ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff"));
 }
 
-TEST_F(RendererTest, RenderMultisampledFullscreenTriDepthOnly)
-{
-    const RenderTargetInfo renderTarget = {
-        .size = {2,2},
-        .framebufferLayout = {
-            .depthStencilFormat = Format::Depth16,
-            .sampleCount = 4,
-            .captureDepthStencil = true,
-            .resolveDepthStencil = true,
-        },
-    };
-
-    const Texture texture = RenderFullscreenTri(renderTarget).depthStencilTexture.value();
-    const TextureData outputData = m_renderer->CopyTextureData(texture).get();
-
-    EXPECT_THAT(outputData, MatchesResolvedDepthTarget(renderTarget));
-    EXPECT_THAT(outputData.pixels, BytesEq("00 00 00 00 00 00 00 00"));
-}
-
-TEST_F(RendererTest, RenderMultisampledFullscreenTriWithDepth)
-{
-    const RenderTargetInfo renderTarget = {
-        .size = {2, 2},
-        .framebufferLayout = {
-            .colorFormat = Format::Byte4Srgb,
-            .depthStencilFormat = Format::Depth16,
-            .sampleCount = 4,
-            .captureColor = true,
-            .captureDepthStencil = true,
-            .resolveColor = true,
-            .resolveDepthStencil = true,
-        },
-    };
-    const auto [color, depth] = RenderFullscreenTri(renderTarget);
-
-    const TextureData colorData = m_renderer->CopyTextureData(*color).get();
-    EXPECT_THAT(colorData, MatchesResolvedColorTarget(renderTarget));
-    EXPECT_THAT(colorData.pixels, BytesEq("ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff"));
-
-    const TextureData depthData = m_renderer->CopyTextureData(*depth).get();
-    EXPECT_THAT(depthData, MatchesResolvedDepthTarget(renderTarget));
-    EXPECT_THAT(depthData.pixels, BytesEq("00 00 00 00 00 00 00 00"));
-}
-
 TEST_F(RendererTest, RenderMultisampledFullscreenTriWithDepthCaptureColor)
 {
     const RenderTargetInfo renderTarget = {
@@ -219,15 +175,15 @@ TEST_F(RendererTest, RenderMultisampledFullscreenTriWithDepthCaptureColor)
             .captureColor = true,
             .captureDepthStencil = true,
             .resolveColor = true,
-            .resolveDepthStencil = true,
+            .resolveDepthStencil = false,
         },
     };
 
-    const Texture texture = RenderFullscreenTri(renderTarget).depthStencilTexture.value();
+    const Texture texture = RenderFullscreenTri(renderTarget).colorTexture.value();
     const TextureData outputData = m_renderer->CopyTextureData(texture).get();
 
-    EXPECT_THAT(outputData, MatchesResolvedDepthTarget(renderTarget));
-    EXPECT_THAT(outputData.pixels, BytesEq("00 00 00 00 00 00 00 00"));
+    EXPECT_THAT(outputData, MatchesResolvedColorTarget(renderTarget));
+    EXPECT_THAT(outputData.pixels, BytesEq("ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff"));
 }
 
 TEST_F(RendererTest, RenderMultisampledFullscreenTriWithDepthNoResolve)

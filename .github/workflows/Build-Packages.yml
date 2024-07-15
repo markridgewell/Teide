@@ -42,7 +42,7 @@ jobs:
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4.1.7
       with:
         lfs: false
         submodules: recursive
@@ -53,14 +53,14 @@ jobs:
 
     - name: Cache
       id: cache
-      uses: actions/cache@v3
+      uses: actions/cache@v4.0.2
       with:
         key: vcpkg-export-${{env.VCPKG_TRIPLET}}-${{hashFiles('vcpkg.json', 'vcpkg-configuration.json', 'external/ports/**', 'cmake/triplets/*.cmake', 'cmake/toolchains/*.cmake')}}
         path: './exports'
 
     - name: Free disk space (Ubuntu)
       if: runner.os == 'Linux' && steps.cache.outputs.cache-hit != 'true'
-      uses: jlumbroso/free-disk-space@main
+      uses: jlumbroso/free-disk-space@v1.3.1
 
     - name: 'Setup NuGet credentials'
       if: steps.cache.outputs.cache-hit != 'true'
@@ -78,7 +78,7 @@ jobs:
 
     - name: Setup vcpkg
       if: steps.cache.outputs.cache-hit != 'true'
-      uses: lukka/run-vcpkg@v11
+      uses: lukka/run-vcpkg@v11.5
       with:
         vcpkgDirectory: '${{github.workspace}}/external/vcpkg'
         vcpkgJsonGlob: 'vcpkg.json'
@@ -127,7 +127,7 @@ jobs:
 
     - name: Save packages as artifact
       if: steps.cache.outputs.cache-hit != 'true'
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4.3.4
       with:
         name: vcpkg-export-${{env.VCPKG_TRIPLET}}
         path: './exports'
