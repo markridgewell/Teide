@@ -27,6 +27,33 @@ protected:
     Texture CreateDummyTexture(const char* name) { return m_device->CreateTexture(OnePixelWhiteTexture, name); }
     ShaderData CompileShader(const ShaderSourceData& data) { return m_shaderCompiler.Compile(data); }
 
+    VulkanGraph CreateThreeRenderPasses()
+    {
+        Texture tex1 = CreateDummyTexture("tex1");
+        Texture tex2 = CreateDummyTexture("tex2");
+        Texture tex3 = CreateDummyTexture("tex3");
+
+        RenderList render1 = {.name = "render1"};
+        RenderList render2 = {.name = "render2"};
+        RenderObject& obj1 = render2.objects.emplace_back();
+        obj1.objectParameters.textures.push_back(tex1);
+        RenderList render3 = {.name = "render3"};
+        RenderObject& obj2 = render3.objects.emplace_back();
+        const ParameterBlockDesc pblockDesc = {.parameters = {{"param", ShaderVariableType::BaseType::Texture2D}}};
+        const auto pblockLayout = m_device->CreateParameterBlockLayout(pblockDesc, 2);
+        ParameterBlockData pblock = {.layout = pblockLayout, .parameters = {.textures = {tex1}}};
+        obj2.materialParameters = m_device->CreateParameterBlock(pblock, "matParams");
+
+        VulkanGraph graph;
+        graph.renderNodes.push_back({.renderList = render1});
+        graph.renderNodes.push_back({.renderList = render2});
+        graph.renderNodes.push_back({.renderList = render3});
+        graph.textureNodes.emplace_back(tex1, 0);
+        graph.textureNodes.emplace_back(tex2, 1);
+        graph.textureNodes.emplace_back(tex3, 2);
+        return graph;
+    }
+
     VulkanDevicePtr m_device; // NOLINT(cppcoreguidelines-non-private-member-variables-in-classes)
 
 private:
@@ -127,32 +154,34 @@ TEST_F(VulkanGraphTest, BuildingGraphWithTwoDependentRenderNodesAddsConnection)
 
 TEST_F(VulkanGraphTest, BuildingGraphWithThreeDependentRenderNodesAddsConnections)
 {
-    Texture tex1 = CreateDummyTexture("tex1");
-    Texture tex2 = CreateDummyTexture("tex2");
-    Texture tex3 = CreateDummyTexture("tex3");
-
-    RenderList render1 = {.name = "render1"};
-    RenderList render2 = {.name = "render2"};
-    RenderObject& obj1 = render2.objects.emplace_back();
-    obj1.objectParameters.textures.push_back(tex1);
-    RenderList render3 = {.name = "render3"};
-    RenderObject& obj2 = render3.objects.emplace_back();
-    const ParameterBlockDesc pblockDesc = {.parameters = {{"param", ShaderVariableType::BaseType::Texture2D}}};
-    const auto pblockLayout = m_device->CreateParameterBlockLayout(pblockDesc, 2);
-    ParameterBlockData pblock = {.layout = pblockLayout, .parameters = {.textures = {tex2}}};
-    obj2.materialParameters = m_device->CreateParameterBlock(pblock, "matParams");
-
-    VulkanGraph graph;
-    graph.renderNodes.push_back({.renderList = render1});
-    graph.renderNodes.push_back({.renderList = render2});
-    graph.renderNodes.push_back({.renderList = render3});
-    graph.textureNodes.emplace_back(tex1, 0);
-    graph.textureNodes.emplace_back(tex2, 1);
-    graph.textureNodes.emplace_back(tex3, 2);
-
+    auto graph = CreateThreeRenderPasses();
     BuildGraph(graph, *m_device);
 
-    ASSERT_THAT(graph.renderNodes, ElementsAre(HasNoDependencies(), HasDependency(0), HasDependency(1)));
-    ASSERT_THAT(graph.textureNodes, ElementsAre(HasSource(0), HasSource(1), HasSource(2)));
+    ASSERT_THAT(graph.renderNodes, ElementsAre(HasNoDependencies(), HasDependency(0u), HasDependency(0u)));
+    ASSERT_THAT(graph.textureNodes, ElementsAre(HasSource(0u), HasSource(1u), HasSource(2u)));
+}
+
+constexpr auto ThreeRenderPassesDot = R"--(strict digraph {
+    rankdir=LR
+    node [shape=box]
+    tex1
+    tex2
+    tex3
+    node [shape=box, margin=0.5]
+    render1 -> tex1
+    render2 -> tex2
+    tex1 -> render2
+    render3 -> tex3
+    tex1 -> render3
+})--";
+
+TEST_F(VulkanGraphTest, VizualingGraphWithThreeDependentRenderNodes)
+{
+    auto graph = CreateThreeRenderPasses();
+    BuildGraph(graph, *m_device);
+
+    const auto dot = VisualizeGraph(graph);
+
+    ASSERT_THAT(dot, Eq(ThreeRenderPassesDot)) << dot;
 }
 } // namespace

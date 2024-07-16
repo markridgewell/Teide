@@ -18,6 +18,7 @@ struct TextureProperties
     Format format = Format::Unknown;
     uint32 mipLevelCount = 1;
     uint32 sampleCount = 1;
+    const char* name = "";
 };
 
 class Texture final : public Handle<TextureProperties>
@@ -25,6 +26,7 @@ class Texture final : public Handle<TextureProperties>
 public:
     using Handle::Handle;
 
+    const char* GetName() const { return (*this)->name; }
     Geo::Size2i GetSize() const { return (*this)->size; }
     Format GetFormat() const { return (*this)->format; }
     uint32 GetMipLevelCount() const { return (*this)->mipLevelCount; }

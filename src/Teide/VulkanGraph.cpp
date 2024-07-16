@@ -52,10 +52,34 @@ void BuildGraph(VulkanGraph& graph, VulkanDevice& device)
 
 std::string VisualizeGraph(VulkanGraph& graph)
 {
-    std::string ret;
+    std::string ret = "strict digraph {\n"
+                      "    rankdir=LR\n"
+                      "    node [shape=box]\n";
     auto out = std::back_inserter(ret);
-    (void)graph;
-    (void)out;
+    for (const auto& node : graph.textureNodes)
+    {
+        std::format_to(out, "    {}\n", node.texture.GetName());
+    }
+    ret += "    node [shape=box, margin=0.5]\n";
+    for (const auto& [i, node] : std::views::zip(std::views::iota(0u), graph.renderNodes))
+    {
+        if (const auto it = std::ranges::find(graph.textureNodes, i, &VulkanGraph::TextureNode::source);
+            it != graph.textureNodes.end())
+        {
+            std::format_to(out, "    {} -> {}\n", node.renderList.name, it->texture.GetName());
+        }
+        else
+        {
+            std::format_to(out, "    {}\n", node.renderList.name);
+        }
+
+        for (const auto& dep : node.dependencies)
+        {
+            const auto& it = graph.textureNodes[dep];
+            std::format_to(out, "    {} -> {}\n", it.texture.GetName(), node.renderList.name);
+        }
+    }
+    ret += '}';
     return ret;
 }
 } // namespace Teide
