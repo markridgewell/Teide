@@ -301,7 +301,6 @@ vk::UniqueInstance CreateInstance(VulkanLoader& loader, SDL_Window* window)
     {
         EnableVulkanLayer(layers, availableLayers, "VK_LAYER_KHRONOS_validation", Required::False);
         EnableVulkanExtension(extensions, availableExtensions, "VK_EXT_debug_utils", Required::False);
-        EnableVulkanExtension(extensions, availableExtensions, "VK_EXT_descriptor_indexing", Required::True);
 
         const std::array enabledFeatures = {
             vk::ValidationFeatureEnableEXT::eSynchronizationValidation,
@@ -367,14 +366,17 @@ vk::UniqueDevice CreateDevice(VulkanLoader& loader, const PhysicalDevice& physic
         EnableVulkanLayer(layers, availableLayers, "VK_LAYER_KHRONOS_validation", Required::False);
     }
 
+    std::vector<const char*> extensions = physicalDevice.requiredExtensions;
+    EnableVulkanExtension(extensions, availableExtensions, "VK_EXT_descriptor_indexing", Required::True);
+
     const vk::StructureChain createInfo = {
         vk::DeviceCreateInfo{
             .queueCreateInfoCount = size32(queueCreateInfos),
             .pQueueCreateInfos = data(queueCreateInfos),
             .enabledLayerCount = size32(layers),
             .ppEnabledLayerNames = data(layers),
-            .enabledExtensionCount = size32(physicalDevice.requiredExtensions),
-            .ppEnabledExtensionNames = data(physicalDevice.requiredExtensions),
+            .enabledExtensionCount = size32(extensions),
+            .ppEnabledExtensionNames = data(extensions),
             .pEnabledFeatures = &deviceFeatures,
         },
         vk::PhysicalDeviceDescriptorIndexingFeatures{
