@@ -301,6 +301,7 @@ vk::UniqueInstance CreateInstance(VulkanLoader& loader, SDL_Window* window)
     {
         EnableVulkanLayer(layers, availableLayers, "VK_LAYER_KHRONOS_validation", Required::False);
         EnableVulkanExtension(extensions, availableExtensions, "VK_EXT_debug_utils", Required::False);
+        EnableVulkanExtension(extensions, availableExtensions, "VK_EXT_descriptor_indexing", Required::True);
 
         const std::array enabledFeatures = {
             vk::ValidationFeatureEnableEXT::eSynchronizationValidation,
@@ -366,16 +367,35 @@ vk::UniqueDevice CreateDevice(VulkanLoader& loader, const PhysicalDevice& physic
         EnableVulkanLayer(layers, availableLayers, "VK_LAYER_KHRONOS_validation", Required::False);
     }
 
-    const vk::DeviceCreateInfo deviceCreateInfo
-        = {.queueCreateInfoCount = size32(queueCreateInfos),
-           .pQueueCreateInfos = data(queueCreateInfos),
-           .enabledLayerCount = size32(layers),
-           .ppEnabledLayerNames = data(layers),
-           .enabledExtensionCount = size32(physicalDevice.requiredExtensions),
-           .ppEnabledExtensionNames = data(physicalDevice.requiredExtensions),
-           .pEnabledFeatures = &deviceFeatures};
+    const vk::StructureChain createInfo = {
+        vk::DeviceCreateInfo{
+            .queueCreateInfoCount = size32(queueCreateInfos),
+            .pQueueCreateInfos = data(queueCreateInfos),
+            .enabledLayerCount = size32(layers),
+            .ppEnabledLayerNames = data(layers),
+            .enabledExtensionCount = size32(physicalDevice.requiredExtensions),
+            .ppEnabledExtensionNames = data(physicalDevice.requiredExtensions),
+            .pEnabledFeatures = &deviceFeatures,
+        },
+        vk::PhysicalDeviceDescriptorIndexingFeatures{
+            // Enable non uniform array indexing
+            // (#extension GL_EXT_nonuniform_qualifier : require)
+            .shaderSampledImageArrayNonUniformIndexing = true,
+            .shaderStorageBufferArrayNonUniformIndexing = true,
+            .shaderStorageImageArrayNonUniformIndexing = true,
+            // All of these enables to update after the
+            // commandbuffer used the bindDescriptorsSet
+            .descriptorBindingSampledImageUpdateAfterBind = true,
+            .descriptorBindingStorageImageUpdateAfterBind = true,
+            .descriptorBindingStorageBufferUpdateAfterBind = true,
+            // Enable non bound descriptors slots
+            .descriptorBindingPartiallyBound = true,
+            // Enable non sized arrays
+            .runtimeDescriptorArray = true,
+        },
+    };
 
-    auto ret = physicalDevice.physicalDevice.createDeviceUnique(deviceCreateInfo, s_allocator);
+    auto ret = physicalDevice.physicalDevice.createDeviceUnique(createInfo.get<vk::DeviceCreateInfo>(), s_allocator);
     loader.LoadDeviceFunctions(ret.get());
     return ret;
 }
