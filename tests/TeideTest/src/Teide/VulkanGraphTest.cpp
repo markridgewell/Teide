@@ -201,7 +201,7 @@ constexpr auto ThreeRenderPassesDot = R"--(strict digraph {
     tex1 -> render3
 })--";
 
-TEST_F(VulkanGraphTest, VizualingGraphWithThreeDependentRenderNodes)
+TEST_F(VulkanGraphTest, VisualizingGraphWithThreeDependentRenderNodes)
 {
     auto graph = CreateThreeRenderPasses();
     BuildGraph(graph, *m_device);
@@ -221,7 +221,7 @@ constexpr auto CopyCpuToGpuDot = R"--(strict digraph {
     texData -> copy1
 })--";
 
-TEST_F(VulkanGraphTest, VizualingGraphWithCopyToGpu)
+TEST_F(VulkanGraphTest, VisualizingGraphWithCopyToGpu)
 {
     VulkanGraph graph;
     auto tex = graph.AddTextureDataNode("texData", OnePixelWhiteTexture);
