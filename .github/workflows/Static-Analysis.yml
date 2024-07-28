@@ -106,7 +106,7 @@ jobs:
 
     - name: Report issues as PR comments
       if: failure() && github.event_name == 'pull_request'
-      uses: reviewdog/action-suggester@v1.16.0
+      uses: reviewdog/action-suggester@v1.17.0
       with:
         tool_name: clang-tidy
 
