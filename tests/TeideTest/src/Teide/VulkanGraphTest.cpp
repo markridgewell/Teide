@@ -232,4 +232,28 @@ TEST_F(VulkanGraphTest, VisualizingGraphWithCopyToGpu)
 
     ASSERT_THAT(dot, Eq(CopyCpuToGpuDot)) << dot;
 }
+
+constexpr auto CopyGpuToCpuDot = R"--(strict digraph {
+    rankdir=LR
+    node [shape=box]
+    tex
+    texData
+    node [shape=box, margin=0.5]
+    render1 -> tex
+    copy1 -> texData
+    tex -> copy1
+})--";
+
+TEST_F(VulkanGraphTest, VisualizingGraphWithCopyToCpu)
+{
+    VulkanGraph graph;
+    auto render = graph.AddRenderNode({.name = "render1"});
+    auto tex = graph.AddTextureNode(CreateDummyTexture("tex"), render);
+    auto copy = graph.AddCopyNode(tex);
+    graph.AddTextureDataNode("texData", OnePixelWhiteTexture, copy);
+
+    const auto dot = VisualizeGraph(graph);
+
+    ASSERT_THAT(dot, Eq(CopyGpuToCpuDot)) << dot;
+}
 } // namespace

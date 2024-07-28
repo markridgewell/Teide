@@ -69,6 +69,7 @@ struct VulkanGraph
     {
         std::string name;
         TextureData data;
+        std::optional<CommandNodeRef> source;
     };
 
     std::vector<CopyNode> copyNodes;
@@ -94,9 +95,9 @@ struct VulkanGraph
         return TextureRef(textureNodes.size() - 1);
     }
 
-    auto AddTextureDataNode(std::string name, TextureData texture)
+    auto AddTextureDataNode(std::string name, TextureData texture, std::optional<CommandNodeRef> source = {})
     {
-        textureDataNodes.emplace_back(std::move(name), std::move(texture));
+        textureDataNodes.emplace_back(std::move(name), std::move(texture), source);
         return TextureDataRef(textureDataNodes.size() - 1);
     }
 };

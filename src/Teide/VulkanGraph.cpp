@@ -122,6 +122,12 @@ std::string VisualizeGraph(VulkanGraph& graph)
         {
             std::format_to(out, "    copy{} -> {}\n", i + 1, it->texture.GetName());
         }
+        else if (const auto it
+                 = std::ranges::find(graph.textureDataNodes, VulkanGraph::CopyRef(i), &VulkanGraph::TextureDataNode::source);
+                 it != graph.textureDataNodes.end())
+        {
+            std::format_to(out, "    copy{} -> {}\n", i + 1, it->name);
+        }
         else
         {
             std::format_to(out, "    copy{}\n", i + 1);
