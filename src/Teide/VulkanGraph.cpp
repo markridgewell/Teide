@@ -117,16 +117,16 @@ std::string VisualizeGraph(VulkanGraph& graph)
 
     for (const auto& [i, node] : std::views::zip(std::views::iota(0u), graph.copyNodes))
     {
-        if (const auto it = std::ranges::find(graph.textureNodes, VulkanGraph::CopyRef(i), &VulkanGraph::TextureNode::source);
-            it != graph.textureNodes.end())
+        if (const auto it1 = std::ranges::find(graph.textureNodes, VulkanGraph::CopyRef(i), &VulkanGraph::TextureNode::source);
+            it1 != graph.textureNodes.end())
         {
-            std::format_to(out, "    copy{} -> {}\n", i + 1, it->texture.GetName());
+            std::format_to(out, "    copy{} -> {}\n", i + 1, it1->texture.GetName());
         }
-        else if (const auto it
+        else if (const auto it2
                  = std::ranges::find(graph.textureDataNodes, VulkanGraph::CopyRef(i), &VulkanGraph::TextureDataNode::source);
-                 it != graph.textureDataNodes.end())
+                 it2 != graph.textureDataNodes.end())
         {
-            std::format_to(out, "    copy{} -> {}\n", i + 1, it->name);
+            std::format_to(out, "    copy{} -> {}\n", i + 1, it2->name);
         }
         else
         {
