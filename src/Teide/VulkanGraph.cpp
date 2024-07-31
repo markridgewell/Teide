@@ -85,7 +85,7 @@ std::string VisualizeGraph(VulkanGraph& graph)
     {
         std::format_to(out, "    {}\n", node.name);
     }
-    ret += "    node [shape=box, margin=0.5]\n";
+    std::format_to(out, "    node [shape=box, margin=0.5]\n");
 
     for (const auto& [i, node] : std::views::zip(std::views::iota(0u), graph.renderNodes))
     {
