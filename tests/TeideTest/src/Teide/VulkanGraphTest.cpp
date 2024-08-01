@@ -33,7 +33,7 @@ protected:
         const Texture tex2 = CreateDummyTexture("tex2");
         const Texture tex3 = CreateDummyTexture("tex3");
 
-        RenderList renderList1 = {.name = "render1"};
+        const RenderList renderList1 = {.name = "render1"};
         RenderList renderList2 = {.name = "render2"};
         RenderObject& obj1 = renderList2.objects.emplace_back();
         obj1.objectParameters.textures.push_back(tex1);
@@ -41,13 +41,13 @@ protected:
         RenderObject& obj2 = renderList3.objects.emplace_back();
         const ParameterBlockDesc pblockDesc = {.parameters = {{"param", ShaderVariableType::BaseType::Texture2D}}};
         const auto pblockLayout = m_device->CreateParameterBlockLayout(pblockDesc, 2);
-        ParameterBlockData pblock = {.layout = pblockLayout, .parameters = {.textures = {tex1}}};
+        const ParameterBlockData pblock = {.layout = pblockLayout, .parameters = {.textures = {tex1}}};
         obj2.materialParameters = m_device->CreateParameterBlock(pblock, "matParams");
 
         VulkanGraph graph;
-        auto render1 = graph.AddRenderNode(renderList1);
-        auto render2 = graph.AddRenderNode(renderList2);
-        auto render3 = graph.AddRenderNode(renderList3);
+        const auto render1 = graph.AddRenderNode(renderList1);
+        const auto render2 = graph.AddRenderNode(renderList2);
+        const auto render3 = graph.AddRenderNode(renderList3);
         graph.AddTextureNode(tex1, render1);
         graph.AddTextureNode(tex2, render2);
         graph.AddTextureNode(tex3, render3);
@@ -99,7 +99,7 @@ MATCHER_P(HasTextureDependency, dep, "")
 
 TEST_F(VulkanGraphTest, DefaultConstructedGraphIsEmpty)
 {
-    VulkanGraph graph;
+    const VulkanGraph graph;
     ASSERT_THAT(graph.renderNodes, IsEmpty());
     ASSERT_THAT(graph.textureNodes, IsEmpty());
 }
@@ -127,8 +127,8 @@ TEST_F(VulkanGraphTest, BuildingGraphWithOneRenderNodeHasNoEffect)
 TEST_F(VulkanGraphTest, BuildingGraphWithOneCopyNodeHasNoEffect)
 {
     VulkanGraph graph;
-    auto tex = graph.AddTextureDataNode("texData1", OnePixelWhiteTexture);
-    auto copy = graph.AddCopyNode(tex);
+    const auto tex = graph.AddTextureDataNode("texData1", OnePixelWhiteTexture);
+    const auto copy = graph.AddCopyNode(tex);
     graph.AddTextureNode(CreateDummyTexture("tex1"), copy);
 
     BuildGraph(graph, *m_device);
@@ -153,18 +153,18 @@ TEST_F(VulkanGraphTest, BuildingGraphWithTwoIndependentRenderNodesHasNoEffect)
 
 TEST_F(VulkanGraphTest, BuildingGraphWithTwoDependentRenderNodesAddsConnection)
 {
-    Texture tex1 = CreateDummyTexture("tex1");
-    Texture tex2 = CreateDummyTexture("tex2");
+    const Texture tex1 = CreateDummyTexture("tex1");
+    const Texture tex2 = CreateDummyTexture("tex2");
 
-    RenderList render1 = {.name = "render1"};
+    const RenderList render1 = {.name = "render1"};
     RenderList render2 = {.name = "render2"};
     render2.viewParameters.textures.push_back(tex1);
 
     VulkanGraph graph;
-    auto renderNode1 = graph.AddRenderNode(render1);
-    auto renderNode2 = graph.AddRenderNode(render2);
-    auto texNode1 = graph.AddTextureNode(tex1, VulkanGraph::RenderRef(0));
-    auto texNode2 = graph.AddTextureNode(tex2, VulkanGraph::RenderRef(1));
+    const auto renderNode1 = graph.AddRenderNode(render1);
+    const auto renderNode2 = graph.AddRenderNode(render2);
+    const auto texNode1 = graph.AddTextureNode(tex1, VulkanGraph::RenderRef(0));
+    const auto texNode2 = graph.AddTextureNode(tex2, VulkanGraph::RenderRef(1));
 
     (void)texNode2;
 
@@ -224,8 +224,8 @@ constexpr auto CopyCpuToGpuDot = R"--(strict digraph {
 TEST_F(VulkanGraphTest, VisualizingGraphWithCopyToGpu)
 {
     VulkanGraph graph;
-    auto tex = graph.AddTextureDataNode("texData", OnePixelWhiteTexture);
-    auto copy = graph.AddCopyNode(tex);
+    const auto tex = graph.AddTextureDataNode("texData", OnePixelWhiteTexture);
+    const auto copy = graph.AddCopyNode(tex);
     graph.AddTextureNode(CreateDummyTexture("tex"), copy);
 
     const auto dot = VisualizeGraph(graph);
@@ -247,9 +247,9 @@ constexpr auto CopyGpuToCpuDot = R"--(strict digraph {
 TEST_F(VulkanGraphTest, VisualizingGraphWithCopyToCpu)
 {
     VulkanGraph graph;
-    auto render = graph.AddRenderNode({.name = "render1"});
-    auto tex = graph.AddTextureNode(CreateDummyTexture("tex"), render);
-    auto copy = graph.AddCopyNode(tex);
+    const auto render = graph.AddRenderNode({.name = "render1"});
+    const auto tex = graph.AddTextureNode(CreateDummyTexture("tex"), render);
+    const auto copy = graph.AddCopyNode(tex);
     graph.AddTextureDataNode("texData", OnePixelWhiteTexture, copy);
 
     const auto dot = VisualizeGraph(graph);
