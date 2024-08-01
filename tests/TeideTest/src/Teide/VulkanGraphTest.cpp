@@ -29,9 +29,9 @@ protected:
 
     VulkanGraph CreateThreeRenderPasses()
     {
-        Texture tex1 = CreateDummyTexture("tex1");
-        Texture tex2 = CreateDummyTexture("tex2");
-        Texture tex3 = CreateDummyTexture("tex3");
+        const Texture tex1 = CreateDummyTexture("tex1");
+        const Texture tex2 = CreateDummyTexture("tex2");
+        const Texture tex3 = CreateDummyTexture("tex3");
 
         RenderList renderList1 = {.name = "render1"};
         RenderList renderList2 = {.name = "render2"};
