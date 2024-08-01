@@ -3,8 +3,9 @@
 
 #include "Teide/VulkanDevice.h"
 
+#include <fmt/core.h>
+
 #include <algorithm>
-#include <format>
 #include <ranges>
 
 namespace Teide
@@ -79,13 +80,13 @@ std::string VisualizeGraph(VulkanGraph& graph)
     auto out = std::back_inserter(ret);
     for (const auto& node : graph.textureNodes)
     {
-        std::format_to(out, "    {}\n", node.texture.GetName());
+        fmt::format_to(out, "    {}\n", node.texture.GetName());
     }
     for (const auto& node : graph.textureDataNodes)
     {
-        std::format_to(out, "    {}\n", node.name);
+        fmt::format_to(out, "    {}\n", node.name);
     }
-    std::format_to(out, "    node [shape=box, margin=0.5]\n");
+    fmt::format_to(out, "    node [shape=box, margin=0.5]\n");
 
     for (const auto& [i, node] : std::views::zip(std::views::iota(0u), graph.renderNodes))
     {
@@ -93,11 +94,11 @@ std::string VisualizeGraph(VulkanGraph& graph)
             = std::ranges::find(graph.textureNodes, VulkanGraph::RenderRef(i), &VulkanGraph::TextureNode::source);
             it != graph.textureNodes.end())
         {
-            std::format_to(out, "    {} -> {}\n", node.renderList.name, it->texture.GetName());
+            fmt::format_to(out, "    {} -> {}\n", node.renderList.name, it->texture.GetName());
         }
         else
         {
-            std::format_to(out, "    {}\n", node.renderList.name);
+            fmt::format_to(out, "    {}\n", node.renderList.name);
         }
 
         for (const auto& dep : node.dependencies)
@@ -105,11 +106,11 @@ std::string VisualizeGraph(VulkanGraph& graph)
             switch (dep.type)
             {
                 case ResourceType::Texture:
-                    std::format_to(
+                    fmt::format_to(
                         out, "    {} -> {}\n", graph.textureNodes.at(dep.index).texture.GetName(), node.renderList.name);
                     break;
                 case ResourceType::TextureData:
-                    std::format_to(out, "    {} -> {}\n", graph.textureDataNodes.at(dep.index).name, node.renderList.name);
+                    fmt::format_to(out, "    {} -> {}\n", graph.textureDataNodes.at(dep.index).name, node.renderList.name);
                     break;
             }
         }
@@ -120,26 +121,26 @@ std::string VisualizeGraph(VulkanGraph& graph)
         if (const auto it1 = std::ranges::find(graph.textureNodes, VulkanGraph::CopyRef(i), &VulkanGraph::TextureNode::source);
             it1 != graph.textureNodes.end())
         {
-            std::format_to(out, "    copy{} -> {}\n", i + 1, it1->texture.GetName());
+            fmt::format_to(out, "    copy{} -> {}\n", i + 1, it1->texture.GetName());
         }
         else if (const auto it2
                  = std::ranges::find(graph.textureDataNodes, VulkanGraph::CopyRef(i), &VulkanGraph::TextureDataNode::source);
                  it2 != graph.textureDataNodes.end())
         {
-            std::format_to(out, "    copy{} -> {}\n", i + 1, it2->name);
+            fmt::format_to(out, "    copy{} -> {}\n", i + 1, it2->name);
         }
         else
         {
-            std::format_to(out, "    copy{}\n", i + 1);
+            fmt::format_to(out, "    copy{}\n", i + 1);
         }
 
         switch (node.source.type)
         {
             case ResourceType::Texture:
-                std::format_to(out, "    {} -> copy{}\n", graph.textureNodes.at(node.source.index).texture.GetName(), i + 1);
+                fmt::format_to(out, "    {} -> copy{}\n", graph.textureNodes.at(node.source.index).texture.GetName(), i + 1);
                 break;
             case ResourceType::TextureData:
-                std::format_to(out, "    {} -> copy{}\n", graph.textureDataNodes.at(node.source.index).name, i + 1);
+                fmt::format_to(out, "    {} -> copy{}\n", graph.textureDataNodes.at(node.source.index).name, i + 1);
                 break;
         }
     }
