@@ -91,7 +91,7 @@ struct VulkanGraph
 
     auto AddTextureNode(Texture texture, CommandNodeRef source)
     {
-        textureNodes.emplace_back(texture, source);
+        textureNodes.emplace_back(std::move(texture), source);
         return TextureRef(textureNodes.size() - 1);
     }
 

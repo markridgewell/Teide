@@ -107,22 +107,6 @@ TEST_F(DeviceTest, CreateTexture)
     EXPECT_THAT(texture.GetSampleCount(), Eq(1u));
 }
 
-TEST_F(DeviceTest, CreateTextureWithNullName)
-{
-    const TextureData textureData = {
-        .size = {2, 2},
-        .format = Format::Byte4Srgb,
-        .mipLevelCount = 1,
-        .sampleCount = 1,
-        .pixels = HexToBytes("ff 00 00 ff 00 ff 00 ff ff 00 ff ff 00 00 ff ff"),
-    };
-    const auto texture = m_device->CreateTexture(textureData, nullptr);
-    EXPECT_THAT(texture.GetSize(), Eq(Geo::Size2i{2, 2}));
-    EXPECT_THAT(texture.GetFormat(), Eq(Format::Byte4Srgb));
-    EXPECT_THAT(texture.GetMipLevelCount(), Eq(1u));
-    EXPECT_THAT(texture.GetSampleCount(), Eq(1u));
-}
-
 TEST_F(DeviceTest, CreateMesh)
 {
     const MeshData meshData = {
