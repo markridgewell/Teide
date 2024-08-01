@@ -88,10 +88,11 @@ std::string VisualizeGraph(VulkanGraph& graph)
     }
     fmt::format_to(out, "    node [shape=box, margin=0.5]\n");
 
-    for (const auto& [i, node] : std::views::zip(std::views::iota(0u), graph.renderNodes))
+    for (auto i = VulkanGraph::RenderRef(0); i.index < graph.renderNodes.size(); i.index++)
     {
-        if (const auto it
-            = std::ranges::find(graph.textureNodes, VulkanGraph::RenderRef(i), &VulkanGraph::TextureNode::source);
+        const auto& node = graph.renderNodes[i.index];
+
+        if (const auto it = std::ranges::find(graph.textureNodes, i, &VulkanGraph::TextureNode::source);
             it != graph.textureNodes.end())
         {
             fmt::format_to(out, "    {} -> {}\n", node.renderList.name, it->texture.GetName());
@@ -116,31 +117,33 @@ std::string VisualizeGraph(VulkanGraph& graph)
         }
     }
 
-    for (const auto& [i, node] : std::views::zip(std::views::iota(0u), graph.copyNodes))
+    for (auto i = VulkanGraph::CopyRef(0); i.index < graph.copyNodes.size(); i.index++)
     {
-        if (const auto it1 = std::ranges::find(graph.textureNodes, VulkanGraph::CopyRef(i), &VulkanGraph::TextureNode::source);
+        const auto& node = graph.copyNodes[i.index];
+        std::string nodeName = fmt::format("copy{}", i.index + 1);
+
+        if (const auto it1 = std::ranges::find(graph.textureNodes, i, &VulkanGraph::TextureNode::source);
             it1 != graph.textureNodes.end())
         {
-            fmt::format_to(out, "    copy{} -> {}\n", i + 1, it1->texture.GetName());
+            fmt::format_to(out, "    {} -> {}\n", nodeName, it1->texture.GetName());
         }
-        else if (const auto it2
-                 = std::ranges::find(graph.textureDataNodes, VulkanGraph::CopyRef(i), &VulkanGraph::TextureDataNode::source);
+        else if (const auto it2 = std::ranges::find(graph.textureDataNodes, i, &VulkanGraph::TextureDataNode::source);
                  it2 != graph.textureDataNodes.end())
         {
-            fmt::format_to(out, "    copy{} -> {}\n", i + 1, it2->name);
+            fmt::format_to(out, "    {} -> {}\n", nodeName, it2->name);
         }
         else
         {
-            fmt::format_to(out, "    copy{}\n", i + 1);
+            fmt::format_to(out, "    {}\n", nodeName);
         }
 
         switch (node.source.type)
         {
             case ResourceType::Texture:
-                fmt::format_to(out, "    {} -> copy{}\n", graph.textureNodes.at(node.source.index).texture.GetName(), i + 1);
+                fmt::format_to(out, "    {} -> {}\n", graph.textureNodes.at(node.source.index).texture.GetName(), nodeName);
                 break;
             case ResourceType::TextureData:
-                fmt::format_to(out, "    {} -> copy{}\n", graph.textureDataNodes.at(node.source.index).name, i + 1);
+                fmt::format_to(out, "    {} -> {}\n", graph.textureDataNodes.at(node.source.index).name, nodeName);
                 break;
         }
     }
