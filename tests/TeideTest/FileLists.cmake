@@ -22,5 +22,6 @@ set(sources
     src/Teide/TestUtils.h
     src/Teide/TextureDataTest.cpp
     src/Teide/TextureTest.cpp
+    src/Teide/VulkanGraphTest.cpp
     src/Teide/VulkanTest.cpp
     src/vkex/vkex_utils_test.cpp)
