@@ -5,7 +5,12 @@
   "dependencies": [
     "fmt",
     "function2",
-    "glslang",
+    {
+      "name": "glslang",
+      "features": [
+        "rtti"
+      ]
+    },
     {
       "name": "sdl2",
       "features": [
