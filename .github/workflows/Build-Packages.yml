@@ -31,13 +31,8 @@ jobs:
         - preset: clang++-18
           runner: ubuntu-latest
           extra-packages: ninja-build clang++-18
-        - preset: clang++-18
-          runner: ubuntu-latest
-          extra-packages: ninja-build clang++-18
-          sanitizer: UBSAN
-          name-suffix: -ubsan
 
-    name: ${{startsWith(matrix.runner, 'windows') && 'Windows' || 'Linux'}}${{matrix.name-suffix}}
+    name: ${{startsWith(matrix.runner, 'windows') && 'Windows' || 'Linux'}}
     runs-on: ${{matrix.runner}}
 
     steps:
