@@ -127,7 +127,7 @@ jobs:
 
     - name: Save packages as artifact
       if: steps.cache.outputs.cache-hit != 'true'
-      uses: actions/upload-artifact@v4.3.4
+      uses: actions/upload-artifact@v4.3.5
       with:
         name: vcpkg-export-${{env.VCPKG_TRIPLET}}
         path: './exports'
