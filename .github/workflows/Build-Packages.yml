@@ -96,7 +96,9 @@ jobs:
         for file in $(find $paths -name '*.log'); do
             if [ -s $file ]; then
                 echo "::group::$file"
-                cat $file
+                # print the file contents, excluding any line containing 'TryCompile-'
+                # this is to reduce the number of false positive errors
+                sed -n '/TryCompile-/!p' $file
                 echo "::endgroup::"
             fi
         done
