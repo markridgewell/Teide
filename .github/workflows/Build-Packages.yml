@@ -90,8 +90,7 @@ jobs:
 
     - name: Dump CMake output logs
       if: failure()
-      shell: bash
-      run: .github/scripts/dump-vcpkg-logs.sh ${{matrix.preset}}
+      run: bash .github/scripts/dump-vcpkg-logs.sh ${{matrix.preset}}
 
     - name: Export packages
       if: steps.cache.outputs.cache-hit != 'true'
