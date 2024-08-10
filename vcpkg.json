@@ -17,6 +17,11 @@
         "vulkan"
       ]
     },
+    {
+      "name": "dbus",
+      "default-features": false,
+      "platform": "linux"
+    },
     "sdl2-image",
     "spdlog",
     "taskflow",
