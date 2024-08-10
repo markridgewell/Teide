@@ -22,14 +22,17 @@ def modify_json(new_commit):
 def main():
     vcpkg_dir = Path("external", "vcpkg")
 
+    old_release = git(["describe", "--tags"], cwd=vcpkg_dir)
     old_commit = git(["rev-parse", "HEAD"], cwd=vcpkg_dir)
-    git(["checkout", "master"], cwd=vcpkg_dir)
+    git(["switch", "master"], cwd=vcpkg_dir)
     git(["pull"], cwd=vcpkg_dir)
+    new_release = git(["describe", "--tags", "--abbrev=0"], cwd=vcpkg_dir)
+    git(["switch", "--detach", new_release])
     new_commit = git(["rev-parse", "HEAD"], cwd=vcpkg_dir)
 
     if old_commit != new_commit:
         modify_json(new_commit)
-        print(f"Updated vcpkg baseline from {old_commit} to {new_commit}")
+        print(f"Updated vcpkg from {old_release} to {new_release}\nBaseline is now {new_commit}")
 
 
 if __name__ == "__main__":
