@@ -4,6 +4,9 @@
 #include "Teide/Assert.h"
 #include "Teide/Definitions.h"
 
+#include <atlbase.h>
+#include <d3d12shader.h>
+#include <dxcapi.h>
 #include <fmt/format.h>
 #include <fmt/ostream.h>
 #include <glslang/Public/ShaderLang.h>

@@ -6,6 +6,7 @@
     "fmt",
     "function2",
     "glslang",
+    "directx-dxc",
     {
       "name": "sdl2",
       "features": [

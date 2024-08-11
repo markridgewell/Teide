@@ -63,6 +63,7 @@ find_package(SDL2_image REQUIRED)
 find_package(fmt REQUIRED)
 find_package(spdlog REQUIRED)
 find_package(glslang REQUIRED)
+find_package(directx-dxc CONFIG REQUIRED)
 find_package(Taskflow REQUIRED)
 find_package(function2 REQUIRED)
 find_package(stdexec REQUIRED)
@@ -99,7 +100,9 @@ td_add_library(
         function2::function2
         STDEXEC::stdexec
         glslang::SPIRV
-        glslang::glslang)
+        glslang::glslang
+        Microsoft::DirectXShaderCompiler)
+
 target_include_directories(Teide SYSTEM PRIVATE "${GENERATED_INCLUDE_DIR}")
 
 if(TEIDE_PRECOMPILED_HEADERS)
