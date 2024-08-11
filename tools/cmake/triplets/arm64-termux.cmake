@@ -16,5 +16,6 @@ if(PORT STREQUAL "sdl2")
 endif()
 
 if(PORT STREQUAL "swiftshader")
-    set(VCPKG_CXX_FLAGS "${undef_android} -lX11 -landroid-shmem -Wl,--undefined-version")
+    set(VCPKG_C_FLAGS "${undef_android} -lX11 -landroid-shmem -Wl,--undefined-version")
+    set(VCPKG_CXX_FLAGS "${VCPKG_C_FLAGS}")
 endif()
