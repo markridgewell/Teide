@@ -13,7 +13,7 @@ file(MAKE_DIRECTORY ${SOURCE_PATH}/.git/hooks)
 file(TOUCH ${SOURCE_PATH}/.git/hooks/commit-msg)
 vcpkg_cmake_configure(
     SOURCE_PATH "${SOURCE_PATH}" OPTIONS -DSWIFTSHADER_BUILD_TESTS=OFF -DSWIFTSHADER_WARNINGS_AS_ERRORS=OFF
-                                         -DSWIFTSHADER_ENABLE_ASTC=OFF -DREACTOR_BACKEND=LLVM-Submodule)
+                                         -DSWIFTSHADER_ENABLE_ASTC=OFF -DREACTOR_BACKEND=Subzero)
 vcpkg_cmake_install()
 vcpkg_install_copyright(FILE_LIST "${SOURCE_PATH}/LICENSE.txt")
 

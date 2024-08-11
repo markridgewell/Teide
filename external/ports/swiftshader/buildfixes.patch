@@ -1,5 +1,5 @@
 diff --git a/CMakeLists.txt b/CMakeLists.txt
-index c5cd16d55..31a2bdade 100644
+index c5cd16d55..4add3ae83 100644
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
 @@ -289,7 +289,7 @@ if(SWIFTSHADER_BUILD_CPPDAP)
@@ -37,19 +37,7 @@ index c5cd16d55..31a2bdade 100644
      if(ARCH STREQUAL "aarch64")
          llvm_map_components_to_libnames(llvm_libs orcjit aarch64asmparser aarch64codegen)
      elseif(ARCH STREQUAL "arm")
-@@ -699,17 +703,19 @@ endif()
- ###########################################################
- # Subzero
- ###########################################################
--add_subdirectory(${THIRD_PARTY_DIR}/llvm-subzero EXCLUDE_FROM_ALL)
--add_subdirectory(${THIRD_PARTY_DIR}/subzero EXCLUDE_FROM_ALL)
--set_target_properties(llvm-subzero PROPERTIES FOLDER "third_party")
--set_target_properties(subzero PROPERTIES FOLDER "third_party")
-+#add_subdirectory(${THIRD_PARTY_DIR}/llvm-subzero EXCLUDE_FROM_ALL)
-+#add_subdirectory(${THIRD_PARTY_DIR}/subzero EXCLUDE_FROM_ALL)
-+#set_target_properties(llvm-subzero PROPERTIES FOLDER "third_party")
-+#set_target_properties(subzero PROPERTIES FOLDER "third_party")
- 
+@@ -707,9 +711,11 @@ set_target_properties(subzero PROPERTIES FOLDER "third_party")
  ###########################################################
  # marl
  ###########################################################
