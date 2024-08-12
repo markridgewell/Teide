@@ -172,7 +172,7 @@ std::unique_ptr<glslang::TShader> CompileStage(std::string_view shaderSource, ES
     return shader;
 };
 
-ParameterBlockDesc& GetPblockLayout(ShaderData& data, usize set)
+ParameterBlockDesc& GetPblockLayout(ShaderData& data, int64 set)
 {
     switch (set)
     {
@@ -276,10 +276,7 @@ void CompileShader(ShaderData& data, std::string_view vertexSource, std::string_
     {
         const auto& uniformBlock = program.getUniformBlock(i);
         const auto& name = uniformBlock.name;
-
-        const auto it = std::ranges::find(PblockNames, name);
-        TEIDE_ASSERT(it != PblockNames.end(), "Invalid pblock name '{}'", name);
-        const auto set = std::distance(PblockNames.begin(), it);
+        const int64 set = std::distance(PblockNames.begin(), std::ranges::find(PblockNames, name));
         ReflectUniforms(GetPblockLayout(data, set), uniformBlock);
     }
 }
