@@ -16,6 +16,7 @@
 
 namespace vk::detail
 {
+// HACK: Workaround for vulkan-memory-allocator-hpp using the wrong vulkan-hpp namespace
 using namespace vk;
 }
 
