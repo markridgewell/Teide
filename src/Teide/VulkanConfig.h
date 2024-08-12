@@ -14,4 +14,9 @@
 #    define VMA_DEBUG_DETECT_CORRUPTION 1
 #endif
 
+namespace vk::detail
+{
+using namespace vk;
+}
+
 #include <vulkan-memory-allocator-hpp/vk_mem_alloc.hpp>
