@@ -113,7 +113,7 @@ jobs:
 
     - name: Save CMake trace
       if: inputs.profile-cmake
-      uses: actions/upload-artifact@v4.3.4
+      uses: actions/upload-artifact@v4.3.5
       with:
         name: CMakeTrace-${{env.job_name}}
         path: ./CMakeTrace.json
@@ -140,7 +140,7 @@ jobs:
 
     - name: Save render test output
       if: failure() && steps.test.outcome == 'failure'
-      uses: actions/upload-artifact@v4.3.4
+      uses: actions/upload-artifact@v4.3.5
       with:
         name: RenderTestOutput-${{env.job_name}}
         path: ${{env.RT_OUTPUT_DIR}}
@@ -158,7 +158,7 @@ jobs:
 
     - name: Save test log
       if: failure() && steps.test.outcome == 'failure'
-      uses: actions/upload-artifact@v4.3.4
+      uses: actions/upload-artifact@v4.3.5
       with:
         name: TestLog-${{env.job_name}}
         path: build/${{matrix.preset}}/Testing/Temporary/LastTest.log
@@ -174,7 +174,7 @@ jobs:
 
     - name: Save coverage report
       if: matrix.coverage == 'ON'
-      uses: actions/upload-artifact@v4.3.4
+      uses: actions/upload-artifact@v4.3.5
       with:
         name: CoverageReport-${{env.job_name}}
         path: build/${{matrix.preset}}/coverage/output
