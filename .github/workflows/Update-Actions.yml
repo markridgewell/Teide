@@ -3,7 +3,7 @@ name: Update-Actions
 # Controls when the action will run.
 on:
   schedule:
-    # Automatically run on every Sunday
+    # Automatically run on the first of each month
     - cron:  '0 0 1 * *'
   workflow_dispatch:
 
