@@ -57,10 +57,6 @@ jobs:
         key: vcpkg-export-${{env.VCPKG_TRIPLET}}-${{hashFiles('vcpkg.json', 'vcpkg-configuration.json', 'external/ports/**', 'cmake/triplets/*.cmake', 'cmake/toolchains/*.cmake')}}
         path: './exports'
 
-    - name: Free disk space (Ubuntu)
-      if: runner.os == 'Linux' && steps.cache.outputs.cache-hit != 'true'
-      uses: jlumbroso/free-disk-space@v1.3.1
-
     - name: 'Setup NuGet credentials'
       if: steps.cache.outputs.cache-hit != 'true'
       shell: 'bash'
