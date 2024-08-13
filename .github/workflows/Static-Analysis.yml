@@ -112,7 +112,7 @@ jobs:
 
     - name: Save fixes as build artifact
       if: failure()
-      uses: actions/upload-artifact@v4.3.5
+      uses: actions/upload-artifact@v4.3.6
       with:
         name: clang-tidy-fixes
         path: ${{github.workspace}}/build/${{env.preset}}/clang-tidy-fixes.yaml
