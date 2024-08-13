@@ -59,10 +59,10 @@ jobs:
           extra-packages: ninja-build clang++-18
           sanitizer: UBSAN
           name-suffix: -ubsan
-        - preset: clang++-17
+        - preset: clang++-18
           buildtype: Debug
           runner: ubuntu-latest
-          extra-packages: ninja-build clang++-17
+          extra-packages: ninja-build clang++-18
           sanitizer: MSAN
           name-suffix: -msan
 
