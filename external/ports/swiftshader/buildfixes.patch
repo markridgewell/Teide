@@ -1,7 +1,16 @@
 diff --git a/CMakeLists.txt b/CMakeLists.txt
-index c5cd16d55..0480120ad 100644
+index c5cd16d55..13f1dfbdd 100644
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
+@@ -360,7 +360,7 @@ macro(set_shared_library_export_map TARGET DIR)
+ 
+         # Don't allow undefined symbols, unless it's a Sanitizer build.
+         if(NOT SWIFTSHADER_MSAN AND NOT SWIFTSHADER_ASAN AND NOT SWIFTSHADER_TSAN AND NOT SWIFTSHADER_UBSAN)
+-            set_property(TARGET ${TARGET} APPEND_STRING PROPERTY LINK_FLAGS " -Wl,--no-undefined")
++            #set_property(TARGET ${TARGET} APPEND_STRING PROPERTY LINK_FLAGS " -Wl,--no-undefined")
+         endif()
+     endif()
+ endmacro()
 @@ -707,9 +707,11 @@ set_target_properties(subzero PROPERTIES FOLDER "third_party")
  ###########################################################
  # marl
