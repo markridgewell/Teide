@@ -172,7 +172,7 @@ std::unique_ptr<glslang::TShader> CompileStage(std::string_view shaderSource, ES
     return shader;
 };
 
-ParameterBlockDesc& GetPblockLayout(ShaderData& data, unsigned int set)
+ParameterBlockDesc& GetPblockLayout(ShaderData& data, int64 set)
 {
     switch (set)
     {
@@ -242,19 +242,6 @@ ShaderStageFlags GetShaderStageFlags(EShLanguageMask lang)
 void ReflectUniforms(ParameterBlockDesc& pblock, const glslang::TObjectReflection& uniformBlock)
 {
     pblock.uniformsStages = GetShaderStageFlags(uniformBlock.stages);
-
-    if constexpr (IsDebugBuild)
-    {
-        TEIDE_ASSERT(uniformBlock.getType());
-        TEIDE_ASSERT(uniformBlock.getType()->isStruct());
-
-        for ([[maybe_unused]] const auto& u : *uniformBlock.getType()->getStruct())
-        {
-            TEIDE_ASSERT(
-                std::ranges::find(pblock.parameters, std::string_view{u.type->getFieldName()}, &ShaderVariable::name)
-                != pblock.parameters.end());
-        }
-    }
 };
 
 void CompileShader(ShaderData& data, std::string_view vertexSource, std::string_view pixelSource, glslang::EShSource source)
@@ -288,15 +275,9 @@ void CompileShader(ShaderData& data, std::string_view vertexSource, std::string_
     for (int i = 0; i < program.getNumUniformBlocks(); i++)
     {
         const auto& uniformBlock = program.getUniformBlock(i);
-        if (uniformBlock.getType()->getQualifier().isPushConstant())
-        {
-            ReflectUniforms(GetPblockLayout(data, 3), uniformBlock);
-        }
-        else
-        {
-            const auto set = uniformBlock.getType()->getQualifier().layoutSet;
-            ReflectUniforms(GetPblockLayout(data, set), uniformBlock);
-        }
+        const auto& name = uniformBlock.name;
+        const int64 set = std::distance(PblockNames.begin(), std::ranges::find(PblockNames, name));
+        ReflectUniforms(GetPblockLayout(data, set), uniformBlock);
     }
 }
 
@@ -324,12 +305,12 @@ void BuildUniformBuffer(std::string& source, const ParameterBlockDesc& pblock)
     if (BuildParameterBlockLayout(pblock, Set).isPushConstant)
     {
         // Build push constants
-        fmt::format_to(out, "layout(push_constant) uniform {}Uniforms {{\n", PblockNames[Set]);
+        fmt::format_to(out, "layout(push_constant) uniform {} {{\n", PblockNames[Set]);
     }
     else
     {
         // Build uniform block
-        fmt::format_to(out, "layout(set = {}, binding = 0) uniform {}Uniforms {{\n", Set, PblockNames[Set]);
+        fmt::format_to(out, "layout(set = {}, binding = 0) uniform {} {{\n", Set, PblockNames[Set]);
     }
 
     for (const auto& variable : pblock.parameters)

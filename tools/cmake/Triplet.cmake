@@ -28,9 +28,7 @@ if(LINUX)
     endif()
 
     # Set triplet taking sanitizer into account
-    if(TEIDE_SANITIZER STREQUAL "UBSAN")
-        set(VCPKG_TARGET_TRIPLET "${ARCH}-${ENVIRONMENT}-ubsan")
-    elseif(TEIDE_SANITIZER STREQUAL "MSAN")
+    if(TEIDE_SANITIZER STREQUAL "MSAN")
         set(VCPKG_TARGET_TRIPLET "${ARCH}-${ENVIRONMENT}-msan")
         set(VCPKG_CHAINLOAD_TOOLCHAIN_FILE "${CMAKE_CURRENT_SOURCE_DIR}/tools/cmake/toolchains/clang-msan.cmake")
     else()

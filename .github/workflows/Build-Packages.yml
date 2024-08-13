@@ -34,20 +34,14 @@ jobs:
         - preset: clang++-18
           runner: ubuntu-latest
           extra-packages: ninja-build clang++-18
-          sanitizer: UBSAN
-          name-suffix: -ubsan
-        - preset: clang++-18
-          runner: ubuntu-latest
-          extra-packages: ninja-build clang++-18
           sanitizer: MSAN
-          name-suffix: -msan
 
-    name: ${{startsWith(matrix.runner, 'windows') && 'Windows' || 'Linux'}}${{matrix.name-suffix}}
+    name: ${{startsWith(matrix.runner, 'windows') && 'Windows' || 'Linux'}}${{matrix.sanitizer}}
     runs-on: ${{matrix.runner}}
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4.1.7
       with:
         lfs: false
         submodules: recursive
@@ -58,14 +52,14 @@ jobs:
 
     - name: Cache
       id: cache
-      uses: actions/cache@v3
+      uses: actions/cache@v4.0.2
       with:
         key: vcpkg-export-${{env.VCPKG_TRIPLET}}-${{hashFiles('vcpkg.json', 'vcpkg-configuration.json', 'external/ports/**', 'cmake/triplets/*.cmake', 'cmake/toolchains/*.cmake')}}
         path: './exports'
 
     - name: Free disk space (Ubuntu)
       if: runner.os == 'Linux' && steps.cache.outputs.cache-hit != 'true'
-      uses: jlumbroso/free-disk-space@main
+      uses: jlumbroso/free-disk-space@v1.3.1
 
     - name: 'Setup NuGet credentials'
       if: steps.cache.outputs.cache-hit != 'true'
@@ -83,7 +77,7 @@ jobs:
 
     - name: Setup vcpkg
       if: steps.cache.outputs.cache-hit != 'true'
-      uses: lukka/run-vcpkg@v11
+      uses: lukka/run-vcpkg@v11.5
       with:
         vcpkgDirectory: '${{github.workspace}}/external/vcpkg'
         vcpkgJsonGlob: 'vcpkg.json'
@@ -100,30 +94,12 @@ jobs:
 
     - name: Dump CMake output logs
       if: failure()
-      shell: bash
-      run: |
-        paths="external/vcpkg build/${{matrix.preset}}"
-        for file in $(find $paths -name '*.log'); do
-            if [ -s $file ]; then
-                echo "::group::$file"
-                cat $file
-                echo "::endgroup::"
-            fi
-        done
+      run: bash .github/scripts/dump-vcpkg-logs.sh ${{matrix.preset}}
 
     - name: Export packages
       if: steps.cache.outputs.cache-hit != 'true'
       run: |
         ./external/vcpkg/vcpkg export --raw --output=exports --output-dir=. --x-install-root=build/${{matrix.preset}}/vcpkg_installed
-
-    - name: Delete LLVM files # they take up way too much space and we don't need them
-      if: steps.cache.outputs.cache-hit != 'true'
-      shell: bash
-      working-directory: exports/installed
-      run: |
-        cat vcpkg/info/llvm*.list | grep -v '/$' | xargs rm # Remove all files in llvm package
-        find . -type d -empty -delete # Remove empty directories
-        rm vcpkg/info/llvm*.list # Remove listing file
 
     - name: List contents
       if: steps.cache.outputs.cache-hit != 'true'
@@ -132,7 +108,7 @@ jobs:
 
     - name: Save packages as artifact
       if: steps.cache.outputs.cache-hit != 'true'
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4.3.6
       with:
         name: vcpkg-export-${{env.VCPKG_TRIPLET}}
         path: './exports'

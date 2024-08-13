@@ -18,7 +18,7 @@ namespace Teide
 
 namespace
 {
-    constexpr auto VulkanApiVersion = VK_API_VERSION_1_2;
+    constexpr auto VulkanApiVersion = VK_API_VERSION_1_0;
     constexpr bool BreakOnVulkanWarning = false;
     constexpr bool BreakOnVulkanError = true;
 
@@ -242,7 +242,7 @@ void EnableVulkanLayer(
     std::vector<const char*>& enabledLayers, const std::vector<vk::LayerProperties>& availableLayers,
     const char* layerName, Required required)
 {
-    if (contains(availableLayers, std::string_view(layerName), &vk::LayerProperties::layerName))
+    if (contains(availableLayers, std::string_view(layerName), GetLayerName))
     {
         spdlog::info("Enabling Vulkan layer {}", layerName);
         enabledLayers.push_back(layerName);
@@ -261,7 +261,7 @@ void EnableVulkanExtension(
     std::vector<const char*>& enabledExtensions, const std::vector<vk::ExtensionProperties>& availableExtensions,
     const char* extensionName, Required required)
 {
-    if (contains(availableExtensions, std::string_view(extensionName), &vk::ExtensionProperties::extensionName))
+    if (contains(availableExtensions, std::string_view(extensionName), GetExtensionName))
     {
         spdlog::info("Enabling Vulkan extension {}", extensionName);
         enabledExtensions.push_back(extensionName);
@@ -366,16 +366,38 @@ vk::UniqueDevice CreateDevice(VulkanLoader& loader, const PhysicalDevice& physic
         EnableVulkanLayer(layers, availableLayers, "VK_LAYER_KHRONOS_validation", Required::False);
     }
 
-    const vk::DeviceCreateInfo deviceCreateInfo
-        = {.queueCreateInfoCount = size32(queueCreateInfos),
-           .pQueueCreateInfos = data(queueCreateInfos),
-           .enabledLayerCount = size32(layers),
-           .ppEnabledLayerNames = data(layers),
-           .enabledExtensionCount = size32(physicalDevice.requiredExtensions),
-           .ppEnabledExtensionNames = data(physicalDevice.requiredExtensions),
-           .pEnabledFeatures = &deviceFeatures};
+    std::vector<const char*> extensions = physicalDevice.requiredExtensions;
+    EnableVulkanExtension(extensions, availableExtensions, "VK_EXT_descriptor_indexing", Required::True);
 
-    auto ret = physicalDevice.physicalDevice.createDeviceUnique(deviceCreateInfo, s_allocator);
+    const vk::StructureChain createInfo = {
+        vk::DeviceCreateInfo{
+            .queueCreateInfoCount = size32(queueCreateInfos),
+            .pQueueCreateInfos = data(queueCreateInfos),
+            .enabledLayerCount = size32(layers),
+            .ppEnabledLayerNames = data(layers),
+            .enabledExtensionCount = size32(extensions),
+            .ppEnabledExtensionNames = data(extensions),
+            .pEnabledFeatures = &deviceFeatures,
+        },
+        vk::PhysicalDeviceDescriptorIndexingFeatures{
+            // Enable non uniform array indexing
+            // (#extension GL_EXT_nonuniform_qualifier : require)
+            .shaderSampledImageArrayNonUniformIndexing = true,
+            .shaderStorageBufferArrayNonUniformIndexing = true,
+            .shaderStorageImageArrayNonUniformIndexing = true,
+            // All of these enables to update after the
+            // commandbuffer used the bindDescriptorsSet
+            .descriptorBindingSampledImageUpdateAfterBind = true,
+            .descriptorBindingStorageImageUpdateAfterBind = true,
+            .descriptorBindingStorageBufferUpdateAfterBind = true,
+            // Enable non bound descriptors slots
+            .descriptorBindingPartiallyBound = true,
+            // Enable non sized arrays
+            .runtimeDescriptorArray = true,
+        },
+    };
+
+    auto ret = physicalDevice.physicalDevice.createDeviceUnique(createInfo.get<vk::DeviceCreateInfo>(), s_allocator);
     loader.LoadDeviceFunctions(ret.get());
     return ret;
 }
@@ -500,28 +522,26 @@ void CopyImageToBuffer(
     }
 }
 
-vk::UniqueRenderPass CreateRenderPass(
-    vk::Device device, const PhysicalDevice& physicalDevice, const FramebufferLayout& layout, FramebufferUsage usage)
+vk::UniqueRenderPass CreateRenderPass(vk::Device device, const FramebufferLayout& layout, FramebufferUsage usage)
 {
-    return CreateRenderPass(device, physicalDevice, layout, usage, {});
+    return CreateRenderPass(device, layout, usage, {});
 }
 
-vk::UniqueRenderPass CreateRenderPass(
-    vk::Device device, const PhysicalDevice& physicalDevice, const FramebufferLayout& layout, FramebufferUsage usage,
-    const RenderPassInfo& renderPassInfo)
+vk::UniqueRenderPass
+CreateRenderPass(vk::Device device, const FramebufferLayout& layout, FramebufferUsage usage, const RenderPassInfo& renderPassInfo)
 {
     TEIDE_ASSERT(layout.colorFormat.has_value() || layout.depthStencilFormat.has_value());
 
     const bool multisampling = layout.sampleCount != 1;
+    TEIDE_ASSERT(!(multisampling && layout.resolveDepthStencil), "Resolving depth/stencil targets not supported");
+
     const bool resolveColor = multisampling && layout.resolveColor;
-    const bool resolveDepthStencil = multisampling && layout.resolveDepthStencil;
     const bool loadColor = renderPassInfo.colorLoadOp == vk::AttachmentLoadOp::eLoad;
 
-    std::vector<vk::AttachmentDescription2> attachments;
-    std::vector<vk::AttachmentReference2> colorAttachmentRefs;
-    std::vector<vk::AttachmentReference2> resolveAttachmentRefs;
-    std::optional<vk::AttachmentReference2> depthStencilAttachmentRef;
-    std::optional<vk::AttachmentReference2> depthStencilResolveAttachmentRef;
+    std::vector<vk::AttachmentDescription> attachments;
+    std::vector<vk::AttachmentReference> colorAttachmentRefs;
+    std::vector<vk::AttachmentReference> resolveAttachmentRefs;
+    std::optional<vk::AttachmentReference> depthStencilAttachmentRef;
 
     if (layout.colorFormat.has_value())
     {
@@ -546,7 +566,7 @@ vk::UniqueRenderPass CreateRenderPass(
     {
         TEIDE_ASSERT(*layout.depthStencilFormat != Format::Unknown);
 
-        depthStencilAttachmentRef = vk::AttachmentReference2{
+        depthStencilAttachmentRef = vk::AttachmentReference{
             .attachment = size32(attachments),
             .layout = vk::ImageLayout::eDepthStencilAttachmentOptimal,
         };
@@ -559,8 +579,7 @@ vk::UniqueRenderPass CreateRenderPass(
             .stencilLoadOp = vk::AttachmentLoadOp::eDontCare,
             .stencilStoreOp = multisampling ? vk::AttachmentStoreOp::eDontCare : renderPassInfo.stencilStoreOp,
             .initialLayout = vk::ImageLayout::eUndefined,
-            .finalLayout
-            = resolveDepthStencil ? vk::ImageLayout::eDepthStencilAttachmentOptimal : GetDepthStencilImageLayout(usage),
+            .finalLayout = GetDepthStencilImageLayout(usage),
         });
     }
 
@@ -583,48 +602,15 @@ vk::UniqueRenderPass CreateRenderPass(
         });
     }
 
-    if (resolveDepthStencil)
-    {
-        TEIDE_ASSERT(layout.depthStencilFormat.has_value() && layout.captureDepthStencil);
-
-        depthStencilResolveAttachmentRef = vk::AttachmentReference2{
-            .attachment = size32(attachments),
-            .layout = vk::ImageLayout::eDepthStencilAttachmentOptimal,
-            .aspectMask = vk::ImageAspectFlagBits::eDepth | vk::ImageAspectFlagBits::eStencil,
-        };
-
-        attachments.push_back({
-            .format = ToVulkan(*layout.depthStencilFormat),
-            .samples = vk::SampleCountFlagBits::e1,
-            .loadOp = vk::AttachmentLoadOp::eDontCare,
-            .storeOp = renderPassInfo.depthStoreOp,
-            .initialLayout = vk::ImageLayout::eUndefined,
-            .finalLayout = GetDepthStencilImageLayout(usage),
-        });
-    }
-
-    const auto& resolveProperties = physicalDevice.depthStencilResolveProperties;
-
-    const vk::StructureChain subpass = {
-        vk::SubpassDescription2{
-            .pipelineBindPoint = vk::PipelineBindPoint::eGraphics,
-            .colorAttachmentCount = size32(colorAttachmentRefs),
-            .pColorAttachments = data(colorAttachmentRefs),
-            .pResolveAttachments = data(resolveAttachmentRefs),
-            .pDepthStencilAttachment = ToPointer(depthStencilAttachmentRef),
-        },
-        vk::SubpassDescriptionDepthStencilResolve{
-            .depthResolveMode = (resolveProperties.supportedDepthResolveModes & vk::ResolveModeFlagBits::eAverage)
-                ? vk::ResolveModeFlagBits::eAverage
-                : vk::ResolveModeFlagBits::eSampleZero,
-            .stencilResolveMode = (resolveProperties.supportedStencilResolveModes & vk::ResolveModeFlagBits::eAverage)
-                ? vk::ResolveModeFlagBits::eAverage
-                : vk::ResolveModeFlagBits::eSampleZero,
-            .pDepthStencilResolveAttachment = ToPointer(depthStencilResolveAttachmentRef),
-        },
+    const vk::SubpassDescription subpass = {
+        .pipelineBindPoint = vk::PipelineBindPoint::eGraphics,
+        .colorAttachmentCount = size32(colorAttachmentRefs),
+        .pColorAttachments = data(colorAttachmentRefs),
+        .pResolveAttachments = data(resolveAttachmentRefs),
+        .pDepthStencilAttachment = ToPointer(depthStencilAttachmentRef),
     };
 
-    const vk::SubpassDependency2 dependency = {
+    const vk::SubpassDependency dependency = {
         .srcSubpass = VK_SUBPASS_EXTERNAL,
         .dstSubpass = 0,
         .srcStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput | vk::PipelineStageFlagBits::eEarlyFragmentTests,
@@ -633,16 +619,16 @@ vk::UniqueRenderPass CreateRenderPass(
         .dstAccessMask = vk ::AccessFlagBits::eColorAttachmentWrite | vk::AccessFlagBits::eDepthStencilAttachmentWrite,
     };
 
-    const vk::RenderPassCreateInfo2 createInfo = {
+    const vk::RenderPassCreateInfo createInfo = {
         .attachmentCount = size32(attachments),
         .pAttachments = data(attachments),
         .subpassCount = 1,
-        .pSubpasses = &subpass.get<vk::SubpassDescription2>(),
+        .pSubpasses = &subpass,
         .dependencyCount = 1,
         .pDependencies = &dependency,
     };
 
-    return device.createRenderPass2Unique(createInfo, s_allocator);
+    return device.createRenderPassUnique(createInfo, s_allocator);
 }
 
 vk::UniqueFramebuffer

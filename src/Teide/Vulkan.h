@@ -185,11 +185,9 @@ void CopyImageToBuffer(
     vk::CommandBuffer cmdBuffer, vk::Image source, vk::Buffer destination, Format imageFormat, vk::Extent3D imageExtent,
     uint32 numMipLevels);
 
+vk::UniqueRenderPass CreateRenderPass(vk::Device device, const FramebufferLayout& layout, FramebufferUsage usage);
 vk::UniqueRenderPass CreateRenderPass(
-    vk::Device device, const PhysicalDevice& physicalDevice, const FramebufferLayout& layout, FramebufferUsage usage);
-vk::UniqueRenderPass CreateRenderPass(
-    vk::Device device, const PhysicalDevice& physicalDevice, const FramebufferLayout& layout, FramebufferUsage usage,
-    const RenderPassInfo& renderPassInfo);
+    vk::Device device, const FramebufferLayout& layout, FramebufferUsage usage, const RenderPassInfo& renderPassInfo);
 vk::UniqueFramebuffer
 CreateFramebuffer(vk::Device device, vk::RenderPass renderPass, Geo::Size2i size, std::span<const vk::ImageView> imageViews);
 
@@ -225,6 +223,15 @@ template <class T>
 auto MakeHandle(T&& object)
 {
     return std::make_shared<typename std::remove_const_t<T>>(std::forward<T>(object));
+}
+
+inline std::string_view GetLayerName(const vk::LayerProperties& obj)
+{
+    return obj.layerName;
+}
+inline std::string_view GetExtensionName(const vk::ExtensionProperties& obj)
+{
+    return obj.extensionName;
 }
 
 } // namespace Teide

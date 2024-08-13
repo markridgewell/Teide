@@ -128,9 +128,10 @@ namespace
     {
         // Check that all required extensions are supported
         const auto supportedExtensions = device.physicalDevice.enumerateDeviceExtensionProperties();
-        const bool supportsAllExtensions = std::ranges::all_of(device.requiredExtensions, [&](std::string_view extensionName) {
-            return std::ranges::count(supportedExtensions, extensionName, &vk::ExtensionProperties::extensionName) > 0;
-        });
+        const bool supportsAllExtensions
+            = std::ranges::all_of(device.requiredExtensions, [&](std::string_view extensionName) {
+                  return std::ranges::count(supportedExtensions, extensionName, GetExtensionName) > 0;
+              });
 
         if (!supportsAllExtensions)
         {
@@ -1011,7 +1012,7 @@ VulkanDevice::CreateRenderPass(const FramebufferLayout& framebufferLayout, const
     const auto [it, inserted] = m_renderPassCache.emplace(desc, nullptr);
     if (inserted)
     {
-        it->second = Teide::CreateRenderPass(m_device.get(), m_physicalDevice, framebufferLayout, usage, renderPassInfo);
+        it->second = Teide::CreateRenderPass(m_device.get(), framebufferLayout, usage, renderPassInfo);
     }
     return it->second.get();
 }
