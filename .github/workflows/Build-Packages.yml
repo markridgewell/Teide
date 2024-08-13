@@ -31,13 +31,8 @@ jobs:
         - preset: clang++-18
           runner: ubuntu-latest
           extra-packages: ninja-build clang++-18
-        - preset: clang++-18
-          runner: ubuntu-latest
-          extra-packages: ninja-build clang++-18
-          sanitizer: UBSAN
-          name-suffix: -ubsan
 
-    name: ${{startsWith(matrix.runner, 'windows') && 'Windows' || 'Linux'}}${{matrix.name-suffix}}
+    name: ${{startsWith(matrix.runner, 'windows') && 'Windows' || 'Linux'}}
     runs-on: ${{matrix.runner}}
 
     steps:
@@ -95,30 +90,12 @@ jobs:
 
     - name: Dump CMake output logs
       if: failure()
-      shell: bash
-      run: |
-        paths="external/vcpkg build/${{matrix.preset}}"
-        for file in $(find $paths -name '*.log'); do
-            if [ -s $file ]; then
-                echo "::group::$file"
-                cat $file
-                echo "::endgroup::"
-            fi
-        done
+      run: bash .github/scripts/dump-vcpkg-logs.sh ${{matrix.preset}}
 
     - name: Export packages
       if: steps.cache.outputs.cache-hit != 'true'
       run: |
         ./external/vcpkg/vcpkg export --raw --output=exports --output-dir=. --x-install-root=build/${{matrix.preset}}/vcpkg_installed
-
-    - name: Delete LLVM files # they take up way too much space and we don't need them
-      if: steps.cache.outputs.cache-hit != 'true'
-      shell: bash
-      working-directory: exports/installed
-      run: |
-        cat vcpkg/info/llvm*.list | grep -v '/$' | xargs rm # Remove all files in llvm package
-        find . -type d -empty -delete # Remove empty directories
-        rm vcpkg/info/llvm*.list # Remove listing file
 
     - name: List contents
       if: steps.cache.outputs.cache-hit != 'true'

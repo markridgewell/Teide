@@ -242,7 +242,7 @@ void EnableVulkanLayer(
     std::vector<const char*>& enabledLayers, const std::vector<vk::LayerProperties>& availableLayers,
     const char* layerName, Required required)
 {
-    if (contains(availableLayers, std::string_view(layerName), &vk::LayerProperties::layerName))
+    if (contains(availableLayers, std::string_view(layerName), GetLayerName))
     {
         spdlog::info("Enabling Vulkan layer {}", layerName);
         enabledLayers.push_back(layerName);
@@ -261,7 +261,7 @@ void EnableVulkanExtension(
     std::vector<const char*>& enabledExtensions, const std::vector<vk::ExtensionProperties>& availableExtensions,
     const char* extensionName, Required required)
 {
-    if (contains(availableExtensions, std::string_view(extensionName), &vk::ExtensionProperties::extensionName))
+    if (contains(availableExtensions, std::string_view(extensionName), GetExtensionName))
     {
         spdlog::info("Enabling Vulkan extension {}", extensionName);
         enabledExtensions.push_back(extensionName);

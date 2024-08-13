@@ -449,7 +449,8 @@ class VkexOutputGenerator(OutputGenerator):
 
         # List of structs known to NOT work
         brokenStructs = [
-            'VkVideoDecodeH265PictureInfoKHR'
+            'VkVideoDecodeH265PictureInfoKHR',
+            'VkCudaModuleCreateInfoNV'
         ]
 
         if typeName in brokenStructs:

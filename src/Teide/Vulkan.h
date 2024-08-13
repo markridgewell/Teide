@@ -225,4 +225,13 @@ auto MakeHandle(T&& object)
     return std::make_shared<typename std::remove_const_t<T>>(std::forward<T>(object));
 }
 
+inline std::string_view GetLayerName(const vk::LayerProperties& obj)
+{
+    return obj.layerName;
+}
+inline std::string_view GetExtensionName(const vk::ExtensionProperties& obj)
+{
+    return obj.extensionName;
+}
+
 } // namespace Teide

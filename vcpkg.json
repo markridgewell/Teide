@@ -1,16 +1,26 @@
 {
   "name": "teide",
   "version": "0.0.0",
-  "builtin-baseline": "2b14b606cea54573eec11080a3ac00737958b6d6",
+  "builtin-baseline": "8ae59b5b1329a51875abc71d528da93d9c3e8972",
   "dependencies": [
     "fmt",
     "function2",
-    "glslang",
+    {
+      "name": "glslang",
+      "features": [
+        "rtti"
+      ]
+    },
     {
       "name": "sdl2",
       "features": [
         "vulkan"
       ]
+    },
+    {
+      "name": "dbus",
+      "default-features": false,
+      "platform": "linux"
     },
     "sdl2-image",
     "spdlog",
@@ -36,13 +46,6 @@
     "swiftshader": {
       "description": "Build with Swiftshader support",
       "dependencies": [
-        {
-          "name": "llvm",
-          "default-features": false,
-          "features": [
-            "enable-rtti"
-          ]
-        },
         "swiftshader"
       ]
     },

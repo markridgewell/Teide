@@ -92,6 +92,7 @@ td_add_library(
     PUBLIC_DEPS spdlog::spdlog
     PRIVATE_DEPS
         Vulkan::Vulkan
+        GPUOpen::VulkanMemoryAllocator
         VulkanMemoryAllocator-Hpp::VulkanMemoryAllocator-Hpp
         SDL2::SDL2
         fmt::fmt

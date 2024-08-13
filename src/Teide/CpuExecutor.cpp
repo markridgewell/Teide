@@ -9,38 +9,7 @@
 namespace Teide
 {
 
-namespace
-{
-    thread_local bool s_threadHasName = false;
-}
-
-class WorkerInterface : public ::tf::WorkerInterface
-{
-    void scheduler_prologue(tf::Worker& worker [[maybe_unused]]) override
-    {
-        if (!s_threadHasName)
-        {
-            SetCurrentTheadName(fmt::format("Worker{}", worker.id()));
-            s_threadHasName = true;
-        }
-    }
-    void scheduler_epilogue(tf::Worker& worker [[maybe_unused]], std::exception_ptr ptr [[maybe_unused]]) override
-    {
-        if (ptr)
-        {
-            try
-            {
-                std::rethrow_exception(ptr);
-            }
-            catch (const std::exception& e)
-            {
-                TEIDE_BREAK("Unhandled exception in worker thread: {}", e.what());
-            }
-        }
-    }
-};
-
-CpuExecutor::CpuExecutor(uint32 numThreads) : m_executor(numThreads, std::make_shared<WorkerInterface>())
+CpuExecutor::CpuExecutor(uint32 numThreads) : m_executor(numThreads)
 {
     m_schedulerThread = std::thread([this] {
         SetCurrentTheadName("CpuExecutor");

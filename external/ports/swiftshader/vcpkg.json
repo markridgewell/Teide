@@ -20,13 +20,6 @@
     },
     {
       "name": "marl"
-    },
-    {
-      "name": "llvm",
-      "default-features": false,
-      "features": [
-        "enable-rtti"
-      ]
     }
   ]
 }

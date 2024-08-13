@@ -14,4 +14,10 @@
 #    define VMA_DEBUG_DETECT_CORRUPTION 1
 #endif
 
+namespace vk::detail
+{
+// HACK: Workaround for vulkan-memory-allocator-hpp using the wrong vulkan-hpp namespace
+using namespace vk;
+} // namespace vk::detail
+
 #include <vulkan-memory-allocator-hpp/vk_mem_alloc.hpp>
