@@ -36,7 +36,7 @@ jobs:
           extra-packages: ninja-build clang++-18
           sanitizer: MSAN
 
-    name: ${{startsWith(matrix.runner, 'windows') && 'Windows' || 'Linux'}}${{matrix.sanitizer == 'OFF' && '' || matrix.sanitizer}}
+    name: ${{startsWith(matrix.runner, 'windows') && 'Windows' || 'Linux'}}${{matrix.sanitizer != 'OFF' && matrix.sanitizer || ''}}
     runs-on: ${{matrix.runner}}
 
     steps:
