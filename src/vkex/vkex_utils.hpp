@@ -29,9 +29,13 @@ public:
     template <typename U>
         requires(std::ranges::sized_range<U> && !std::same_as<U, Array<T>>)
     Array(const U& range) : // cppcheck-suppress noExplicitConstructor
-        m_size{static_cast<std::uint32_t>(range.size())}, m_data{std::make_unique<T[]>(m_size)}
+        m_size{static_cast<std::uint32_t>(range.size())}
     {
-        std::ranges::copy(range, m_data.get());
+        if (m_size > 0)
+        {
+            m_data = std::make_unique<T[]>(m_size);
+            std::ranges::copy(range, m_data.get());
+        }
     }
 
     template <typename U>
@@ -39,9 +43,13 @@ public:
     // clang-tidy thinks this might suppress the move constructor, but the requires clause takes care of that.
     // NOLINTNEXTLINE(bugprone-forwarding-reference-overload)
     Array(U&& range) : // cppcheck-suppress noExplicitConstructor
-        m_size{static_cast<std::uint32_t>(range.size())}, m_data{new T[m_size]}
+        m_size{static_cast<std::uint32_t>(range.size())}
     {
-        std::ranges::move(std::forward<U>(range), m_data.get());
+        if (m_size > 0)
+        {
+            m_data = std::make_unique<T[]>(m_size);
+            std::ranges::move(std::forward<U>(range), m_data.get());
+        }
     }
 
     template <typename U>
