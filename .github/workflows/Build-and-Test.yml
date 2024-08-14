@@ -29,7 +29,7 @@ jobs:
 
   build-and-test:
     needs: build-packages
-    if: needs.build-packages.result == 'success' || needs.build-packages.result == 'skipped'
+    if: always()
     strategy:
       fail-fast: false
       matrix:
