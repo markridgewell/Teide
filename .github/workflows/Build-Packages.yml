@@ -37,6 +37,10 @@ jobs:
     runs-on: ${{matrix.runner}}
 
     steps:
+    - name: List changes
+      if: github.event_name == 'pull_request'
+      run: gh pr diff --name-only
+
     - name: Checkout
       uses: actions/checkout@v4.1.7
       with:
