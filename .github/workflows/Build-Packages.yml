@@ -51,7 +51,7 @@ jobs:
       id: cache
       uses: actions/cache@v4.0.2
       with:
-        key: vcpkg-export-${{env.VCPKG_TRIPLET}}-${{hashFiles('vcpkg.json', 'vcpkg-configuration.json', 'external/ports/**', 'cmake/triplets/*.cmake', 'cmake/toolchains/*.cmake')}}
+        key: vcpkg-export-${{env.VCPKG_TRIPLET}}-${{hashFiles('vcpkg.json', 'vcpkg-configuration.json', 'external/ports/**', 'tools/cmake/triplets/*.cmake', 'tools/cmake/toolchains/*.cmake')}}
         path: './exports'
 
     - name: 'Setup NuGet credentials'
