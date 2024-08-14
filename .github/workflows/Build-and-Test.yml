@@ -24,12 +24,10 @@ env:
 
 jobs:
   build-packages:
-    if: github.event_name == 'push'
     uses: ./.github/workflows/Build-Packages.yml
 
   build-and-test:
     needs: build-packages
-    if: always()
     strategy:
       fail-fast: false
       matrix:
