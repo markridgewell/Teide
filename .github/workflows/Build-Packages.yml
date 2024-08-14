@@ -6,6 +6,11 @@ on:
     - cron:  '20 5,17 * * *'
   workflow_dispatch:
   workflow_call:
+    inputs:
+      pr_number:
+        default: ''
+        required: false
+        type: string
   pull_request:
     # Only run for pull requests when the vcpkg configuration has changed
     paths:
@@ -38,8 +43,8 @@ jobs:
 
     steps:
     - name: List changes
-      if: github.event_name == 'pull_request'
-      run: gh pr diff --name-only
+      if: inputs.pr_number != ''
+      run: gh pr diff --name-only --repo ${{ github.repository }} ${{ inputs.pr_number }}
       env:
         GH_TOKEN: ${{ github.token }}
 

@@ -25,6 +25,8 @@ env:
 jobs:
   build-packages:
     uses: ./.github/workflows/Build-Packages.yml
+    with:
+      pr_number: ${{ github.event_name == 'pull_request' && github.event.number || '' }}
 
   build-and-test:
     needs: build-packages
