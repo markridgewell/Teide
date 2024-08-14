@@ -5,6 +5,7 @@ on:
     # Run at 5:20am and 5:20pm every day
     - cron:  '20 5,17 * * *'
   workflow_dispatch:
+  workflow_call:
   pull_request:
     # Only run for pull requests when the vcpkg configuration has changed
     paths:
