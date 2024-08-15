@@ -15,8 +15,7 @@ runs:
   using: composite
   steps:
     - name: Determine cache key
-      if: steps.package-config.outputs.changed == 'true'
-      id: cache-key
+      id: determine
       uses: ./.github/actions/get-packages-cache-key
       with:
         sanitizer: ${{ matrix.sanitizer }}
@@ -25,6 +24,6 @@ runs:
       id: cache
       uses: actions/cache/restore@v3
       with:
-        key: ${{ steps.cache-key.outputs.cache-key }}
+        key: ${{ steps.determine.outputs.cache-key }}
         path: './exports'
         fail-on-cache-miss: true
