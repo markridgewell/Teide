@@ -87,7 +87,7 @@ jobs:
         path: './exports'
 
     - name: 'Setup NuGet credentials'
-      if: steps.cache.outputs.cache-hit != 'true'
+      if: steps.cache.outputs.cache-hit == 'false'
       shell: 'bash'
       run: |
         alias nuget=${{runner.os == 'Linux' && 'mono ' || ''}}$(./external/vcpkg/vcpkg fetch nuget | tail -n 1)
@@ -101,20 +101,20 @@ jobs:
           -source "https://nuget.pkg.github.com/markridgewell/index.json"
 
     - name: Setup vcpkg
-      if: steps.cache.outputs.cache-hit != 'true'
+      if: steps.cache.outputs.cache-hit == 'false'
       uses: lukka/run-vcpkg@v11.5
       with:
         vcpkgDirectory: '${{github.workspace}}/external/vcpkg'
         vcpkgJsonGlob: 'vcpkg.json'
 
     - name: Install dependencies
-      if: steps.cache.outputs.cache-hit != 'true'
+      if: steps.cache.outputs.cache-hit == 'false'
       uses: ./.github/actions/install-dependencies
       with:
         extra-packages: ${{matrix.extra-packages}}
 
     - name: Configure CMake
-      if: steps.cache.outputs.cache-hit != 'true'
+      if: steps.cache.outputs.cache-hit == 'false'
       run: cmake --preset ${{matrix.preset}} -DTEIDE_SANITIZER=${{matrix.sanitizer}} "-DVCPKG_INSTALL_OPTIONS=--x-abi-tools-use-exact-versions${{runner.debug && ';--debug' || ''}}"
 
     - name: Dump CMake output logs
@@ -122,17 +122,17 @@ jobs:
       run: bash .github/scripts/dump-vcpkg-logs.sh ${{matrix.preset}}
 
     - name: Export packages
-      if: steps.cache.outputs.cache-hit != 'true'
+      if: steps.cache.outputs.cache-hit == 'false'
       run: |
         ./external/vcpkg/vcpkg export --raw --output=exports --output-dir=. --x-install-root=build/${{matrix.preset}}/vcpkg_installed
 
     - name: List contents
-      if: steps.cache.outputs.cache-hit != 'true'
+      if: steps.cache.outputs.cache-hit == 'false'
       shell: bash
       run: ls -R exports
 
     - name: Save packages as artifact
-      if: steps.cache.outputs.cache-hit != 'true'
+      if: steps.cache.outputs.cache-hit == 'false'
       uses: actions/upload-artifact@v4.3.6
       with:
         name: vcpkg-export-${{env.VCPKG_TRIPLET}}
