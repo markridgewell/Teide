@@ -46,6 +46,7 @@ jobs:
     steps:
     - name: List changes
       if: inputs.pr_number != ''
+      shell: bash
       run: |
         changes=$(gh pr diff \
           --name-only \
