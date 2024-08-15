@@ -40,11 +40,25 @@ jobs:
 
     name: ${{startsWith(matrix.runner, 'windows') && 'Windows' || 'Linux'}}
     runs-on: ${{matrix.runner}}
+    env:
+      PATTERNS: vcpkg.json vcpkg-configuration.json external/ports/** tools/cmake/triplets/*.cmake tools/cmake/toolchains/*.cmake
 
     steps:
     - name: List changes
       if: inputs.pr_number != ''
-      run: gh pr diff --name-only --repo ${{ github.repository }} ${{ inputs.pr_number }}
+      run: |
+        changes=$(gh pr diff \
+          --name-only \
+          --repo ${{ github.repository }} \
+          ${{ inputs.pr_number }})
+        set -f
+        for pattern in ${{ env.PATTERNS }}; do
+          for filename in $changes; do
+            if [[ $filename == $pattern ]]; then
+              echo "   $pattern matches $filename"
+            fi
+          done
+        done
       env:
         GH_TOKEN: ${{ github.token }}
 
