@@ -73,17 +73,19 @@ jobs:
         lfs: false
         submodules: recursive
 
-    - name: Determine target triplet
+    - name: Determine cache key
       if: steps.package-config.outputs.changed == 'true'
-      shell: bash
-      run: echo "VCPKG_TRIPLET=$(cmake -DTEIDE_SANITIZER=${{matrix.sanitizer}} -P tools/cmake/scripts/DetermineTriplet.cmake)" >> "$GITHUB_ENV"
+      id: cache-key
+      uses: ./.github/actions/get-packages-cache-key
+      with:
+        sanitizer: ${{ matrix.sanitizer }}
 
     - name: Cache
       if: steps.package-config.outputs.changed == 'true'
       id: cache
       uses: actions/cache@v4.0.2
       with:
-        key: vcpkg-export-${{env.VCPKG_TRIPLET}}-${{hashFiles('vcpkg.json', 'vcpkg-configuration.json', 'external/ports/**', 'tools/cmake/triplets/*.cmake', 'tools/cmake/toolchains/*.cmake')}}
+        key: ${{ steps.cache-key.outputs.cache-key }}
         path: './exports'
 
     - name: 'Setup NuGet credentials'

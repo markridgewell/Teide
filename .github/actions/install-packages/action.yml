@@ -14,20 +14,17 @@ outputs:
 runs:
   using: composite
   steps:
-    - name: Determine target triplet
-      id: determine-triplet
-      shell: bash
-      run: |
-        TRIPLET=$(cmake \
-          -DTEIDE_SANITIZER=${{inputs.sanitizer}} \
-          -P tools/cmake/scripts/DetermineTriplet.cmake)
-        echo "VCPKG_TRIPLET=${TRIPLET}" >> $GITHUB_ENV
-        echo "dir=${{github.workspace}}/exports/installed/${TRIPLET}" >> $GITHUB_OUTPUT
+    - name: Determine cache key
+      if: steps.package-config.outputs.changed == 'true'
+      id: cache-key
+      uses: ./.github/actions/get-packages-cache-key
+      with:
+        sanitizer: ${{ matrix.sanitizer }}
 
     - name: Restore packages from cache
       id: cache
       uses: actions/cache/restore@v3
       with:
-        key: vcpkg-export-${{env.VCPKG_TRIPLET}}-${{hashFiles('vcpkg.json', 'vcpkg-configuration.json', 'external/ports/**', 'cmake/triplets/*.cmake', 'cmake/toolchains/*.cmake')}}
+        key: ${{ steps.cache-key.outputs.cache-key }}
         path: './exports'
         fail-on-cache-miss: true

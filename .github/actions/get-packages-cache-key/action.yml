@@ -1,0 +1,31 @@
+name: 'get-packages-cache-key'
+description: 'Determine the cache key to use for packages in the GitHub Actions cache'
+
+inputs:
+  sanitizer:
+    description: 'Sanitizer to be used, or OFF to disable'
+    required: true
+    default: 'OFF'
+outputs:
+  cache-key:
+    description: "Cache key to use for packages"
+    value: ${{ steps.determine-cache-key.outputs.cache-key }}
+
+runs:
+  using: composite
+  steps:
+    - name: Determine cache key
+      id: determine-cache-key
+      shell: bash
+      run: |
+        vcpkg_triplet=$(cmake \
+          -DTEIDE_SANITIZER=${{inputs.sanitizer}} \
+          -P tools/cmake/scripts/DetermineTriplet.cmake)
+        echo "vcpkg_triplet = $vcpkg_triplet"
+
+        config_hash=$((cat ${{ env.PATTERNS }} 2>/dev/null) | sha256sum | cut -f1 -d" ")
+        echo "config_hash = $config_hash"
+
+        key="vcpkg-export-$vcpkg_triplet-$config_hash"
+        echo "key = $key"
+        echo "cache-key=$key" >> $GITHUB_OUTPUT
