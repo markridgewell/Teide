@@ -67,21 +67,21 @@ jobs:
         GH_TOKEN: ${{ github.token }}
 
     - name: Checkout
-      if: steps.package-config.outputs.changed == 'true'
+      if: steps.package-config.outputs.changed != 'false'
       uses: actions/checkout@v4.1.7
       with:
         lfs: false
         submodules: recursive
 
     - name: Determine cache key
-      if: steps.package-config.outputs.changed == 'true'
+      if: steps.package-config.outputs.changed != 'false'
       id: cache-key
       uses: ./.github/actions/get-packages-cache-key
       with:
         sanitizer: ${{ matrix.sanitizer }}
 
     - name: Cache
-      if: steps.package-config.outputs.changed == 'true'
+      if: steps.package-config.outputs.changed != 'false'
       id: cache
       uses: actions/cache@v4.0.2
       with:
