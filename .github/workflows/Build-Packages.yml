@@ -44,8 +44,9 @@ jobs:
       PATTERNS: vcpkg.json vcpkg-configuration.json external/ports/** tools/cmake/triplets/*.cmake tools/cmake/toolchains/*.cmake
 
     steps:
-    - name: List changes
+    - name: Detect package configuration changes
       if: inputs.pr_number != ''
+      id: package-config
       shell: bash
       run: |
         changes=$(gh pr diff \
@@ -56,24 +57,29 @@ jobs:
         for pattern in ${{ env.PATTERNS }}; do
           for filename in $changes; do
             if [[ $filename == $pattern ]]; then
-              echo "   $pattern matches $filename"
+              echo "changed=true" >> $GITHUB_OUTPUT
+              exit 0
             fi
           done
         done
+        echo "changed=false" >> $GITHUB_OUTPUT
       env:
         GH_TOKEN: ${{ github.token }}
 
     - name: Checkout
+      if: steps.package-config.outputs.changed == 'true'
       uses: actions/checkout@v4.1.7
       with:
         lfs: false
         submodules: recursive
 
     - name: Determine target triplet
+      if: steps.package-config.outputs.changed == 'true'
       shell: bash
       run: echo "VCPKG_TRIPLET=$(cmake -DTEIDE_SANITIZER=${{matrix.sanitizer}} -P tools/cmake/scripts/DetermineTriplet.cmake)" >> "$GITHUB_ENV"
 
     - name: Cache
+      if: steps.package-config.outputs.changed == 'true'
       id: cache
       uses: actions/cache@v4.0.2
       with:
