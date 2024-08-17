@@ -18,7 +18,7 @@ runs:
       id: determine-cache-key
       shell: bash
       env:
-        PATTERNS: vcpkg.json vcpkg-configuration.json external/ports/** tools/cmake/triplets/*.cmake tools/cmake/toolchains/*.cmake
+        PATTERNS: vcpkg.json vcpkg-configuration.json tools/vcpkg/**
       run: |
         vcpkg_triplet=$(cmake \
           -DTEIDE_SANITIZER=${{inputs.sanitizer}} \

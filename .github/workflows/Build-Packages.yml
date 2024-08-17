@@ -11,13 +11,6 @@ on:
         default: ''
         required: false
         type: string
-  pull_request:
-    # Only run for pull requests when the vcpkg configuration has changed
-    paths:
-    - 'vcpkg.json'
-    - 'vcpkg-configuration.json'
-    - 'external/ports/**'
-    - 'tools/cmake/triplets/*.cmake'
 
 env:
   VULKAN_SDK: ./VULKAN_SDK
@@ -41,7 +34,7 @@ jobs:
     name: ${{startsWith(matrix.runner, 'windows') && 'Windows' || 'Linux'}}
     runs-on: ${{matrix.runner}}
     env:
-      PATTERNS: vcpkg.json vcpkg-configuration.json external/ports/** tools/cmake/triplets/*.cmake tools/cmake/toolchains/*.cmake
+      PATTERNS: vcpkg.json vcpkg-configuration.json tools/vcpkg/**
 
     steps:
     - name: Detect package configuration changes
