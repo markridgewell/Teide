@@ -11,7 +11,7 @@ function(setup_sanitizer sanitizer)
         message("Setting env var LIBCXX_INCLUDE_DIR to $ENV{LIBCXX_INCLUDE_DIR}")
         message("Setting env var LIBCXX_LIB_DIR to $ENV{LIBCXX_LIB_DIR}")
 
-        set(msan_toolchain "${CMAKE_CURRENT_SOURCE_DIR}/tools/cmake/toolchains/clang-msan.cmake")
+        set(msan_toolchain "${CMAKE_CURRENT_SOURCE_DIR}/tools/vcpkg/toolchains/clang-msan.cmake")
         if(TEIDE_USE_VCPKG)
             set(VCPKG_CHAINLOAD_TOOLCHAIN_FILE
                 "${msan_toolchain}"
