@@ -81,7 +81,7 @@ jobs:
         path: './exports'
 
     - name: 'Setup NuGet credentials'
-      if: steps.cache.outputs.cache-hit == 'false'
+      if: steps.package-config.outputs.changed != 'false' && steps.cache.outputs.cache-hit != 'true'
       shell: 'bash'
       run: |
         alias nuget=${{runner.os == 'Linux' && 'mono ' || ''}}$(./external/vcpkg/vcpkg fetch nuget | tail -n 1)
@@ -128,5 +128,5 @@ jobs:
       if: steps.package-config.outputs.changed != 'false' && steps.cache.outputs.cache-hit != 'true'
       uses: actions/upload-artifact@v4.3.6
       with:
-        name: vcpkg-export-${{env.VCPKG_TRIPLET}}
+        name: vcpkg-export-${{ steps.cache-key.outputs.cache-key }}
         path: './exports'
