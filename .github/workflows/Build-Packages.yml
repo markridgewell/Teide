@@ -76,13 +76,22 @@ jobs:
       with:
         sanitizer: ${{ matrix.sanitizer }}
 
-    - name: Cache
+    - name: Cache packages
       if: steps.package-config.outputs.changed != 'false'
       id: cache
       uses: actions/cache@v4.0.2
       with:
         key: ${{ steps.cache-key.outputs.cache-key }}
         path: './exports'
+
+    - name: Cache libc++
+      if: steps.package-config.outputs.changed != 'false' && steps.cache.outputs.cache-hit != 'true' && matrix.sanitizer == 'MSAN'
+      uses: actions/cache@v4.0.2
+      with:
+        key: libcxx-msan
+        path: |
+          build/${{matrix.preset}}/_deps/customibcxx-src
+          build/${{matrix.preset}}/libcxx
 
     - name: 'Setup NuGet credentials'
       if: steps.package-config.outputs.changed != 'false' && steps.cache.outputs.cache-hit != 'true'
