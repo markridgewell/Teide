@@ -23,7 +23,10 @@ runs:
           -P tools/cmake/scripts/DetermineTriplet.cmake)
         echo "vcpkg_triplet = $vcpkg_triplet"
 
-        config_hash=$((cat ${{ env.PATTERNS }} 2>/dev/null) | sha256sum | cut -f1 -d" ")
+        config_files=$(find ${{ env.PATTERNS }} -type f | sort | uniq)
+        echo "config_files = $config_files"
+
+        config_hash=$(cat $config_files | sha256sum | cut -f1 -d" ")
         echo "config_hash = $config_hash"
 
         key="vcpkg-export-$vcpkg_triplet-$config_hash"
