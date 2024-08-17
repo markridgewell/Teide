@@ -7,6 +7,9 @@ inputs:
     required: true
     default: 'OFF'
 outputs:
+  triplet:
+    description: "Triplet to be used for vcpkg"
+    value: ${{ steps.determine-cache-key.outputs.triplet }}
   cache-key:
     description: "Cache key to use for packages"
     value: ${{ steps.determine-cache-key.outputs.cache-key }}
@@ -24,6 +27,7 @@ runs:
           -DTEIDE_SANITIZER=${{inputs.sanitizer}} \
           -P tools/cmake/scripts/DetermineTriplet.cmake)
         echo "vcpkg_triplet = $vcpkg_triplet"
+        echo "triplet=$vcpkg_triplet" >> $GITHUB_OUTPUT
 
         config_files=$(find ${{ env.PATTERNS }} -type f | sort | uniq)
         echo "config_files = $config_files"
