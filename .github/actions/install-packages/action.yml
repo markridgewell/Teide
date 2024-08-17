@@ -22,8 +22,8 @@ runs:
 
     - name: Determine install directory
       id: get-dir
-      shell: bash 
-      run: | 
+      shell: bash
+      run: |
         echo "dir=${{github.workspace}}/exports/installed/${{ steps.get-key.outputs.triplet }}" >> $GITHUB_OUTPUT
 
     - name: Restore packages from cache
