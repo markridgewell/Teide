@@ -5,17 +5,15 @@ on:
     # Run at 5:20am and 5:20pm every day
     - cron:  '20 5,17 * * *'
   workflow_dispatch:
-  pull_request:
-    # Only run for pull requests when the vcpkg configuration has changed
-    paths:
-    - 'vcpkg.json'
-    - 'vcpkg-configuration.json'
-    - 'external/ports/**'
-    - 'tools/cmake/triplets/*.cmake'
+  workflow_call:
+    inputs:
+      pr_number:
+        default: ''
+        required: false
+        type: string
 
 env:
   VULKAN_SDK: ./VULKAN_SDK
-  VCPKG_OVERLAY_PORTS: ./external/ports
   VCPKG_BINARY_SOURCES: 'clear;nuget,GitHub,readwrite;nugettimeout,600'
 
 jobs:
@@ -34,27 +32,56 @@ jobs:
 
     name: ${{startsWith(matrix.runner, 'windows') && 'Windows' || 'Linux'}}
     runs-on: ${{matrix.runner}}
+    env:
+      PATTERNS: vcpkg.json vcpkg-configuration.json tools/vcpkg/**
 
     steps:
+    - name: Detect package configuration changes
+      if: inputs.pr_number != ''
+      id: package-config
+      shell: bash
+      run: |
+        changes=$(gh pr diff \
+          --name-only \
+          --repo ${{ github.repository }} \
+          ${{ inputs.pr_number }})
+        set -f
+        for pattern in ${{ env.PATTERNS }}; do
+          for filename in $changes; do
+            if [[ $filename == $pattern ]]; then
+              echo "changed=true" >> $GITHUB_OUTPUT
+              exit 0
+            fi
+          done
+        done
+        echo "changed=false" >> $GITHUB_OUTPUT
+      env:
+        GH_TOKEN: ${{ github.token }}
+
     - name: Checkout
+      if: steps.package-config.outputs.changed != 'false'
       uses: actions/checkout@v4.1.7
       with:
         lfs: false
         submodules: recursive
 
-    - name: Determine target triplet
-      shell: bash
-      run: echo "VCPKG_TRIPLET=$(cmake -DTEIDE_SANITIZER=${{matrix.sanitizer}} -P tools/cmake/scripts/DetermineTriplet.cmake)" >> "$GITHUB_ENV"
+    - name: Determine cache key
+      if: steps.package-config.outputs.changed != 'false'
+      id: cache-key
+      uses: ./.github/actions/get-packages-cache-key
+      with:
+        sanitizer: ${{ matrix.sanitizer }}
 
     - name: Cache
+      if: steps.package-config.outputs.changed != 'false'
       id: cache
       uses: actions/cache@v4.0.2
       with:
-        key: vcpkg-export-${{env.VCPKG_TRIPLET}}-${{hashFiles('vcpkg.json', 'vcpkg-configuration.json', 'external/ports/**', 'cmake/triplets/*.cmake', 'cmake/toolchains/*.cmake')}}
+        key: ${{ steps.cache-key.outputs.cache-key }}
         path: './exports'
 
     - name: 'Setup NuGet credentials'
-      if: steps.cache.outputs.cache-hit != 'true'
+      if: steps.cache.outputs.cache-hit == 'false'
       shell: 'bash'
       run: |
         alias nuget=${{runner.os == 'Linux' && 'mono ' || ''}}$(./external/vcpkg/vcpkg fetch nuget | tail -n 1)
@@ -68,20 +95,20 @@ jobs:
           -source "https://nuget.pkg.github.com/markridgewell/index.json"
 
     - name: Setup vcpkg
-      if: steps.cache.outputs.cache-hit != 'true'
+      if: steps.package-config.outputs.changed != 'false' && steps.cache.outputs.cache-hit != 'true'
       uses: lukka/run-vcpkg@v11.5
       with:
         vcpkgDirectory: '${{github.workspace}}/external/vcpkg'
         vcpkgJsonGlob: 'vcpkg.json'
 
     - name: Install dependencies
-      if: steps.cache.outputs.cache-hit != 'true'
+      if: steps.package-config.outputs.changed != 'false' && steps.cache.outputs.cache-hit != 'true'
       uses: ./.github/actions/install-dependencies
       with:
         extra-packages: ${{matrix.extra-packages}}
 
     - name: Configure CMake
-      if: steps.cache.outputs.cache-hit != 'true'
+      if: steps.package-config.outputs.changed != 'false' && steps.cache.outputs.cache-hit != 'true'
       run: cmake --preset ${{matrix.preset}} -DTEIDE_SANITIZER=${{matrix.sanitizer}} "-DVCPKG_INSTALL_OPTIONS=--x-abi-tools-use-exact-versions${{runner.debug && ';--debug' || ''}}"
 
     - name: Dump CMake output logs
@@ -89,48 +116,17 @@ jobs:
       run: bash .github/scripts/dump-vcpkg-logs.sh ${{matrix.preset}}
 
     - name: Export packages
-      if: steps.cache.outputs.cache-hit != 'true'
+      if: steps.package-config.outputs.changed != 'false' && steps.cache.outputs.cache-hit != 'true'
       run: |
         ./external/vcpkg/vcpkg export --raw --output=exports --output-dir=. --x-install-root=build/${{matrix.preset}}/vcpkg_installed
-
-    - name: List contents
-      if: steps.cache.outputs.cache-hit != 'true'
-      shell: bash
-      run: ls -R exports
+        echo ""
+        echo "::group::Contents of exported packages:"
+        ls -R exports
+        echo "::endgroup::"
 
     - name: Save packages as artifact
-      if: steps.cache.outputs.cache-hit != 'true'
+      if: steps.package-config.outputs.changed != 'false' && steps.cache.outputs.cache-hit != 'true'
       uses: actions/upload-artifact@v4.3.6
       with:
         name: vcpkg-export-${{env.VCPKG_TRIPLET}}
         path: './exports'
-
-  rerunner:
-    name: Rerun-Test-Jobs
-    needs: unified
-    runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
-    env:
-      GH_TOKEN: ${{github.token}}
-      REPOSITORY: ${{github.repository}}
-      HEAD_REF: ${{github.head_ref}}
-
-    steps:
-    - name: Re-run failed Build-and-Test workflow
-      run: |
-        # Get the id of the last Build-and-Test workflow run for this pull request,
-        # but only if it failed. Otherwise, return nothing.
-        run_id=$(gh run list \
-          --repo $REPOSITORY \
-          --workflow Build-and-Test \
-          --limit 1 \
-          --branch $HEAD_REF \
-          --event pull_request \
-          --json conclusion,databaseId \
-          --jq '.[]|select(.conclusion == "failure")|.databaseId')
-        if [[ -n "$run_id" ]]; then
-          echo "Restarting workflow run ${run_id}..."
-          gh run rerun --repo $REPOSITORY $run_id --failed
-        else
-          echo "No failed workflow runs found"
-        fi

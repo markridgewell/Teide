@@ -19,11 +19,16 @@ on:
 
 env:
   VULKAN_SDK: ./VULKAN_SDK
-  VCPKG_OVERLAY_PORTS: ./external/ports
   EXTRA_CMAKE_FLAGS: ${{inputs.profile-cmake && '--profiling-format=google-trace --profiling-output=CMakeTrace.json' || ''}}
 
 jobs:
-  unified:
+  build-packages:
+    uses: ./.github/workflows/Build-Packages.yml
+    with:
+      pr_number: ${{ github.event_name == 'pull_request' && github.event.number || '' }}
+
+  build-and-test:
+    needs: build-packages
     strategy:
       fail-fast: false
       matrix:
@@ -183,16 +188,16 @@ jobs:
   render-test-report:
     name: Render-Test-Report
     runs-on: ubuntu-latest
-    needs: [unified]
+    needs: [build-and-test]
     if: failure()
     env:
       GH_TOKEN: ${{github.token}}
-      ANY_PASSED: "${{needs.unified.outputs.rendertest-successes}}"
-      ANY_FAILED: "${{needs.unified.outputs.rendertest-failures}}"
+      ANY_PASSED: "${{needs.build-and-test.outputs.rendertest-successes}}"
+      ANY_FAILED: "${{needs.build-and-test.outputs.rendertest-failures}}"
 
     steps:
     - uses: actions/download-artifact@v4.1.8
-      if: needs.unified.outputs.rendertest-failures
+      if: needs.build-and-test.outputs.rendertest-failures
       with:
         path: artifacts
 
@@ -206,7 +211,7 @@ jobs:
         fi
 
     - name: Display structure of downloaded files
-      if: needs.unified.outputs.rendertest-failures
+      if: needs.build-and-test.outputs.rendertest-failures
       run: ls -R
       working-directory: artifacts
 
@@ -214,7 +219,7 @@ jobs:
   time-report:
     name: Time-Report
     runs-on: ubuntu-latest
-    needs: [unified]
+    needs: [build-and-test]
     if: github.event_name == 'push'
     env:
       GH_TOKEN: ${{github.token}}
