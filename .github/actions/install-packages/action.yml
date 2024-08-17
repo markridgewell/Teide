@@ -9,25 +9,27 @@ inputs:
 outputs:
   install-dir:
     description: "Directory the packages were installed to"
-    value: ${{ steps.determine-triplet.outputs.dir }}
+    value: ${{ steps.get-dir.outputs.dir }}
 
 runs:
   using: composite
   steps:
-    - name: Determine target triplet
-      id: determine-triplet
+    - name: Determine cache key
+      id: get-key
+      uses: ./.github/actions/get-packages-cache-key
+      with:
+        sanitizer: ${{ matrix.sanitizer }}
+
+    - name: Determine install directory
+      id: get-dir
       shell: bash
       run: |
-        TRIPLET=$(cmake \
-          -DTEIDE_SANITIZER=${{inputs.sanitizer}} \
-          -P tools/cmake/scripts/DetermineTriplet.cmake)
-        echo "VCPKG_TRIPLET=${TRIPLET}" >> $GITHUB_ENV
-        echo "dir=${{github.workspace}}/exports/installed/${TRIPLET}" >> $GITHUB_OUTPUT
+        echo "dir=${{github.workspace}}/exports/installed/${{ steps.get-key.outputs.triplet }}" >> $GITHUB_OUTPUT
 
     - name: Restore packages from cache
       id: cache
       uses: actions/cache/restore@v3
       with:
-        key: vcpkg-export-${{env.VCPKG_TRIPLET}}-${{hashFiles('vcpkg.json', 'vcpkg-configuration.json', 'external/ports/**', 'cmake/triplets/*.cmake', 'cmake/toolchains/*.cmake')}}
+        key: ${{ steps.get-key.outputs.cache-key }}
         path: './exports'
         fail-on-cache-miss: true
