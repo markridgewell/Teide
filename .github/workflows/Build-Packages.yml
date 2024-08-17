@@ -119,9 +119,10 @@ jobs:
       if: steps.package-config.outputs.changed != 'false' && steps.cache.outputs.cache-hit != 'true'
       run: |
         ./external/vcpkg/vcpkg export --raw --output=exports --output-dir=. --x-install-root=build/${{matrix.preset}}/vcpkg_installed
-        echo
-        echo Contents of exported packages:
+        echo ""
+        echo "::group::Contents of exported packages:"
         ls -R exports
+        echo "::endgroup::"
 
     - name: Save packages as artifact
       if: steps.package-config.outputs.changed != 'false' && steps.cache.outputs.cache-hit != 'true'
