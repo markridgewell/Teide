@@ -54,7 +54,18 @@ TEST(AssertDeathTest, FailedAssertionWithNoHandler)
 
 TEST(AssertTest, FailedAssertionWithNoMessage)
 {
-    EXPECT_BREAK(TEIDE_ASSERT(False()), "");
+    std::println("1");
+    PushAssertHandler(TestAssertHandler);
+    std::println("2");
+    s_lastFailureMessage.clear();
+    std::println("3");
+    EXPECT_THROW(TEIDE_ASSERT(False()), TestAssertException);
+    std::println("4");
+    EXPECT_EQ(s_lastFailureMessage, "");
+    std::println("5");
+    PopAssertHandler();
+    std::println("6");
+    // EXPECT_BREAK(TEIDE_ASSERT(False()), "");
 }
 
 TEST(AssertTest, FailedAssertionWithMessage)
