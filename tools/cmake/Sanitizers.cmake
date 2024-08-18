@@ -34,9 +34,9 @@ function(target_enable_sanitizer target sanitizer)
             target_compile_options(${target} PRIVATE -g -fsanitize=${checks} -fno-sanitize-recover=${checks})
             target_link_options(${target} PRIVATE -fsanitize=${checks} -fno-sanitize-recover=${checks})
         elseif(sanitizer STREQUAL "MSAN")
-            target_compile_options(${target} PRIVATE -fsanitize=memory -fsanitize=memory-track-origins -ggdb
+            target_compile_options(${target} PRIVATE -fsanitize=memory -fsanitize-memory-track-origins -ggdb
                                                      -fno-omit-frame-pointer)
-            target_link_options(${target} PRIVATE -fsanitize=memory -fsanitize=memory-track-origins)
+            target_link_options(${target} PRIVATE -fsanitize=memory -fsanitize-memory-track-origins)
         endif()
     endif()
 endfunction()
