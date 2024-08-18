@@ -36,7 +36,12 @@ function(target_enable_sanitizer target sanitizer)
         elseif(sanitizer STREQUAL "MSAN")
             target_compile_options(${target} PRIVATE -fsanitize=memory -fsanitize-memory-track-origins -ggdb
                                                      -fno-omit-frame-pointer)
-            target_link_options(${target} PRIVATE -fsanitize=memory -fsanitize-memory-track-origins)
+            target_link_options(
+                ${target}
+                PRIVATE
+                -fsanitize=memory
+                -fsanitize-memory-track-origins
+                -fno-omit-frame-pointer)
         endif()
     endif()
 endfunction()
