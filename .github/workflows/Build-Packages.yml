@@ -84,11 +84,20 @@ jobs:
         key: ${{ steps.cache-key.outputs.cache-key }}
         path: './exports'
 
+    - name: Determine clang version
+      if: steps.package-config.outputs.changed != 'false' && steps.cache.outputs.cache-hit != 'true' && matrix.sanitizer == 'MSAN'
+      id: clang
+      shell: bash
+      run: |
+        version=$(clang -dumpversion)
+        echo "Clang version determined to be $version"
+        echo "version=$version" >> $GITHUB_OUTPUT
+
     - name: Cache libc++
       if: steps.package-config.outputs.changed != 'false' && steps.cache.outputs.cache-hit != 'true' && matrix.sanitizer == 'MSAN'
       uses: actions/cache@v4.0.2
       with:
-        key: libcxx-msan
+        key: libcxx-${{ steps.clang.outputs.version }}-msan
         path: |
           build/${{matrix.preset}}/_deps/customibcxx-src
           build/${{matrix.preset}}/libcxx

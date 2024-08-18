@@ -11,13 +11,26 @@ string(REPLACE "version " "" LLVM_VERSION "${VERSION_STR}")
 message("Version: ${LLVM_VERSION}")
 set(PREFIX "${CMAKE_BINARY_DIR}/libcxx")
 
-FetchContent_Declare(
-    customlibcxx
-    SYSTEM
-    GIT_REPOSITORY https://github.com/llvm/llvm-project
-    GIT_TAG llvmorg-${LLVM_VERSION}
-    GIT_SHALLOW TRUE GIT_PROGRESS TRUE)
-FetchContent_GetProperties(customlibcxx)
+find_library(
+    LIBCXX
+    NAMES libc++ c++
+    PATHS "${PREFIX}/lib"
+    NO_DEFAULT_PATH)
+mark_as_advanced(LIBCXX)
+if(LIBCXX)
+    set(customlibcxx_POPULATED
+        TRUE
+        CACHE BOOL "Located custom libc++")
+    mark_as_advanced(customlibcxx_POPULATED)
+else()
+    FetchContent_Declare(
+        customlibcxx
+        SYSTEM
+        GIT_REPOSITORY https://github.com/llvm/llvm-project
+        GIT_TAG llvmorg-${LLVM_VERSION}
+        GIT_SHALLOW TRUE GIT_PROGRESS TRUE)
+    FetchContent_GetProperties(customlibcxx)
+endif()
 
 if(NOT customlibcxx_POPULATED)
     # Fetch the content using previously declared details
@@ -50,14 +63,14 @@ if(NOT customlibcxx_POPULATED)
     message("## INSTALL ##")
     execute_process(COMMAND ninja -C "${BINARY_DIR}" install-cxx install-cxxabi install-unwind
                     COMMAND_ERROR_IS_FATAL ANY)
-
-    set(LIBCXX_DIR
-        "${PREFIX}"
-        CACHE PATH "Install location of libc++")
-    mark_as_advanced(LIBCXX_DIR)
-
-    message(STATUS "libc++ found at ${PREFIX}")
 endif()
+
+set(LIBCXX_DIR
+    "${PREFIX}"
+    CACHE PATH "Install location of libc++")
+mark_as_advanced(LIBCXX_DIR)
+
+message(STATUS "libc++ found at ${PREFIX}")
 
 find_package_handle_standard_args(customlibcxx DEFAULT_MSG customlibcxx_POPULATED)
 
