@@ -25,5 +25,5 @@ runs:
       with:
         key: libcxx-${{ steps.clang.outputs.version }}-msan
         path: |
-          build/*/_deps/customibcxx-src
+          build/*/_deps/customlibcxx-src
           build/*/libcxx
