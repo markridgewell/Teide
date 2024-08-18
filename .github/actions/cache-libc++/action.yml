@@ -1,0 +1,29 @@
+name: 'cache-libc++'
+description: 'Save and restore a custom build of libc++ from cache'
+
+inputs:
+  sanitizer:
+    description: 'Sanitizer to be used, or OFF to disable'
+    required: true
+    default: 'OFF'
+
+runs:
+  using: composite
+  steps:
+    - name: Determine clang version
+      if: inputs.sanitizer == 'MSAN'
+      id: clang
+      shell: bash
+      run: |
+        version=$(clang++-18 -dumpversion)
+        echo "Clang version determined to be $version"
+        echo "version=$version" >> $GITHUB_OUTPUT
+
+    - name: Cache libc++
+      if: inputs.sanitizer == 'MSAN'
+      uses: actions/cache@v4.0.2
+      with:
+        key: libcxx-${{ steps.clang.outputs.version }}-msan
+        path: |
+          build/*/_deps/customibcxx-src
+          build/*/libcxx

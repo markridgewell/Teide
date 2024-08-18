@@ -34,20 +34,7 @@ runs:
         path: './exports'
         fail-on-cache-miss: true
 
-    - name: Determine clang version
-      if: inputs.sanitizer == 'MSAN'
-      id: clang
-      shell: bash
-      run: |
-        version=$(clang -dumpversion)
-        echo "Clang version determined to be $version"
-        echo "version=$version" >> $GITHUB_OUTPUT
-
-    - name: Restore libc++ from cache
-      if: inputs.sanitizer == 'MSAN'
-      uses: actions/cache/restore@v3
+    - name: Cache libc++
+      uses: ./.github/actions/cache-libc++
       with:
-        key: libcxx-${{ steps.clang.outputs.version }}-msan
-        path: |
-          build/*/_deps/customibcxx-src
-          build/*/libcxx
+        sanitizer: ${{ inputs.sanitizer }}

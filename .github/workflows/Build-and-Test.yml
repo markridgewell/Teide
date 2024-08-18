@@ -94,16 +94,16 @@ jobs:
         lfs: true
         submodules: false
 
+    - name: Install dependencies
+      uses: ./.github/actions/install-dependencies
+      with:
+        extra-packages: ${{matrix.extra-packages}}
+
     - name: Install packages
       id: packages
       uses: ./.github/actions/install-packages
       with:
         sanitizer: ${{matrix.sanitizer}}
-
-    - name: Install dependencies
-      uses: ./.github/actions/install-dependencies
-      with:
-        extra-packages: ${{matrix.extra-packages}}
 
     - if: matrix.coverage == 'ON' && runner.os == 'Windows'
       name: Install OpenCppCoverage
