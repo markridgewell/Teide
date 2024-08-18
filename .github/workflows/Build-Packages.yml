@@ -84,11 +84,6 @@ jobs:
         key: ${{ steps.cache-key.outputs.cache-key }}
         path: './exports'
 
-    - name: Cache libc++
-      uses: ./.github/actions/cache-libc++
-      with:
-        sanitizer: ${{ matrix.sanitizer }}
-
     - name: 'Setup NuGet credentials'
       if: steps.package-config.outputs.changed != 'false' && steps.cache.outputs.cache-hit != 'true'
       shell: 'bash'
@@ -115,6 +110,12 @@ jobs:
       uses: ./.github/actions/install-dependencies
       with:
         extra-packages: ${{matrix.extra-packages}}
+
+    - name: Cache libc++
+      if: steps.package-config.outputs.changed != 'false' && steps.cache.outputs.cache-hit != 'true'
+      uses: ./.github/actions/cache-libc++
+      with:
+        sanitizer: ${{ matrix.sanitizer }}
 
     - name: Configure CMake
       if: steps.package-config.outputs.changed != 'false' && steps.cache.outputs.cache-hit != 'true'
