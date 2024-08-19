@@ -45,7 +45,8 @@ if(NOT customlibcxx_POPULATED)
 
     set(CMAKE_ARGS "")
     if(TEIDE_SANITIZER STREQUAL "MSAN")
-        list(APPEND CMAKE_ARGS "-DLLVM_USE_SANITIZER=Memory")
+        message("Enabling MemorySanitizer")
+        list(APPEND CMAKE_ARGS "-DLLVM_USE_SANITIZER=MemoryWithOrigins")
     endif()
 
     set(CMAKE_EXECUTE_PROCESS_COMMAND_ECHO STDERR)
