@@ -3,6 +3,7 @@
 
 #ifdef TEIDE_ASSERTS_ENABLED
 #    include <gtest/gtest.h>
+#    include <spdlog/spdlog.h>
 
 using namespace Teide;
 
@@ -24,8 +25,12 @@ std::string s_lastFailureMessage;
 
 bool TestAssertHandler(std::string_view msg, std::string_view /*expression*/, SourceLocation /*location*/)
 {
+    spdlog::info("..1");
     s_lastFailureMessage = msg;
-    throw TestAssertException{};
+    spdlog::info("..2");
+    auto e = TestAssertException{};
+    spdlog::info("..3");
+    throw e;
 }
 } // namespace
 
@@ -54,17 +59,35 @@ TEST(AssertDeathTest, FailedAssertionWithNoHandler)
 
 TEST(AssertTest, FailedAssertionWithNoMessage)
 {
-    std::println("1");
+    spdlog::info("1");
     PushAssertHandler(TestAssertHandler);
-    std::println("2");
+    spdlog::info("2");
     s_lastFailureMessage.clear();
-    std::println("3");
+    spdlog::info("3a");
+    try
+    {
+        TestAssertHandler("", "", SOURCE_LOCATION_CURRENT());
+    }
+    catch (TestAssertException)
+    {
+        spdlog::info("3b");
+    }
+    spdlog::info("4a");
+    try
+    {
+        TEIDE_ASSERT(False());
+    }
+    catch (TestAssertException)
+    {
+        spdlog::info("4b");
+    }
+    spdlog::info("5");
     EXPECT_THROW(TEIDE_ASSERT(False()), TestAssertException);
-    std::println("4");
+    spdlog::info("6");
     EXPECT_EQ(s_lastFailureMessage, "");
-    std::println("5");
+    spdlog::info("7");
     PopAssertHandler();
-    std::println("6");
+    spdlog::info("8");
     // EXPECT_BREAK(TEIDE_ASSERT(False()), "");
 }
 
