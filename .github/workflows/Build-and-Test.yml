@@ -119,6 +119,7 @@ jobs:
         -DCMAKE_PREFIX_PATH=${{steps.packages.outputs.install-dir}}
         -DTEIDE_PRECOMPILED_HEADERS=ON
         -DTEIDE_UNIT_TEST_SW_RENDER=ON
+        -DTEIDE_TEST_VERBOSE=${{runner.debug}}
         -DTEIDE_TEST_WINDOWLESS=${{runner.os == 'Linux'}}
         -DTEIDE_TEST_COVERAGE=${{matrix.coverage}}
         -DTEIDE_SANITIZER=${{matrix.sanitizer}}
