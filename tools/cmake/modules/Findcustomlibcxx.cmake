@@ -44,10 +44,10 @@ if(NOT customlibcxx_POPULATED)
     cmake_print_variables(LLVM_VERSION COMPILER_VERSION C_COMPILER CXX_COMPILER)
 
     set(CMAKE_ARGS "")
-    # if(TEIDE_SANITIZER STREQUAL "MSAN")
-    message("Enabling MemorySanitizer")
-    list(APPEND CMAKE_ARGS "-DLLVM_USE_SANITIZER=MemoryWithOrigins")
-    # endif()
+    if(TEIDE_SANITIZER STREQUAL "MSAN")
+        message("Enabling MemorySanitizer")
+        list(APPEND CMAKE_ARGS "-DLLVM_USE_SANITIZER=MemoryWithOrigins")
+    endif()
 
     set(CMAKE_EXECUTE_PROCESS_COMMAND_ECHO STDERR)
     message("## CONFIGURE ##")
@@ -55,7 +55,8 @@ if(NOT customlibcxx_POPULATED)
         COMMAND
             "${CMAKE_COMMAND}" -G Ninja -S "${SOURCE_DIR}/runtimes" -B "${BINARY_DIR}"
             "-DLLVM_ENABLE_RUNTIMES=libcxx;libcxxabi;libunwind" "-DCMAKE_INSTALL_PREFIX=${PREFIX}"
-            "-DCMAKE_C_COMPILER=${C_COMPILER}" "-DCMAKE_CXX_COMPILER=${CXX_COMPILER}" ${CMAKE_ARGS}
+            "-DCMAKE_C_COMPILER=${C_COMPILER}" "-DCMAKE_CXX_COMPILER=${CXX_COMPILER}"
+            "-DLLVM_USE_SANITIZER=MemoryWithOrigins"
         COMMAND_ERROR_IS_FATAL ANY)
     message("## BUILD ##")
     execute_process(COMMAND ninja -C "${BINARY_DIR}" cxx cxxabi unwind COMMAND_ERROR_IS_FATAL ANY)

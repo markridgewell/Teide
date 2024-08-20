@@ -23,7 +23,7 @@ runs:
       if: inputs.sanitizer == 'MSAN'
       uses: actions/cache@v4.0.2
       with:
-        key: libcxx-${{ steps.clang.outputs.version }}-msan
+        key: libcxx-${{ steps.clang.outputs.version }}-msan-${{ hashFiles('**/Findcustomlibcxx.cmake') }}
         path: |
           build/*/_deps/customlibcxx-src
           build/*/libcxx
