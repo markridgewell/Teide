@@ -57,6 +57,7 @@ runs:
           done
           sudo apt-get update
           sudo apt-get install -y llvm
+          sudo apt-get install -y lld
         fi
         echo "Installing apt packages: ${{inputs.extra-packages}}"
         sudo apt-get install -y ${{inputs.extra-packages}}

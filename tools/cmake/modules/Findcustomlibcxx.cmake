@@ -61,6 +61,10 @@ if(NOT customlibcxx_POPULATED)
             "-DCMAKE_C_COMPILER=${C_COMPILER}" #
             "-DCMAKE_CXX_COMPILER=${CXX_COMPILER}" #
             "-DLLVM_USE_SANITIZER=MemoryWithOrigins" #
+            "-DLIBCXX_ENABLE_STATIC=ON" #
+            "-DLIBCXX_ENABLE_SHARED=OFF" #
+            "-DLIBCXX_ENABLE_STATIC_ABI_LIBRARY=ON" #
+            "-DLIBCXX_ENABLE_ABI_LINKER_SCRIPT=OFF" #
         COMMAND_ERROR_IS_FATAL ANY)
     message("## BUILD ##")
     execute_process(COMMAND ninja -C "${BINARY_DIR}" cxx cxxabi unwind COMMAND_ERROR_IS_FATAL ANY)
