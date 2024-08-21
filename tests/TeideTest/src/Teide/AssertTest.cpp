@@ -1,7 +1,7 @@
 
 #include "Teide/Assert.h"
 
-#if 0 // def TEIDE_ASSERTS_ENABLED
+#ifdef TEIDE_ASSERTS_ENABLED
 #    include <gtest/gtest.h>
 #    include <spdlog/spdlog.h>
 
