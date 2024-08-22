@@ -22,7 +22,7 @@ message("LIBCXX_INCLUDE_DIR: ${LIBCXX_INCLUDE_DIR}")
 message("LIBCXX_LIB_DIR: ${LIBCXX_LIB_DIR}")
 
 set(EXTRA_CXX_FLAGS
-    " -nostdinc++ -nostdlib++ -isystem ${LIBCXX_INCLUDE_DIR}/c++/v1 -L ${LIBCXX_LIB_DIR} -Wl,-rpath,${LIBCXX_LIB_DIR} -static -lc++ -lc++abi -lunwind -fuse-ld=lld -Wno-unused-command-line-argument"
+    " -nostdinc++ -nostdlib++ -isystem ${LIBCXX_INCLUDE_DIR}/c++/v1 -L ${LIBCXX_LIB_DIR} -Wl,-rpath,${LIBCXX_LIB_DIR} -static -l:libc++.a -fuse-ld=lld -Wno-unused-command-line-argument"
 )
 
 string(APPEND CMAKE_C_FLAGS " -fsanitize=memory -fsanitize-memory-track-origins -ggdb -fno-omit-frame-pointer")
