@@ -678,6 +678,7 @@ auto VulkanDevice::CreateTextureImpl(
             .format = data.format,
             .mipLevelCount = data.mipLevelCount,
             .sampleCount = data.sampleCount,
+            .name = debugName,
         },
     };
 
