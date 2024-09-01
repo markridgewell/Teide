@@ -75,7 +75,7 @@ jobs:
         bash .github/scripts/update-comment.sh ${{github.ref_name}} github-actions comment.md
 
     - name: Save output
-      uses: actions/upload-artifact@v4.3.6
+      uses: actions/upload-artifact@v4.4.0
       with:
         name: BenchmarkResults
         path: benchmark_results
