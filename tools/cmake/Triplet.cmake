@@ -27,7 +27,12 @@ if(LINUX)
         set(ENVIRONMENT termux)
     endif()
 
-    set(VCPKG_TARGET_TRIPLET "${ARCH}-${ENVIRONMENT}")
+    # Set triplet taking sanitizer into account
+    if(TEIDE_SANITIZER STREQUAL "MSAN")
+        set(VCPKG_TARGET_TRIPLET "${ARCH}-${ENVIRONMENT}-msan")
+    else()
+        set(VCPKG_TARGET_TRIPLET "${ARCH}-${ENVIRONMENT}")
+    endif()
 elseif(WIN32)
     set(VCPKG_TARGET_TRIPLET "x64-windows-static-md")
 endif()
