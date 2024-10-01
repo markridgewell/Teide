@@ -60,7 +60,7 @@ jobs:
 
     - name: Checkout
       if: steps.package-config.outputs.changed != 'false'
-      uses: actions/checkout@v4.1.7
+      uses: actions/checkout@v4.2.0
       with:
         lfs: false
         submodules: recursive
