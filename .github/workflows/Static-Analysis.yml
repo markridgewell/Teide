@@ -20,7 +20,7 @@ jobs:
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v4.1.7
+      uses: actions/checkout@v4.2.0
       with:
         fetch-depth: ${{ github.event_name == 'pull_request' && 2 || 0 }}
         submodules: true
@@ -62,7 +62,7 @@ jobs:
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v4.1.7
+      uses: actions/checkout@v4.2.0
       with:
         fetch-depth: ${{ github.event_name == 'pull_request' && 2 || 0 }}
         submodules: true
@@ -106,7 +106,7 @@ jobs:
 
     - name: Report issues as PR comments
       if: failure() && github.event_name == 'pull_request'
-      uses: reviewdog/action-suggester@v1.17.0
+      uses: reviewdog/action-suggester@v1.18.0
       with:
         tool_name: clang-tidy
 
