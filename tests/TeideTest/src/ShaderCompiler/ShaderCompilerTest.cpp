@@ -86,10 +86,8 @@ const KernelSourceData TestKernel = {
             {"result", Type::Float},
         }},
         .source = R"--(
-            Output main(Input input) {
-                Output output;
-                output.result = 1.0f;
-                return output;
+            void main() {
+                result = 42.0f;
             }
         )--",
     },
@@ -117,9 +115,9 @@ TEST(ShaderCompilerTest, CompileSimpleKernel)
     const auto result = compiler.Compile(TestKernel);
     EXPECT_THAT(result.computeShader.spirv, Not(IsEmpty()));
     EXPECT_THAT(result.environment.scenePblock.parameters, Eq(TestKernel.environment.scenePblock.parameters));
-    EXPECT_THAT(result.environment.scenePblock.uniformsStages, Eq(Teide::ShaderStageFlags::Pixel));
+    EXPECT_THAT(result.environment.scenePblock.uniformsStages, Eq(Teide::ShaderStageFlags::None));
     EXPECT_THAT(result.environment.viewPblock.parameters, Eq(TestKernel.environment.viewPblock.parameters));
-    EXPECT_THAT(result.environment.viewPblock.uniformsStages, Eq(Teide::ShaderStageFlags::Vertex));
+    EXPECT_THAT(result.environment.viewPblock.uniformsStages, Eq(Teide::ShaderStageFlags::None));
     EXPECT_THAT(result.paramsPblock.parameters, Eq(TestKernel.paramsPblock.parameters));
     EXPECT_THAT(result.paramsPblock.uniformsStages, Eq(Teide::ShaderStageFlags::None));
 }

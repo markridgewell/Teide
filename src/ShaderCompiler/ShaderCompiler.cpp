@@ -279,7 +279,7 @@ void BuildReflection(const std::vector<ParameterBlockDesc*>& pblockDescs, glslan
     {
         const auto& uniformBlock = program.getUniformBlock(i);
         const auto& name = uniformBlock.name;
-        const int64 set = std::distance(PblockNames.begin(), std::ranges::find(PblockNames, name));
+        const auto set = static_cast<usize>(std::distance(PblockNames.begin(), std::ranges::find(PblockNames, name)));
         ReflectUniforms(*pblockDescs[set], uniformBlock);
     }
 }
@@ -396,36 +396,52 @@ void BuildKernelVaryings(std::string& source, ShaderStageData& data, const Shade
 {
     auto out = std::back_inserter(source);
 
-    source += "struct Input {\n";
-    if (sourceStage.inputs.empty())
-    {
-        source += "    int _dummy_;\n";
-    }
     for (usize i = 0; i < sourceStage.inputs.size(); i++)
     {
         const auto& input = sourceStage.inputs[i];
 
         data.inputs.push_back(input);
-        fmt::format_to(out, "    {} {};\n", input.type, input.name);
+        fmt::format_to(out, "{} {};\n", input.type, input.name);
     }
-    source += "};\n\n";
 
-    source += "struct Output {\n";
     for (usize i = 0; i < sourceStage.outputs.size(); i++)
     {
         const auto& output = sourceStage.outputs[i];
 
-        if (output.name.starts_with("gl_"))
-        {
-            continue;
-        }
-
         data.outputs.push_back(output);
-        fmt::format_to(out, "    {} {};\n", output.type, output.name);
+        fmt::format_to(out, "{} {};\n", output.type, output.name);
     }
-    source += "};\n\n";
 
     source += '\n';
+}
+
+void BuildKernelEntrypoint(std::string& source, const ShaderStageDefinition& sourceStage)
+{
+    auto out = std::back_inserter(source);
+
+    for (usize i = 0; i < sourceStage.outputs.size(); i++)
+    {
+        const auto& output = sourceStage.outputs[i];
+
+        // TODO: derive glslFormat and storageType from output.type and storage method (buffer/image2D etc)
+        const auto glslFormat = "r32f";
+        const auto storageType = "image2D";
+        fmt::format_to(
+            out, "layout({}, binding = {}) uniform {} _{}_image_;\n", //
+            glslFormat, i, storageType, output.name);
+    }
+
+    source += "void main() {\n";
+    source += "    _notreallymain_();\n";
+    for (const auto& output : sourceStage.outputs)
+    {
+        // TODO: handle buffers and non-2D images
+        // TODO: handle vec2 and vec4 output types
+        fmt::format_to(
+            out, "    imageStore(_{}_image_, ivec2(gl_GlobalInvocationID.xy), vec4({}));\n", //
+            output.name, output.name);
+    }
+    source += "}\n";
 }
 
 std::atomic<int> s_numInstances;
@@ -498,6 +514,7 @@ KernelData ShaderCompiler::Compile(const KernelSourceData& sourceData) const
 
     std::string computeShader;
     computeShader = "layout(local_size_x = 1, local_size_y = 1) in;\n";
+    computeShader += "#define main() _notreallymain_()\n";
 
     BuildBindings<0>(computeShader, sourceData.environment.scenePblock);
     BuildBindings<1>(computeShader, sourceData.environment.viewPblock);
@@ -505,6 +522,8 @@ KernelData ShaderCompiler::Compile(const KernelSourceData& sourceData) const
 
     BuildKernelVaryings(computeShader, data.computeShader, sourceData.kernelShader);
     computeShader += sourceData.kernelShader.source;
+    computeShader += "#undef main\n";
+    BuildKernelEntrypoint(computeShader, sourceData.kernelShader);
 
     const auto language = GetEShSource(sourceData.language);
 
