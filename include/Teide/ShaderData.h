@@ -100,6 +100,15 @@ struct ShaderData
     bool operator==(const ShaderData&) const = default;
 };
 
+struct KernelData
+{
+    ShaderEnvironmentData environment;
+    ParameterBlockDesc paramsPblock;
+    ShaderStageData computeShader;
+
+    bool operator==(const KernelData&) const = default;
+};
+
 bool IsResourceType(ShaderVariableType::BaseType type);
 
 std::ostream& operator<<(std::ostream& os, ShaderVariableType::BaseType type);
