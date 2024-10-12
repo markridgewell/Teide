@@ -22,6 +22,7 @@ enum class CommandType
 {
     Copy,
     Render,
+    Dispatch,
 };
 std::string to_string(CommandType type);
 
@@ -45,6 +46,7 @@ struct VulkanGraph
 
     static auto CopyRef(usize i) -> CommandNodeRef { return {CommandType::Copy, i}; }
     static auto RenderRef(usize i) -> CommandNodeRef { return {CommandType::Render, i}; }
+    static auto DispatchRef(usize i) -> CommandNodeRef { return {CommandType::Dispatch, i}; }
     static auto TextureRef(usize i) -> ResourceNodeRef { return {ResourceType::Texture, i}; }
     static auto TextureDataRef(usize i) -> ResourceNodeRef { return {ResourceType::TextureData, i}; }
 
@@ -56,6 +58,12 @@ struct VulkanGraph
     struct RenderNode
     {
         RenderList renderList;
+        std::vector<ResourceNodeRef> dependencies;
+    };
+
+    struct DispatchNode
+    {
+        Kernel kernel;
         std::vector<ResourceNodeRef> dependencies;
     };
 
@@ -74,6 +82,7 @@ struct VulkanGraph
 
     std::vector<CopyNode> copyNodes;
     std::vector<RenderNode> renderNodes;
+    std::vector<DispatchNode> dispatchNodes;
     std::vector<TextureNode> textureNodes;
     std::vector<TextureDataNode> textureDataNodes;
 
@@ -87,6 +96,12 @@ struct VulkanGraph
     {
         renderNodes.emplace_back(std::move(renderList));
         return RenderRef(renderNodes.size() - 1);
+    }
+
+    auto AddDispatchNode(Kernel kernel)
+    {
+        dispatchNodes.emplace_back(std::move(kernel));
+        return DispatchRef(dispatchNodes.size() - 1);
     }
 
     auto AddTextureNode(Texture texture, CommandNodeRef source)

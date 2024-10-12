@@ -1,6 +1,7 @@
 
 #include "Teide/VulkanGraph.h"
 
+#include "Mocks.h"
 #include "TestData.h"
 #include "TestUtils.h"
 
@@ -134,6 +135,21 @@ TEST_F(VulkanGraphTest, BuildingGraphWithOneRenderNodeHasNoEffect)
 
     ASSERT_THAT(graph.renderNodes, ElementsAre(HasNoDependencies()));
     ASSERT_THAT(graph.textureNodes, ElementsAre(HasSource(renderNode1)));
+}
+
+TEST_F(VulkanGraphTest, BuildingGraphWithOneDispatchNodeHasNoEffect)
+{
+    NiceMock<MockRefCounter> owner;
+
+    VulkanGraph graph;
+    const auto kernel = Kernel(0, owner);
+    auto dispatchNode1 = graph.AddDispatchNode(kernel);
+    graph.AddTextureNode(CreateDummyTexture("tex1"), dispatchNode1);
+
+    BuildGraph(graph, *m_device);
+
+    ASSERT_THAT(graph.dispatchNodes, ElementsAre(HasNoDependencies()));
+    ASSERT_THAT(graph.textureNodes, ElementsAre(HasSource(dispatchNode1)));
 }
 
 TEST_F(VulkanGraphTest, BuildingGraphWithOneCopyNodeHasNoEffect)
