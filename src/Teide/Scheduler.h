@@ -5,6 +5,8 @@
 #include "CpuExecutor.h"
 #include "GpuExecutor.h"
 
+#include <unifex/static_thread_pool.hpp>
+
 #include <vector>
 
 namespace Teide
@@ -83,6 +85,7 @@ public:
     uint32 GetThreadIndex() const { return m_cpuExecutor.GetThreadIndex(); }
 
 private:
+    unifex::static_thread_pool m_threadPool;
     CpuExecutor m_cpuExecutor;
     GpuExecutor m_gpuExecutor;
 };

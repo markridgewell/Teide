@@ -18,7 +18,7 @@
     "vulkan",
     "vulkan-headers",
     "vulkan-memory-allocator-hpp",
-    "stdexec"
+    "libunifex"
   ],
   "features": {
     "benchmarks": {
