@@ -50,6 +50,7 @@ std::string to_string(CommandType type)
     {
         case CommandType::Copy: return "Copy";
         case CommandType::Render: return "Render";
+        case CommandType::Dispatch: return "Dispatch";
     }
     return "";
 }
