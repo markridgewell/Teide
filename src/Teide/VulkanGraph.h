@@ -115,6 +115,43 @@ struct VulkanGraph
         textureDataNodes.emplace_back(std::move(name), std::move(texture), source);
         return TextureDataRef(textureDataNodes.size() - 1);
     }
+
+    std::string_view GetNodeName(ResourceNodeRef ref);
+    std::optional<std::string_view> FindNodeWithSource(CommandNodeRef source);
+
+    void ForEachCopyNode(auto f)
+    {
+        for (auto i = VulkanGraph::CopyRef(0); i.index < copyNodes.size(); i.index++)
+        {
+            const auto& node = copyNodes[i.index];
+            f(i, fmt::format("copy{}", i.index + 1), std::span(&node.source, 1));
+        }
+    };
+
+    void ForEachRenderNode(auto f)
+    {
+        for (auto i = VulkanGraph::RenderRef(0); i.index < renderNodes.size(); i.index++)
+        {
+            const auto& node = renderNodes[i.index];
+            f(i, node.renderList.name, node.dependencies);
+        }
+    };
+
+    void ForEachDispatchNode(auto f)
+    {
+        for (auto i = VulkanGraph::DispatchRef(0); i.index < dispatchNodes.size(); i.index++)
+        {
+            const auto& node = dispatchNodes[i.index];
+            f(i, fmt::format("dispatch{}", i.index + 1), node.dependencies);
+        }
+    };
+
+    void ForEachCommandNode(auto f)
+    {
+        ForEachCopyNode(f);
+        ForEachRenderNode(f);
+        ForEachDispatchNode(f);
+    }
 };
 
 void BuildGraph(VulkanGraph& graph, VulkanDevice& device);

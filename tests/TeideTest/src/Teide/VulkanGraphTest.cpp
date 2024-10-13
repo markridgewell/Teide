@@ -239,6 +239,28 @@ TEST_F(VulkanGraphTest, VisualizingGraphWithThreeDependentRenderNodes)
     ASSERT_THAT(dot, Eq(ThreeRenderPassesDot)) << dot;
 }
 
+constexpr auto OneDispatchDot = R"--(strict digraph {
+    rankdir=LR
+    node [shape=box]
+    tex1
+    node [shape=box, margin=0.5]
+    dispatch1 -> tex1
+})--";
+
+TEST_F(VulkanGraphTest, VisualizingGraphWithOneDispatchNode)
+{
+    NiceMock<MockRefCounter> owner;
+
+    VulkanGraph graph;
+    const auto kernel = Kernel(0, owner);
+    auto dispatchNode1 = graph.AddDispatchNode(kernel);
+    graph.AddTextureNode(CreateDummyTexture("tex1"), dispatchNode1);
+
+    const auto dot = VisualizeGraph(graph);
+
+    ASSERT_THAT(dot, Eq(OneDispatchDot)) << dot;
+}
+
 constexpr auto CopyCpuToGpuDot = R"--(strict digraph {
     rankdir=LR
     node [shape=box]
@@ -267,9 +289,9 @@ constexpr auto CopyGpuToCpuDot = R"--(strict digraph {
     tex
     texData
     node [shape=box, margin=0.5]
-    render1 -> tex
     copy1 -> texData
     tex -> copy1
+    render1 -> tex
 })--";
 
 TEST_F(VulkanGraphTest, VisualizingGraphWithCopyToCpu)
