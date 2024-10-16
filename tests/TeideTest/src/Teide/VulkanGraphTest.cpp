@@ -28,7 +28,14 @@ public:
 
 protected:
     Texture CreateDummyTexture(const char* name) { return m_device->CreateTexture(OnePixelWhiteTexture, name); }
-    ShaderData CompileShader(const ShaderSourceData& data) { return m_shaderCompiler.Compile(data); }
+    ShaderPtr CompileShader(const ShaderSourceData& data, const char* name)
+    {
+        return m_device->CreateShader(m_shaderCompiler.Compile(data), name);
+    }
+    Kernel CompileKernel(const KernelSourceData& data, const char* name)
+    {
+        return m_device->CreateKernel(m_shaderCompiler.Compile(data), name);
+    }
 
     VulkanGraph CreateThreeRenderPasses()
     {

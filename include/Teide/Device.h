@@ -2,6 +2,7 @@
 #pragma once
 
 #include "Teide/ForwardDeclare.h"
+#include "Teide/Kernel.h"
 #include "Teide/ParameterBlock.h"
 #include "Teide/Renderer.h"
 #include "Teide/Surface.h"
@@ -29,6 +30,7 @@ public:
     virtual BufferPtr CreateBuffer(const BufferData& data, const char* name) = 0;
     virtual ShaderEnvironmentPtr CreateShaderEnvironment(const ShaderEnvironmentData& data, const char* name) = 0;
     virtual ShaderPtr CreateShader(const ShaderData& data, const char* name) = 0;
+    virtual Kernel CreateKernel(const KernelData& data, const char* name) = 0;
     virtual Texture CreateTexture(const TextureData& data, const char* name) = 0;
     virtual MeshPtr CreateMesh(const MeshData& data, const char* name) = 0;
     virtual PipelinePtr CreatePipeline(const PipelineData& data) = 0;
