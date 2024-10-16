@@ -4,6 +4,8 @@
 #include "Teide/AbstractBase.h"
 #include "Teide/BasicTypes.h"
 
+#include <type_traits>
+
 namespace Teide
 {
 
@@ -18,6 +20,8 @@ template <class T = void>
 class Handle
 {
 public:
+    using PropertiesType = T;
+
     explicit Handle(uint64 index, RefCounter& owner, const T& data) : m_index{index}, m_owner{&owner}, m_data{&data} {}
 
     Handle(const Handle& other) : m_index{other.m_index}, m_owner{other.m_owner}, m_data{other.m_data}
@@ -82,6 +86,8 @@ template <>
 class Handle<void>
 {
 public:
+    using PropertiesType = void;
+
     explicit Handle(uint64 index, RefCounter& owner) : m_index{index}, m_owner{&owner} {}
 
     Handle(const Handle& other) : m_index{other.m_index}, m_owner{other.m_owner} { m_owner->AddRef(m_index); }
@@ -129,5 +135,8 @@ private:
     uint64 m_index;
     RefCounter* m_owner;
 };
+
+template <class T>
+static constexpr bool HasProperties = !std::is_void_v<typename T::PropertiesType>;
 
 } // namespace Teide

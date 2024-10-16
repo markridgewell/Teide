@@ -5,6 +5,7 @@
 #include "Scheduler.h"
 #include "Vulkan.h"
 #include "VulkanBuffer.h"
+#include "VulkanKernel.h"
 #include "VulkanLoader.h"
 #include "VulkanParameterBlock.h"
 #include "VulkanTexture.h"
@@ -56,6 +57,7 @@ public:
 
     ShaderEnvironmentPtr CreateShaderEnvironment(const ShaderEnvironmentData& data, const char* name) override;
     ShaderPtr CreateShader(const ShaderData& data, const char* name) override;
+    Kernel CreateKernel(const KernelData& data, const char* name) override;
     Texture CreateTexture(const TextureData& data, const char* name) override;
     MeshPtr CreateMesh(const MeshData& data, const char* name) override;
     PipelinePtr CreatePipeline(const PipelineData& data) override;
@@ -68,15 +70,20 @@ public:
 
     template <class T>
     auto& GetImpl(T& obj)
+        requires std::is_polymorphic_v<T>
     {
         return dynamic_cast<const typename VulkanImpl<std::remove_const_t<T>>::type&>(obj);
     }
 
     template <class T>
-        requires std::same_as<std::remove_const_t<T>, Texture>
-    const VulkanTexture& GetImpl(T& obj)
+    const auto& GetImpl(T& obj)
     {
-        return m_textures.Get(obj);
+        using Handle = std::remove_const_t<T>;
+        using Impl = VulkanImpl<Handle>::type;
+        using Map = ResourceMap<Handle, Impl>;
+        using MemPtrType = Map VulkanDevice::*;
+        constexpr auto MemPtr = std::get<MemPtrType>(ResourceMaps);
+        return (this->*MemPtr).Get(obj);
     }
 
     template <class T>
@@ -171,6 +178,12 @@ private:
     vma::UniqueAllocator m_allocator;
 
     ResourceMap<Texture, VulkanTexture> m_textures;
+    ResourceMap<Kernel, VulkanKernel> m_kernels;
+
+    static constexpr auto ResourceMaps = std::tuple{
+        &VulkanDevice::m_textures,
+        &VulkanDevice::m_kernels,
+    };
 
     Scheduler m_scheduler;
 };
