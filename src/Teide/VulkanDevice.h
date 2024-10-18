@@ -72,6 +72,13 @@ public:
     auto& GetImpl(T& obj)
         requires std::is_polymorphic_v<T>
     {
+        return dynamic_cast<typename VulkanImpl<std::remove_const_t<T>>::type&>(obj);
+    }
+
+    template <class T>
+    auto& GetImpl(const T& obj)
+        requires std::is_polymorphic_v<T>
+    {
         return dynamic_cast<const typename VulkanImpl<std::remove_const_t<T>>::type&>(obj);
     }
 
