@@ -5,7 +5,9 @@
 #include "TestData.h"
 #include "TestUtils.h"
 
-#include "Teide/Device.h"
+#include "Teide/Util/SafeMemCpy.h"
+#include "Teide/VulkanDevice.h"
+#include "Teide/VulkanRenderer.h"
 
 #include <gmock/gmock.h>
 
@@ -313,4 +315,22 @@ TEST_F(VulkanGraphTest, VisualizingGraphWithCopyToCpu)
 
     ASSERT_THAT(dot, Eq(CopyGpuToCpuDot)) << dot;
 }
+
+TEST_F(VulkanGraphTest, ExecutingGraphWithSimpleDispatch)
+{
+    VulkanGraph graph;
+    const auto kernel = CompileKernel(SimpleKernel, "kernel");
+    auto dispatchNode1 = graph.AddDispatchNode(kernel);
+    auto tex = graph.AddTextureNode(CreateDummyTexture("tex"), dispatchNode1);
+    auto copy = graph.AddCopyNode(tex);
+    auto texData = graph.AddTextureDataNode("texData", {}, copy);
+
+    auto renderer = m_device->CreateRenderer({});
+
+    ExecuteGraph(graph, *m_device, m_device->GetImpl(*renderer));
+    std::array<float, 4> outputValues;
+    SafeMemCpy(outputValues, graph.textureDataNodes.at(texData.index).data.pixels);
+    EXPECT_THAT(outputValues, Each(Eq(42.0f))) << VisualizeGraph(graph);
+}
+
 } // namespace

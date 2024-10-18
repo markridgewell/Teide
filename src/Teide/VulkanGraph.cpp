@@ -130,4 +130,12 @@ std::string VisualizeGraph(VulkanGraph& graph)
     ret += '}';
     return ret;
 }
+
+void ExecuteGraph(VulkanGraph& graph, VulkanDevice& device, VulkanRenderer& renderer)
+{
+    (void)device;
+    (void)renderer;
+    (void)graph;
+}
+
 } // namespace Teide
