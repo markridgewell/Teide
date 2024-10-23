@@ -20,11 +20,11 @@ std::optional<std::size_t> GetNumConsoleColumns()
 #if __linux__
     if (isatty(1))
     {
-        struct winsize w;
-        ioctl(STDOUT_FILENO, TIOCGWINSZ, &w);
+        winsize w{};
+        ioctl(STDOUT_FILENO, TIOCGWINSZ, &w); // NOLINT(cppcoreguidelines-pro-type-vararg)
         return std::size_t{w.ws_col};
     }
-    if (const char* cols = getenv("COLUMNS"))
+    if (const char* cols = getenv("COLUMNS")) // NOLINT(concurrency-mt-unsafe)
     {
         return std::atol(cols);
     }
@@ -124,9 +124,9 @@ public:
         {
             if (GetNumConsoleColumns())
             {
-                std::cout << '\r';
+                fmt::print("\r");
             }
-            std::cout << "\033[31m[FAIL]\033[39m " << m_testName << "  " << std::endl;
+            fmt::println("\033[31m[FAIL]\033[39m {}", m_testName);
             m_failure = true;
 
             spdlog::set_default_logger(m_logger);
@@ -210,7 +210,7 @@ int main(int argc, char** argv)
     if (spdlog::get_level() > spdlog::level::debug)
     {
         testing::TestEventListeners& listeners = testing::UnitTest::GetInstance()->listeners();
-        delete listeners.Release(listeners.default_result_printer());
+        delete listeners.Release(listeners.default_result_printer()); // NOLINT(cppcoreguidelines-owning-memory)
         // gtest demands an owning raw pointer to be passed in here
         listeners.Append(new LogSuppressor); // NOLINT(cppcoreguidelines-owning-memory)
     }
