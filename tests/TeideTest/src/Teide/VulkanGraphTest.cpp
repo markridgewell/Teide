@@ -1,10 +1,13 @@
 
 #include "Teide/VulkanGraph.h"
 
+#include "Mocks.h"
 #include "TestData.h"
 #include "TestUtils.h"
 
-#include "Teide/Device.h"
+#include "Teide/Util/SafeMemCpy.h"
+#include "Teide/VulkanDevice.h"
+#include "Teide/VulkanRenderer.h"
 
 #include <gmock/gmock.h>
 
@@ -25,7 +28,14 @@ public:
 
 protected:
     Texture CreateDummyTexture(const char* name) { return m_device->CreateTexture(OnePixelWhiteTexture, name); }
-    ShaderData CompileShader(const ShaderSourceData& data) { return m_shaderCompiler.Compile(data); }
+    ShaderPtr CompileShader(const ShaderSourceData& data, const char* name)
+    {
+        return m_device->CreateShader(m_shaderCompiler.Compile(data), name);
+    }
+    Kernel CompileKernel(const KernelSourceData& data, const char* name)
+    {
+        return m_device->CreateKernel(m_shaderCompiler.Compile(data), name);
+    }
 
     VulkanGraph CreateThreeRenderPasses()
     {
@@ -124,6 +134,21 @@ TEST_F(VulkanGraphTest, BuildingGraphWithOneRenderNodeHasNoEffect)
     ASSERT_THAT(graph.textureNodes, ElementsAre(HasSource(renderNode1)));
 }
 
+TEST_F(VulkanGraphTest, BuildingGraphWithOneDispatchNodeHasNoEffect)
+{
+    NiceMock<MockRefCounter> owner;
+
+    VulkanGraph graph;
+    const auto kernel = Kernel(0, owner);
+    auto dispatchNode1 = graph.AddDispatchNode(kernel);
+    graph.AddTextureNode(CreateDummyTexture("tex1"), dispatchNode1);
+
+    BuildGraph(graph, *m_device);
+
+    ASSERT_THAT(graph.dispatchNodes, ElementsAre(HasNoDependencies()));
+    ASSERT_THAT(graph.textureNodes, ElementsAre(HasSource(dispatchNode1)));
+}
+
 TEST_F(VulkanGraphTest, BuildingGraphWithOneCopyNodeHasNoEffect)
 {
     VulkanGraph graph;
@@ -211,6 +236,28 @@ TEST_F(VulkanGraphTest, VisualizingGraphWithThreeDependentRenderNodes)
     ASSERT_THAT(dot, Eq(ThreeRenderPassesDot)) << dot;
 }
 
+constexpr auto OneDispatchDot = R"--(strict digraph {
+    rankdir=LR
+    node [shape=box]
+    tex1
+    node [shape=box, margin=0.5]
+    dispatch1 -> tex1
+})--";
+
+TEST_F(VulkanGraphTest, VisualizingGraphWithOneDispatchNode)
+{
+    NiceMock<MockRefCounter> owner;
+
+    VulkanGraph graph;
+    const auto kernel = Kernel(0, owner);
+    auto dispatchNode1 = graph.AddDispatchNode(kernel);
+    graph.AddTextureNode(CreateDummyTexture("tex1"), dispatchNode1);
+
+    const auto dot = VisualizeGraph(graph);
+
+    ASSERT_THAT(dot, Eq(OneDispatchDot)) << dot;
+}
+
 constexpr auto CopyCpuToGpuDot = R"--(strict digraph {
     rankdir=LR
     node [shape=box]
@@ -239,9 +286,9 @@ constexpr auto CopyGpuToCpuDot = R"--(strict digraph {
     tex
     texData
     node [shape=box, margin=0.5]
-    render1 -> tex
     copy1 -> texData
     tex -> copy1
+    render1 -> tex
 })--";
 
 TEST_F(VulkanGraphTest, VisualizingGraphWithCopyToCpu)
@@ -256,4 +303,22 @@ TEST_F(VulkanGraphTest, VisualizingGraphWithCopyToCpu)
 
     ASSERT_THAT(dot, Eq(CopyGpuToCpuDot)) << dot;
 }
+
+TEST_F(VulkanGraphTest, ExecutingGraphWithSimpleDispatch)
+{
+    VulkanGraph graph;
+    const auto kernel = CompileKernel(SimpleKernel, "kernel");
+    auto dispatchNode1 = graph.AddDispatchNode(kernel);
+    auto tex = graph.AddTextureNode(CreateDummyTexture("tex"), dispatchNode1);
+    auto copy = graph.AddCopyNode(tex);
+    auto texData = graph.AddTextureDataNode("texData", {}, copy);
+
+    auto renderer = m_device->CreateRenderer({});
+
+    ExecuteGraph(graph, *m_device, m_device->GetImpl(*renderer));
+    std::array<float, 4> outputValues;
+    SafeMemCpy(outputValues, graph.textureDataNodes.at(texData.index).data.pixels);
+    EXPECT_THAT(outputValues, Each(Eq(42.0f))) << VisualizeGraph(graph);
+}
+
 } // namespace

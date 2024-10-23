@@ -6,24 +6,26 @@
 using namespace testing;
 using Type = Teide::ShaderVariableType::BaseType;
 
-const ShaderSourceData TestShader = {
-    .language = ShaderLanguage::Glsl,
-    .environment = {
-        .scenePblock = {
-            .parameters = {
-                {"lightDir", Type::Vector3},
-                {"lightColor", Type::Vector3},
-                {"ambientColorTop", Type::Vector3},
-                {"ambientColorBottom", Type::Vector3},
-                {"shadowMatrix", Type::Matrix4}
-            },
-        },
-        .viewPblock = {
-            .parameters = {
-                {"viewProj", Type::Matrix4},
-            }
+const Teide::ShaderEnvironmentData Env = {
+    .scenePblock = {
+        .parameters = {
+            {"lightDir", Type::Vector3},
+            {"lightColor", Type::Vector3},
+            {"ambientColorTop", Type::Vector3},
+            {"ambientColorBottom", Type::Vector3},
+            {"shadowMatrix", Type::Matrix4}
         },
     },
+    .viewPblock = {
+        .parameters = {
+            {"viewProj", Type::Matrix4},
+        }
+    },
+};
+
+const ShaderSourceData TestShader = {
+    .language = ShaderLanguage::Glsl,
+    .environment = Env,
     .materialPblock = {
         .parameters = {
             {"texSampler", Type::Texture2D},
@@ -74,7 +76,24 @@ const ShaderSourceData TestShader = {
     },
 };
 
-TEST(ShaderCompilerTest, CompileSimple)
+const KernelSourceData TestKernel = {
+    .language = ShaderLanguage::Glsl,
+    .environment = Env,
+    .kernelShader = {
+        .inputs = {{
+        }},
+        .outputs = {{
+            {"result", Type::Float},
+        }},
+        .source = R"--(
+            void main() {
+                result = 42.0f;
+            }
+        )--",
+    },
+};
+
+TEST(ShaderCompilerTest, CompileSimpleShader)
 {
     ShaderCompiler const compiler;
     const auto result = compiler.Compile(TestShader);
@@ -88,4 +107,17 @@ TEST(ShaderCompilerTest, CompileSimple)
     EXPECT_THAT(result.materialPblock.uniformsStages, Eq(Teide::ShaderStageFlags::None));
     EXPECT_THAT(result.objectPblock.parameters, Eq(TestShader.objectPblock.parameters));
     EXPECT_THAT(result.objectPblock.uniformsStages, Eq(Teide::ShaderStageFlags::Vertex));
+}
+
+TEST(ShaderCompilerTest, CompileSimpleKernel)
+{
+    const ShaderCompiler compiler;
+    const auto result = compiler.Compile(TestKernel);
+    EXPECT_THAT(result.computeShader.spirv, Not(IsEmpty()));
+    EXPECT_THAT(result.environment.scenePblock.parameters, Eq(TestKernel.environment.scenePblock.parameters));
+    EXPECT_THAT(result.environment.scenePblock.uniformsStages, Eq(Teide::ShaderStageFlags::None));
+    EXPECT_THAT(result.environment.viewPblock.parameters, Eq(TestKernel.environment.viewPblock.parameters));
+    EXPECT_THAT(result.environment.viewPblock.uniformsStages, Eq(Teide::ShaderStageFlags::None));
+    EXPECT_THAT(result.paramsPblock.parameters, Eq(TestKernel.paramsPblock.parameters));
+    EXPECT_THAT(result.paramsPblock.uniformsStages, Eq(Teide::ShaderStageFlags::None));
 }

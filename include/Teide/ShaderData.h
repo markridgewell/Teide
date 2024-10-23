@@ -15,6 +15,7 @@ enum class ShaderStageFlags
     None = 0,
     Vertex = 1 << 0,
     Pixel = 1 << 1,
+    Compute = 1 << 2,
 };
 
 constexpr ShaderStageFlags operator|(ShaderStageFlags a, ShaderStageFlags b)
@@ -98,6 +99,15 @@ struct ShaderData
     ShaderStageData pixelShader;
 
     bool operator==(const ShaderData&) const = default;
+};
+
+struct KernelData
+{
+    ShaderEnvironmentData environment;
+    ParameterBlockDesc paramsPblock;
+    ShaderStageData computeShader;
+
+    bool operator==(const KernelData&) const = default;
 };
 
 bool IsResourceType(ShaderVariableType::BaseType type);
