@@ -152,4 +152,4 @@ endif()
 
 mark_as_advanced_pattern("[a-z0-9]+_DIR|VCPKG_|FETCHCONTENT_")
 
-dump_targets("${CMAKE_BINARY_DIR}/alltargets.txt")
+dump_targets()
