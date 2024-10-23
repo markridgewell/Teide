@@ -136,11 +136,14 @@ function(td_add_test target)
     get_local_dependencies(dependencies ${target})
     get_target_sources(dep_sources ${dependencies})
 
-    add_test(NAME ${target}
-             COMMAND ${CMAKE_COMMAND} "-DTEST_BINARY=$<TARGET_FILE:${target}>" "-DTEST_ARGS=${ARG_TEST_ARGS}"
-                     "-DCOMPILER=${CMAKE_CXX_COMPILER_ID}" "-DSOURCES=${dep_sources}" -P "${SCRIPTS_DIR}/RunTest.cmake")
     if(TEIDE_TEST_COVERAGE)
+        add_test(
+            NAME ${target}
+            COMMAND ${CMAKE_COMMAND} "-DTEST_BINARY=$<TARGET_FILE:${target}>" "-DTEST_ARGS=${ARG_TEST_ARGS}"
+                    "-DCOMPILER=${CMAKE_CXX_COMPILER_ID}" "-DSOURCES=${dep_sources}" -P "${SCRIPTS_DIR}/RunTest.cmake")
         test_enable_coverage(${target})
+    else()
+        add_test(NAME ${target} COMMAND ${target} ${ARG_TEST_ARGS})
     endif()
     test_enable_sanitizer(${target} ${TEIDE_SANITIZER})
 

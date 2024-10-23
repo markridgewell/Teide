@@ -9,8 +9,29 @@
 
 #include <exception>
 
+#if __linux__
+#    include <sys/ioctl.h>
+#endif
+
 namespace
 {
+std::optional<std::size_t> GetNumConsoleColumns()
+{
+#if __linux__
+    if (isatty(1))
+    {
+        struct winsize w;
+        ioctl(STDOUT_FILENO, TIOCGWINSZ, &w);
+        return std::size_t{w.ws_col};
+    }
+    if (const char* cols = getenv("COLUMNS"))
+    {
+        return std::atol(cols);
+    }
+#endif
+    return std::nullopt;
+}
+
 bool AssertDie(std::string_view msg, std::string_view expression, Teide::SourceLocation location)
 {
     std::cout << location.file_name();
@@ -57,31 +78,105 @@ LONG WINAPI ExceptionHandler(EXCEPTION_POINTERS* exceptions [[maybe_unused]])
 class LogSuppressor : public testing::EmptyTestEventListener
 {
 public:
-    void OnTestStart(const testing::TestInfo& /*unused*/) override
+    void OnTestProgramStart(const testing::UnitTest& unitTest) override { m_testCount = unitTest.test_to_run_count(); }
+
+    void OnTestStart(const testing::TestInfo& testInfo) override
     {
+        ++m_currentTestIndex;
+        m_testName = fmt::format("{}.{}", testInfo.test_suite_name(), testInfo.name());
+        const auto percentComplete = m_currentTestIndex * 100 / m_testCount;
+        std::string line = fmt::format("[{:>3}%] {}", percentComplete, m_testName);
+        if (const auto numCols = GetNumConsoleColumns())
+        {
+            if (line.size() < *numCols)
+            {
+                line.append(*numCols - line.size(), ' ');
+            }
+            else if (line.size() > *numCols)
+            {
+                line.resize(*numCols - 4);
+                line.append("...");
+            }
+            std::cout << '\r' << line << std::flush;
+        }
+        else
+        {
+            std::cout << line << '\n';
+        }
+        m_failure = false;
         m_output = {};
         m_logger = spdlog::default_logger();
         spdlog::set_default_logger(
-            std::make_shared<spdlog::logger>("test", std::make_shared<spdlog::sinks::ostream_sink_mt>(m_output)));
+            std::make_shared<spdlog::logger>("", std::make_shared<spdlog::sinks::ostream_sink_mt>(m_output)));
     }
 
     void OnTestEnd(const testing::TestInfo& testInfo) override
     {
-        spdlog::set_default_logger(m_logger);
-        const auto logString = m_output.str();
-        if (testInfo.result()->Failed() && !logString.empty())
+        if (testInfo.result()->Failed())
         {
-            std::cerr << "\n";
-            std::cerr << "Log output for this test:\n";
-            std::cerr << "=========================\n";
-            std::cerr << logString;
-            std::cerr << "=========================\n";
+            fmt::println("");
         }
+    }
+
+    void OnTestPartResult(const testing::TestPartResult& result) override
+    {
+        if (result.failed() && !m_failure)
+        {
+            if (GetNumConsoleColumns())
+            {
+                std::cout << '\r';
+            }
+            std::cout << "\033[31m[FAIL]\033[39m " << m_testName << "  " << std::endl;
+            m_failure = true;
+
+            spdlog::set_default_logger(m_logger);
+            const auto logString = m_output.str();
+            std::cout << logString;
+        }
+
+        if (result.failed())
+        {
+            fmt::print(
+                "{}({}): \033[31massertion failed\033[39m: {}", result.file_name(), result.line_number(), result.message());
+        }
+    }
+
+    void OnTestProgramEnd(const testing::UnitTest& unitTest) override
+    {
+        if (const auto numCols = GetNumConsoleColumns())
+        {
+            fmt::print("\r{:{}}\r", ' ', *numCols);
+        }
+
+        fmt::print("Test results: ");
+        if (unitTest.successful_test_count() > 0)
+        {
+            fmt::print("\033[32m");
+        }
+        fmt::print("{} passed\033[39m, ", unitTest.successful_test_count());
+
+        if (unitTest.failed_test_count() > 0)
+        {
+            fmt::print("\033[31m");
+        }
+        fmt::print("{} failed\033[39m, ", unitTest.failed_test_count());
+
+        if (unitTest.skipped_test_count() > 0)
+        {
+            fmt::print("\033[33m");
+        }
+        fmt::print("{} skipped\033[39m", unitTest.skipped_test_count());
+
+        std::cout << '\n';
     }
 
 private:
     std::shared_ptr<spdlog::logger> m_logger;
     std::stringstream m_output;
+    bool m_failure = false;
+    std::string m_testName;
+    int m_currentTestIndex = 0;
+    int m_testCount = 0;
 };
 
 int main(int argc, char** argv)
@@ -115,12 +210,16 @@ int main(int argc, char** argv)
     if (spdlog::get_level() > spdlog::level::debug)
     {
         testing::TestEventListeners& listeners = testing::UnitTest::GetInstance()->listeners();
+        delete listeners.Release(listeners.default_result_printer());
         // gtest demands an owning raw pointer to be passed in here
         listeners.Append(new LogSuppressor); // NOLINT(cppcoreguidelines-owning-memory)
     }
 
-    fmt::print("Debugger: {}\n", Teide::IsDebuggerAttached());
-    if (!Teide::IsDebuggerAttached())
+    if (Teide::IsDebuggerAttached())
+    {
+        spdlog::info("Debugger detected");
+    }
+    else
     {
         Teide::SetAssertHandler(&AssertDie);
     }
