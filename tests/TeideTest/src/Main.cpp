@@ -18,10 +18,14 @@ namespace
 std::optional<std::size_t> GetNumConsoleColumns()
 {
 #if __linux__
-    if (isatty(1))
+    if (isatty(STDOUT_FILENO))
     {
         winsize w{};
-        ioctl(STDOUT_FILENO, TIOCGWINSZ, &w); // NOLINT(cppcoreguidelines-pro-type-vararg)
+        const int err = ioctl(STDOUT_FILENO, TIOCGWINSZ, &w); // NOLINT(cppcoreguidelines-pro-type-vararg)
+        if (err != 0 || w.ws_col == 0)
+        {
+            return std::nullopt;
+        }
         return std::size_t{w.ws_col};
     }
     if (const char* cols = getenv("COLUMNS")) // NOLINT(concurrency-mt-unsafe)
@@ -136,8 +140,16 @@ public:
 
         if (result.failed())
         {
-            fmt::print(
-                "{}({}): \033[31massertion failed\033[39m: {}", result.file_name(), result.line_number(), result.message());
+            if (result.file_name())
+            {
+                fmt::print(
+                    "{}({}): \033[31massertion failed\033[39m: {}", result.file_name(), result.line_number(),
+                    result.message());
+            }
+            else
+            {
+                fmt::print("\033[31mtest error\033[39m: {}", result.message());
+            }
         }
     }
 
