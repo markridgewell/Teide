@@ -108,6 +108,7 @@ public:
     SurfacePtr CreateSurface(vk::UniqueSurfaceKHR surface, SDL_Window* window, bool multisampled);
     BufferPtr CreateBuffer(const BufferData& data, const char* name, CommandBuffer& cmdBuffer);
     VulkanBuffer CreateTransientBuffer(const BufferData& data, const char* name);
+    Texture AllocateTexture(const TextureProperties& props);
     Texture CreateTexture(const TextureData& data, const char* name, CommandBuffer& cmdBuffer);
     Texture CreateRenderableTexture(const TextureData& data, const char* name);
     Texture CreateRenderableTexture(const TextureData& data, const char* name, CommandBuffer& cmdBuffer);
@@ -116,6 +117,7 @@ public:
     CreateParameterBlock(const ParameterBlockData& data, const char* name, CommandBuffer& cmdBuffer, uint32 threadIndex);
     ParameterBlock CreateParameterBlock(
         const ParameterBlockData& data, const char* name, CommandBuffer& cmdBuffer, vk::DescriptorPool descriptorPool);
+    void InitParameterBlock(VulkanParameterBlock& pblock);
     TransientParameterBlock
     CreateTransientParameterBlock(const ParameterBlockData& data, const char* name, DescriptorPool& descriptorPool);
     void UpdateTransientParameterBlock(TransientParameterBlock& pblock, const ParameterBlockData& data);
@@ -154,7 +156,7 @@ private:
     vk::UniqueDescriptorSet CreateUniqueDescriptorSet(
         vk::DescriptorPool pool, vk::DescriptorSetLayout layout, const Buffer* uniformBuffer,
         std::span<const Texture> textures, const char* name);
-    void WriteDescriptorSet(vk::DescriptorSet descriptorSet, const Buffer* uniformBuffer, std::span<const Texture> textures);
+    bool WriteDescriptorSet(vk::DescriptorSet descriptorSet, const Buffer* uniformBuffer, std::span<const Texture> textures);
 
     VulkanLoader m_loader;
     vk::UniqueInstance m_instance;

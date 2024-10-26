@@ -458,6 +458,7 @@ void VulkanRenderer::RecordRenderObjectCommands(
     commandBufferWrapper.AddReference(obj.materialParameters);
     commandBufferWrapper.AddReference(obj.pipeline);
 
+    m_device.InitParameterBlock(obj.materialParameters);
     if (const auto dset = GetDescriptorSet(obj.materialParameters))
     {
         commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipeline.layout, 2, dset, {});
