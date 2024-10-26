@@ -148,4 +148,20 @@ std::string VisualizeGraph(VulkanGraph& graph)
     ret += '}';
     return ret;
 }
+
+void ExecuteGraph(VulkanGraph& graph, VulkanDevice& device, VulkanRenderer& renderer)
+{
+    // 1. Create transient textures
+    for (VulkanGraph::TextureNode& node : graph.textureNodes)
+    {
+        VulkanTexture& texture = device.GetImpl(node.texture);
+        texture.
+    }
+
+    // 2. Record command buffers
+    // 3. Submit to GPU executor
+    (void)device;
+    (void)renderer;
+    (void)graph;
+}
 } // namespace Teide

@@ -10,6 +10,7 @@
 namespace Teide
 {
 class VulkanDevice;
+class VulkanRenderer;
 
 enum class ResourceType : uint8
 {
@@ -104,5 +105,6 @@ struct VulkanGraph
 
 void BuildGraph(VulkanGraph& graph, VulkanDevice& device);
 std::string VisualizeGraph(VulkanGraph& graph);
+void ExecuteGraph(VulkanGraph& graph, VulkanDevice& device, VulkanRenderer& renderer);
 
 } // namespace Teide
