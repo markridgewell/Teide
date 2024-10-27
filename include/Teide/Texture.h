@@ -38,12 +38,3 @@ public:
 };
 
 } // namespace Teide
-
-template <>
-struct std::hash<Teide::Texture>
-{
-    std::size_t operator()(const Teide::Texture& v) const
-    {
-        return std::hash<Teide::uint64>{}(static_cast<Teide::uint64>(v));
-    }
-};

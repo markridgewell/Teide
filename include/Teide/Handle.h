@@ -4,6 +4,7 @@
 #include "Teide/AbstractBase.h"
 #include "Teide/BasicTypes.h"
 
+#include <memory>
 #include <type_traits>
 
 namespace Teide
@@ -16,8 +17,14 @@ public:
     virtual void DecRef(uint64 index) noexcept = 0;
 };
 
+class BaseHandle
+{
+public:
+    bool operator==(const BaseHandle&) const = default;
+};
+
 template <class T = void>
-class Handle
+class Handle : public BaseHandle
 {
 public:
     using PropertiesType = T;
@@ -83,7 +90,7 @@ private:
 };
 
 template <>
-class Handle<void>
+class Handle<void> : public BaseHandle
 {
 public:
     using PropertiesType = void;
@@ -140,3 +147,10 @@ template <class T>
 static constexpr bool HasProperties = !std::is_void_v<typename T::PropertiesType>;
 
 } // namespace Teide
+
+template <class T>
+    requires std::derived_from<T, Teide::BaseHandle>
+struct std::hash<T>
+{
+    std::size_t operator()(const T& v) const { return std::hash<Teide::uint64>{}(static_cast<Teide::uint64>(v)); }
+};

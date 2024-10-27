@@ -32,7 +32,7 @@ public:
     virtual Texture CreateTexture(const TextureData& data, const char* name) = 0;
     virtual MeshPtr CreateMesh(const MeshData& data, const char* name) = 0;
     virtual PipelinePtr CreatePipeline(const PipelineData& data) = 0;
-    virtual ParameterBlockPtr CreateParameterBlock(const ParameterBlockData& data, const char* name) = 0;
+    virtual ParameterBlock CreateParameterBlock(const ParameterBlockData& data, const char* name) = 0;
 };
 
 using DevicePtr = std::unique_ptr<Device>;

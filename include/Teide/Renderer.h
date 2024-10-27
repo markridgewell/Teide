@@ -35,7 +35,7 @@ struct RenderObject
 {
     MeshPtr mesh = nullptr;
     PipelinePtr pipeline = nullptr;
-    ParameterBlockPtr materialParameters = nullptr;
+    ParameterBlock materialParameters;
     ShaderParameters objectParameters;
 };
 

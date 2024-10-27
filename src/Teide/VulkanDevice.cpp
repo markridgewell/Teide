@@ -478,6 +478,7 @@ VulkanDevice::VulkanDevice(
         CreateCommandPool(m_physicalDevice.queueFamilies.graphicsFamily, m_device.get(), "SurfaceCommandPool")},
     m_allocator{CreateAllocator(m_loader, m_instance.get(), m_device.get(), m_physicalDevice.physicalDevice)},
     m_textures{"texture"},
+    m_parameterBlocks{"parameter block"},
     m_scheduler(m_settings.numThreads, m_device.get(), m_graphicsQueue, m_physicalDevice.queueFamilies.graphicsFamily)
 {
     if constexpr (IsDebugBuild)
@@ -1060,7 +1061,7 @@ Framebuffer VulkanDevice::CreateFramebuffer(
     };
 }
 
-ParameterBlockPtr VulkanDevice::CreateParameterBlock(const ParameterBlockData& data, const char* name)
+ParameterBlock VulkanDevice::CreateParameterBlock(const ParameterBlockData& data, const char* name)
 {
     spdlog::debug("Creating parameter block '{}'", name);
     auto task = m_scheduler.ScheduleGpu([data, name, this](CommandBuffer& cmdBuffer) {
@@ -1069,29 +1070,23 @@ ParameterBlockPtr VulkanDevice::CreateParameterBlock(const ParameterBlockData& d
     return task.get();
 }
 
-ParameterBlockPtr
+ParameterBlock
 VulkanDevice::CreateParameterBlock(const ParameterBlockData& data, const char* name, CommandBuffer& cmdBuffer, uint32 threadIndex)
 {
     return CreateParameterBlock(data, name, cmdBuffer, m_workerDescriptorPools[threadIndex].get());
 }
 
-ParameterBlockPtr VulkanDevice::CreateParameterBlock(
+ParameterBlock VulkanDevice::CreateParameterBlock(
     const ParameterBlockData& data, const char* name, CommandBuffer& cmdBuffer, vk::DescriptorPool descriptorPool)
 {
     if (!data.layout)
     {
-        return nullptr;
+        return m_parameterBlocks.Insert({});
     }
 
     const auto& layout = GetImpl(*data.layout);
     const bool isPushConstant = layout.HasPushConstants();
-
     const auto setLayout = layout.setLayout.get();
-    if (!setLayout && !isPushConstant)
-    {
-        return nullptr;
-    }
-
     const auto descriptorSetName = DebugFormat("{}DescriptorSet", name);
 
     VulkanParameterBlock ret{layout};
@@ -1113,7 +1108,7 @@ ParameterBlockPtr VulkanDevice::CreateParameterBlock(
         ret.pushConstantData = data.parameters.uniformData;
     }
 
-    return std::make_unique<VulkanParameterBlock>(std::move(ret));
+    return m_parameterBlocks.Insert(std::move(ret));
 }
 
 TransientParameterBlock

@@ -458,10 +458,9 @@ void VulkanRenderer::RecordRenderObjectCommands(
     commandBufferWrapper.AddReference(obj.materialParameters);
     commandBufferWrapper.AddReference(obj.pipeline);
 
-    if (obj.materialParameters)
+    if (const auto dset = GetDescriptorSet(obj.materialParameters))
     {
-        commandBuffer.bindDescriptorSets(
-            vk::PipelineBindPoint::eGraphics, pipeline.layout, 2, GetDescriptorSet(obj.materialParameters.get()), {});
+        commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipeline.layout, 2, dset, {});
     }
 
     commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, pipeline.GetPipeline(renderPassDesc));
@@ -505,13 +504,9 @@ std::optional<SurfaceImage> VulkanRenderer::AddSurfaceToPresent(VulkanSurface& s
     });
 }
 
-vk::DescriptorSet VulkanRenderer::GetDescriptorSet(const ParameterBlock* parameterBlock) const
+vk::DescriptorSet VulkanRenderer::GetDescriptorSet(const ParameterBlock& parameterBlock) const
 {
-    if (parameterBlock == nullptr)
-    {
-        return {};
-    }
-    const auto& parameterBlockImpl = m_device.GetImpl(*parameterBlock);
+    const auto& parameterBlockImpl = m_device.GetImpl(parameterBlock);
     return parameterBlockImpl.descriptorSet.get();
 }
 
