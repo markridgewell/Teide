@@ -570,88 +570,8 @@ VulkanDevice::CreateBufferWithData(BytesView data, BufferUsage usage, ResourceLi
     return ret;
 }
 
-auto VulkanDevice::CreateTextureImpl(
-    const TextureData& data, vk::ImageUsageFlags usage, CommandBuffer& cmdBuffer, const char* debugName) -> TextureAndState
+vk::UniqueSampler VulkanDevice::CreateSampler(const SamplerState& ss)
 {
-    // For now, all textures will be created with TransferSrc so they can be copied from
-    usage |= vk::ImageUsageFlagBits::eTransferSrc;
-
-    if (!data.pixels.empty())
-    {
-        // Need to transfer image data into image
-        usage |= vk::ImageUsageFlagBits::eTransferDst;
-    }
-
-    if (data.mipLevelCount > 1)
-    {
-        // Need to transfer pixels between mip levels in order to generate mipmaps
-        usage |= vk::ImageUsageFlagBits::eTransferSrc | vk::ImageUsageFlagBits::eTransferDst;
-    }
-
-    auto initialState = TextureState{
-        .layout = vk::ImageLayout::eUndefined,
-        .lastPipelineStageUsage = vk::PipelineStageFlagBits::eTopOfPipe,
-    };
-
-    // Create image
-    const auto imageExtent = vk::Extent3D{data.size.x, data.size.y, 1};
-    const vk::ImageCreateInfo imageInfo = {
-        .imageType = vk::ImageType::e2D,
-        .format = ToVulkan(data.format),
-        .extent = imageExtent,
-        .mipLevels = data.mipLevelCount,
-        .arrayLayers = 1,
-        .samples = vk::SampleCountFlagBits{data.sampleCount},
-        .tiling = vk::ImageTiling::eOptimal,
-        .usage = usage,
-        .sharingMode = vk::SharingMode::eExclusive,
-        .initialLayout = initialState.layout,
-    };
-
-    const vma::AllocationCreateInfo allocInfo = {
-        .usage = vma::MemoryUsage::eAuto,
-    };
-    auto [image, allocation] = m_allocator->createImageUnique(imageInfo, allocInfo);
-
-    if (!data.pixels.empty())
-    {
-        // Create staging buffer
-        auto stagingBuffer = CreateBufferUninitialized(
-            data.pixels.size(), vk::BufferUsageFlagBits::eTransferSrc,
-            vma::AllocationCreateFlagBits::eHostAccessSequentialWrite);
-        SetBufferData(stagingBuffer, data.pixels);
-
-        // Copy staging buffer to image
-        TransitionImageLayout(
-            cmdBuffer, image.get(), data.format, data.mipLevelCount, imageInfo.initialLayout,
-            vk::ImageLayout::eTransferDstOptimal, vk::PipelineStageFlagBits::eTopOfPipe,
-            vk::PipelineStageFlagBits::eTransfer);
-        initialState = {
-            .layout = vk::ImageLayout::eTransferDstOptimal,
-            .lastPipelineStageUsage = vk::PipelineStageFlagBits::eTransfer,
-        };
-        CopyBufferToImage(cmdBuffer, stagingBuffer.buffer.get(), image.get(), data.format, imageExtent);
-
-        cmdBuffer.TakeOwnership(std::move(stagingBuffer.buffer));
-        cmdBuffer.TakeOwnership(std::move(stagingBuffer.allocation));
-    }
-
-    // Create image view
-    const vk::ImageViewCreateInfo viewInfo = {
-        .image = image.get(),
-        .viewType = vk::ImageViewType::e2D,
-        .format = imageInfo.format,
-        .subresourceRange = {
-            .aspectMask =  GetImageAspect(data.format),
-            .baseMipLevel = 0,
-            .levelCount = data.mipLevelCount,
-            .baseArrayLayer = 0,
-            .layerCount = 1,
-        },
-    };
-    auto imageView = m_device->createImageViewUnique(viewInfo, s_allocator);
-
-    const auto& ss = data.samplerState;
     const vk::SamplerCreateInfo samplerInfo = {
         .magFilter = ToVulkan(ss.magFilter),
         .minFilter = ToVulkan(ss.minFilter),
@@ -666,30 +586,68 @@ auto VulkanDevice::CreateTextureImpl(
         .minLod = 0,
         .maxLod = VK_LOD_CLAMP_NONE,
     };
-    auto sampler = m_device->createSamplerUnique(samplerInfo, s_allocator);
+    return m_device->createSamplerUnique(samplerInfo, s_allocator);
+}
 
-    auto ret = VulkanTexture{
-        .image = vk::UniqueImage(image.release(), m_device.get()),
-        .allocation = std::move(allocation),
-        .imageView = std::move(imageView),
-        .sampler = std::move(sampler),
-        .properties = {
-            .size = {imageExtent.width, imageExtent.height},
-            .format = data.format,
-            .mipLevelCount = data.mipLevelCount,
-            .sampleCount = data.sampleCount,
-            .name = debugName,
-        },
+TextureState VulkanDevice::CreateTextureImpl(VulkanTexture& texture, vk::ImageUsageFlags usage)
+{
+    // For now, all textures will be created with TransferSrc so they can be copied from
+    usage |= vk::ImageUsageFlagBits::eTransferSrc;
+
+    const auto& props = texture.properties;
+
+    auto initialState = TextureState{
+        .layout = vk::ImageLayout::eUndefined,
+        .lastPipelineStageUsage = vk::PipelineStageFlagBits::eTopOfPipe,
     };
 
-    if (debugName)
+    // Create image
+    const auto imageExtent = vk::Extent3D{props.size.x, props.size.y, 1};
+    const vk::ImageCreateInfo imageInfo = {
+        .imageType = vk::ImageType::e2D,
+        .format = ToVulkan(props.format),
+        .extent = imageExtent,
+        .mipLevels = props.mipLevelCount,
+        .arrayLayers = 1,
+        .samples = vk::SampleCountFlagBits{props.sampleCount},
+        .tiling = vk::ImageTiling::eOptimal,
+        .usage = usage,
+        .sharingMode = vk::SharingMode::eExclusive,
+        .initialLayout = initialState.layout,
+    };
+
+    const vma::AllocationCreateInfo allocInfo = {
+        .usage = vma::MemoryUsage::eAuto,
+    };
+    auto [image, allocation] = m_allocator->createImageUnique(imageInfo, allocInfo);
+
+    // Create image view
+    const vk::ImageViewCreateInfo viewInfo = {
+        .image = image.get(),
+        .viewType = vk::ImageViewType::e2D,
+        .format = imageInfo.format,
+        .subresourceRange = {
+            .aspectMask =  GetImageAspect(props.format),
+            .baseMipLevel = 0,
+            .levelCount = props.mipLevelCount,
+            .baseArrayLayer = 0,
+            .layerCount = 1,
+        },
+    };
+    auto imageView = m_device->createImageViewUnique(viewInfo, s_allocator);
+
+    texture.image = vk::UniqueImage(image.release(), m_device.get());
+    texture.allocation = std::move(allocation);
+    texture.imageView = std::move(imageView);
+
+    if (!props.name.empty())
     {
-        SetDebugName(ret.image, debugName);
-        SetDebugName(ret.imageView, "{}:View", debugName);
-        SetDebugName(ret.sampler, "{}:Sampler", debugName);
+        SetDebugName(texture.image, "{}", props.name);
+        SetDebugName(texture.imageView, "{}:View", props.name);
+        SetDebugName(texture.sampler, "{}:Sampler", props.name);
     }
 
-    return {.texture = std::move(ret), .state = initialState};
+    return initialState;
 }
 
 void VulkanDevice::SetBufferData(VulkanBuffer& buffer, BytesView data)
@@ -805,9 +763,56 @@ Texture VulkanDevice::CreateTexture(const TextureData& data, const char* name)
 
 Texture VulkanDevice::CreateTexture(const TextureData& data, const char* name, CommandBuffer& cmdBuffer)
 {
-    const auto usage = vk::ImageUsageFlagBits::eSampled;
+    vk::ImageUsageFlags usage = vk::ImageUsageFlagBits::eSampled;
 
-    auto [texture, state] = CreateTextureImpl(data, usage, cmdBuffer, name);
+    if (!data.pixels.empty())
+    {
+        // Need to transfer image data into image
+        usage |= vk::ImageUsageFlagBits::eTransferDst;
+    }
+
+    if (data.mipLevelCount > 1)
+    {
+        // Need to transfer pixels between mip levels in order to generate mipmaps
+        usage |= vk::ImageUsageFlagBits::eTransferSrc | vk::ImageUsageFlagBits::eTransferDst;
+    }
+
+    VulkanTexture texture;
+    texture.properties = {
+        .size = data.size,
+        .format = data.format,
+        .mipLevelCount = data.mipLevelCount,
+        .sampleCount = data.sampleCount,
+        .name = name,
+    };
+    texture.sampler = CreateSampler(data.samplerState);
+
+    auto state = CreateTextureImpl(texture, usage);
+
+    if (!data.pixels.empty())
+    {
+        const auto imageExtent = vk::Extent3D{data.size.x, data.size.y, 1};
+
+        // Create staging buffer
+        auto stagingBuffer = CreateBufferUninitialized(
+            data.pixels.size(), vk::BufferUsageFlagBits::eTransferSrc,
+            vma::AllocationCreateFlagBits::eHostAccessSequentialWrite);
+        SetBufferData(stagingBuffer, data.pixels);
+
+        // Copy staging buffer to image
+        TransitionImageLayout(
+            cmdBuffer, texture.image.get(), data.format, data.mipLevelCount, state.layout,
+            vk::ImageLayout::eTransferDstOptimal, vk::PipelineStageFlagBits::eTopOfPipe,
+            vk::PipelineStageFlagBits::eTransfer);
+        state = {
+            .layout = vk::ImageLayout::eTransferDstOptimal,
+            .lastPipelineStageUsage = vk::PipelineStageFlagBits::eTransfer,
+        };
+        CopyBufferToImage(cmdBuffer, stagingBuffer.buffer.get(), texture.image.get(), data.format, imageExtent);
+
+        cmdBuffer.TakeOwnership(std::move(stagingBuffer.buffer));
+        cmdBuffer.TakeOwnership(std::move(stagingBuffer.allocation));
+    }
 
     if (data.mipLevelCount > 1)
     {
@@ -820,7 +825,9 @@ Texture VulkanDevice::CreateTexture(const TextureData& data, const char* name, C
         texture.TransitionToShaderInput(state, cmdBuffer);
     }
 
-    return m_textures.Insert(std::move(texture));
+    auto handle = m_textures.Insert(std::move(texture));
+    cmdBuffer.AddReference(handle);
+    return handle;
 }
 
 Texture VulkanDevice::CreateRenderableTexture(const TextureData& data, const char* name)
@@ -838,9 +845,19 @@ Texture VulkanDevice::CreateRenderableTexture(const TextureData& data, const cha
     const auto renderUsage
         = isColorTarget ? vk::ImageUsageFlagBits::eColorAttachment : vk::ImageUsageFlagBits::eDepthStencilAttachment;
 
-    const auto usage = renderUsage | vk::ImageUsageFlagBits::eSampled;
+    const vk::ImageUsageFlags usage = renderUsage | vk::ImageUsageFlagBits::eSampled;
 
-    auto [texture, state] = CreateTextureImpl(data, usage, cmdBuffer, name);
+    VulkanTexture texture;
+    texture.properties = {
+        .size = data.size,
+        .format = data.format,
+        .mipLevelCount = data.mipLevelCount,
+        .sampleCount = data.sampleCount,
+        .name = name,
+    };
+    texture.sampler = CreateSampler(data.samplerState);
+
+    auto state = CreateTextureImpl(texture, usage);
 
     if (isColorTarget)
     {
@@ -851,7 +868,9 @@ Texture VulkanDevice::CreateRenderableTexture(const TextureData& data, const cha
         texture.TransitionToDepthStencilTarget(state, cmdBuffer);
     }
 
-    return m_textures.Insert(std::move(texture));
+    auto handle = m_textures.Insert(std::move(texture));
+    cmdBuffer.AddReference(handle);
+    return handle;
 }
 
 MeshPtr VulkanDevice::CreateMesh(const MeshData& data, const char* name)
