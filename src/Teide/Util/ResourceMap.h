@@ -23,7 +23,14 @@ public:
     HandleT Insert(ResourceT resource)
     {
         const auto& [index, slot] = m_impl.Lock(&Impl::Insert, std::move(resource));
-        return HandleT(index, *this, slot.resource.properties);
+        if constexpr (HasProperties<HandleT>)
+        {
+            return HandleT(index, *this, slot.resource.properties);
+        }
+        else
+        {
+            return HandleT(index, *this);
+        }
     }
 
     ResourceT& Get(const HandleT& handle) { return m_impl.Lock(&Impl::Get, handle); }

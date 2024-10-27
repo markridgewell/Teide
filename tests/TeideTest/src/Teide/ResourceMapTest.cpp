@@ -25,6 +25,8 @@ struct TestHandle : public Handle<TestProperties>
     using Handle::operator->;
 };
 
+static_assert(HasProperties<TestHandle>);
+
 using Map = ResourceMap<TestHandle, TestResource>;
 
 template <class T>
