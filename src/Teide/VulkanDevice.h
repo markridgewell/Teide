@@ -85,14 +85,7 @@ public:
         return std::dynamic_pointer_cast<const typename VulkanImpl<std::remove_const_t<T>>::type>(ptr);
     }
 
-    struct TextureAndState
-    {
-        VulkanTexture texture;
-        TextureState state;
-    };
-
-    TextureAndState
-    CreateTextureImpl(const TextureData& data, vk::ImageUsageFlags usage, CommandBuffer& cmdBuffer, const char* debugName);
+    TextureState CreateTextureImpl(VulkanTexture& texture, vk::ImageUsageFlags usage);
 
     VulkanBuffer CreateBufferUninitialized(
         vk::DeviceSize size, vk::BufferUsageFlags usage, vma::AllocationCreateFlags allocationFlags = {},
@@ -143,6 +136,8 @@ private:
         bool operator==(const FramebufferDesc&) const = default;
         void Visit(auto f) const { return f(renderPass, size, attachments); }
     };
+
+    vk::UniqueSampler CreateSampler(const SamplerState& ss);
 
     vk::UniqueDescriptorSet CreateUniqueDescriptorSet(
         vk::DescriptorPool pool, vk::DescriptorSetLayout layout, const Buffer* uniformBuffer,
