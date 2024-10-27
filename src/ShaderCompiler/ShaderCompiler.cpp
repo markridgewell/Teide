@@ -396,13 +396,13 @@ void BuildKernelVaryings(std::string& source, ShaderStageData& data, const Shade
 {
     auto out = std::back_inserter(source);
 
-    for (const auto & input : sourceStage.inputs)
+    for (const auto& input : sourceStage.inputs)
     {
         data.inputs.push_back(input);
         fmt::format_to(out, "{} {};\n", input.type, input.name);
     }
 
-    for (const auto & output : sourceStage.outputs)
+    for (const auto& output : sourceStage.outputs)
     {
         data.outputs.push_back(output);
         fmt::format_to(out, "{} {};\n", output.type, output.name);
