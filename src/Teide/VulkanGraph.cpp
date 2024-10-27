@@ -155,7 +155,8 @@ void ExecuteGraph(VulkanGraph& graph, VulkanDevice& device, VulkanRenderer& rend
     for (VulkanGraph::TextureNode& node : graph.textureNodes)
     {
         VulkanTexture& texture = device.GetImpl(node.texture);
-        texture.
+        using enum vk::ImageUsageFlagBits;
+        device.CreateTextureImpl(texture, eTransferSrc | eTransferDst);
     }
 
     // 2. Record command buffers
