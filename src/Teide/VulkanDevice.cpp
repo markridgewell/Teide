@@ -825,7 +825,9 @@ Texture VulkanDevice::CreateTexture(const TextureData& data, const char* name, C
         texture.TransitionToShaderInput(state, cmdBuffer);
     }
 
-    return m_textures.Insert(std::move(texture));
+    auto handle = m_textures.Insert(std::move(texture));
+    cmdBuffer.AddReference(handle);
+    return handle;
 }
 
 Texture VulkanDevice::CreateRenderableTexture(const TextureData& data, const char* name)
@@ -866,7 +868,9 @@ Texture VulkanDevice::CreateRenderableTexture(const TextureData& data, const cha
         texture.TransitionToDepthStencilTarget(state, cmdBuffer);
     }
 
-    return m_textures.Insert(std::move(texture));
+    auto handle = m_textures.Insert(std::move(texture));
+    cmdBuffer.AddReference(handle);
+    return handle;
 }
 
 MeshPtr VulkanDevice::CreateMesh(const MeshData& data, const char* name)
