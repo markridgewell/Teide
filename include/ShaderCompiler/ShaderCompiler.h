@@ -32,6 +32,14 @@ struct ShaderSourceData
     ShaderStageDefinition pixelShader;
 };
 
+struct KernelSourceData
+{
+    ShaderLanguage language = ShaderLanguage::Glsl;
+    Teide::ShaderEnvironmentData environment;
+    Teide::ParameterBlockDesc paramsPblock;
+    ShaderStageDefinition kernelShader;
+};
+
 class CompileError : public std::exception
 {
 public:
@@ -55,4 +63,5 @@ public:
     ShaderCompiler& operator=(ShaderCompiler&&) = delete;
 
     Teide::ShaderData Compile(const ShaderSourceData& sourceData) const;
+    Teide::KernelData Compile(const KernelSourceData& sourceData) const;
 };

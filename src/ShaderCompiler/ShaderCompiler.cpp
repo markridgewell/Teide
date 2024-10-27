@@ -139,6 +139,15 @@ constexpr TBuiltInResource DefaultTBuiltInResource
            .generalConstantMatrixVectorIndexing = true,
        }};
 
+constexpr glslang::SpvOptions SpirvOptions = {
+    .generateDebugInfo = IsDebugBuild,
+    .stripDebugInfo = !IsDebugBuild,
+    .disableOptimizer = false,
+    .optimizeSize = true,
+    .disassemble = false,
+    .validate = true,
+};
+
 constexpr std::string_view ShaderCommon = R"--(
 #version 450
 #extension GL_EXT_scalar_block_layout : enable
@@ -172,17 +181,23 @@ std::unique_ptr<glslang::TShader> CompileStage(std::string_view shaderSource, ES
     return shader;
 };
 
-ParameterBlockDesc& GetPblockLayout(ShaderData& data, int64 set)
+std::vector<ParameterBlockDesc*> GetPblockLayouts(ShaderData& data)
 {
-    switch (set)
-    {
-        case 0: return data.environment.scenePblock;
-        case 1: return data.environment.viewPblock;
-        case 2: return data.materialPblock;
-        case 3: return data.objectPblock;
+    return {
+        &data.environment.scenePblock,
+        &data.environment.viewPblock,
+        &data.materialPblock,
+        &data.objectPblock,
+    };
+}
 
-        default: Unreachable();
-    }
+std::vector<ParameterBlockDesc*> GetPblockLayouts(KernelData& data)
+{
+    return {
+        &data.environment.scenePblock,
+        &data.environment.viewPblock,
+        &data.paramsPblock,
+    };
 }
 
 ShaderStageFlags GetShaderStageFlags(EShLanguageMask lang)
@@ -244,40 +259,28 @@ void ReflectUniforms(ParameterBlockDesc& pblock, const glslang::TObjectReflectio
     pblock.uniformsStages = GetShaderStageFlags(uniformBlock.stages);
 };
 
-void CompileShader(ShaderData& data, std::string_view vertexSource, std::string_view pixelSource, glslang::EShSource source)
+void BuildShader(glslang::TProgram& program, std::span<const std::unique_ptr<glslang::TShader>> shaders)
 {
-    auto vertexShader = CompileStage(vertexSource, EShLangVertex, source);
-    auto pixelShader = CompileStage(pixelSource, EShLangFragment, source);
-
-    auto program = glslang::TProgram();
-    program.addShader(vertexShader.get());
-    program.addShader(pixelShader.get());
-
+    for (const auto& shader : shaders)
+    {
+        program.addShader(shader.get());
+    }
     if (!program.link(EShMsgDefault))
     {
         throw CompileError(program.getInfoLog());
     }
+}
 
-    spv::SpvBuildLogger logger;
-    glslang::SpvOptions spvOptions;
-    spvOptions.generateDebugInfo = IsDebugBuild;
-    spvOptions.stripDebugInfo = !IsDebugBuild;
-    spvOptions.disableOptimizer = false;
-    spvOptions.optimizeSize = true;
-    spvOptions.disassemble = false;
-    spvOptions.validate = true;
-
-    glslang::GlslangToSpv(*program.getIntermediate(EShLangVertex), data.vertexShader.spirv, &logger, &spvOptions);
-    glslang::GlslangToSpv(*program.getIntermediate(EShLangFragment), data.pixelShader.spirv, &logger, &spvOptions);
-
+void BuildReflection(const std::vector<ParameterBlockDesc*>& pblockDescs, glslang::TProgram& program)
+{
     program.buildReflection(EShReflectionAllBlockVariables | EShReflectionSeparateBuffers | EShReflectionAllIOVariables);
 
     for (int i = 0; i < program.getNumUniformBlocks(); i++)
     {
         const auto& uniformBlock = program.getUniformBlock(i);
         const auto& name = uniformBlock.name;
-        const int64 set = std::distance(PblockNames.begin(), std::ranges::find(PblockNames, name));
-        ReflectUniforms(GetPblockLayout(data, set), uniformBlock);
+        const auto set = static_cast<usize>(std::distance(PblockNames.begin(), std::ranges::find(PblockNames, name)));
+        ReflectUniforms(*pblockDescs[set], uniformBlock);
     }
 }
 
@@ -389,6 +392,53 @@ void BuildVaryings(std::string& source, ShaderStageData& data, const ShaderStage
     source += '\n';
 }
 
+void BuildKernelVaryings(std::string& source, ShaderStageData& data, const ShaderStageDefinition& sourceStage)
+{
+    auto out = std::back_inserter(source);
+
+    for (const auto& input : sourceStage.inputs)
+    {
+        data.inputs.push_back(input);
+        fmt::format_to(out, "{} {};\n", input.type, input.name);
+    }
+
+    for (const auto& output : sourceStage.outputs)
+    {
+        data.outputs.push_back(output);
+        fmt::format_to(out, "{} {};\n", output.type, output.name);
+    }
+
+    source += '\n';
+}
+
+void BuildKernelEntrypoint(std::string& source, const ShaderStageDefinition& sourceStage)
+{
+    for (usize i = 0; i < sourceStage.outputs.size(); i++)
+    {
+        const auto& output = sourceStage.outputs[i];
+
+        // TODO: derive glslFormat and storageType from output.type and storage method (buffer/image2D etc)
+        using namespace std::literals;
+        const auto glslFormat = "r32f"sv;
+        const auto storageType = "image2D"sv;
+        fmt::format_to(
+            std::back_inserter(source), "layout({}, binding = {}) uniform {} _{}_image_;\n", //
+            glslFormat, i, storageType, output.name);
+    }
+
+    source += "void main() {\n";
+    source += "    _notreallymain_();\n";
+    for (const auto& output : sourceStage.outputs)
+    {
+        // TODO: handle buffers and non-2D images
+        // TODO: handle vec2 and vec4 output types
+        fmt::format_to(
+            std::back_inserter(source), "    imageStore(_{}_image_, ivec2(gl_GlobalInvocationID.xy), vec4({}));\n", //
+            output.name, output.name);
+    }
+    source += "}\n";
+}
+
 std::atomic<int> s_numInstances;
 
 } // namespace
@@ -432,6 +482,53 @@ ShaderData ShaderCompiler::Compile(const ShaderSourceData& sourceData) const
     BuildVaryings(pixelShader, data.pixelShader, sourceData.pixelShader);
     pixelShader += sourceData.pixelShader.source;
 
-    CompileShader(data, vertexShader, pixelShader, GetEShSource(sourceData.language));
+    const auto language = GetEShSource(sourceData.language);
+
+    auto program = glslang::TProgram();
+    std::array sources = {
+        CompileStage(vertexShader, EShLangVertex, language),
+        CompileStage(pixelShader, EShLangFragment, language),
+    };
+    BuildShader(program, sources);
+
+    auto spvOptions = SpirvOptions;
+    glslang::GlslangToSpv(*program.getIntermediate(EShLangVertex), data.vertexShader.spirv, &spvOptions);
+    glslang::GlslangToSpv(*program.getIntermediate(EShLangFragment), data.pixelShader.spirv, &spvOptions);
+
+    BuildReflection(GetPblockLayouts(data), program);
+    return data;
+}
+
+// This function cannot be static because it depends on side-effects invoked by the constructor.
+// NOLINTNEXTLINE(readability-convert-member-functions-to-static)
+KernelData ShaderCompiler::Compile(const KernelSourceData& sourceData) const
+{
+    KernelData data;
+    data.environment = sourceData.environment;
+    data.paramsPblock = sourceData.paramsPblock;
+
+    std::string computeShader;
+    computeShader = "layout(local_size_x = 1, local_size_y = 1) in;\n";
+    computeShader += "#define main() _notreallymain_()\n";
+
+    BuildBindings<0>(computeShader, sourceData.environment.scenePblock);
+    BuildBindings<1>(computeShader, sourceData.environment.viewPblock);
+    BuildBindings<2>(computeShader, sourceData.paramsPblock);
+
+    BuildKernelVaryings(computeShader, data.computeShader, sourceData.kernelShader);
+    computeShader += sourceData.kernelShader.source;
+    computeShader += "#undef main\n";
+    BuildKernelEntrypoint(computeShader, sourceData.kernelShader);
+
+    const auto language = GetEShSource(sourceData.language);
+
+    auto program = glslang::TProgram();
+    std::array sources = {CompileStage(computeShader, EShLangCompute, language)};
+    BuildShader(program, sources);
+
+    auto spvOptions = SpirvOptions;
+    glslang::GlslangToSpv(*program.getIntermediate(EShLangCompute), data.computeShader.spirv, &spvOptions);
+
+    BuildReflection(GetPblockLayouts(data), program);
     return data;
 }
