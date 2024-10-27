@@ -413,17 +413,16 @@ void BuildKernelVaryings(std::string& source, ShaderStageData& data, const Shade
 
 void BuildKernelEntrypoint(std::string& source, const ShaderStageDefinition& sourceStage)
 {
-    auto out = std::back_inserter(source);
-
     for (usize i = 0; i < sourceStage.outputs.size(); i++)
     {
         const auto& output = sourceStage.outputs[i];
 
         // TODO: derive glslFormat and storageType from output.type and storage method (buffer/image2D etc)
-        const auto glslFormat = "r32f";
-        const auto storageType = "image2D";
+        using namespace std::literals;
+        const auto glslFormat = "r32f"sv;
+        const auto storageType = "image2D"sv;
         fmt::format_to(
-            out, "layout({}, binding = {}) uniform {} _{}_image_;\n", //
+            std::back_inserter(source), "layout({}, binding = {}) uniform {} _{}_image_;\n", //
             glslFormat, i, storageType, output.name);
     }
 
@@ -434,7 +433,7 @@ void BuildKernelEntrypoint(std::string& source, const ShaderStageDefinition& sou
         // TODO: handle buffers and non-2D images
         // TODO: handle vec2 and vec4 output types
         fmt::format_to(
-            out, "    imageStore(_{}_image_, ivec2(gl_GlobalInvocationID.xy), vec4({}));\n", //
+            std::back_inserter(source), "    imageStore(_{}_image_, ivec2(gl_GlobalInvocationID.xy), vec4({}));\n", //
             output.name, output.name);
     }
     source += "}\n";
