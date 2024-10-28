@@ -47,7 +47,6 @@ struct VulkanImpl<ParameterBlockLayout>
 
 struct VulkanParameterBlock
 {
-    VulkanParameterBlockLayoutPtr layout;
     std::shared_ptr<VulkanBuffer> uniformBuffer;
     std::vector<Texture> textures;
     vk::UniqueDescriptorSet descriptorSet;

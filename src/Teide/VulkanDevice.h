@@ -81,7 +81,7 @@ public:
     }
 
     template <class T>
-    const auto& GetImpl(T& obj)
+    auto& GetImpl(T& obj)
     {
         using Handle = std::remove_const_t<T>;
         using Impl = VulkanImpl<Handle>::type;

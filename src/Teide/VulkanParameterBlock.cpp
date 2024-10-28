@@ -89,12 +89,11 @@ bool VulkanParameterBlockLayout::HasPushConstants() const
     return pushConstantRange.has_value();
 }
 
-VulkanParameterBlock::VulkanParameterBlock(const VulkanParameterBlockLayoutPtr& layout) : layout{layout}
+VulkanParameterBlock::VulkanParameterBlock(const VulkanParameterBlockLayout& layout)
 {
-    TEIDE_ASSERT(layout);
-    if (layout->pushConstantRange.has_value())
+    if (layout.pushConstantRange.has_value())
     {
-        pushConstantData.resize(layout->pushConstantRange->size - layout->pushConstantRange->offset);
+        pushConstantData.resize(layout.pushConstantRange->size - layout.pushConstantRange->offset);
     }
 }
 
