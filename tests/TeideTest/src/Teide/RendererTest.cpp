@@ -22,7 +22,11 @@ namespace
 class RendererTest : public testing::Test
 {
 public:
-    RendererTest() : m_device{CreateTestDevice()}, m_renderer{m_device->CreateRenderer(nullptr)} {}
+    RendererTest() :
+        m_device{CreateTestDevice()},
+        m_renderer{m_device->CreateRenderer(nullptr)},
+        m_emptyParameters{m_device->CreateParameterBlock({}, "EmptyParams")}
+    {}
 
     void CreateRenderer(const ShaderEnvironmentData& data)
     {
@@ -50,7 +54,7 @@ protected:
             .renderPasses = {{.framebufferLayout = renderTarget.framebufferLayout}},
         });
 
-        return RenderObject{.mesh = mesh, .pipeline = pipeline};
+        return RenderObject{.mesh = mesh, .pipeline = pipeline, .materialParameters = m_emptyParameters};
     };
 
     RenderToTextureResult RenderFullscreenTri(const Teide::RenderTargetInfo& renderTarget)
@@ -68,8 +72,11 @@ protected:
         return m_renderer->RenderToTexture(renderTarget, renderList);
     }
 
-    DevicePtr m_device;     // NOLINT(cppcoreguidelines-non-private-member-variables-in-classes)
-    RendererPtr m_renderer; // NOLINT(cppcoreguidelines-non-private-member-variables-in-classes)
+    // NOLINTBEGIN(cppcoreguidelines-non-private-member-variables-in-classes)
+    DevicePtr m_device;
+    RendererPtr m_renderer;
+    ParameterBlock m_emptyParameters;
+    // NOLINTEND(cppcoreguidelines-non-private-member-variables-in-classes)
 
 private:
     ShaderCompiler m_shaderCompiler;
@@ -244,7 +251,7 @@ TEST_F(RendererTest, RenderWithViewParameters)
     const RenderList renderList = {
         .clearState = {.colorValue = Color{1.0f, 0.0f, 0.0f, 1.0f}},
         .viewParameters = {.textures = {texture}},
-        .objects = {RenderObject{.mesh = mesh, .pipeline = pipeline}},
+        .objects = {RenderObject{.mesh = mesh, .pipeline = pipeline, .materialParameters = m_emptyParameters}},
     };
 
     texture = m_renderer->RenderToTexture(renderTarget, renderList).colorTexture.value();
@@ -296,7 +303,7 @@ TEST_F(RendererTest, RenderMultipleFramesWithViewParameters)
         const RenderList renderList = {
             .clearState = {.colorValue = Color{1.0f, 0.0f, 0.0f, 1.0f}},
             .viewParameters = {.textures = {texture}},
-            .objects = {RenderObject{.mesh = mesh, .pipeline = pipeline}},
+            .objects = {RenderObject{.mesh = mesh, .pipeline = pipeline, .materialParameters = m_emptyParameters}},
         };
 
         texture = m_renderer->RenderToTexture(renderTarget, renderList).colorTexture.value();
@@ -350,7 +357,7 @@ TEST_F(RendererTest, RenderMultiplePassesWithViewParameters)
         const RenderList renderList = {
             .clearState = {.colorValue = Color{1.0f, 0.0f, 0.0f, 1.0f}},
             .viewParameters = {.textures = {texture}},
-            .objects = {RenderObject{.mesh = mesh, .pipeline = pipeline}},
+            .objects = {RenderObject{.mesh = mesh, .pipeline = pipeline, .materialParameters = m_emptyParameters}},
         };
 
         texture = m_renderer->RenderToTexture(renderTarget, renderList).colorTexture.value();
@@ -407,7 +414,7 @@ TEST_F(RendererTest, RenderMultipleFramesWithMultiplePassesWithViewParameters)
             const RenderList renderList = {
                 .clearState = {.colorValue = Color{1.0f, 0.0f, 0.0f, 1.0f}},
                 .viewParameters = {.textures = {texture}},
-                .objects = {RenderObject{.mesh = mesh, .pipeline = pipeline}},
+                .objects = {RenderObject{.mesh = mesh, .pipeline = pipeline, .materialParameters = m_emptyParameters}},
             };
 
             texture = m_renderer->RenderToTexture(renderTarget, renderList).colorTexture.value();

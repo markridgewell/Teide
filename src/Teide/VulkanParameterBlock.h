@@ -45,17 +45,18 @@ struct VulkanImpl<ParameterBlockLayout>
     using type = VulkanParameterBlockLayout;
 };
 
-struct VulkanParameterBlock : public ParameterBlock
+struct VulkanParameterBlock
 {
     std::shared_ptr<VulkanBuffer> uniformBuffer;
     std::vector<Texture> textures;
     vk::UniqueDescriptorSet descriptorSet;
     std::vector<byte> pushConstantData;
 
+    VulkanParameterBlock() = default;
     explicit VulkanParameterBlock(const VulkanParameterBlockLayout& layout);
 
-    usize GetUniformBufferSize() const override;
-    usize GetPushConstantSize() const override;
+    usize GetUniformBufferSize() const;
+    usize GetPushConstantSize() const;
 };
 
 struct TransientParameterBlock

@@ -4,6 +4,7 @@
 #include "Teide/AbstractBase.h"
 #include "Teide/BytesView.h"
 #include "Teide/ForwardDeclare.h"
+#include "Teide/Handle.h"
 #include "Teide/Shader.h"
 
 #include <vector>
@@ -29,11 +30,12 @@ struct ParameterBlockData
     ShaderParameters parameters;
 };
 
-class ParameterBlock : AbstractBase
+class ParameterBlock : public Handle<>
 {
 public:
-    virtual usize GetUniformBufferSize() const = 0;
-    virtual usize GetPushConstantSize() const = 0;
+    using Handle::Handle;
+
+    bool operator==(const ParameterBlock&) const = default;
 };
 
 } // namespace Teide

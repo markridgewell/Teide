@@ -64,10 +64,8 @@ void BuildGraph(VulkanGraph& graph, VulkanDevice& device)
         for (const RenderObject& obj : node.renderList.objects)
         {
             AddTextureDependencies(node, obj.objectParameters.textures, graph);
-            if (const auto matParams = device.GetImpl(obj.materialParameters))
-            {
-                AddTextureDependencies(node, matParams->textures, graph);
-            }
+            const auto& matParams = device.GetImpl(obj.materialParameters);
+            AddTextureDependencies(node, matParams.textures, graph);
         }
     }
 }

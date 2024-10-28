@@ -66,7 +66,7 @@ private:
 
     std::optional<SurfaceImage> AddSurfaceToPresent(VulkanSurface& surface);
 
-    vk::DescriptorSet GetDescriptorSet(const ParameterBlock* parameterBlock) const;
+    vk::DescriptorSet GetDescriptorSet(const ParameterBlock& parameterBlock) const;
 
     struct ThreadResources
     {

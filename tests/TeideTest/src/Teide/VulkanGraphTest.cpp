@@ -21,7 +21,9 @@ namespace
 class VulkanGraphTest : public testing::Test
 {
 public:
-    VulkanGraphTest() : m_device{CreateTestDevice()} {}
+    VulkanGraphTest() :
+        m_device{CreateTestDevice()}, m_emptyParameters{m_device->CreateParameterBlock({}, "EmptyParams")}
+    {}
 
 protected:
     Texture CreateDummyTexture(const char* name) { return m_device->CreateTexture(OnePixelWhiteTexture, name); }
@@ -33,16 +35,25 @@ protected:
         const Texture tex2 = CreateDummyTexture("tex2");
         const Texture tex3 = CreateDummyTexture("tex3");
 
-        const RenderList renderList1 = {.name = "render1"};
-        RenderList renderList2 = {.name = "render2"};
-        RenderObject& obj1 = renderList2.objects.emplace_back();
-        obj1.objectParameters.textures.push_back(tex1);
-        RenderList renderList3 = {.name = "render3"};
-        RenderObject& obj2 = renderList3.objects.emplace_back();
         const ParameterBlockDesc pblockDesc = {.parameters = {{"param", ShaderVariableType::BaseType::Texture2D}}};
         const auto pblockLayout = m_device->CreateParameterBlockLayout(pblockDesc, 2);
         const ParameterBlockData pblock = {.layout = pblockLayout, .parameters = {.textures = {tex1}}};
-        obj2.materialParameters = m_device->CreateParameterBlock(pblock, "matParams");
+        const auto materialParameters = m_device->CreateParameterBlock(pblock, "matParams");
+
+        const RenderList renderList1 = {.name = "render1"};
+        const RenderList renderList2 = {
+            .name = "render2",
+            .objects = {{
+                .materialParameters = m_emptyParameters,
+                .objectParameters = {.textures = {tex1}},
+            }},
+        };
+        const RenderList renderList3 = {
+            .name = "render3",
+            .objects = {{
+                .materialParameters = materialParameters,
+            }},
+        };
 
         VulkanGraph graph;
         const auto render1 = graph.AddRenderNode(renderList1);
@@ -58,6 +69,7 @@ protected:
 
 private:
     ShaderCompiler m_shaderCompiler;
+    ParameterBlock m_emptyParameters;
 };
 
 void PrintDependencies(testing::MatchResultListener& os, std::span<const VulkanGraph::ResourceNodeRef> dependencies)
