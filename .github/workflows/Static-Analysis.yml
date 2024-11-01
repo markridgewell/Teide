@@ -20,7 +20,7 @@ jobs:
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v4.2.0
+      uses: actions/checkout@v4.2.2
       with:
         fetch-depth: ${{ github.event_name == 'pull_request' && 2 || 0 }}
         submodules: true
@@ -62,7 +62,7 @@ jobs:
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v4.2.0
+      uses: actions/checkout@v4.2.2
       with:
         fetch-depth: ${{ github.event_name == 'pull_request' && 2 || 0 }}
         submodules: true
@@ -112,7 +112,7 @@ jobs:
 
     - name: Save fixes as build artifact
       if: failure()
-      uses: actions/upload-artifact@v4.4.0
+      uses: actions/upload-artifact@v4.4.3
       with:
         name: clang-tidy-fixes
         path: ${{github.workspace}}/build/${{env.preset}}/clang-tidy-fixes.yaml
