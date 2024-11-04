@@ -1,12 +1,17 @@
 
+import argparse
+import pathlib
 import os
 import subprocess
 import sys
-import time
 import threading
 import filecmp
+import socket
 
 pause_updating = False
+
+WATCH_HOST = '127.0.0.1'
+WATCH_PORT = 65002
 
 def is_source_file(filename):
     return os.path.splitext(filename)[1] in [".h", ".hpp", ".cpp", ".natvis"]
@@ -15,7 +20,7 @@ def is_source_file(filename):
 def add_source_files(source_files, dir, subdir):
     cwd = os.getcwd()
     os.chdir(dir)
-    for root, dirs, files in os.walk(subdir):
+    for root, _, files in os.walk(subdir):
         root = root.replace(os.sep, '/')
         for file in files:
             if is_source_file(file):
@@ -136,6 +141,59 @@ def add_project_watch(observer, path):
     return event_handler
 
 
+def watch_server(root_dir: pathlib.Path):
+    from watchdog.observers import Observer
+    from watchdog.observers import Observer
+    observer = Observer()
+    add_git_watch(observer, root_dir)
+    for dir in find_project_dirs(root_dir):
+        add_project_watch(observer, dir)
+    observer.start()
+
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.bind((WATCH_HOST, WATCH_PORT))
+        s.listen()
+        print('Server started')
+        print(f'Listening on port {WATCH_PORT}')
+        running = True
+        while running:
+            try:
+                conn, addr = s.accept()
+                with conn:
+                    print(f"Connected by {addr}")
+                    while True:
+                        data = conn.recv(1024)
+                        if not data:
+                            break
+                        if data == b'stop':
+                            print('Stop requested...')
+                            running = False
+                            conn.sendall(b'Server stopped')
+                        elif data == b'status':
+                            conn.sendall(b'Server running')
+                        else:
+                            conn.sendall(b'Unknown command')
+            except KeyboardInterrupt:
+                running = False
+    print('Shutting down')
+ 
+    observer.stop()
+    try:
+        observer.join()
+    except KeyboardInterrupt:
+        pass
+
+
+def watch_client(cmd):
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.connect((WATCH_HOST, WATCH_PORT))
+            s.sendall(cmd.encode('utf-8'))
+            return s.recv(1024).decode('utf-8')
+    except ConnectionRefusedError:
+        return None
+
+
 def find_project_dirs(root_dir):
     if os.path.isfile(os.path.join(root_dir, "CMakeLists.txt")):
         yield root_dir
@@ -146,34 +204,42 @@ def find_project_dirs(root_dir):
                 yield root
 
 
-if __name__ == "__main__":
-    watch_mode = len(sys.argv) >= 2 and sys.argv[1] == "watch"
-    root_dir = os.getcwd()
-    if watch_mode and len(sys.argv) >= 3:
-        root_dir = sys.argv[2]
-        if not os.path.isdir(root_dir):
-            print(f"{root_dir} is not a directory")
-            sys.exit(1)
+def main():
+    parser = argparse.ArgumentParser(description='Generate FileLists.cmake files automatically for each project based on the source and header files found in each project directory.')
+    def add_dir_argument(parser):
+        parser.add_argument('-d', '--dir', help='Root directory to watch (default cwd)', default=os.getcwd(), type=pathlib.Path)
+    parser.set_defaults(watch_mode=False)
+    add_dir_argument(parser)
 
-    if watch_mode:
-        from watchdog.observers import Observer
-        observer = Observer()
-        add_git_watch(observer, root_dir)
-        for dir in find_project_dirs(root_dir):
-            add_project_watch(observer, dir)
+    watch_parser = parser.add_subparsers().add_parser('watch', help='Put the generator in watch mode. See watch --help for more info.', description='Start a watch server in the current process. or query/stop an existing server running in another process.', formatter_class=argparse.RawTextHelpFormatter)
+    watch_parser.set_defaults(watch_mode=True)
+    add_dir_argument(watch_parser)
+    watch_command_parser = watch_parser.add_subparsers(metavar='[command]', dest='command')
+    watch_command_parser.add_parser('start', help='Start the watch server (default)')
+    watch_command_parser.add_parser('stop', help='Stop a previously run server process')
+    watch_command_parser.add_parser('status', help='Get the status of the server')
+    opts = parser.parse_args()
 
-        observer.start()
-        try:
-            while True:
-                time.sleep(1000)
-        except KeyboardInterrupt:
-            pass
-        finally:
-            observer.stop()
-            try:
-                observer.join()
-            except KeyboardInterrupt:
-                pass
+    if not os.path.isdir(opts.dir):
+        print(f"{opts.dir} is not a directory")
+        sys.exit(1)
+
+    if opts.watch_mode:
+        if not opts.command or opts.command == 'start':
+            if not watch_client('status'):
+                print('Starting server...')
+                watch_server(opts.dir)
+            else:
+                print('Server already running')
+        else:
+            print(watch_client(opts.command) or 'Server not running')
+
     else:
-        for dir in find_project_dirs(root_dir):
+        for dir in find_project_dirs(opts.dir):
             gen_filelist(dir)
+
+
+if __name__ == "__main__":
+    main()
+
+
