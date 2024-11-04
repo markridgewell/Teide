@@ -176,7 +176,7 @@ def watch_server(root_dir: pathlib.Path):
             except KeyboardInterrupt:
                 running = False
     print('Shutting down')
- 
+
     observer.stop()
     try:
         observer.join()
@@ -241,5 +241,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
