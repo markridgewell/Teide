@@ -51,32 +51,51 @@ struct VulkanGraph
 
     struct CopyNode
     {
+        static constexpr auto NodeType = CommandType::Copy;
+
         ResourceNodeRef source;
     };
 
     struct RenderNode
     {
+        static constexpr auto NodeType = CommandType::Render;
+
         RenderList renderList;
         std::vector<ResourceNodeRef> dependencies;
     };
 
     struct TextureNode
     {
+        static constexpr auto NodeType = ResourceType::Texture;
+
         Texture texture;
         CommandNodeRef source;
+
+        std::string_view GetName() const { return texture.GetName(); }
     };
 
     struct TextureDataNode
     {
+        static constexpr auto NodeType = ResourceType::TextureData;
+
         std::string name;
         TextureData data;
         std::optional<CommandNodeRef> source;
+
+        std::string_view GetName() const { return name; }
     };
 
     std::vector<CopyNode> copyNodes;
     std::vector<RenderNode> renderNodes;
     std::vector<TextureNode> textureNodes;
     std::vector<TextureDataNode> textureDataNodes;
+
+    static constexpr auto NodeLists = std::tuple{
+        &VulkanGraph::copyNodes,
+        &VulkanGraph::renderNodes,
+        &VulkanGraph::textureNodes,
+        &VulkanGraph::textureDataNodes,
+    };
 
     auto AddCopyNode(ResourceNodeRef source)
     {
@@ -100,6 +119,29 @@ struct VulkanGraph
     {
         textureDataNodes.emplace_back(std::move(name), std::move(texture), source);
         return TextureDataRef(textureDataNodes.size() - 1);
+    }
+
+    template <class T>
+    T& Get(usize index)
+    {
+        using List = std::vector<T>;
+        using MemPtrType = List VulkanGraph::*;
+        constexpr auto MemPtr = std::get<MemPtrType>(NodeLists);
+        auto& list = this->*MemPtr;
+        TEIDE_ASSERT(index < list.size());
+        return list[index];
+    }
+
+    template <class T>
+    T* GetIf(CommandNodeRef ref)
+    {
+        return (ref.type == T::NodeType) ? &Get<T>(ref.index) : nullptr;
+    }
+
+    template <class T>
+    T* GetIf(ResourceNodeRef ref)
+    {
+        return (ref.type == T::NodeType) ? &Get<T>(ref.index) : nullptr;
     }
 };
 

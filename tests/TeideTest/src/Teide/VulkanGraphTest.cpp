@@ -290,6 +290,7 @@ TEST_F(VulkanGraphTest, ExecutingGraphWithCopyNode)
 
     auto renderer = m_device->CreateRenderer({});
 
+    spdlog::info(VisualizeGraph(graph));
     ExecuteGraph(graph, *m_device, m_device->GetImpl(*renderer));
 
     const VulkanTexture& texture = m_device->GetImpl(graph.textureNodes.at(tex.index).texture);
