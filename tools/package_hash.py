@@ -3,6 +3,7 @@ import argparse
 import tempfile
 import subprocess
 import http.client
+import sys
 from pathlib import Path
 from urllib.request import urlretrieve
 
