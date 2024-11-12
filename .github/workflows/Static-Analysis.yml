@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
 
 env:
-  clang_tidy_version: 17
+  clang_tidy_version: 18
   pattern: '\.\(c\|cpp\|cc\|cxx\|h\|hpp\)$'
 
 jobs:
