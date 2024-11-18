@@ -65,6 +65,7 @@ public:
     vk::Device GetVulkanDevice() { return m_device.get(); }
     vma::Allocator& GetAllocator() { return m_allocator.get(); }
     Scheduler& GetScheduler() { return m_scheduler; }
+    QueueFamilies GetQueueFamilies() const { return m_physicalDevice.queueFamilies; }
 
     template <class T>
     auto& GetImpl(T& obj)

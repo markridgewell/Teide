@@ -1,12 +1,12 @@
 
 #include "Teide/VulkanGraph.h"
 
+#include "Teide/Vulkan.h"
 #include "Teide/VulkanDevice.h"
 
 #include <fmt/core.h>
 
 #include <algorithm>
-#include <ranges>
 
 namespace Teide
 {
@@ -207,19 +207,37 @@ void ExecuteGraph(VulkanGraph& graph, VulkanDevice& device, VulkanRenderer& rend
         vma::AllocationCreateFlagBits::eMapped | vma::AllocationCreateFlagBits::eHostAccessRandom);
 
     // 3. Record command buffers
-    /*for (const auto& node : graph.copyNodes)
+    auto vkdevice = device.GetVulkanDevice();
+    auto commandPool = vkdevice.createCommandPoolUnique({.queueFamilyIndex = device.GetQueueFamilies().graphicsFamily});
+
+    auto cmdBuffers = vkdevice.allocateCommandBuffersUnique({.commandPool = commandPool.get(), .commandBufferCount = 1});
+    auto cmdBuffer = std::move(cmdBuffers.front());
+    for (const VulkanGraph::TextureNode& node : graph.textureNodes)
     {
-        // Copy staging buffer to image
-        TransitionImageLayout(
-            cmdBuffer, texture.image.get(), data.format, data.mipLevelCount, state.layout,
-            vk::ImageLayout::eTransferDstOptimal, vk::PipelineStageFlagBits::eTopOfPipe,
-            vk::PipelineStageFlagBits::eTransfer);
-        state = {
-            .layout = vk::ImageLayout::eTransferDstOptimal,
-            .lastPipelineStageUsage = vk::PipelineStageFlagBits::eTransfer,
-        };
-        CopyBufferToImage(cmdBuffer, stagingBuffer.buffer.get(), texture.image.get(), data.format, imageExtent);
-    }*/
+        if (const auto* copyNode = graph.GetIf<VulkanGraph::CopyNode>(node.source))
+        {
+            if (const auto* sourceNode = graph.GetIf<VulkanGraph::TextureDataNode>(copyNode->source))
+            {
+                const TextureData& data = sourceNode->data;
+                VulkanTexture& texture = device.GetImpl(node.texture);
+                using enum vk::ImageUsageFlagBits;
+                auto state = device.CreateTextureImpl(texture, eTransferSrc | eTransferDst);
+
+                // Copy staging buffer to image
+                TransitionImageLayout(
+                    cmdBuffer.get(), texture.image.get(), data.format, data.mipLevelCount, state.layout,
+                    vk::ImageLayout::eTransferDstOptimal, vk::PipelineStageFlagBits::eTopOfPipe,
+                    vk::PipelineStageFlagBits::eTransfer);
+                state = {
+                    .layout = vk::ImageLayout::eTransferDstOptimal,
+                    .lastPipelineStageUsage = vk::PipelineStageFlagBits::eTransfer,
+                };
+                const auto imageExtent = vk::Extent3D{data.size.x, data.size.y, 1};
+                CopyBufferToImage(
+                    cmdBuffer.get(), inputStagingBuffer.buffer.get(), texture.image.get(), data.format, imageExtent);
+            }
+        }
+    }
 
     // 4. Submit to GPU executor
     (void)renderer;
