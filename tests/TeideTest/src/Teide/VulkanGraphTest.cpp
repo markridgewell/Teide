@@ -269,6 +269,7 @@ TEST_F(VulkanGraphTest, VisualizingGraphWithCopyToCpu)
 {
     VulkanGraph graph;
     const auto render = graph.AddRenderNode({.name = "render1"});
+
     const auto tex = graph.AddTextureNode(CreateDummyTexture("tex"), render);
     const auto copy = graph.AddCopyNode(tex);
     graph.AddTextureDataNode("texData", OnePixelWhiteTexture, copy);
