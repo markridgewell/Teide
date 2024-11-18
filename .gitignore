@@ -1,5 +1,7 @@
-/build
+/build/
 /CMakeUserPresets.json
 /LastCoverageResults.log
-/.vscode
+/.vscode/
+/compile_commands.json
+/.cache/
 __pycache__

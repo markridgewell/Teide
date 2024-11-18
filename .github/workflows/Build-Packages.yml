@@ -60,7 +60,7 @@ jobs:
 
     - name: Checkout
       if: steps.package-config.outputs.changed != 'false'
-      uses: actions/checkout@v4.2.0
+      uses: actions/checkout@v4.2.2
       with:
         lfs: false
         submodules: recursive
@@ -75,7 +75,7 @@ jobs:
     - name: Cache
       if: steps.package-config.outputs.changed != 'false'
       id: cache
-      uses: actions/cache@v4.0.2
+      uses: actions/cache@v4.1.2
       with:
         key: ${{ steps.cache-key.outputs.cache-key }}
         path: './exports'
@@ -126,7 +126,7 @@ jobs:
 
     - name: Save packages as artifact
       if: steps.package-config.outputs.changed != 'false' && steps.cache.outputs.cache-hit != 'true'
-      uses: actions/upload-artifact@v4.4.0
+      uses: actions/upload-artifact@v4.4.3
       with:
         name: vcpkg-export-${{ steps.cache-key.outputs.cache-key }}
         path: './exports'
