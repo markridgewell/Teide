@@ -7,6 +7,12 @@ on:
   pull_request:
     branches: [ main ]
   workflow_dispatch:
+    inputs:
+      commit-fixes:
+        description: 'Commit suggested fixes to branch'
+        required: true
+        default: false
+        type: boolean
 
 env:
   clang_tidy_version: 18
@@ -58,7 +64,9 @@ jobs:
   clang-tidy:
     name: ClangTidy
     runs-on: ubuntu-latest
-    env: { preset: make }
+    env:
+      preset: make
+      GH_TOKEN: ${{ github.token }}
 
     steps:
     - name: Checkout
@@ -82,7 +90,7 @@ jobs:
       if: steps.get-changes.outputs.changed-files != ''
       uses: ./.github/actions/install-dependencies
       with:
-        extra-packages: clang-tidy-${{env.clang_tidy_version}}
+        extra-packages: clang-tidy-${{env.clang_tidy_version}} clang-tools
 
     - name: Configure CMake
       if: steps.get-changes.outputs.changed-files != ''
@@ -101,7 +109,7 @@ jobs:
         cmake --build --preset ${{env.preset}} --target ClangTidy
 
     - name: Apply replacements
-      if: failure() && github.event_name == 'pull_request'
+      if: failure() && (github.event_name == 'pull_request' || inputs.commit-fixes)
       run: clang-apply-replacements .
 
     - name: Report issues as PR comments
@@ -109,6 +117,15 @@ jobs:
       uses: reviewdog/action-suggester@v1.18.0
       with:
         tool_name: clang-tidy
+
+    - name: Commit fixes to branch
+      if: failure() && inputs.commit-fixes
+      run:
+        git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
+        git config --local user.name "github-actions[bot]"
+        git add ${{steps.get-changes.outputs.changed-files}}
+        git commit -m "Apply fixes from clang-tidy"
+        git push
 
     - name: Save fixes as build artifact
       if: failure()
