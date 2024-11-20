@@ -125,7 +125,10 @@ jobs:
         git config --local user.name "github-actions[bot]"
         git add ${{steps.get-changes.outputs.changed-files}}
         git commit -m "Apply fixes from clang-tidy"
-        git push
+        git status
+
+    - name: Push changes
+      uses: ad-m/github-push-action@v0.8.0
 
     - name: Save fixes as build artifact
       if: failure()
