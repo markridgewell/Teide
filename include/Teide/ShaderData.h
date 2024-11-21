@@ -5,12 +5,14 @@
 
 #include <iosfwd>
 #include <string>
+#include <type_traits>
+#include <utility>
 #include <vector>
 
 namespace Teide
 {
 
-enum class ShaderStageFlags
+enum class ShaderStageFlags : uint8
 {
     None = 0,
     Vertex = 1 << 0,
@@ -20,7 +22,8 @@ enum class ShaderStageFlags
 
 constexpr ShaderStageFlags operator|(ShaderStageFlags a, ShaderStageFlags b)
 {
-    return ShaderStageFlags{static_cast<int>(a) | static_cast<int>(b)};
+    return ShaderStageFlags{
+        static_cast<std::underlying_type_t<ShaderStageFlags>>(std::to_underlying(a) | std::to_underlying(b))};
 }
 constexpr ShaderStageFlags& operator|=(ShaderStageFlags& a, ShaderStageFlags b)
 {
@@ -28,12 +31,13 @@ constexpr ShaderStageFlags& operator|=(ShaderStageFlags& a, ShaderStageFlags b)
 }
 constexpr ShaderStageFlags operator&(ShaderStageFlags a, ShaderStageFlags b)
 {
-    return ShaderStageFlags{static_cast<int>(a) & static_cast<int>(b)};
+    return ShaderStageFlags{
+        static_cast<std::underlying_type_t<ShaderStageFlags>>(std::to_underlying(a) & std::to_underlying(b))};
 }
 
 struct ShaderVariableType
 {
-    enum class BaseType
+    enum class BaseType : uint8
     {
         // Uniform types
         Float,
