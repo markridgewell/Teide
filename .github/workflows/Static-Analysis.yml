@@ -123,7 +123,7 @@ jobs:
       run:
         git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
         git config --local user.name "github-actions[bot]"
-        git add ${{steps.get-changes.outputs.changed-files}}
+        git add -u .
         git commit -m "Apply fixes from clang-tidy"
         git status
 
