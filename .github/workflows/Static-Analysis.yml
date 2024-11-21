@@ -120,12 +120,13 @@ jobs:
 
     - name: Commit fixes to branch
       if: failure() && inputs.commit-fixes
-      run:
+      run: |
         git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
         git config --local user.name "github-actions[bot]"
+        git status
         git add -u .
         git commit -m "Apply fixes from clang-tidy"
-        git status
+        git push
 
     - name: Push changes
       if: failure() && inputs.commit-fixes
