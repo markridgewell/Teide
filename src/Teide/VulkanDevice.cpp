@@ -113,7 +113,7 @@ namespace
                     return physicalDevice.getSurfaceSupportKHR(i, surface);
                 }))
             {
-                ret.presentFamily = *index;
+                ret.presentFamily = index;
             }
             else
             {

@@ -51,11 +51,9 @@ struct SamplerState
     SamplerAddressMode addressModeU = SamplerAddressMode::Repeat;
     SamplerAddressMode addressModeV = SamplerAddressMode::Repeat;
     SamplerAddressMode addressModeW = SamplerAddressMode::Repeat;
-    std::optional<float> maxAnisotropy = {};
-    std::optional<CompareOp> compareOp = {};
+    std::optional<float> maxAnisotropy std::optional<CompareOp> compareOp;
 };
-
-struct TextureData
+ct TextureData
 {
     Geo::Size2i size;
     Format format = Format::Unknown;
