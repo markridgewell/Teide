@@ -11,7 +11,7 @@ runs:
     - shell: bash
       run: |
         echo "::group::Install problem matchers"
-        echo "::add-matcher::.github/msvc-problem-matcher.json"   
+        echo "::add-matcher::.github/msvc-problem-matcher.json"
 
     - uses: ammaraskar/gcc-problem-matcher@master
 
