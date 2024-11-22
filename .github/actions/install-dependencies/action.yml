@@ -5,13 +5,14 @@ inputs:
   extra-packages:
     description: 'Additional packages to install with apt-get (Linux) or chocolatey (Windows)'
     required: false
-
 runs:
   using: composite
   steps:
     - shell: bash
-      run: echo "::group::Install problem matchers"
-    - uses: ammaraskar/msvc-problem-matcher@master
+      run: |
+        echo "::group::Install problem matchers"
+        echo "::add-matcher::.github/msvc-problem-matcher.json"   
+
     - uses: ammaraskar/gcc-problem-matcher@master
 
     - shell: bash
