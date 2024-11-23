@@ -11,14 +11,14 @@ namespace Teide
 {
 class VulkanDevice;
 
-enum class ResourceType
+enum class ResourceType : uint8
 {
     Texture,
     TextureData,
 };
 std::string to_string(ResourceType type);
 
-enum class CommandType
+enum class CommandType : uint8
 {
     Copy,
     Render,

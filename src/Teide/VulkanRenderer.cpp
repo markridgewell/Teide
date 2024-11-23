@@ -297,11 +297,11 @@ RenderToTextureResult VulkanRenderer::RenderToTexture(const RenderTargetInfo& re
         RecordRenderListCommands(commandBuffer, renderList, renderPass, renderPassDesc, framebuffer);
     });
 
+    const auto& colorRet = colorResolved ? colorResolved : color;
+    const auto& depthRet = depthStencilResolved ? depthStencilResolved : depthStencil;
     return {
-        .colorTexture = renderTarget.framebufferLayout.captureColor ? (colorResolved ? colorResolved : color) : std::nullopt,
-        .depthStencilTexture = renderTarget.framebufferLayout.captureDepthStencil
-            ? (depthStencilResolved ? depthStencilResolved : depthStencil)
-            : std::nullopt,
+        .colorTexture = renderTarget.framebufferLayout.captureColor ? colorRet : std::nullopt,
+        .depthStencilTexture = renderTarget.framebufferLayout.captureDepthStencil ? depthRet : std::nullopt,
     };
 }
 
