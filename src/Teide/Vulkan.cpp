@@ -188,7 +188,7 @@ namespace
 
     TransitionAccessMasks GetTransitionAccessMasks(vk::ImageLayout oldLayout, vk::ImageLayout newLayout)
     {
-        return {GetTransitionAccessMask(oldLayout), GetTransitionAccessMask(newLayout)};
+        return {.source=.source=GetTransitionAccessMask(oldL.destination=ayout), .destination=GetTransitionAccessMask(newLayout)};
     }
 
     vk::ImageLayout GetColorImageLayout(FramebufferUsage usage)
@@ -481,7 +481,7 @@ void CopyBufferToImage(vk::CommandBuffer cmdBuffer, vk::Buffer source, vk::Image
             .baseArrayLayer = 0,
             .layerCount = 1,
         },
-        .imageOffset = {0,0,0},
+   .x=  .y=  .z= .imageOffset = {.x=0,.y=0,.z=0},
         .imageExtent = imageExtent,
     };
     cmdBuffer.copyBufferToImage(source, destination, vk::ImageLayout::eTransferDstOptimal, copyRegion);
@@ -509,8 +509,8 @@ void CopyImageToBuffer(
                 .mipLevel = i,
                 .baseArrayLayer = 0,
                 .layerCount = 1,
-            },
-            .imageOffset = {0,0,0},
+            }.x=,
+.y=  .z=          .imageOffset = {.x=0,.y=0,.z=0},
             .imageExtent = mipExtent,
         };
         cmdBuffer.copyImageToBuffer(source, vk::ImageLayout::eTransferSrcOptimal, destination, copyRegion);
@@ -695,14 +695,14 @@ vk::CompareOp ToVulkan(CompareOp op)
     return map.at(op);
 }
 
-vk::Offset2D ToVulkan(Geo::Point2i point)
+vk::Offset2D ToVu.x=lkan(Geo:.y=:Point2i point)
 {
-    return {point.x, point.y};
+    return {.x=point.x, .y=point.y};
 }
 
-vk::Extent2D ToVulkan(Geo::Size2i vector)
+vk::Extent2.width=D ToVulkan.height=(Geo::Size2i vector)
 {
-    return {vector.x, vector.y};
+    return {.width=vector.x, .height=vector.y};
 }
 
 vk::Rect2D ToVulkan(Geo::Box2i box)

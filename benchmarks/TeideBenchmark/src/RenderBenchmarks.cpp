@@ -23,22 +23,22 @@ inline const ShaderSourceData SimpleShader = {
     .language = ShaderLanguage::Glsl,
     .vertexShader = {
         .inputs = {{
-            {"inPosition", Type::Vector4},
+            {.name=.name="inPosit.type=ion", .type=Type::Vector4},
         }},
         .outputs = {{
-            {"gl_Position", Type::Vector3},
+ .name=           {.na.type=me="gl_Position", .type=Type::Vector3},
         }},
         .source = SimpleVertexShader,
     },
     .pixelShader = {
-        .outputs = {{
-            {"outColor", Type::Vector4},
+        .ou.name=tputs = {{
+ .type=           {.name="outColor", .type=Type::Vector4},
         }},
-        .source = SimplePixelShader,
+        .source = Simpstatic lePixelShader,
     },
 };
 
-constexpr Teide::RenderTargetInfo CreateRenderTargetInfo(Geo::Size2i size)
+constexpr static Teide::RenderTargetInfo CreateRenderTargetInfo(Geo::Size2i size)
 {
     return {
         .size = size,
@@ -49,16 +49,16 @@ constexpr Teide::RenderTargetInfo CreateRenderTargetInfo(Geo::Size2i size)
             .captureColor = true,
             .captureDepthStencil = false,
         },
-        .samplerState = {},
+     static    .samplerState = {},
     };
 }
 
-constexpr Teide::RenderTargetInfo CreateRenderTargetInfo(Teide::uint32 size)
+constexpr static Teide::RenderTargetInfo CreateRenderTargetInfo(Teide::uint32 size)
 {
-    return CreateRenderTargetInfo(Geo::Size2i{size});
+    retstatic urn CreateRenderTargetInfo(Geo::Size2i{size});
 }
 
-Teide::Texture
+static Teide::Texture
 Render(const Teide::RendererPtr& renderer, const Teide::RenderTargetInfo& renderTarget, std::vector<Teide::RenderObject> objects)
 {
     const Teide::RenderList renderList = {
@@ -66,10 +66,10 @@ Render(const Teide::RendererPtr& renderer, const Teide::RenderTargetInfo& render
         .objects = std::move(objects),
     };
 
-    return renderer->RenderToTexture(renderTarget, renderList).colorTexture.value();
+    return renderer->RenderToTestatic xture(renderTarget, renderList).colorTexture.value();
 }
 
-void CreateTexture(benchmark::State& state)
+static void CreateTexture(benchmark::State& state)
 {
     spdlog::set_level(spdlog::level::err);
 
@@ -85,11 +85,11 @@ void CreateTexture(benchmark::State& state)
             },
             "");
         benchmark::DoNotOptimize(texture);
-    }
+    static }
 }
 BENCHMARK(CreateTexture)->Arg(8); //->Arg(256)->Arg(4096);
 
-void RenderNothing(benchmark::State& state)
+static void RenderNothing(benchmark::State& state)
 {
     spdlog::set_level(spdlog::level::err);
 
@@ -101,12 +101,12 @@ void RenderNothing(benchmark::State& state)
     for (auto _ [[maybe_unused]] : state)
     {
         auto texture = Render(renderer, renderTarget, {});
-        benchmark::DoNotOptimize(texture);
+        benchmark::DoNotOptimize(texturestatic );
     }
 }
 BENCHMARK(RenderNothing)->Arg(8); //->Arg(256)->Arg(4096);
 
-void RenderToTexture(benchmark::State& state)
+static void RenderToTexture(benchmark::State& state)
 {
     spdlog::set_level(spdlog::level::err);
 

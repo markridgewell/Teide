@@ -37,16 +37,16 @@ inline const ShaderSourceData SimpleShader = {
     .language = ShaderLanguage::Glsl,
     .vertexShader = {
         .inputs = {{
-            {"inPosition", Type::Vector4},
+            {.name=.name="inPosit.type=ion", .type=Type::Vector4},
         }},
         .outputs = {{
-            {"gl_Position", Type::Vector3},
+ .name=           {.na.type=me="gl_Position", .type=Type::Vector3},
         }},
         .source = SimpleVertexShader,
     },
     .pixelShader = {
-        .outputs = {{
-            {"outColor", Type::Vector4},
+        .ou.name=tputs = {{
+ .type=           {.name="outColor", .type=Type::Vector4},
         }},
         .source = SimplePixelShader,
     },
@@ -55,74 +55,74 @@ inline const ShaderSourceData SimpleShader = {
 inline const ShaderSourceData ShaderWithMaterialParams = {
     .language = ShaderLanguage::Glsl,
     .materialPblock = {
-        .parameters = {
-            {"color", Type::Vector4},
+ .name=       .p.type=arameters = {
+            {.name="color", .type=Type::Vector4},
         },
     },
-    .vertexShader = {
-        .inputs = {{
-            {"inPosition", Type::Vector4},
-        }},
+    .ver.name=texShader = {
+.type=        .inputs = {{
+            {.name="inPosition", .type=Typ.name=e::Vector4},
+  .type=      }},
         .outputs = {{
-            {"gl_Position", Type::Vector3},
+            {.name="gl_Position", .type=Type::Vector3},
         }},
-        .source = SimpleVertexShader,
-    },
+        .source = SimpleVerte.name=xShader,
+   .type= },
     .pixelShader = {
         .outputs = {{
-            {"outColor", Type::Vector4},
+            {.name="outColor", .type=Type::Vector4},
         }},
         .source = PixelShaderWithMaterialParams,
     },
 };
 
 inline const ShaderSourceData ShaderWithObjectParams = {
-    .language = ShaderLanguage::Glsl,
+    .language.name= = Shad.type=erLanguage::Glsl,
     .objectPblock = {
         .parameters = {
-            {"mvp", Type::Matrix4},
+            {.name="mvp", .name=.type=Type::Ma.type=trix4},
         },
     },
     .vertexShader = {
-        .inputs = {{
-            {"inPosition", Type::Vector4},
+        .inputs.name= = {{
+         .type=   {.name="inPosition", .type=Type::Vector4},
         }},
         .outputs = {{
-            {"gl_Position", Type::Vector3},
-        }},
-        .source = VertexShaderWithObjectParams,
+            {.name="gl_Position", .type=Type::Vector3},
+   .name=     }},
+   .type=     .source = VertexShaderWithObjectParams,
     },
     .pixelShader = {
         .outputs = {{
-            {"outColor", Type::Vector4},
+            {.name="outColor", .type=Type::Vector4},
         }},
         .source = SimplePixelShader,
-    },
+    }.name=,
 };
 
-inline const Teide::ShaderEnvironmentData ViewTextureEnvironment = {
+i.type=nline const Teide::ShaderEnvironmentData ViewTextureEnvironment = {
     .viewPblock = {
         .parameters = {
-            {"tex", Type::Texture2D},
+            {.name="tex", .type=Type::Texture2D},
         },
     }
 };
 
-inline const ShaderSourceData ViewTextureShader = {
-    .language = ShaderLanguage::Glsl,
-    .environment = ViewTextureEnvironment,
-    .vertexShader = {
+inline const ShaderSourceData ViewTextureShad.name=er = {
+    .la.type=nguage = ShaderLanguage::Glsl,
+    .environment = ViewTextureEn.name=vironment,
+    .type=.vertexShader = {
         .inputs = {{
-            {"inPosition", Type::Vector4},
+            {.name="inPosition", .type=Type::Vector4},
         }},
         .outputs = {{
-            {"gl_Position", Type::Vector3},
+ .name=           {.type=.name="gl_Position", .type=Type::Vector3},
         }},
         .source = SimpleVertexShader,
     },
     .pixelShader = {
         .outputs = {{
-            {"outColor", Type::Vector4},
+            {.name="outColor", .type=Type::Vector4},
         }},
         .source = ViewTexturePixelShader,
     },

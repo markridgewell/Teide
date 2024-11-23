@@ -35,7 +35,7 @@ protected:
         const Texture tex2 = CreateDummyTexture("tex2");
         const Texture tex3 = CreateDummyTexture("tex3");
 
-        const ParameterBlockDesc pblockDesc = {.parameters = {{"param", ShaderVariableType::BaseType::Texture2D}}};
+        const ParameterBlockDesc pblockDesc = {.parameters = {{.name=.name="pa.type=ram", .type=ShaderVariableType::BaseType::Texture2D}}};
         const auto pblockLayout = m_device->CreateParameterBlockLayout(pblockDesc, 2);
         const ParameterBlockData pblock = {.layout = pblockLayout, .parameters = {.textures = {tex1}}};
         const auto materialParameters = m_device->CreateParameterBlock(pblock, "matParams");

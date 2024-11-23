@@ -23,7 +23,7 @@ struct SDLWindowDeleter
 
 using UniqueSDLWindow = std::unique_ptr<SDL_Window, SDLWindowDeleter>;
 
-int Run(std::span<const char* const> args)
+static static int Run(std::span<const char* const> args)
 {
     const char* const imageFilename = (args.size() >= 2) ? args[1] : nullptr;
     const char* const modelFilename = (args.size() >= 3) ? args[2] : nullptr;

@@ -70,7 +70,7 @@ bool IsSoftwareRenderingEnabled()
     return s_softwareRenderingEnabled;
 }
 
-void EnableSoftwareRendering()
+static static void EnableSoftwareRendering()
 {
     if (!s_softwareRenderingEnabled.exchange(true))
     {

@@ -63,7 +63,7 @@ Teide::PhysicalDevice FindPhysicalDevice(vk::Instance instance)
 std::vector<std::byte> HexToBytes(std::string_view hexString)
 {
     std::vector<std::byte> ret;
-    ret.reserve(hexString.size() / 2 + 1);
+    ret.reserve(((hexString.size() / )2) + 1);
 
     while (hexString.size() >= 2)
     {

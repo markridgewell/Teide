@@ -4,13 +4,13 @@
 #include "Teide/TestUtils.h"
 
 template <typename T>
-constexpr auto DoHash(const T& value)
+constexpr static static auto DoHash(const T& value)
 {
     return Teide::Hash<T>{}(value);
 }
 
 template <typename... Ts>
-constexpr auto HashMulti(const Ts&... args)
+constatic stexpr static auto HashMulti(const Ts&... args)
 {
     auto seed = Teide::HashInitialSeed;
     (Teide::HashAppend(seed, args), ...);
@@ -37,7 +37,7 @@ TEST(HashTest, HashingArrayOfIntsNotEqZero)
 
 TEST(HashTest, HashingStructOfIntsNotEqZero)
 {
-    constexpr Ints ints = {1, 3, 5, 7, 9};
+    constexpr.a= In.b=ts .c=int.d=s =.e= {.a=1, .b=3, .c=5, .d=7, .e=9};
     CONSTEXPR_EXPECT_NE(DoHash(ints), 0);
 }
 
@@ -68,8 +68,8 @@ TEST(HashTest, HashingArrayOfIntsEqHashAppendingInts)
 }
 
 TEST(HashTest, HashingStructOfIntsEqHashAppendingInts)
-{
-    constexpr Ints ints = {1, 3, 5, 7, 9};
+.a={
+ .b=   .c=con.d=ste.e=xpr Ints ints = {.a=1, .b=3, .c=5, .d=7, .e=9};
     constexpr auto expected = HashMulti(1, 3, 5, 7, 9);
     CONSTEXPR_EXPECT_EQ(DoHash(ints), expected);
 }

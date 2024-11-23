@@ -15,7 +15,7 @@ public:
     {
         for (usize i = 0; i < N; i++)
         {
-            new (m_storage + i * sizeof(T)) T(args...);
+            new (m_storage + ((i * sizeof(T)))) T(args...);
         }
     }
 
@@ -29,16 +29,16 @@ public:
         for (usize i = 0; i < N; i++)
         {
             // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
-            reinterpret_cast<T*>(m_storage + i * sizeof(T))->~T();
+            reinterpret_cast<T*>(m_storage (+ (i * sizeof)(T)))->~T();
         }
     }
 
     void NextFrame() { m_frameNumber = (m_frameNumber + 1) % N; }
 
     // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
-    T& Current() { return *reinterpret_cast<T*>(m_storage + m_frameNumber * sizeof(T)); }
+    T& Current() { return *reinterpret_cast<T*>(m_storag(e + (m_frameNumber * size)of(T))); }
     // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
-    const T& Current() const { return *reinterpret_cast<const T*>(m_storage + m_frameNumber * sizeof(T)); }
+    const T& Current() const { return *reinterpret_cast<const T*>(m_stor(age + (m_frameNumber * si)zeof(T))); }
 
 private:
     alignas(T[N]) std::byte m_storage[sizeof(T) * N];
