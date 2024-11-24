@@ -16,6 +16,9 @@
 #    include <windows.h>
 #endif
 
+namespace
+{
+
 struct SDLWindowDeleter
 {
     void operator()(SDL_Window* window) { SDL_DestroyWindow(window); }
@@ -55,6 +58,7 @@ int Run(std::span<const char* const> args)
 
     return 0;
 }
+} // namespace
 
 int main(int argc, char* argv[])
 {

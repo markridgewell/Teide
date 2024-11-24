@@ -16,67 +16,36 @@ namespace
     {
         return ((a - 1) / b + 1) * b;
     }
+
+    std::string_view ToString(ShaderVariableType::BaseType type)
+    {
+        switch (type)
+        {
+            using enum ShaderVariableType::BaseType;
+            case Float: return "float";
+            case Vector2: return "vec2";
+            case Vector3: return "vec3";
+            case Vector4: return "vec4";
+            case Matrix4: return "mat4";
+            case Texture2D: return "sampler2D";
+            case Texture2DShadow: return "sampler2DShadow";
+        }
+        Unreachable();
+    }
+
+    void AddUniformBinding(ParameterBlockLayoutData& bindings, const ShaderVariable& var, uint32 size, uint32 alignment)
+    {
+        const auto offset = RoundUp(bindings.uniformsSize, alignment);
+        bindings.uniformDescs.push_back(UniformDesc{.name = var.name, .type = var.type, .offset = offset});
+        bindings.uniformsSize = offset + size * std::max(1u, var.type.arraySize);
+    }
+
+    void AddResourceBinding(ParameterBlockLayoutData& bindings, const ShaderVariable& var [[maybe_unused]])
+    {
+        bindings.textureCount++;
+    }
+
 } // namespace
-
-bool IsResourceType(ShaderVariableType::BaseType type)
-{
-    using enum ShaderVariableType::BaseType;
-    switch (type)
-    {
-        case Float:
-        case Vector2:
-        case Vector3:
-        case Vector4:
-        case Matrix4: return false;
-
-        case Texture2D:
-        case Texture2DShadow: return true;
-    }
-    Unreachable();
-}
-
-std::string_view ToString(ShaderVariableType::BaseType type)
-{
-    switch (type)
-    {
-        using enum ShaderVariableType::BaseType;
-        case Float: return "float";
-        case Vector2: return "vec2";
-        case Vector3: return "vec3";
-        case Vector4: return "vec4";
-        case Matrix4: return "mat4";
-        case Texture2D: return "sampler2D";
-        case Texture2DShadow: return "sampler2DShadow";
-    }
-    Unreachable();
-}
-
-std::ostream& operator<<(std::ostream& os, ShaderVariableType::BaseType type)
-{
-    return os << ToString(type);
-}
-
-std::ostream& operator<<(std::ostream& os, ShaderVariableType type)
-{
-    os << type.baseType;
-    if (type.arraySize != 0)
-    {
-        os << '[' << type.arraySize << ']';
-    }
-    return os;
-}
-
-void AddUniformBinding(ParameterBlockLayoutData& bindings, const ShaderVariable& var, uint32 size, uint32 alignment)
-{
-    const auto offset = RoundUp(bindings.uniformsSize, alignment);
-    bindings.uniformDescs.push_back(UniformDesc{.name = var.name, .type = var.type, .offset = offset});
-    bindings.uniformsSize = offset + size * std::max(1u, var.type.arraySize);
-}
-
-void AddResourceBinding(ParameterBlockLayoutData& bindings, const ShaderVariable& var [[maybe_unused]])
-{
-    bindings.textureCount++;
-}
 
 ParameterBlockLayoutData BuildParameterBlockLayout(const ParameterBlockDesc& pblock, int set)
 {
@@ -112,5 +81,38 @@ ParameterBlockLayoutData BuildParameterBlockLayout(const ParameterBlockDesc& pbl
 
     return bindings;
 }
+
+bool IsResourceType(ShaderVariableType::BaseType type)
+{
+    using enum ShaderVariableType::BaseType;
+    switch (type)
+    {
+        case Float:
+        case Vector2:
+        case Vector3:
+        case Vector4:
+        case Matrix4: return false;
+
+        case Texture2D:
+        case Texture2DShadow: return true;
+    }
+    Unreachable();
+}
+
+std::ostream& operator<<(std::ostream& os, ShaderVariableType::BaseType type)
+{
+    return os << ToString(type);
+}
+
+std::ostream& operator<<(std::ostream& os, ShaderVariableType type)
+{
+    os << type.baseType;
+    if (type.arraySize != 0)
+    {
+        os << '[' << type.arraySize << ']';
+    }
+    return os;
+}
+
 
 } // namespace Teide
