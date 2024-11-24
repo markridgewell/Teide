@@ -66,6 +66,8 @@ struct ShaderVariable
     std::string name;
     ShaderVariableType type;
 
+    ShaderVariable(std::string name, ShaderVariableType type) : name{std::move(name)}, type{type} {}
+
     bool operator==(const ShaderVariable&) const = default;
 };
 
