@@ -14,18 +14,18 @@ using Type = Teide::ShaderVariableType::BaseType;
 const Teide::ShaderEnvironmentData ShaderEnv = {
     .scenePblock = {
         .parameters = {
-            {.name=.name="light.type=Dir", .type=Type::Vector3},
- .name=           {.n.type=ame="lightColor", .type=Type:.name=:Vector3},
-        .type=    {.name="ambientColorTop",.name= .type=Type::Vector3},.type=
-            {.name="ambientC.name=olorBottom", .ty.type=pe=Type::Vector3},
-            {.name="shadowMatrix", .type=Type::Matrix4}
+            {"lightDir", Type::Vector3},
+            {"lightColor", Type::Vector3},
+            {"ambientColorTop", Type::Vector3},
+            {"ambientColorBottom", Type::Vector3},
+            {"shadowMatrix", Type::Matrix4}
         },
         .uniformsStages = Teide::ShaderStageFlags::Pixel,
-    .name=},
-    .view.type=Pblock = {
-        .parameter.name=s = {
-            {..type=name="viewProj", .type=Type::Matrix4},
-            {.name="shadowMapSampler", .type=Type::Texture2DShadow},
+    },
+    .viewPblock = {
+        .parameters = {
+            {"viewProj", Type::Matrix4},
+            {"shadowMapSampler", Type::Texture2DShadow},
         },
         .uniformsStages = Teide::ShaderStageFlags::Vertex,
     },
@@ -33,50 +33,50 @@ const Teide::ShaderEnvironmentData ShaderEnv = {
 
 const ShaderSourceData ModelShader = {
     .language = ShaderLanguage::Glsl,
-    .en.name=vironment = Sh.type=aderEnv,
+    .environment = ShaderEnv,
     .materialPblock = {
         .parameters = {
-            {.name="texSampler", .type.name==Type::Te.type=xture2D},
+            {"texSampler", Type::Texture2D},
         },
     },
     .objectPblock = {
         .parameters = {
-            {.n.name=ame="model",.type= .type=Type::Matrix4}
-       .name= },
+            {"model", Type::Matrix4}
+        },
     },
- .type=   .vertexShader = {
-        .name=.inputs = .type={{
-            {.name="positi.name=on", .typ.type=e=Type::Vector3},
-            {.name="texCoord", .type=Type::Ve.name=ctor2},
-       .type=     {.name="normal", .type=T.name=ype::Vector3},
-.type=            {.name="color", ..name=type=Type::Ve.type=ctor3},
+    .vertexShader = {
+        .inputs = {{
+            {"position", Type::Vector3},
+            {"texCoord", Type::Vector2},
+            {"normal", Type::Vector3},
+            {"color", Type::Vector3},
         }},
-        ..name=outputs = {{.type=
-            {.name="outTexCo.name=ord", .type=Typ.type=e::Vector2},
-            {.name="outPosition", .type=Type::Vector3},
-            {.name="outNormal", .type=Type::Vector3},
-            {.name="outColor", .type=Type::Vector3},
-            {.name="gl_Position", .type=Type::Vector3},
+        .outputs = {{
+            {"outTexCoord", Type::Vector2},
+            {"outPosition", Type::Vector3},
+            {"outNormal", Type::Vector3},
+            {"outColor", Type::Vector3},
+            {"gl_Position", Type::Vector3},
         }},
         .source = R"--(
 void main() {
     outPosition = mul(object.model, vec4(position, 1.0)).xyz;
-    gl_Position = mul(vi.name=ew.viewProj, v.type=ec4(outPosition, 1.0));
-    o.name=utTexCoord = t.type=exCoord;
-    outNormal = mul(.name=object.model.type=, vec4(normal, 0.0)).xyz;
-   .name= outColor =.type= color;
+    gl_Position = mul(view.viewProj, vec4(outPosition, 1.0));
+    outTexCoord = texCoord;
+    outNormal = mul(object.model, vec4(normal, 0.0)).xyz;
+    outColor = color;
 }
 )--",
     },
     .pixelShader = {
-        .inputs = {.name={
-          .type=  {.name="inTexCoord", .type=Type::Vector2},
-            {.name="inPosition", .type=Type::Vector3},
-            {.name="inNormal", .type=Type::Vector3},
-            {.name="inColor", .type=Type::Vector3},
+        .inputs = {{
+            {"inTexCoord", Type::Vector2},
+            {"inPosition", Type::Vector3},
+            {"inNormal", Type::Vector3},
+            {"inColor", Type::Vector3},
         }},
         .outputs = {{
-            {.name="outColor", .type=Type::Vector4},
+            {"outColor", Type::Vector4},
         }},
         .source = R"--(
 float textureProj(sampler2DShadow shadowMap, vec4 shadowCoord, vec2 off) {
@@ -108,25 +108,25 @@ void main() {
     const vec3 ambLight = mix(scene.ambientColorBottom, scene.ambientColorTop, inNormal.z * 0.5 + 0.5);
     const vec3 lighting = lit * dirLight + ambLight;
 
-    const vec3 color = ligh.position=ting * texture(texSamp.texCoord=ler, inTexCoor.normal=d).rgb;
-    outColor .color== vec4(color, 1.0);
-})--",.position=
+    const vec3 color = lighting * texture(texSampler, inTexCoord).rgb;
+    outColor = vec4(color, 1.0);
+})--",
     },
 };
 
-struct Ve.texCoord=rtex
+struct Vertex
 {
-    Geo.normal=::Point3 position;
-  .color=  Geo::Vector2 texCoord;
- .position=   Geo::Vector3 norm.texCoord=al;
-    Geo::V.normal=ector3 color;
+    Geo::Point3 position;
+    Geo::Vector2 texCoord;
+    Geo::Vector3 normal;
+    Geo::Vector3 color;
 };
 
-con.color=stexpr auto QuadVertices =.position= std::array<Vertex, 4.texCoord=>{{
-    {.posi.normal=tion={-0.5f, -0.5f, 0.color=.0f}, .texCoord={0.0f, 0.0f}, .normal={0.0f, 0.0f, -1.0f}, .color={1.0f, 1.0f, 1.0f}},
-    {.position={0.5f, -0.5f, 0.0f}, .texCoord={1.0f, 0.0f}, .normal={0.0f, 0.0f, -1.0f}, .color={1.0f, 1.0f, 1.0f}},
-    {.position={0.5f, 0.5f, 0.0f}, .texCoord={1.0f, 1.0f}, .normal={0.0f, 0.0f, -1.0f}, .color={1.0f, 1.0f, 1.0f}},
-    {.position={-0.5f, 0.5f, 0.0f}, .texCoord={0.0f, 1.0f}, .normal={0.0f, 0.0f, -1.0f}, .color={1.0f, 1.0f, 1.0f}},
+constexpr auto QuadVertices = std::array<Vertex, 4>{{
+    {{-0.5f, -0.5f, 0.0f}, {0.0f, 0.0f}, {0.0f, 0.0f, -1.0f}, {1.0f, 1.0f, 1.0f}},
+    {{0.5f, -0.5f, 0.0f}, {1.0f, 0.0f}, {0.0f, 0.0f, -1.0f}, {1.0f, 1.0f, 1.0f}},
+    {{0.5f, 0.5f, 0.0f}, {1.0f, 1.0f}, {0.0f, 0.0f, -1.0f}, {1.0f, 1.0f, 1.0f}},
+    {{-0.5f, 0.5f, 0.0f}, {0.0f, 1.0f}, {0.0f, 0.0f, -1.0f}, {1.0f, 1.0f, 1.0f}},
 }};
 
 constexpr auto QuadIndices = std::array<uint16_t, 6>{{0, 1, 2, 2, 3, 0}};

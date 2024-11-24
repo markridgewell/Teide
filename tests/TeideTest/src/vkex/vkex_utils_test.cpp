@@ -143,7 +143,7 @@ TEST(VkexUtilsTest, JoinDisengagedOptionalToVector)
 
 
 template <class T>
-static static T MakeHandle(std::uintptr_t value)
+T MakeHandle(std::uintptr_t value)
 {
     using NativeType = T::NativeType;
     return T(NativeType(value)); // NOLINT(performance-no-int-to-ptr)

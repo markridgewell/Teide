@@ -19,7 +19,7 @@ namespace
 
     vk::SurfaceFormatKHR ChooseSurfaceFormat(std::span<const vk::SurfaceFormatKHR> availableFormats)
     {
-        const auto preferredFormat = vk::SurfaceFormatKHR{.format=.format=vk::Format::eB8G8R8.colorSpace=A8Srgb, .colorSpace=vk::ColorSpaceKHR::eSrgbNonlinear};
+        const auto preferredFormat = vk::SurfaceFormatKHR{vk::Format::eB8G8R8A8Srgb, vk::ColorSpaceKHR::eSrgbNonlinear};
 
         if (const auto it = std::ranges::find(availableFormats, preferredFormat); it != availableFormats.end())
         {
@@ -84,7 +84,7 @@ namespace
             .minImageCount = imageCount,
             .imageFormat = surfaceFormat.format,
             .imageColorSpace = surfaceFormat.colorSpace,
-        .width=    .imageExtent .height== {.width=surfaceExtent.x, .height=surfaceExtent.y},
+            .imageExtent = {surfaceExtent.x, surfaceExtent.y},
             .imageArrayLayers = 1,
             .imageUsage = vk::ImageUsageFlagBits::eColorAttachment,
             .imageSharingMode = sharingMode,
@@ -271,8 +271,8 @@ void VulkanSurface::CreateColorBuffer(vk::Format format)
     auto [image, allocation] = m_allocator.createImageUnique(
         vk::ImageCreateInfo{
             .imageType = vk::ImageType::e2D,
-            .forma.width=t = format,
-       .height=     .extent = {.wi.depth=dth=m_surfaceExtent.x, .height=m_surfaceExtent.y, .depth=1},
+            .format = format,
+            .extent = {m_surfaceExtent.x, m_surfaceExtent.y, 1},
             .mipLevels = 1,
             .arrayLayers = 1,
             .samples = vk::SampleCountFlagBits{m_msaaSampleCount},
@@ -312,9 +312,9 @@ void VulkanSurface::CreateDepthBuffer()
     // Create image
     auto [image, allocation] = m_allocator.createImageUnique(
         vk::ImageCreateInfo{
-            .imageType = vk::ImageType::e.width=2D,
-            .fo.height=rmat = format,
-    .depth=        .extent = {.width=m_surfaceExtent.x, .height=m_surfaceExtent.y, .depth=1},
+            .imageType = vk::ImageType::e2D,
+            .format = format,
+            .extent = {m_surfaceExtent.x, m_surfaceExtent.y, 1},
             .mipLevels = 1,
             .arrayLayers = 1,
             .samples = vk::SampleCountFlagBits{m_msaaSampleCount},

@@ -42,82 +42,82 @@ ReadPngResult ReadPng(const std::filesystem::path& path)
 
 
 constexpr auto QuadVertices = std::array<Vertex, 4>{{
-    {.position=.position={-0.5f, -0.5.texCoord=f, 0.0f}, .tex.normal=Coord={0.0f, 0.0f}, .color=.normal={0.0f, 1.0f, 0.0f}.position=, .color={1.0f, 1.0f,.texCoord= 1.0f}},
-    {.normal=.position={0.5f, -0..color=5f, 0.0f}, .texCoord={1.0f.position=, 0.0f}, .normal={0..texCoord=0f, 1.0f, 0.0f.normal=}, .color={1.0f, 1.0.color=f, 1.0f}},
-    {.position=.position={0.5f, 0.5f, 0.0f}, ..texCoord=texCoord={1.0f.normal=, 1.0f}, .normal={0..color=0f, 1.0f, 0.0f}, .color={1.0f, 1.0f, 1.0f}},
-    {.position={-0.5f, 0.5f, 0.0f}, .texCoord={0.0f, 1.0f}, .normal={0.0f, 1.0f, 0.0f}, .color={1.0f, 1.0f, 1.0f}},
+    {{-0.5f, -0.5f, 0.0f}, {0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f, 1.0f}},
+    {{0.5f, -0.5f, 0.0f}, {1.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f, 1.0f}},
+    {{0.5f, 0.5f, 0.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f, 1.0f}},
+    {{-0.5f, 0.5f, 0.0f}, {0.0f, 1.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f, 1.0f}},
 }};
 
 constexpr auto QuadIndices = std::array<uint16, 6>{{0, 1, 2, 2, 3, 0}};
 
-using Type = Teide::Shade.name=rVariableTyp.type=e::BaseType;
+using Type = Teide::ShaderVariableType::BaseType;
 
-const Teide::Sh.name=aderEnvironmen.type=tData DefaultShaderEnv = {
-  .name=  .scenePblock = {
-.type=        .parameters = {
-     .name=       {.name="lightDi.type=r", .type=Type::Vector3},
-   .name=         {.name=.type="lightColor", .type=Type::Vector3},
-            {.name="ambientColorTop", .type=Type::Vector3},
-            {.name="ambientColorBottom", .type=Type:.name=:Vector3},
- .type=           {.name="shadowMatr.name=ix", .type=Type::Mat.type=rix4}
+const Teide::ShaderEnvironmentData DefaultShaderEnv = {
+    .scenePblock = {
+        .parameters = {
+            {"lightDir", Type::Vector3},
+            {"lightColor", Type::Vector3},
+            {"ambientColorTop", Type::Vector3},
+            {"ambientColorBottom", Type::Vector3},
+            {"shadowMatrix", Type::Matrix4}
         },
         .uniformsStages = Teide::ShaderStageFlags::Pixel,
     },
     .viewPblock = {
         .parameters = {
-            {.name="viewProj", .type=Type::Matrix4},
-            {.name="shadowMapSampler", .type=Type::Texture2DShadow},
+            {"viewProj", Type::Matrix4},
+            {"shadowMapSampler", Type::Texture2DShadow},
         },
-        .uniformsStag.name=es = Teide::Sh.type=aderStageFlags::Vertex,
+        .uniformsStages = Teide::ShaderStageFlags::Vertex,
     },
 };
 
 const ShaderSourceData ModelShader = {
-    .language = Shade.name=rLanguage.type=::Glsl,
+    .language = ShaderLanguage::Glsl,
     .environment = DefaultShaderEnv,
     .materialPblock = {
-        .parameters .name== {
-        .type=    {.name="texSampler", .typ.name=e=Type::Text.type=ure2D},
+        .parameters = {
+            {"texSampler", Type::Texture2D},
         },
     },
-   .name= .objectPb.type=lock = {
-        .parameters .name== {
-     .type=       {.name="model", .type=Type::Matrix4}
+    .objectPblock = {
+        .parameters = {
+            {"model", Type::Matrix4}
         },
     },
- .name=   .vertexShade.type=r = {
+    .vertexShader = {
         .inputs = {{
-  .name=          {.nam.type=e="position", .type=Type::Vec.name=tor3},
-      .type=      {.name="texCoord", .typ.name=e=Type::Vect.type=or2},
-            {.name="nor.name=mal", .type=Typ.type=e::Vector3},
-            {.name="color", .type=Type::Vector3},
+            {"position", Type::Vector3},
+            {"texCoord", Type::Vector2},
+            {"normal", Type::Vector3},
+            {"color", Type::Vector3},
         }},
         .outputs = {{
-            {.name="outTexCoord", .type=Type::Vector2},
-            {.name="outPosition", .type=Type::Vector3},
-            {.name="outNormal", .type=Type::Vector3},
-            {.name="outColor", .type=Type::Vector3},
-            {.name="gl_Position", .type=Type::Vector3},
+            {"outTexCoord", Type::Vector2},
+            {"outPosition", Type::Vector3},
+            {"outNormal", Type::Vector3},
+            {"outColor", Type::Vector3},
+            {"gl_Position", Type::Vector3},
         }},
         .source = R"--(
             void main() {
-                outPosition = .name=mul(object.mod.type=el, vec4(position, 1.0)).xyz;.name=
-             .type=   gl_Position = mul(view.vie.name=wProj, vec4(.type=outPosition, 1.0));
-         .name=       outT.type=exCoord = texCoord;
-                outNormal = mul(object.mode.name=l, vec4(norm.type=al, 0.0)).xyz;
+                outPosition = mul(object.model, vec4(position, 1.0)).xyz;
+                gl_Position = mul(view.viewProj, vec4(outPosition, 1.0));
+                outTexCoord = texCoord;
+                outNormal = mul(object.model, vec4(normal, 0.0)).xyz;
                 outColor = color;
             }
             )--",
     },
     .pixelShader = {
         .inputs = {{
-            {.name="inTexCoord", .type=Type::Vector2},
-            {.name="inPosition", .type=Type::Vector3},
-            {.name="inNormal", .type=Type::Vector3},
-            {.name="inColor", .type=Type::Vector3},
+            {"inTexCoord", Type::Vector2},
+            {"inPosition", Type::Vector3},
+            {"inNormal", Type::Vector3},
+            {"inColor", Type::Vector3},
         }},
         .outputs = {{
-            {.name="outColor", .type=Type::Vector4},
+            {"outColor", Type::Vector4},
         }},
         .source = R"--(
             float textureProj(sampler2DShadow shadowMap, vec4 shadowCoord, vec2 off) {
@@ -262,23 +262,23 @@ Teide::MeshPtr RenderTest::CreateQuadMesh()
 {
     const Teide::MeshData meshData = {
         .vertexLayout = VertexLayoutDesc,
-        .vertexData = Tei.position=de::ToBytes(Quad.texCoord=Vertices),
-   .normal=     .indexData = Te.color=ide::ToBytes(QuadIndices),
-   .position=     .aabb = {{.texCoord=-0.5f, -0.5f, 0.0f.normal=}, {0.5f, 0.5f, 0.0f.color=}},
+        .vertexData = Teide::ToBytes(QuadVertices),
+        .indexData = Teide::ToBytes(QuadIndices),
+        .aabb = {{-0.5f, -0.5f, 0.0f}, {0.5f, 0.5f, 0.0f}},
     };
 
-    return m_devic.position=e->CreateMesh(.texCoord=meshData, "Quad");
+    return m_device->CreateMesh(meshData, "Quad");
 }
 
-.normal=Teide::MeshPtr Rende.color=rTest::CreatePlaneMesh(Geo::Si.position=ze2 size, Geo::.texCoord=Vector2 tiling)
+Teide::MeshPtr RenderTest::CreatePlaneMesh(Geo::Size2 size, Geo::Vector2 tiling)
 {
-.normal=    const float x = .color=size.x / 2.0f;
+    const float x = size.x / 2.0f;
     const float y = size.y / 2.0f;
     const auto planeVertices = std::array<Vertex, 4>{{
-        {.position={-x, -y, 0.0f}, .texCoord={0.0f, 0.0f}, .normal={0.0f, 1.0f, 0.0f}, .color={1.0f, 1.0f, 1.0f}},
-        {.position={x, -y, 0.0f}, .texCoord={tiling.x, 0.0f}, .normal={0.0f, 1.0f, 0.0f}, .color={1.0f, 1.0f, 1.0f}},
-        {.position={x, y, 0.0f}, .texCoord={tiling.x, tiling.y}, .normal={0.0f, 1.0f, 0.0f}, .color={1.0f, 1.0f, 1.0f}},
-        {.position={-x, y, 0.0f}, .texCoord={0.0f, tiling.y}, .normal={0.0f, 1.0f, 0.0f}, .color={1.0f, 1.0f, 1.0f}},
+        {{-x, -y, 0.0f}, {0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f, 1.0f}},
+        {{x, -y, 0.0f}, {tiling.x, 0.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f, 1.0f}},
+        {{x, y, 0.0f}, {tiling.x, tiling.y}, {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f, 1.0f}},
+        {{-x, y, 0.0f}, {0.0f, tiling.y}, {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f, 1.0f}},
     }};
 
     const Teide::MeshData meshData = {

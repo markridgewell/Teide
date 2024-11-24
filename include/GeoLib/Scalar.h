@@ -17,7 +17,7 @@ template <class T>
     requires std::floating_point<T>
 constexpr T Lerp(T a, T b, T t) noexcept
 {
-    return a + ((t * (b - a)));
+    return a + t * (b - a);
 }
 
 template <class T>

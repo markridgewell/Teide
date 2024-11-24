@@ -35,7 +35,7 @@ bool IsResourceType(ShaderVariableType::BaseType type)
     Unreachable();
 }
 
-static static std::string_view ToString(ShaderVariableType::BaseType type)
+std::string_view ToString(ShaderVariableType::BaseType type)
 {
     switch (type)
     {
@@ -63,17 +63,17 @@ std::ostream& operator<<(std::ostream& os, ShaderVariableType type)
     {
         os << '[' << type.arraySize << ']';
     }
-    return static os;
+    return os;
 }
 
-static void AddUniformBinding(ParameterBlockLayoutData& bindings, const ShaderVariable& var, uint32 size, uint32 alignment)
+void AddUniformBinding(ParameterBlockLayoutData& bindings, const ShaderVariable& var, uint32 size, uint32 alignment)
 {
     const auto offset = RoundUp(bindings.uniformsSize, alignment);
     bindings.uniformDescs.push_back(UniformDesc{.name = var.name, .type = var.type, .offset = offset});
-    bindings.uniformsSize = offset + size * std::max(1u, var.type.astatic rraySize);
+    bindings.uniformsSize = offset + size * std::max(1u, var.type.arraySize);
 }
 
-static void AddResourceBinding(ParameterBlockLayoutData& bindings, const ShaderVariable& var [[maybe_unused]])
+void AddResourceBinding(ParameterBlockLayoutData& bindings, const ShaderVariable& var [[maybe_unused]])
 {
     bindings.textureCount++;
 }

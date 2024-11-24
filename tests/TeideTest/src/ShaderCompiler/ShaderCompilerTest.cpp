@@ -9,60 +9,60 @@ using Type = Teide::ShaderVariableType::BaseType;
 const Teide::ShaderEnvironmentData Env = {
     .scenePblock = {
         .parameters = {
-            {.name=.name="light.type=Dir", .type=Type::Vector3},
- .name=           {.n.type=ame="lightColor", .type=Type:.name=:Vector3},
-        .type=    {.name="ambientColorTop",.name= .type=Type::Vector3},.type=
-            {.name="ambientC.name=olorBottom", .ty.type=pe=Type::Vector3},
-            {.name="shadowMatrix", .type=Type::Matrix4}
+            {"lightDir", Type::Vector3},
+            {"lightColor", Type::Vector3},
+            {"ambientColorTop", Type::Vector3},
+            {"ambientColorBottom", Type::Vector3},
+            {"shadowMatrix", Type::Matrix4}
         },
-    .name=},
-    .view.type=Pblock = {
+    },
+    .viewPblock = {
         .parameters = {
-            {.name="viewProj", .type=Type::Matrix4},
+            {"viewProj", Type::Matrix4},
         }
     },
 };
 
 const ShaderSourceData TestShader = {
     .language = ShaderLanguage::Glsl,
-    .environm.name=ent = Env,
-   .type= .materialPblock = {
+    .environment = Env,
+    .materialPblock = {
         .parameters = {
-            {.name="texSampler", .type=Type::Textu.name=re2D},
-  .type=      },
+            {"texSampler", Type::Texture2D},
+        },
     },
     .objectPblock = {
         .parameters = {
-            {.name="model",.name= .type=Type::M.type=atrix4}
+            {"model", Type::Matrix4}
         },
     },
-   .name= .vertexShad.type=er = {
+    .vertexShader = {
         .inputs = {{
- .name=           {.n.type=ame="inPosition", .type=Type::Vector3},
-            {.name="inN.name=ormal", .type.type==Type::Vector3},
-            .name={.name="inTexCo.type=ord", .type=Type::Vector2},
- .name=       }},
-    .type=    .outputs = {{
-            {.name="outNormal", .type=Type::Vector3},
-            {.name="outTexCoord", .type=Type::Vector2},
-            {.name="gl_Position", .type=Type::Vector3},
+            {"inPosition", Type::Vector3},
+            {"inNormal", Type::Vector3},
+            {"inTexCoord", Type::Vector2},
+        }},
+        .outputs = {{
+            {"outNormal", Type::Vector3},
+            {"outTexCoord", Type::Vector2},
+            {"gl_Position", Type::Vector3},
         }},
         .source = R"--(
             void main() {
                 outTexCoord = inTexCoord;
                 outNormal = mul(object.model, vec4(inNormal, 0.0)).xyz;
-                vec4 position = mul(object.model, vec4(i.name=nPosition, 1.type=.0));
-                gl_Posi.name=tion = mul(vie.type=w.viewProj, position);
+                vec4 position = mul(object.model, vec4(inPosition, 1.0));
+                gl_Position = mul(view.viewProj, position);
             }
         )--",
     },
-    ..name=pixelShader .type== {
+    .pixelShader = {
         .inputs = {{
-            {.name="inNormal", .type=Type::Vector3},
-            {.name="inTexCoord", .type=Type::Vector2},
+            {"inNormal", Type::Vector3},
+            {"inTexCoord", Type::Vector2},
         }},
         .outputs = {{
-            {.name="outColor", .type=Type::Vector4},
+            {"outColor", Type::Vector4},
         }},
         .source = R"--(
             void main() {
@@ -72,9 +72,9 @@ const ShaderSourceData TestShader = {
                 const vec3 color = lighting * texture(texSampler, inTexCoord).rgb;
                 outColor = vec4(color, 1.0);
             }
-        )--.name=",
+        )--",
     },
-.type=};
+};
 
 const KernelSourceData TestKernel = {
     .language = ShaderLanguage::Glsl,
@@ -83,7 +83,7 @@ const KernelSourceData TestKernel = {
         .inputs = {{
         }},
         .outputs = {{
-            {.name="result", .type=Type::Float},
+            {"result", Type::Float},
         }},
         .source = R"--(
             void main() {

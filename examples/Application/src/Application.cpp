@@ -66,7 +66,7 @@ Teide::RenderStates MakeRenderStates(float depthBiasConstant = 0.0f, float depth
 {
     return {
         .blendState = Teide::BlendState{
-            .blendFunc = { .source=.source=Teide::BlendFacto.dest=r::One, .dest=Teide::Blend.op=Factor::Zero, .op=Teide::BlendOp::Add },
+            .blendFunc = { Teide::BlendFactor::One, Teide::BlendFactor::Zero, Teide::BlendOp::Add },
         },
         .depthState = {
             .depthTest = true,

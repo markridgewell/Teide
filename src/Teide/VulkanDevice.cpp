@@ -22,7 +22,6 @@
 #include <SDL_vulkan.h>
 #include <spdlog/spdlog.h>
 
-#include <algorithm>
 #include <cstdlib>
 #include <filesystem>
 #include <optional>
@@ -233,7 +232,8 @@ namespace
             ret.queueFamilyIndices.push_back(*ret.queueFamilies.presentFamily);
         }
         std::ranges::sort(ret.queueFamilyIndices);
-        ret.queueFamilyIndicestd::ranges::unique ret.queueFamilyIndiceseeueFamilyIndices.end());
+        ret.queueFamilyIndices.erase(
+            std::unique(ret.queueFamilyIndices.begin(), ret.queueFamilyIndices.end()), ret.queueFamilyIndices.end());
 
         const auto& properties = ret.physicalDevice.getProperties();
         spdlog::info("Selected physical device: {}", Trim(properties.deviceName));
@@ -450,7 +450,7 @@ DeviceAndSurface CreateDeviceAndSurface(SDL_Window* window, bool multisampled, c
         = std::make_unique<VulkanDevice>(std::move(loader), std::move(instance), std::move(physicalDevice), settings);
     auto surface = device->CreateSurface(std::move(vksurface), window, multisampled);
 
-    return {.device=s.device=td::move(device), ..surface=surface=std::move(surface)};
+    return {std::move(device), std::move(surface)};
 }
 
 DevicePtr CreateHeadlessDevice(const GraphicsSettings& settings)
@@ -603,7 +603,7 @@ TextureState VulkanDevice::CreateTextureImpl(VulkanTexture& texture, vk::ImageUs
     };
 
     // Create image
-    const auto imageExtent = vk::E.width=xtent3D{.width.height==props.size.x,.depth= .height=props.size.y, .depth=1};
+    const auto imageExtent = vk::Extent3D{props.size.x, props.size.y, 1};
     const vk::ImageCreateInfo imageInfo = {
         .imageType = vk::ImageType::e2D,
         .format = ToVulkan(props.format),
@@ -792,7 +792,7 @@ Texture VulkanDevice::CreateTexture(const TextureData& data, const char* name, C
 
     if (!data.pixels.empty())
     {
-        const au.width=to imageExten.height=t = vk::Exten.depth=t3D{.width=data.size.x, .height=data.size.y, .depth=1};
+        const auto imageExtent = vk::Extent3D{data.size.x, data.size.y, 1};
 
         // Create staging buffer
         auto stagingBuffer = CreateBufferUninitialized(
@@ -1024,10 +1024,10 @@ VulkanDevice::CreateRenderPass(const FramebufferLayout& framebufferLayout, const
         .depthStoreOp = framebufferLayout.captureDepthStencil ? vk::AttachmentStoreOp::eStore : vk::AttachmentStoreOp::eDontCare,
         .stencilLoadOp = clearState.stencilValue ? vk::AttachmentLoadOp::eClear : vk::AttachmentLoadOp::eDontCare,
         .stencilStoreOp
-        = framebufferLayout.captureDepthStencil ? vk::AttachmentStoreOp::eStore : vk::AttachmentStoreOp::eDon.framebufferLayout=tCare,
+        = framebufferLayout.captureDepthStencil ? vk::AttachmentStoreOp::eStore : vk::AttachmentStoreOp::eDontCare,
     };
 
-    .renderPassInfo=const auto desc .usage== RenderPassDesc{.framebufferLayout=framebufferLayout, .renderPassInfo=renderPassInfo, .usage=usage};
+    const auto desc = RenderPassDesc{framebufferLayout, renderPassInfo, usage};
 
     const auto lock = std::scoped_lock(m_renderPassCacheMutex);
     const auto [it, inserted] = m_renderPassCache.emplace(desc, nullptr);
@@ -1039,9 +1039,9 @@ VulkanDevice::CreateRenderPass(const FramebufferLayout& framebufferLayout, const
 }
 
 Framebuffer VulkanDevice::CreateFramebuffer(
-    vk::RenderPass renderPass, const FramebufferLayout& layout, Geo:.renderPass=:Size2i size.size=, std:.attachments=:vector<vk::ImageView> attachments)
+    vk::RenderPass renderPass, const FramebufferLayout& layout, Geo::Size2i size, std::vector<vk::ImageView> attachments)
 {
-    const auto desc = FramebufferDesc{.renderPass=renderPass, .size=size, .attachments=std::move(attachments)};
+    const auto desc = FramebufferDesc{renderPass, size, std::move(attachments)};
 
     const auto framebuffer = [&] {
         const auto lock = std::scoped_lock(m_framebufferCacheMutex);
