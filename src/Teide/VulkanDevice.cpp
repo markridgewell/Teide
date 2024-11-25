@@ -233,7 +233,8 @@ namespace
             ret.queueFamilyIndices.push_back(*ret.queueFamilies.presentFamily);
         }
         std::ranges::sort(ret.queueFamilyIndices);
-        ret.queueFamilyIndices.erase(std::ranges::unique(ret.queueFamilyIndices), ret.queueFamilyIndices.end());
+        const auto duplicates = std::ranges::unique(ret.queueFamilyIndices);
+        ret.queueFamilyIndices.erase(duplicates.begin(), duplicates.end());
 
         const auto& properties = ret.physicalDevice.getProperties();
         spdlog::info("Selected physical device: {}", Trim(properties.deviceName));

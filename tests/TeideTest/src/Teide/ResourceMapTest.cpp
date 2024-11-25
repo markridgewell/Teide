@@ -36,6 +36,9 @@ T& Copy(T& obj)
 }
 
 template <class T>
+void Copy(T&&) = delete;
+
+template <class T>
 T&& Move(T&& obj) // NOLINT(cppcoreguidelines-missing-std-forward)
 {
     return static_cast<T&&>(obj);

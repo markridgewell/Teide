@@ -2,6 +2,7 @@
 #include "TestUtils.h"
 
 #include <charconv>
+#include <ranges>
 
 #ifdef _WIN32
 #    define WIN32_LEAN_AND_MEAN
@@ -65,18 +66,13 @@ std::vector<std::byte> HexToBytes(std::string_view hexString)
     std::vector<std::byte> ret;
     ret.reserve(hexString.size() / 2 + 1);
 
-    while (hexString.size() >= 2)
+    for (const auto byte : std::views::split(hexString, " "))
     {
-        while (isspace(hexString[0]))
-        {
-            hexString.remove_prefix(1);
-        }
-
         unsigned int i = 0;
-        [[maybe_unused]] const auto result = std::from_chars(hexString.data(), hexString.data() + 2, i, 16);
+        [[maybe_unused]] const auto result
+            = std::from_chars(std::ranges::data(byte), std::ranges::data(byte) + std::ranges::size(byte), i, 16);
         TEIDE_ASSERT(result.ec == std::errc{});
         ret.push_back(static_cast<std::byte>(i));
-        hexString.remove_prefix(2);
     }
 
     return ret;
