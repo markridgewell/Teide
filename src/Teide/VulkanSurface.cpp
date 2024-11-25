@@ -19,7 +19,8 @@ namespace
 
     vk::SurfaceFormatKHR ChooseSurfaceFormat(std::span<const vk::SurfaceFormatKHR> availableFormats)
     {
-        const auto preferredFormat = vk::SurfaceFormatKHR{.format=vk::Format::eB8G8R8A8Srgb, .colorSpace=vk::ColorSpaceKHR::eSrgbNonlinear};
+        const auto preferredFormat
+            = vk::SurfaceFormatKHR{.format = vk::Format::eB8G8R8A8Srgb, .colorSpace = vk::ColorSpaceKHR::eSrgbNonlinear};
 
         if (const auto it = std::ranges::find(availableFormats, preferredFormat); it != availableFormats.end())
         {
@@ -84,7 +85,7 @@ namespace
             .minImageCount = imageCount,
             .imageFormat = surfaceFormat.format,
             .imageColorSpace = surfaceFormat.colorSpace,
-            .imageExtent = {.width=surfaceExtent.x, .height=surfaceExtent.y},
+            .imageExtent = {.width = surfaceExtent.x, .height = surfaceExtent.y},
             .imageArrayLayers = 1,
             .imageUsage = vk::ImageUsageFlagBits::eColorAttachment,
             .imageSharingMode = sharingMode,
@@ -272,7 +273,7 @@ void VulkanSurface::CreateColorBuffer(vk::Format format)
         vk::ImageCreateInfo{
             .imageType = vk::ImageType::e2D,
             .format = format,
-            .extent = {.width=m_surfaceExtent.x, .height=m_surfaceExtent.y, .depth=1},
+            .extent = {.width = m_surfaceExtent.x, .height = m_surfaceExtent.y, .depth = 1},
             .mipLevels = 1,
             .arrayLayers = 1,
             .samples = vk::SampleCountFlagBits{m_msaaSampleCount},
@@ -314,7 +315,7 @@ void VulkanSurface::CreateDepthBuffer()
         vk::ImageCreateInfo{
             .imageType = vk::ImageType::e2D,
             .format = format,
-            .extent = {.width=m_surfaceExtent.x, .height=m_surfaceExtent.y, .depth=1},
+            .extent = {.width = m_surfaceExtent.x, .height = m_surfaceExtent.y, .depth = 1},
             .mipLevels = 1,
             .arrayLayers = 1,
             .samples = vk::SampleCountFlagBits{m_msaaSampleCount},

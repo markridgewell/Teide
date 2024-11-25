@@ -188,7 +188,7 @@ namespace
 
     TransitionAccessMasks GetTransitionAccessMasks(vk::ImageLayout oldLayout, vk::ImageLayout newLayout)
     {
-        return {.source=GetTransitionAccessMask(oldLayout), .destination=GetTransitionAccessMask(newLayout)};
+        return {.source = GetTransitionAccessMask(oldLayout), .destination = GetTransitionAccessMask(newLayout)};
     }
 
     vk::ImageLayout GetColorImageLayout(FramebufferUsage usage)
@@ -697,12 +697,12 @@ vk::CompareOp ToVulkan(CompareOp op)
 
 vk::Offset2D ToVulkan(Geo::Point2i point)
 {
-    return {.x=point.x, .y=point.y};
+    return {.x = point.x, .y = point.y};
 }
 
 vk::Extent2D ToVulkan(Geo::Size2i vector)
 {
-    return {.width=vector.x, .height=vector.y};
+    return {.width = vector.x, .height = vector.y};
 }
 
 vk::Rect2D ToVulkan(Geo::Box2i box)

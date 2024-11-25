@@ -42,10 +42,10 @@ ReadPngResult ReadPng(const std::filesystem::path& path)
 
 
 constexpr auto QuadVertices = std::array<Vertex, 4>{{
-    {.position={-0.5f, -0.5f, 0.0f}, .texCoord={0.0f, 0.0f}, .normal={0.0f, 1.0f, 0.0f}, .color={1.0f, 1.0f, 1.0f}},
-    {.position={0.5f, -0.5f, 0.0f}, .texCoord={1.0f, 0.0f}, .normal={0.0f, 1.0f, 0.0f}, .color={1.0f, 1.0f, 1.0f}},
-    {.position={0.5f, 0.5f, 0.0f}, .texCoord={1.0f, 1.0f}, .normal={0.0f, 1.0f, 0.0f}, .color={1.0f, 1.0f, 1.0f}},
-    {.position={-0.5f, 0.5f, 0.0f}, .texCoord={0.0f, 1.0f}, .normal={0.0f, 1.0f, 0.0f}, .color={1.0f, 1.0f, 1.0f}},
+    {.position = {-0.5f, -0.5f, 0.0f}, .texCoord = {0.0f, 0.0f}, .normal = {0.0f, 1.0f, 0.0f}, .color = {1.0f, 1.0f, 1.0f}},
+    {.position = {0.5f, -0.5f, 0.0f}, .texCoord = {1.0f, 0.0f}, .normal = {0.0f, 1.0f, 0.0f}, .color = {1.0f, 1.0f, 1.0f}},
+    {.position = {0.5f, 0.5f, 0.0f}, .texCoord = {1.0f, 1.0f}, .normal = {0.0f, 1.0f, 0.0f}, .color = {1.0f, 1.0f, 1.0f}},
+    {.position = {-0.5f, 0.5f, 0.0f}, .texCoord = {0.0f, 1.0f}, .normal = {0.0f, 1.0f, 0.0f}, .color = {1.0f, 1.0f, 1.0f}},
 }};
 
 constexpr auto QuadIndices = std::array<uint16, 6>{{0, 1, 2, 2, 3, 0}};
@@ -275,10 +275,10 @@ Teide::MeshPtr RenderTest::CreatePlaneMesh(Geo::Size2 size, Geo::Vector2 tiling)
     const float x = size.x / 2.0f;
     const float y = size.y / 2.0f;
     const auto planeVertices = std::array<Vertex, 4>{{
-        {.position={-x, -y, 0.0f}, .texCoord={0.0f, 0.0f}, .normal={0.0f, 1.0f, 0.0f}, .color={1.0f, 1.0f, 1.0f}},
-        {.position={x, -y, 0.0f}, .texCoord={tiling.x, 0.0f}, .normal={0.0f, 1.0f, 0.0f}, .color={1.0f, 1.0f, 1.0f}},
-        {.position={x, y, 0.0f}, .texCoord={tiling.x, tiling.y}, .normal={0.0f, 1.0f, 0.0f}, .color={1.0f, 1.0f, 1.0f}},
-        {.position={-x, y, 0.0f}, .texCoord={0.0f, tiling.y}, .normal={0.0f, 1.0f, 0.0f}, .color={1.0f, 1.0f, 1.0f}},
+        {.position = {-x, -y, 0.0f}, .texCoord = {0.0f, 0.0f}, .normal = {0.0f, 1.0f, 0.0f}, .color = {1.0f, 1.0f, 1.0f}},
+        {.position = {x, -y, 0.0f}, .texCoord = {tiling.x, 0.0f}, .normal = {0.0f, 1.0f, 0.0f}, .color = {1.0f, 1.0f, 1.0f}},
+        {.position = {x, y, 0.0f}, .texCoord = {tiling.x, tiling.y}, .normal = {0.0f, 1.0f, 0.0f}, .color = {1.0f, 1.0f, 1.0f}},
+        {.position = {-x, y, 0.0f}, .texCoord = {0.0f, tiling.y}, .normal = {0.0f, 1.0f, 0.0f}, .color = {1.0f, 1.0f, 1.0f}},
     }};
 
     const Teide::MeshData meshData = {

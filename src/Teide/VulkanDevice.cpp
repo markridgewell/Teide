@@ -233,8 +233,7 @@ namespace
             ret.queueFamilyIndices.push_back(*ret.queueFamilies.presentFamily);
         }
         std::ranges::sort(ret.queueFamilyIndices);
-        ret.queueFamilyIndices.erase(
-            std::ranges::unique(ret.queueFamilyIndices), ret.queueFamilyIndices.end());
+        ret.queueFamilyIndices.erase(std::ranges::unique(ret.queueFamilyIndices), ret.queueFamilyIndices.end());
 
         const auto& properties = ret.physicalDevice.getProperties();
         spdlog::info("Selected physical device: {}", Trim(properties.deviceName));
@@ -451,7 +450,7 @@ DeviceAndSurface CreateDeviceAndSurface(SDL_Window* window, bool multisampled, c
         = std::make_unique<VulkanDevice>(std::move(loader), std::move(instance), std::move(physicalDevice), settings);
     auto surface = device->CreateSurface(std::move(vksurface), window, multisampled);
 
-    return {.device=std::move(device), .surface=std::move(surface)};
+    return {.device = std::move(device), .surface = std::move(surface)};
 }
 
 DevicePtr CreateHeadlessDevice(const GraphicsSettings& settings)
@@ -604,7 +603,7 @@ TextureState VulkanDevice::CreateTextureImpl(VulkanTexture& texture, vk::ImageUs
     };
 
     // Create image
-    const auto imageExtent = vk::Extent3D{.width=props.size.x, .height=props.size.y, .depth=1};
+    const auto imageExtent = vk::Extent3D{.width = props.size.x, .height = props.size.y, .depth = 1};
     const vk::ImageCreateInfo imageInfo = {
         .imageType = vk::ImageType::e2D,
         .format = ToVulkan(props.format),
@@ -793,7 +792,7 @@ Texture VulkanDevice::CreateTexture(const TextureData& data, const char* name, C
 
     if (!data.pixels.empty())
     {
-        const auto imageExtent = vk::Extent3D{.width=data.size.x, .height=data.size.y, .depth=1};
+        const auto imageExtent = vk::Extent3D{.width = data.size.x, .height = data.size.y, .depth = 1};
 
         // Create staging buffer
         auto stagingBuffer = CreateBufferUninitialized(
@@ -1028,7 +1027,8 @@ VulkanDevice::CreateRenderPass(const FramebufferLayout& framebufferLayout, const
         = framebufferLayout.captureDepthStencil ? vk::AttachmentStoreOp::eStore : vk::AttachmentStoreOp::eDontCare,
     };
 
-    const auto desc = RenderPassDesc{.framebufferLayout=framebufferLayout, .renderPassInfo=renderPassInfo, .usage=usage};
+    const auto desc
+        = RenderPassDesc{.framebufferLayout = framebufferLayout, .renderPassInfo = renderPassInfo, .usage = usage};
 
     const auto lock = std::scoped_lock(m_renderPassCacheMutex);
     const auto [it, inserted] = m_renderPassCache.emplace(desc, nullptr);
@@ -1042,7 +1042,7 @@ VulkanDevice::CreateRenderPass(const FramebufferLayout& framebufferLayout, const
 Framebuffer VulkanDevice::CreateFramebuffer(
     vk::RenderPass renderPass, const FramebufferLayout& layout, Geo::Size2i size, std::vector<vk::ImageView> attachments)
 {
-    const auto desc = FramebufferDesc{.renderPass=renderPass, .size=size, .attachments=std::move(attachments)};
+    const auto desc = FramebufferDesc{.renderPass = renderPass, .size = size, .attachments = std::move(attachments)};
 
     const auto framebuffer = [&] {
         const auto lock = std::scoped_lock(m_framebufferCacheMutex);

@@ -43,10 +43,10 @@ struct VulkanGraph
         bool operator==(const CommandNodeRef&) const = default;
     };
 
-    static auto CopyRef(usize i) -> CommandNodeRef { return {.type=CommandType::Copy, .index=i}; }
-    static auto RenderRef(usize i) -> CommandNodeRef { return {.type=CommandType::Render, .index=i}; }
-    static auto TextureRef(usize i) -> ResourceNodeRef { return {.type=ResourceType::Texture, .index=i}; }
-    static auto TextureDataRef(usize i) -> ResourceNodeRef { return {.type=ResourceType::TextureData, .index=i}; }
+    static auto CopyRef(usize i) -> CommandNodeRef { return {.type = CommandType::Copy, .index = i}; }
+    static auto RenderRef(usize i) -> CommandNodeRef { return {.type = CommandType::Render, .index = i}; }
+    static auto TextureRef(usize i) -> ResourceNodeRef { return {.type = ResourceType::Texture, .index = i}; }
+    static auto TextureDataRef(usize i) -> ResourceNodeRef { return {.type = ResourceType::TextureData, .index = i}; }
 
     struct CopyNode
     {
