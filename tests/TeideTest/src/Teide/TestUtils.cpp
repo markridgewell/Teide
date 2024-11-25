@@ -66,7 +66,8 @@ std::vector<std::byte> HexToBytes(std::string_view hexString)
     std::vector<std::byte> ret;
     ret.reserve(hexString.size() / 2 + 1);
 
-    for (const auto byte : std::views::split(hexString, " "))
+    using namespace std::literals;
+    for (const auto byte : std::views::split(hexString, " "sv))
     {
         unsigned int i = 0;
         [[maybe_unused]] const auto result

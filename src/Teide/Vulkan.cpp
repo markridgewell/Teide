@@ -28,8 +28,7 @@ namespace
         requires std::indirect_binary_predicate<std::ranges::equal_to, std::projected<std::ranges::iterator_t<R>, P>, const V*>
     constexpr bool contains(R&& range, const V& value, P&& proj = {})
     {
-        const auto *const end = std::ranges::end(range);
-        return std::ranges::find(std::forward<R>(range), value, std::forward<P>(proj)) != end;
+        return std::ranges::count(std::forward<R>(range), value, std::forward<P>(proj)) > 0;
     }
 
     constexpr StaticMap<Format, vk::Format, FormatCount> VulkanFormats = {
