@@ -9,13 +9,16 @@ using namespace testing;
 using namespace Teide;
 using Type = ShaderVariableType::BaseType;
 
-static auto HasPaddedElement(ShaderVariableType type, uint32 offset, uint32 offsetNext)
+namespace
+{
+auto HasPaddedElement(ShaderVariableType type, uint32 offset, uint32 offsetNext)
 {
     return ElementsAre(
         UniformDesc{.name = "pad0", .type = Type::Float, .offset = 0u},
         UniformDesc{.name = "test", .type = type, .offset = offset},
         UniformDesc{.name = "pad1", .type = Type::Float, .offset = offsetNext});
 }
+} // namespace
 
 TEST(ShaderDataTest, UniformOffsetFloat)
 {

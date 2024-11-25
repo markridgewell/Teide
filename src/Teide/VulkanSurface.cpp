@@ -19,8 +19,10 @@ namespace
 
     vk::SurfaceFormatKHR ChooseSurfaceFormat(std::span<const vk::SurfaceFormatKHR> availableFormats)
     {
-        const auto preferredFormat
-            = vk::SurfaceFormatKHR{.format = vk::Format::eB8G8R8A8Srgb, .colorSpace = vk::ColorSpaceKHR::eSrgbNonlinear};
+        const auto preferredFormat = vk::SurfaceFormatKHR{
+            .format = vk::Format::eB8G8R8A8Srgb,
+            .colorSpace = vk::ColorSpaceKHR::eSrgbNonlinear,
+        };
 
         if (const auto it = std::ranges::find(availableFormats, preferredFormat); it != availableFormats.end())
         {

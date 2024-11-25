@@ -358,8 +358,11 @@ Task<TextureData> VulkanRenderer::CopyTextureData(Texture texture)
             .lastPipelineStageUsage = vk::PipelineStageFlagBits::eFragmentShader,
         };
         textureImpl.TransitionToTransferSrc(textureState, commandBuffer);
-        const auto extent
-            = vk::Extent3D{.width = textureImpl.properties.size.x, .height = textureImpl.properties.size.y, .depth = 1};
+        const vk::Extent3D extent = {
+            .width = textureImpl.properties.size.x,
+            .height = textureImpl.properties.size.y,
+            .depth = 1,
+        };
         CopyImageToBuffer(
             commandBuffer, textureImpl.image.get(), buffer.buffer.get(), textureImpl.properties.format, extent,
             textureImpl.properties.mipLevelCount);

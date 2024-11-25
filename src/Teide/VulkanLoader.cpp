@@ -3,6 +3,8 @@
 
 #include "Vulkan.h"
 
+#include "Teide/Device.h"
+
 #include <SDL2/SDL_filesystem.h>
 #include <spdlog/spdlog.h>
 
@@ -70,7 +72,7 @@ bool IsSoftwareRenderingEnabled()
     return s_softwareRenderingEnabled;
 }
 
-static void EnableSoftwareRendering()
+void EnableSoftwareRendering()
 {
     if (!s_softwareRenderingEnabled.exchange(true))
     {

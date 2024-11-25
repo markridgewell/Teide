@@ -3,14 +3,16 @@
 
 #include "Teide/TestUtils.h"
 
+namespace
+{
 template <typename T>
-constexpr static auto DoHash(const T& value)
+constexpr auto DoHash(const T& value)
 {
     return Teide::Hash<T>{}(value);
 }
 
 template <typename... Ts>
-constexpr static auto HashMulti(const Ts&... args)
+constexpr auto HashMulti(const Ts&... args)
 {
     auto seed = Teide::HashInitialSeed;
     (Teide::HashAppend(seed, args), ...);
@@ -22,6 +24,7 @@ struct Ints
     int a, b, c, d, e;
     constexpr void Visit(const auto& f) const { f(a, b, c, d, e); }
 };
+} // namespace
 
 TEST(HashTest, HashingIntNotEqZero)
 {
