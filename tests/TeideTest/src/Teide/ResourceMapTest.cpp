@@ -32,11 +32,8 @@ using Map = ResourceMap<TestHandle, TestResource>;
 template <class T>
 T& Copy(T& obj)
 {
-    return obj;
+    return obj; // NOLINT(bugprone-return-const-ref-from-parameter)
 }
-
-template <class T>
-void Copy(T&&) = delete;
 
 template <class T>
 T&& Move(T&& obj) // NOLINT(cppcoreguidelines-missing-std-forward)

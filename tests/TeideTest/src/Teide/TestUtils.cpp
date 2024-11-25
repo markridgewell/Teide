@@ -70,8 +70,10 @@ std::vector<std::byte> HexToBytes(std::string_view hexString)
     for (const auto byte : std::views::split(hexString, " "sv))
     {
         unsigned int i = 0;
-        [[maybe_unused]] const auto result
-            = std::from_chars(std::ranges::data(byte), std::ranges::data(byte) + std::ranges::size(byte), i, 16);
+        [[maybe_unused]] const auto result = std::from_chars(
+            // The from_chars interface effectively forces pointer arithmetic
+            // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+            std::ranges::data(byte), std::ranges::data(byte) + std::ranges::size(byte), i, 16);
         TEIDE_ASSERT(result.ec == std::errc{});
         ret.push_back(static_cast<std::byte>(i));
     }
