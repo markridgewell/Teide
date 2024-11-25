@@ -358,7 +358,7 @@ Task<TextureData> VulkanRenderer::CopyTextureData(Texture texture)
             .lastPipelineStageUsage = vk::PipelineStageFlagBits::eFragmentShader,
         };
         textureImpl.TransitionToTransferSrc(textureState, commandBuffer);
-        const auto extent = vk::Extent3D{textureImpl.properties.size.x, textureImpl.properties.size.y, 1};
+        const auto extent = vk::Extent3D{.width=textureImpl.properties.size.x, .height=textureImpl.properties.size.y, .depth=1};
         CopyImageToBuffer(
             commandBuffer, textureImpl.image.get(), buffer.buffer.get(), textureImpl.properties.format, extent,
             textureImpl.properties.mipLevelCount);
@@ -405,14 +405,14 @@ void VulkanRenderer::RecordRenderListCommands(
     const vkex::RenderPassBeginInfo renderPassBegin = {
         .renderPass = renderPass,
         .framebuffer = framebuffer.framebuffer,
-        .renderArea = {.offset = {0, 0}, .extent = {framebuffer.size.x, framebuffer.size.y}},
+        .renderArea = {.offset = {.x=0, .y=0}, .extent = {.width=framebuffer.size.x, .height=framebuffer.size.y}},
         .clearValues = MakeClearValues(framebuffer, renderList.clearState),
     };
 
     const auto viewport = MakeViewport(framebuffer.size, renderList.viewportRegion);
     commandBuffer.setViewport(0, viewport);
     const auto scissor = renderList.scissor ? ToVulkan(*renderList.scissor)
-                                            : vk::Rect2D{.extent = {framebuffer.size.x, framebuffer.size.y}};
+                                            : vk::Rect2D{.extent = {.width=framebuffer.size.x, .height=framebuffer.size.y}};
     commandBuffer.setScissor(0, scissor);
 
     const ParameterBlockData viewParamsData = {
