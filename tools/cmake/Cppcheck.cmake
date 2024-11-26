@@ -3,20 +3,8 @@ include(tools/cmake/CompileCommands.cmake)
 function(td_add_cppcheck)
     compile_commands()
 
-    set(cppcheck_args
-        --quiet
-        --force
-        --language=c++
-        "--std=c++${CMAKE_CXX_STANDARD}"
-        --enable=all
-        --disable=unusedFunction
-        --platform=native
-        --library=googletest
-        --library=sdl
-        --error-exitcode=1
-        "--suppress-xml=${CMAKE_SOURCE_DIR}/tools/cppcheck_suppressions.xml"
-        --inline-suppr
-        "--cppcheck-build-dir=${CMAKE_BINARY_DIR}/cppcheck")
+    file(STRINGS "${CMAKE_SOURCE_DIR}/.cppcheck" cppcheck_args)
+    list(APPEND cppcheck_args --error-exitcode=1 "--cppcheck-build-dir=${CMAKE_BINARY_DIR}/cppcheck")
     file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/cppcheck")
 
     add_custom_target(
