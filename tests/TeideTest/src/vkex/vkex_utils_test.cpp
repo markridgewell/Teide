@@ -141,7 +141,8 @@ TEST(VkexUtilsTest, JoinDisengagedOptionalToVector)
     EXPECT_THAT(ab.size(), Eq(2u));
 }
 
-
+namespace
+{
 template <class T>
 T MakeHandle(std::uintptr_t value)
 {
@@ -156,6 +157,7 @@ MATCHER_P(Handle, v, "handle with value")
     using NativeType = T::NativeType;
     return NativeType(arg) == NativeType(static_cast<std::uintptr_t>(v)); // NOLINT(performance-no-int-to-ptr)
 }
+} // namespace
 
 TEST(VkexUtilsTest, ConvertSubmitInfo)
 {

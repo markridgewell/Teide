@@ -3,6 +3,8 @@
 
 #include "Vulkan.h"
 
+#include "Teide/Device.h"
+
 #include <SDL2/SDL_filesystem.h>
 #include <spdlog/spdlog.h>
 

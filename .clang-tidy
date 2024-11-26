@@ -28,7 +28,8 @@ Checks: >-
   -readability-magic-numbers,
   -readability-uppercase-literal-suffix,
   -readability-identifier-length,
-  -readability-implicit-bool-conversion
+  -readability-implicit-bool-conversion,
+  -readability-math-missing-parentheses
 
 WarningsAsErrors: '*,-clang-diagnostic-*'
 
