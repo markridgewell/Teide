@@ -5,6 +5,7 @@
 #include "TestUtils.h"
 
 #include "Teide/Device.h"
+#include "Teide/VulkanRenderer.h"
 
 #include <gmock/gmock.h>
 
@@ -26,7 +27,15 @@ public:
     {}
 
 protected:
-    Texture CreateDummyTexture(const char* name) { return m_device->CreateTexture(OnePixelWhiteTexture, name); }
+    Texture CreateDummyTexture(const char* name)
+    {
+        return m_device->AllocateTexture({
+            .size = {1, 1},
+            .format = Format::Byte4Norm,
+            .name = name,
+        });
+    }
+
     ShaderData CompileShader(const ShaderSourceData& data) { return m_shaderCompiler.Compile(data); }
 
     VulkanGraph CreateThreeRenderPasses()
@@ -260,6 +269,7 @@ TEST_F(VulkanGraphTest, VisualizingGraphWithCopyToCpu)
 {
     VulkanGraph graph;
     const auto render = graph.AddRenderNode({.name = "render1"});
+
     const auto tex = graph.AddTextureNode(CreateDummyTexture("tex"), render);
     const auto copy = graph.AddCopyNode(tex);
     graph.AddTextureDataNode("texData", OnePixelWhiteTexture, copy);
@@ -268,4 +278,25 @@ TEST_F(VulkanGraphTest, VisualizingGraphWithCopyToCpu)
 
     ASSERT_THAT(dot, Eq(CopyGpuToCpuDot)) << dot;
 }
+
+TEST_F(VulkanGraphTest, ExecutingGraphWithCopyNode)
+{
+    VulkanGraph graph;
+    const auto texDataInput = graph.AddTextureDataNode("input", OnePixelWhiteTexture);
+    const auto copy1 = graph.AddCopyNode(texDataInput);
+    const auto tex = graph.AddTextureNode(CreateDummyTexture("tex"), copy1);
+    const auto copy2 = graph.AddCopyNode(tex);
+    const auto texDataOutput = graph.AddTextureDataNode("output", {}, copy2);
+    (void)texDataOutput;
+
+    auto renderer = m_device->CreateRenderer({});
+
+    spdlog::info(VisualizeGraph(graph));
+    ExecuteGraph(graph, *m_device, m_device->GetImpl(*renderer));
+
+    const VulkanTexture& texture = m_device->GetImpl(graph.textureNodes.at(tex.index).texture);
+    EXPECT_THAT(texture.image, IsValidVkHandle());
+    EXPECT_THAT(texture.imageView, IsValidVkHandle());
+}
+
 } // namespace
