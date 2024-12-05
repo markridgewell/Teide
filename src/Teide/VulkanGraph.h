@@ -12,14 +12,14 @@ namespace Teide
 class VulkanDevice;
 class VulkanRenderer;
 
-enum class ResourceType
+enum class ResourceType : uint8
 {
     Texture,
     TextureData,
 };
 std::string to_string(ResourceType type);
 
-enum class CommandType
+enum class CommandType : uint8
 {
     Copy,
     Render,
@@ -44,10 +44,10 @@ struct VulkanGraph
         bool operator==(const CommandNodeRef&) const = default;
     };
 
-    static auto CopyRef(usize i) -> CommandNodeRef { return {CommandType::Copy, i}; }
-    static auto RenderRef(usize i) -> CommandNodeRef { return {CommandType::Render, i}; }
-    static auto TextureRef(usize i) -> ResourceNodeRef { return {ResourceType::Texture, i}; }
-    static auto TextureDataRef(usize i) -> ResourceNodeRef { return {ResourceType::TextureData, i}; }
+    static auto CopyRef(usize i) -> CommandNodeRef { return {.type = CommandType::Copy, .index = i}; }
+    static auto RenderRef(usize i) -> CommandNodeRef { return {.type = CommandType::Render, .index = i}; }
+    static auto TextureRef(usize i) -> ResourceNodeRef { return {.type = ResourceType::Texture, .index = i}; }
+    static auto TextureDataRef(usize i) -> ResourceNodeRef { return {.type = ResourceType::TextureData, .index = i}; }
 
     struct CopyNode
     {

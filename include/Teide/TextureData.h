@@ -11,19 +11,19 @@
 namespace Teide
 {
 
-enum class Filter
+enum class Filter : uint8
 {
     Nearest,
     Linear,
 };
 
-enum class MipmapMode
+enum class MipmapMode : uint8
 {
     Nearest,
     Linear,
 };
 
-enum class SamplerAddressMode
+enum class SamplerAddressMode : uint8
 {
     Repeat,
     Mirror,
@@ -31,7 +31,7 @@ enum class SamplerAddressMode
     Border,
 };
 
-enum class CompareOp
+enum class CompareOp : uint8
 {
     Never,
     Less,
@@ -51,8 +51,8 @@ struct SamplerState
     SamplerAddressMode addressModeU = SamplerAddressMode::Repeat;
     SamplerAddressMode addressModeV = SamplerAddressMode::Repeat;
     SamplerAddressMode addressModeW = SamplerAddressMode::Repeat;
-    std::optional<float> maxAnisotropy = {};
-    std::optional<CompareOp> compareOp = {};
+    std::optional<float> maxAnisotropy;
+    std::optional<CompareOp> compareOp;
 };
 
 struct TextureData

@@ -9,7 +9,7 @@
 namespace Teide
 {
 
-enum class BlendFactor
+enum class BlendFactor : uint8
 {
     Zero,
     One,
@@ -24,7 +24,7 @@ enum class BlendFactor
     SrcAlphaSaturate,
 };
 
-enum class BlendOp
+enum class BlendOp : uint8
 {
     Add,
     Subtract,
@@ -33,7 +33,7 @@ enum class BlendOp
     Max,
 };
 
-enum class StencilOp
+enum class StencilOp : uint8
 {
     Keep,
     Zero,
@@ -45,14 +45,14 @@ enum class StencilOp
     Invert,
 };
 
-enum class FillMode
+enum class FillMode : uint8
 {
     Solid,
     Wireframe,
     Point,
 };
 
-enum class CullMode
+enum class CullMode : uint8
 {
     None,
     Clockwise,

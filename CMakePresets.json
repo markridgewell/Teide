@@ -37,7 +37,10 @@
       "inherits": "_msvc-common",
       "displayName": "Visual Studio 2022 (Clang)",
       "generator": "Visual Studio 17 2022",
-      "toolset": "ClangCL"
+      "toolset": "ClangCL",
+      "cacheVariables": {
+        "CMAKE_CXX_FLAGS": "/Zi /W4 /WX /MP /EHsc -Wno-missing-field-initializers /external:W0 /analyze:external- /external:anglebrackets"
+      }
     },
     {
       "name": "_linux-common",

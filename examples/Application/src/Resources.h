@@ -123,10 +123,10 @@ struct Vertex
 };
 
 constexpr auto QuadVertices = std::array<Vertex, 4>{{
-    {{-0.5f, -0.5f, 0.0f}, {0.0f, 0.0f}, {0.0f, 0.0f, -1.0f}, {1.0f, 1.0f, 1.0f}},
-    {{0.5f, -0.5f, 0.0f}, {1.0f, 0.0f}, {0.0f, 0.0f, -1.0f}, {1.0f, 1.0f, 1.0f}},
-    {{0.5f, 0.5f, 0.0f}, {1.0f, 1.0f}, {0.0f, 0.0f, -1.0f}, {1.0f, 1.0f, 1.0f}},
-    {{-0.5f, 0.5f, 0.0f}, {0.0f, 1.0f}, {0.0f, 0.0f, -1.0f}, {1.0f, 1.0f, 1.0f}},
+    {.position = {-0.5f, -0.5f, 0.0f}, .texCoord = {0.0f, 0.0f}, .normal = {0.0f, 0.0f, -1.0f}, .color = {1.0f, 1.0f, 1.0f}},
+    {.position = {0.5f, -0.5f, 0.0f}, .texCoord = {1.0f, 0.0f}, .normal = {0.0f, 0.0f, -1.0f}, .color = {1.0f, 1.0f, 1.0f}},
+    {.position = {0.5f, 0.5f, 0.0f}, .texCoord = {1.0f, 1.0f}, .normal = {0.0f, 0.0f, -1.0f}, .color = {1.0f, 1.0f, 1.0f}},
+    {.position = {-0.5f, 0.5f, 0.0f}, .texCoord = {0.0f, 1.0f}, .normal = {0.0f, 0.0f, -1.0f}, .color = {1.0f, 1.0f, 1.0f}},
 }};
 
 constexpr auto QuadIndices = std::array<uint16_t, 6>{{0, 1, 2, 2, 3, 0}};

@@ -13,6 +13,7 @@ using namespace Teide;
 
 TEST(FormatDeathTest, InvalidFormat)
 {
+    // NOLINTNEXTLINE(clang-analyzer-optin.core.EnumCastOutOfRange)
     const auto invalidFormat = static_cast<Format>(-1);
     EXPECT_UNREACHABLE(GetFormatElementSize(invalidFormat));
 }
