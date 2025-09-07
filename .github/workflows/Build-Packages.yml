@@ -98,7 +98,6 @@ jobs:
       run: |
         wget https://dist.nuget.org/win-x86-commandline/latest/nuget.exe
         nuget="${{runner.os == 'Linux' && 'mono ' || ''}}${{github.workspace}}/nuget.exe"
-        $nuget help | head -1
         $nuget sources add \
           -source "https://nuget.pkg.github.com/markridgewell/index.json" \
           -storepasswordincleartext \
