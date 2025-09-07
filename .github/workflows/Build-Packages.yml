@@ -28,7 +28,7 @@ jobs:
           runner: windows-2022
         - preset: clang++-18
           runner: ubuntu-latest
-          extra-packages: ninja-build clang++-18
+          extra-packages: ninja-build clang++-18 mono-complete
 
     name: ${{startsWith(matrix.runner, 'windows') && 'Windows' || 'Linux'}}
     runs-on: ${{matrix.runner}}
@@ -80,18 +80,31 @@ jobs:
         key: ${{ steps.cache-key.outputs.cache-key }}
         path: './exports'
 
+    - name: Bootstrap vcpkg
+      if: steps.package-config.outputs.changed != 'false'
+      shell: 'bash'
+      run: |
+        external/vcpkg/bootstrap-vcpkg.sh
+
+    - name: Install dependencies
+      if: steps.package-config.outputs.changed != 'false' && steps.cache.outputs.cache-hit != 'true'
+      uses: ./.github/actions/install-dependencies
+      with:
+        extra-packages: ${{matrix.extra-packages}}
+
     - name: 'Setup NuGet credentials'
       if: steps.package-config.outputs.changed != 'false' && steps.cache.outputs.cache-hit != 'true'
       shell: 'bash'
       run: |
-        alias nuget=${{runner.os == 'Linux' && 'mono ' || ''}}$(./external/vcpkg/vcpkg fetch nuget | tail -n 1)
-        nuget sources add \
+        wget https://dist.nuget.org/win-x86-commandline/latest/nuget.exe
+        nuget="${{runner.os == 'Linux' && 'mono ' || ''}}${{github.workspace}}/nuget.exe"
+        $nuget sources add \
           -source "https://nuget.pkg.github.com/markridgewell/index.json" \
           -storepasswordincleartext \
           -name "GitHub" \
           -username markridgewell \
           -password "${{secrets.GITHUB_TOKEN}}"
-        nuget setapikey "${{secrets.GITHUB_TOKEN}}" \
+        $nuget setapikey "${{secrets.GITHUB_TOKEN}}" \
           -source "https://nuget.pkg.github.com/markridgewell/index.json"
 
     - name: Setup vcpkg
@@ -100,12 +113,6 @@ jobs:
       with:
         vcpkgDirectory: '${{github.workspace}}/external/vcpkg'
         vcpkgJsonGlob: 'vcpkg.json'
-
-    - name: Install dependencies
-      if: steps.package-config.outputs.changed != 'false' && steps.cache.outputs.cache-hit != 'true'
-      uses: ./.github/actions/install-dependencies
-      with:
-        extra-packages: ${{matrix.extra-packages}}
 
     - name: Configure CMake
       if: steps.package-config.outputs.changed != 'false' && steps.cache.outputs.cache-hit != 'true'
