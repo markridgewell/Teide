@@ -98,10 +98,10 @@ jobs:
       run: |
         wget -O ${{github.workspace}}/nuget.exe https://dist.nuget.org/win-x86-commandline/latest/nuget.exe
         ls
-        alias nuget="${{runner.os == 'Linux' && 'mono ' || ''}}${{github.workspace}}/nuget.exe"
-        alias nuget
-        nuget help | head -1
-        nuget sources add \
+        nuget=${{runner.os == 'Linux' && 'mono ' || ''}}${{github.workspace}}/nuget.exe
+        echo $nuget
+        $nuget help | head -1
+        $nuget sources add \
           -source "https://nuget.pkg.github.com/markridgewell/index.json" \
           -storepasswordincleartext \
           -name "GitHub" \
