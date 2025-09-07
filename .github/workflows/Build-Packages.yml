@@ -96,10 +96,9 @@ jobs:
       if: steps.package-config.outputs.changed != 'false' && steps.cache.outputs.cache-hit != 'true'
       shell: 'bash'
       run: |
-        wget -O ${{github.workspace}}/nuget.exe https://dist.nuget.org/win-x86-commandline/latest/nuget.exe
-        ls
+        wget https://dist.nuget.org/win-x86-commandline/latest/nuget.exe
+        chmod +x nuget.exe
         nuget=${{runner.os == 'Linux' && 'mono ' || ''}}${{github.workspace}}/nuget.exe
-        echo $nuget
         $nuget help | head -1
         $nuget sources add \
           -source "https://nuget.pkg.github.com/markridgewell/index.json" \
@@ -107,7 +106,7 @@ jobs:
           -name "GitHub" \
           -username markridgewell \
           -password "${{secrets.GITHUB_TOKEN}}"
-        nuget setapikey "${{secrets.GITHUB_TOKEN}}" \
+        $nuget setapikey "${{secrets.GITHUB_TOKEN}}" \
           -source "https://nuget.pkg.github.com/markridgewell/index.json"
 
     - name: Setup vcpkg
