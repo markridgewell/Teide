@@ -96,8 +96,7 @@ jobs:
       if: steps.package-config.outputs.changed != 'false' && steps.cache.outputs.cache-hit != 'true'
       shell: 'bash'
       run: |
-        # alias nuget=${{runner.os == 'Linux' && 'mono ' || ''}}$(./external/vcpkg/vcpkg fetch nuget | tail -n 1)
-        wget https://dist.nuget.org/win-x86-commandline/latest/nuget.exe
+        wget -O ${{github.workspace}}/nuget.exe https://dist.nuget.org/win-x86-commandline/latest/nuget.exe
         alias nuget=${{runner.os == 'Linux' && 'mono ' || ''}}${{github.workspace}}/nuget.exe
         nuget sources add \
           -source "https://nuget.pkg.github.com/markridgewell/index.json" \
