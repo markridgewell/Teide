@@ -80,6 +80,12 @@ jobs:
         key: ${{ steps.cache-key.outputs.cache-key }}
         path: './exports'
 
+    - name: Bootstrap vcpkg
+      if: steps.package-config.outputs.changed != 'false'
+      shell: 'bash'
+      run: |
+        external/vcpkg/bootstrap-vcpkg.sh
+
     - name: 'Setup NuGet credentials'
       if: steps.package-config.outputs.changed != 'false' && steps.cache.outputs.cache-hit != 'true'
       shell: 'bash'
