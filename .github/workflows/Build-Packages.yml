@@ -98,7 +98,7 @@ jobs:
       run: |
         # alias nuget=${{runner.os == 'Linux' && 'mono ' || ''}}$(./external/vcpkg/vcpkg fetch nuget | tail -n 1)
         wget https://dist.nuget.org/win-x86-commandline/latest/nuget.exe
-        alias nuget=${{runner.os == 'Linux' && 'mono ' || ''}} nuget.exe
+        alias nuget=${{runner.os == 'Linux' && 'mono ' || ''}}${{github.workspace}}/nuget.exe
         nuget sources add \
           -source "https://nuget.pkg.github.com/markridgewell/index.json" \
           -storepasswordincleartext \
