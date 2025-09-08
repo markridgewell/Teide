@@ -16,6 +16,11 @@ on:
         required: true
         default: true
         type: boolean
+      debug:
+        description: 'Enable debug logging in tests'
+        required: true
+        default: false
+        type: boolean
 
 env:
   VULKAN_SDK: ./VULKAN_SDK
@@ -112,7 +117,7 @@ jobs:
         -DTEIDE_UNIT_TEST_SW_RENDER=ON
         -DTEIDE_TEST_WINDOWLESS=${{runner.os == 'Linux'}}
         -DTEIDE_TEST_COVERAGE=${{matrix.coverage}}
-        -DTEIDE_TEST_VERBOSE=${{runner.debug}}
+        -DTEIDE_TEST_VERBOSE=${{runner.debug || inputs.debug}}
         -DTEIDE_SANITIZER=${{matrix.sanitizer}}
         -DCMAKE_CONFIGURATION_TYPES=${{matrix.buildtype}}
         -DCMAKE_TRY_COMPILE_CONFIGURATION=${{matrix.buildtype}}
