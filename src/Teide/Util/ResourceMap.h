@@ -69,14 +69,12 @@ private:
         {
             auto& resource = m_list[index];
             ++resource.refCount;
-            spdlog::debug("Adding ref to {} {} (now {})", m_resourceType, index, resource.refCount);
         }
 
         void DecRef(uint64 index) noexcept
         {
             auto& resource = m_list[index];
             --resource.refCount;
-            spdlog::debug("Decrementing ref from {} {} (now {})", m_resourceType, index, resource.refCount);
             if (resource.refCount == 0)
             {
                 // Add resource to unused pool
