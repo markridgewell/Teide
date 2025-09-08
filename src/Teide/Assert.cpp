@@ -97,13 +97,14 @@ void PopAssertHandler()
 bool IsDebuggerAttached()
 {
 #ifdef _WIN32
-    if (!std::getenv("CI"))
+    const auto varLen = GetEnvironmentVariable("CI", nullptr, 0);
+    if (varLen == 0)
     {
         return IsDebuggerPresent();
     }
-#else
-    return false;
 #endif
+
+    return false;
 }
 
 } // namespace Teide
