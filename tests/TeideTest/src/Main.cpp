@@ -191,12 +191,8 @@ private:
     int m_testCount = 0;
 };
 
-int main(int argc, char** argv)
+int Run(int argc, char** argv)
 {
-#ifdef STACKWALKER_ENABLED
-    spdlog::info("Setting exception handler...");
-    SetUnhandledExceptionFilter(ExceptionHandler);
-#endif
     spdlog::flush_on(spdlog::level::err);
 
     for (const std::string_view arg : std::span(argv, static_cast<std::size_t>(argc)).subspan<1>())
@@ -240,3 +236,30 @@ int main(int argc, char** argv)
 
     return RUN_ALL_TESTS();
 }
+
+#ifdef STACKWALKER_ENABLED
+LONG WINAPI ExpFilter(EXCEPTION_POINTERS* pExp, DWORD /*dwExpCode*/)
+{
+    StackWalker sw;
+    sw.ShowCallstack(GetCurrentThread(), pExp->ContextRecord);
+    return EXCEPTION_EXECUTE_HANDLER;
+}
+
+int main(int argc, char** argv)
+{
+    spdlog::info("Setting exception handler...");
+    __try
+    {
+        return Run(argc, argv);
+    }
+    __except (ExpFilter(GetExceptionInformation(), GetExceptionCode()))
+    {
+        return 1;
+    }
+}
+#else
+int main(int argc, char** argv)
+{
+    return Run(argc, argv);
+}
+#endif
