@@ -238,10 +238,15 @@ int Run(int argc, char** argv)
 }
 
 #ifdef STACKWALKER_ENABLED
+class MyStackWalker : public StackWalker
+{
+    virtual void OnOutput(LPCSTR szText) { spdlog::info(szText); }
+};
+
 LONG WINAPI ExpFilter(EXCEPTION_POINTERS* pExp, DWORD /*dwExpCode*/)
 {
     spdlog::debug("Caught SEH exception. Printing stacktrace...");
-    StackWalker sw;
+    MyStackWalker sw;
     sw.ShowCallstack(GetCurrentThread(), pExp->ContextRecord);
     return EXCEPTION_EXECUTE_HANDLER;
 }
