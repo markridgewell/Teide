@@ -2,6 +2,7 @@
 #include "Teide/Assert.h"
 
 #include <algorithm>
+#include <cstdlib>
 #include <filesystem>
 #include <ranges>
 #include <stack>
@@ -96,7 +97,10 @@ void PopAssertHandler()
 bool IsDebuggerAttached()
 {
 #ifdef _WIN32
-    return IsDebuggerPresent();
+    if (!std::getenv("CI"))
+    {
+        return IsDebuggerPresent();
+    }
 #else
     return false;
 #endif
