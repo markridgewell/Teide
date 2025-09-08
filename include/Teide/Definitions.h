@@ -8,17 +8,17 @@
 namespace Teide
 {
 
-constexpr auto UnreachableMessage = "Unreachable code reached!";
-
 #ifndef NDEBUG
 // Debug definitions
 
 constexpr bool IsDebugBuild = true;
 
+class UnreachableError // intentionally not derived from std::exception
+{};
+
 [[noreturn]] inline void Unreachable()
 {
-    std::cerr << UnreachableMessage << '\n';
-    std::exit(1); // NOLINT(concurrency-mt-unsafe)
+    throw UnreachableError();
 }
 
 #else
