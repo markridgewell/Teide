@@ -64,19 +64,6 @@ bool AssertDie(std::string_view msg, std::string_view expression, Teide::SourceL
 #if defined(_WIN32) && __has_include("StackWalker.h")
 #    define STACKWALKER_ENABLED
 #    include "StackWalker.h"
-
-class MyStackWalker : public StackWalker
-{
-    virtual void OnOutput(LPCSTR szText) { std::puts(szText); }
-};
-
-LONG WINAPI ExceptionHandler(EXCEPTION_POINTERS* exceptions [[maybe_unused]])
-{
-    MyStackWalker sw;
-    sw.ShowCallstack(GetCurrentThread(), exceptions->ContextRecord);
-    return EXCEPTION_EXECUTE_HANDLER;
-}
-
 #endif
 
 class LogSuppressor : public testing::EmptyTestEventListener
