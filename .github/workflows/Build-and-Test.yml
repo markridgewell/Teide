@@ -112,6 +112,7 @@ jobs:
         -DTEIDE_UNIT_TEST_SW_RENDER=ON
         -DTEIDE_TEST_WINDOWLESS=${{runner.os == 'Linux'}}
         -DTEIDE_TEST_COVERAGE=${{matrix.coverage}}
+        -DTEIDE_TEST_VERBOSE=${{runner.debug}}
         -DTEIDE_SANITIZER=${{matrix.sanitizer}}
         -DCMAKE_CONFIGURATION_TYPES=${{matrix.buildtype}}
         -DCMAKE_TRY_COMPILE_CONFIGURATION=${{matrix.buildtype}}
