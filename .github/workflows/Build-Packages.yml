@@ -99,7 +99,7 @@ jobs:
         bin=$HOME/nuget_bin
         mkdir $bin
         wget -O $bin/nuget.exe https://dist.nuget.org/win-x86-commandline/latest/nuget.exe
-        echo "mono $bin/nuget.exe" > $bin/nuget
+        echo "mono $bin/nuget.exe $@" > $bin/nuget
         chmod +x $bin/nuget
         echo "$bin" >> $GITHUB_PATH
 
