@@ -227,14 +227,33 @@ int Run(int argc, char** argv)
 #ifdef STACKWALKER_ENABLED
 class MyStackWalker : public StackWalker
 {
-    virtual void OnOutput(LPCSTR szText) { spdlog::info(szText); }
+public:
+    MyStackWalker() :
+        StackWalker(
+            StackWalker::RetrieveSymbol | StackWalker::RetrieveLine | StackWalker::SymAll, nullptr,
+            GetCurrentProcessId(), GetCurrentProcess())
+    {}
+
+    virtual void OnOutput(LPCSTR szText)
+    {
+        std::string_view text = szText;
+        if (text.ends_with("\n"))
+        {
+            text.remove_suffix(1);
+        }
+        if (text.ends_with("\r"))
+        {
+            text.remove_suffix(1);
+        }
+        spdlog::info("{}", text);
+    }
 };
+MyStackWalker stackWalker;
 
 LONG WINAPI ExpFilter(EXCEPTION_POINTERS* pExp, DWORD /*dwExpCode*/)
 {
-    spdlog::debug("Caught SEH exception. Printing stacktrace...");
-    MyStackWalker sw;
-    sw.ShowCallstack(GetCurrentThread(), pExp->ContextRecord);
+    spdlog::error("Caught SEH exception. Printing stacktrace...");
+    stackWalker.ShowCallstack(GetCurrentThread(), pExp->ContextRecord);
     return EXCEPTION_EXECUTE_HANDLER;
 }
 
