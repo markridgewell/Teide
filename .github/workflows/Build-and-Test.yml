@@ -17,7 +17,7 @@ on:
         default: true
         type: boolean
       debug:
-        description: 'Enable debug logging in tests'
+        description: 'Enable debug logging'
         required: true
         default: false
         type: boolean
