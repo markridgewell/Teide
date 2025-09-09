@@ -46,17 +46,18 @@ void DescriptorPool::Reset()
 
 void DescriptorPool::AddPool()
 {
-    m_pools.push_back(m_device.createDescriptorPoolUnique(vkex::DescriptorPoolCreateInfo{
-        .maxSets = m_maxSets,
-        .poolSizes = std::views::transform(
-            m_descriptorTypeCounts,
-            [maxSets = m_maxSets](const auto& typeCount) {
-                return vk::DescriptorPoolSize{
-                    .type = typeCount.type,
-                    .descriptorCount = typeCount.count * maxSets,
-                };
-            }),
-    }));
+    m_pools.push_back(m_device.createDescriptorPoolUnique(
+        vkex::DescriptorPoolCreateInfo{
+            .maxSets = m_maxSets,
+            .poolSizes = std::views::transform(
+                m_descriptorTypeCounts,
+                [maxSets = m_maxSets](const auto& typeCount) {
+                    return vk::DescriptorPoolSize{
+                        .type = typeCount.type,
+                        .descriptorCount = typeCount.count * maxSets,
+                    };
+                }),
+        }));
 }
 
 } // namespace Teide

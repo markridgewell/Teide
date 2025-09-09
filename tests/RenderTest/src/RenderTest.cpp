@@ -33,8 +33,10 @@ ReadPngResult ReadPng(const std::filesystem::path& path)
     if (SDL_Surface* image = IMG_Load(path.string().c_str()))
     {
         result.size = {static_cast<Teide::uint32>(image->w), static_cast<Teide::uint32>(image->h)};
-        result.pixels = Teide::ToBytes(std::span{
-            static_cast<const Teide::uint8*>(image->pixels), Teide::usize{result.size.x} * Teide::usize{result.size.y} * 4});
+        result.pixels = Teide::ToBytes(
+            std::span{
+                static_cast<const Teide::uint8*>(image->pixels),
+                Teide::usize{result.size.x} * Teide::usize{result.size.y} * 4});
         SDL_FreeSurface(image);
     }
     return result;
