@@ -123,6 +123,7 @@ jobs:
 
     - name: Configure CMake
       run: >
+        mkdir -p ${{ env.CCACHE_DIR }}
         cmake --preset ${{matrix.preset}}
         -DTEIDE_USE_VCPKG=OFF
         -DCMAKE_PREFIX_PATH=${{steps.packages.outputs.install-dir}}
