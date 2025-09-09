@@ -144,7 +144,7 @@ Teide::TextureData LoadTexture(const char* filename)
         .format = Teide::Format::Byte4Srgb,
         .mipLevelCount = static_cast<uint32>(std::floor(std::log2(std::max(image->w, image->h)))) + 1,
         .samplerState = {.magFilter = Teide::Filter::Linear, .minFilter = Teide::Filter::Linear},
-        .pixels = Teide::ToBytes(std::span{
-            static_cast<const uint8*>(image->pixels), static_cast<usize>(image->w) * static_cast<usize>(image->h) * 4}),
+        .pixels = Teide::ToBytes(
+            std::span{static_cast<const uint8*>(image->pixels), static_cast<usize>(image->w) * static_cast<usize>(image->h) * 4}),
     };
 }
