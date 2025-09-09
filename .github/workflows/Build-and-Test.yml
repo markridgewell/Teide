@@ -169,6 +169,7 @@ jobs:
       if: inputs.ccache || github.event_name == 'pull_request'
       shell: bash
       run: |
+        ls -l
         for file in $(find $CCACHE_DEBUGDIR -type f); do
             if [ -s ${file} ]; then
                 echo "::group::${file}"
