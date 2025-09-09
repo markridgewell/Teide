@@ -114,8 +114,8 @@ jobs:
       if: inputs.ccache || github.event_name == 'pull_request'
       shell: bash
       run: |
-        echo -n "CCACHE_DIR=" >> $GITHUB_ENV
-        ccache -k cache_dir >> $GITHUB_ENV
+        { echo -n "CCACHE_DIR="
+          ccache -k cache_dir } >> $GITHUB_ENV
 
     - name: Save/restore ccache dir
       # I heard you like caches, so I put some caches in your caches
@@ -169,7 +169,7 @@ jobs:
       if: inputs.ccache || github.event_name == 'pull_request'
       shell: bash
       run: |
-        for file in $CCACHE_DEBUGDIR; do
+        for file in $CCACHE_DEBUGDIR/*; do
             if [ -s ${file} ]; then
                 echo "::group::${file}"
                 cat ${file}
