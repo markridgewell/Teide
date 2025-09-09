@@ -108,6 +108,7 @@ jobs:
         extra-packages: ${{matrix.extra-packages}} ${{(inputs.ccache || github.event_name == 'pull_request') && 'ccache' || ''}}
 
     - name: Save/restore ccache dir
+      # I heard you like caches, so I put some caches in your caches
       if: inputs.ccache || github.event_name == 'pull_request'
       uses: actions/cache@v4
       with:
