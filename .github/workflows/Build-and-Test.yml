@@ -158,6 +158,17 @@ jobs:
         echo && echo Ccache stats: && ccache -s
         echo && echo Ccache config: && ccache -p
 
+    - name: Ccache debugging
+      shell: bash
+      run: |
+        for file in $CCACHE_DEBUGDIR; do
+            if [ -s ${file} ]; then
+                echo "::group::${file}"
+                cat ${file}
+                echo "::endgroup::"
+            fi
+        done
+
     - name: Dump CMake output logs
       if: failure()
       shell: bash
