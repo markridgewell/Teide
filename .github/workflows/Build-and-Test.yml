@@ -110,6 +110,13 @@ jobs:
       with:
         extra-packages: ${{matrix.extra-packages}} ${{(inputs.ccache || github.event_name == 'pull_request') && 'ccache' || ''}}
 
+    - name: Get ccache dir
+      if: inputs.ccache || github.event_name == 'pull_request'
+      shell: bash
+      run: |
+        echo -n "CCACHE_DIR=" >> $GITHUB_ENV
+        ccache -k cache_dir >> $GITHUB_ENV
+
     - name: Save/restore ccache dir
       # I heard you like caches, so I put some caches in your caches
       if: inputs.ccache || github.event_name == 'pull_request'
@@ -159,6 +166,7 @@ jobs:
         echo && echo Ccache config: && ccache -p
 
     - name: Ccache debugging
+      if: inputs.ccache || github.event_name == 'pull_request'
       shell: bash
       run: |
         for file in $CCACHE_DEBUGDIR; do
