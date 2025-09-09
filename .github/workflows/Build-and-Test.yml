@@ -170,7 +170,6 @@ jobs:
       shell: bash
       run: |
         for file in $(find $CCACHE_DEBUGDIR -type f); do
-        for file in $CCACHE_DEBUGDIR/*; do
             if [ -s ${file} ]; then
                 echo "::group::${file}"
                 cat ${file}
