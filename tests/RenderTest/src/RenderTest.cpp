@@ -317,12 +317,13 @@ Teide::Texture RenderTest::CreateCheckerTexture(Teide::Filter filter, bool mipma
 {
     // Create checkerboard texture
     constexpr usize size = 256;
+    constexpr usize numPixels = size * size;
     constexpr auto checkSize = size / 8;
     constexpr auto color0 = uint32{0xffff00ff};
     constexpr auto color1 = uint32{0xffffffff};
 
-    std::array<uint32, size * size> pixels{};
-    for (usize i = 0; i < size * size; i++)
+    std::array<uint32, numPixels> pixels{};
+    for (usize i = 0; i < numPixels; i++)
     {
         const auto x = i % size;
         const auto y = i / size;
