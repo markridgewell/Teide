@@ -10,6 +10,7 @@ namespace Teide
 
 struct BufferData;
 struct ShaderData;
+struct KernelData;
 struct ShaderEnvironmentData;
 struct TextureData;
 struct MeshData;
@@ -19,6 +20,7 @@ struct ParameterBlockData;
 
 class Buffer;
 class Shader;
+class Kernel;
 class ShaderEnvironment;
 class Texture;
 class Mesh;
