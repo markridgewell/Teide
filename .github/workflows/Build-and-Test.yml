@@ -125,7 +125,6 @@ jobs:
 
     - name: Configure CMake
       run: >
-        mkdir -p ${{ env.CCACHE_DIR }}
         cmake --preset ${{matrix.preset}}
         -DTEIDE_USE_VCPKG=OFF
         -DCMAKE_PREFIX_PATH=${{steps.packages.outputs.install-dir}}
@@ -148,7 +147,9 @@ jobs:
         path: ./CMakeTrace.json
 
     - name: Build
-      run: cmake --build --preset ${{matrix.preset}} --config ${{matrix.buildtype}}
+      run: |
+        mkdir -p ${{ env.CCACHE_DIR }}
+        cmake --build --preset ${{matrix.preset}} --config ${{matrix.buildtype}}
 
     - name: Dump CMake output logs
       if: failure()
