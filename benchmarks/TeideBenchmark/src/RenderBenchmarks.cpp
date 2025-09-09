@@ -7,6 +7,9 @@
 #include <benchmark/benchmark.h>
 #include <spdlog/spdlog.h>
 
+namespace
+{
+
 inline const std::string SimpleVertexShader = R"--(
 void main() {
     gl_Position = inPosition;
@@ -143,3 +146,4 @@ void RenderToTexture(benchmark::State& state)
     }
 }
 BENCHMARK(RenderToTexture)->Arg(8); //->Arg(256)->Arg(4096);
+} // namespace

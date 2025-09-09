@@ -14,7 +14,7 @@
 namespace Teide
 {
 
-enum class BufferUsage
+enum class BufferUsage : uint8
 {
     Generic,
     Vertex,

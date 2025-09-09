@@ -3,6 +3,8 @@
 
 #include "Teide/TestUtils.h"
 
+namespace
+{
 template <typename T>
 constexpr auto DoHash(const T& value)
 {
@@ -22,6 +24,7 @@ struct Ints
     int a, b, c, d, e;
     constexpr void Visit(const auto& f) const { f(a, b, c, d, e); }
 };
+} // namespace
 
 TEST(HashTest, HashingIntNotEqZero)
 {
@@ -37,7 +40,7 @@ TEST(HashTest, HashingArrayOfIntsNotEqZero)
 
 TEST(HashTest, HashingStructOfIntsNotEqZero)
 {
-    constexpr Ints ints = {1, 3, 5, 7, 9};
+    constexpr Ints ints = {.a = 1, .b = 3, .c = 5, .d = 7, .e = 9};
     CONSTEXPR_EXPECT_NE(DoHash(ints), 0);
 }
 
@@ -69,7 +72,7 @@ TEST(HashTest, HashingArrayOfIntsEqHashAppendingInts)
 
 TEST(HashTest, HashingStructOfIntsEqHashAppendingInts)
 {
-    constexpr Ints ints = {1, 3, 5, 7, 9};
+    constexpr Ints ints = {.a = 1, .b = 3, .c = 5, .d = 7, .e = 9};
     constexpr auto expected = HashMulti(1, 3, 5, 7, 9);
     CONSTEXPR_EXPECT_EQ(DoHash(ints), expected);
 }

@@ -33,8 +33,10 @@ ReadPngResult ReadPng(const std::filesystem::path& path)
     if (SDL_Surface* image = IMG_Load(path.string().c_str()))
     {
         result.size = {static_cast<Teide::uint32>(image->w), static_cast<Teide::uint32>(image->h)};
-        result.pixels = Teide::ToBytes(std::span{
-            static_cast<const Teide::uint8*>(image->pixels), Teide::usize{result.size.x} * Teide::usize{result.size.y} * 4});
+        result.pixels = Teide::ToBytes(
+            std::span{
+                static_cast<const Teide::uint8*>(image->pixels),
+                Teide::usize{result.size.x} * Teide::usize{result.size.y} * 4});
         SDL_FreeSurface(image);
     }
     return result;
@@ -42,10 +44,10 @@ ReadPngResult ReadPng(const std::filesystem::path& path)
 
 
 constexpr auto QuadVertices = std::array<Vertex, 4>{{
-    {{-0.5f, -0.5f, 0.0f}, {0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f, 1.0f}},
-    {{0.5f, -0.5f, 0.0f}, {1.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f, 1.0f}},
-    {{0.5f, 0.5f, 0.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f, 1.0f}},
-    {{-0.5f, 0.5f, 0.0f}, {0.0f, 1.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f, 1.0f}},
+    {.position = {-0.5f, -0.5f, 0.0f}, .texCoord = {0.0f, 0.0f}, .normal = {0.0f, 1.0f, 0.0f}, .color = {1.0f, 1.0f, 1.0f}},
+    {.position = {0.5f, -0.5f, 0.0f}, .texCoord = {1.0f, 0.0f}, .normal = {0.0f, 1.0f, 0.0f}, .color = {1.0f, 1.0f, 1.0f}},
+    {.position = {0.5f, 0.5f, 0.0f}, .texCoord = {1.0f, 1.0f}, .normal = {0.0f, 1.0f, 0.0f}, .color = {1.0f, 1.0f, 1.0f}},
+    {.position = {-0.5f, 0.5f, 0.0f}, .texCoord = {0.0f, 1.0f}, .normal = {0.0f, 1.0f, 0.0f}, .color = {1.0f, 1.0f, 1.0f}},
 }};
 
 constexpr auto QuadIndices = std::array<uint16, 6>{{0, 1, 2, 2, 3, 0}};
@@ -275,10 +277,10 @@ Teide::MeshPtr RenderTest::CreatePlaneMesh(Geo::Size2 size, Geo::Vector2 tiling)
     const float x = size.x / 2.0f;
     const float y = size.y / 2.0f;
     const auto planeVertices = std::array<Vertex, 4>{{
-        {{-x, -y, 0.0f}, {0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f, 1.0f}},
-        {{x, -y, 0.0f}, {tiling.x, 0.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f, 1.0f}},
-        {{x, y, 0.0f}, {tiling.x, tiling.y}, {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f, 1.0f}},
-        {{-x, y, 0.0f}, {0.0f, tiling.y}, {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f, 1.0f}},
+        {.position = {-x, -y, 0.0f}, .texCoord = {0.0f, 0.0f}, .normal = {0.0f, 1.0f, 0.0f}, .color = {1.0f, 1.0f, 1.0f}},
+        {.position = {x, -y, 0.0f}, .texCoord = {tiling.x, 0.0f}, .normal = {0.0f, 1.0f, 0.0f}, .color = {1.0f, 1.0f, 1.0f}},
+        {.position = {x, y, 0.0f}, .texCoord = {tiling.x, tiling.y}, .normal = {0.0f, 1.0f, 0.0f}, .color = {1.0f, 1.0f, 1.0f}},
+        {.position = {-x, y, 0.0f}, .texCoord = {0.0f, tiling.y}, .normal = {0.0f, 1.0f, 0.0f}, .color = {1.0f, 1.0f, 1.0f}},
     }};
 
     const Teide::MeshData meshData = {
@@ -315,12 +317,13 @@ Teide::Texture RenderTest::CreateCheckerTexture(Teide::Filter filter, bool mipma
 {
     // Create checkerboard texture
     constexpr usize size = 256;
+    constexpr usize numPixels = size * size;
     constexpr auto checkSize = size / 8;
     constexpr auto color0 = uint32{0xffff00ff};
     constexpr auto color1 = uint32{0xffffffff};
 
-    std::array<uint32, size * size> pixels{};
-    for (usize i = 0; i < size * size; i++)
+    std::array<uint32, numPixels> pixels{};
+    for (usize i = 0; i < numPixels; i++)
     {
         const auto x = i % size;
         const auto y = i / size;

@@ -6,7 +6,7 @@
 namespace Teide
 {
 
-enum TypeSizes : uint32
+enum TypeSizes : uint8
 {
     FloatSize = 4,
     HalfSize = 2,

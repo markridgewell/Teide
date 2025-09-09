@@ -66,7 +66,11 @@ Teide::RenderStates MakeRenderStates(float depthBiasConstant = 0.0f, float depth
 {
     return {
         .blendState = Teide::BlendState{
-            .blendFunc = { Teide::BlendFactor::One, Teide::BlendFactor::Zero, Teide::BlendOp::Add },
+            .blendFunc = {
+                .source = Teide::BlendFactor::One,
+                .dest = Teide::BlendFactor::Zero,
+                .op = Teide::BlendOp::Add,
+            },
         },
         .depthState = {
             .depthTest = true,
@@ -167,9 +171,10 @@ void Application::OnRender()
         .shadowMatrix = m_shadowMatrix,
     };
 
-    m_renderer->BeginFrame(Teide::ShaderParameters{
-        .uniformData = Teide::ToBytes(sceneUniforms),
-    });
+    m_renderer->BeginFrame(
+        Teide::ShaderParameters{
+            .uniformData = Teide::ToBytes(sceneUniforms),
+        });
 
     // Update object uniforms
     const ObjectUniforms objectUniforms = {

@@ -6,7 +6,7 @@
 namespace Teide
 {
 
-enum class Format : uint16
+enum class Format : uint8
 {
     Unknown,
 
