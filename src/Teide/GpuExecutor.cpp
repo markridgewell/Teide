@@ -8,6 +8,7 @@
 #include <fmt/chrono.h>
 #include <spdlog/spdlog.h>
 
+#include <chrono>
 #include <ranges>
 #include <span>
 
