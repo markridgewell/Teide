@@ -21,9 +21,15 @@ on:
         required: true
         default: false
         type: boolean
+      ccache:
+        description: 'Enable ccache'
+        required: true
+        default: true
+        type: boolean
 
 env:
   VULKAN_SDK: ./VULKAN_SDK
+  CCACHE_DIR: ./ccache
   EXTRA_CMAKE_FLAGS: ${{inputs.profile-cmake && '--profiling-format=google-trace --profiling-output=CMakeTrace.json' || ''}}
 
 jobs:
@@ -99,7 +105,14 @@ jobs:
     - name: Install dependencies
       uses: ./.github/actions/install-dependencies
       with:
-        extra-packages: ${{matrix.extra-packages}}
+        extra-packages: ${{matrix.extra-packages}} ${{(inputs.ccache || github.event_name == 'pull_request') && 'ccache' || ''}}
+
+    - name: Save/restore ccache dir
+      if: inputs.ccache || github.event_name == 'pull_request'
+      uses: actions/cache@v4
+      with:
+        path: ${{ env.CCACHE_DIR }}
+        key: ${{ env.job_name }}-ccache
 
     - if: matrix.coverage == 'ON' && runner.os == 'Windows'
       name: Install OpenCppCoverage
@@ -121,6 +134,7 @@ jobs:
         -DTEIDE_SANITIZER=${{matrix.sanitizer}}
         -DCMAKE_CONFIGURATION_TYPES=${{matrix.buildtype}}
         -DCMAKE_TRY_COMPILE_CONFIGURATION=${{matrix.buildtype}}
+        -DCMAKE_CXX_COMPILER_LAUNCHER=${{(inputs.ccache || github.event_name == 'pull_request') && 'ccache' || ''}}
         ${{env.EXTRA_CMAKE_FLAGS}}
 
     - name: Save CMake trace
