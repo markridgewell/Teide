@@ -9,16 +9,42 @@
 
 #include <gmock/gmock.h>
 
+#include <iterator>
 #include <span>
+#include <string>
 
 using namespace testing;
 using namespace Teide;
 
-using RenderNode = VulkanGraph::RenderNode;
-using TextureNode = VulkanGraph::TextureNode;
-
 namespace
 {
+std::string MakeDotURL(std::string_view dot)
+{
+    std::string ret = "https://quickchart.io/graphviz?graph=";
+    auto out = std::back_inserter(ret);
+
+    for (char c : dot)
+    {
+        if (std::isalnum(c) || c == '$' || c == '-' || c == '_' || c == '.' || c == '+' || c == '\'' || c == '!'
+            || c == '*' || c == '(' || c == ')')
+        {
+            *out = c;
+            ++out;
+        }
+        else if (c != '\n' && c != '\r')
+        {
+            std::format_to(out, "%{:02X}", c);
+        }
+    }
+
+    return ret;
+}
+
+std::string FormatDot(const std::string& dot)
+{
+    return dot + "\nGraph: " + MakeDotURL(dot);
+}
+
 class VulkanGraphTest : public testing::Test
 {
 public:
@@ -229,7 +255,7 @@ TEST_F(VulkanGraphTest, VisualizingGraphWithThreeDependentRenderNodes)
 
     const auto dot = VisualizeGraph(graph);
 
-    ASSERT_THAT(dot, Eq(ThreeRenderPassesDot)) << dot;
+    ASSERT_THAT(dot, Eq(ThreeRenderPassesDot)) << FormatDot(dot);
 }
 
 constexpr auto CopyCpuToGpuDot = R"--(strict digraph {
@@ -251,7 +277,7 @@ TEST_F(VulkanGraphTest, VisualizingGraphWithCopyToGpu)
 
     const auto dot = VisualizeGraph(graph);
 
-    ASSERT_THAT(dot, Eq(CopyCpuToGpuDot)) << dot;
+    ASSERT_THAT(dot, Eq(CopyCpuToGpuDot)) << FormatDot(dot);
 }
 
 constexpr auto CopyGpuToCpuDot = R"--(strict digraph {
@@ -276,7 +302,7 @@ TEST_F(VulkanGraphTest, VisualizingGraphWithCopyToCpu)
 
     const auto dot = VisualizeGraph(graph);
 
-    ASSERT_THAT(dot, Eq(CopyGpuToCpuDot)) << dot;
+    ASSERT_THAT(dot, Eq(CopyGpuToCpuDot)) << FormatDot(dot) << "\nGraph: " << MakeDotURL(dot);
 }
 
 TEST_F(VulkanGraphTest, ExecutingGraphWithCopyNode)
