@@ -28,6 +28,7 @@ on:
         type: boolean
 
 env:
+  VERBOSE: 1
   VULKAN_SDK: ./VULKAN_SDK
   CCACHE_DIR: ./ccache
   CCACHE_DEBUG: 1
