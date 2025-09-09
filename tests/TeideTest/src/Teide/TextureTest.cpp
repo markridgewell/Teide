@@ -40,8 +40,9 @@ TEST(TextureTest, GenerateMipmaps)
     auto task = renderer->CopyTextureData(texture);
     const TextureData& data = task.get();
 
-    const auto expectedPixels = HexToBytes("80 00 00 80 00 80 00 80 80 00 80 80 00 00 80 80 " // Mip 0
-                                           "40 20 40 80"                                      // Mip 1
+    const auto expectedPixels = HexToBytes(
+        "80 00 00 80 00 80 00 80 80 00 80 80 00 00 80 80 " // Mip 0
+        "40 20 40 80"                                      // Mip 1
     );
     EXPECT_THAT(data.pixels, Eq(expectedPixels));
 }

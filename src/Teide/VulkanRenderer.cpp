@@ -59,10 +59,11 @@ namespace
         }
         if (framebuffer.layout.depthStencilFormat.has_value())
         {
-            clearValues.emplace_back(vk::ClearDepthStencilValue{
-                .depth = clearState.depthValue.value_or(1.0f),
-                .stencil = clearState.stencilValue.value_or(0),
-            });
+            clearValues.emplace_back(
+                vk::ClearDepthStencilValue{
+                    .depth = clearState.depthValue.value_or(1.0f),
+                    .stencil = clearState.stencilValue.value_or(0),
+                });
         };
         return clearValues;
     }
