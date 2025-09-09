@@ -171,9 +171,10 @@ void Application::OnRender()
         .shadowMatrix = m_shadowMatrix,
     };
 
-    m_renderer->BeginFrame(Teide::ShaderParameters{
-        .uniformData = Teide::ToBytes(sceneUniforms),
-    });
+    m_renderer->BeginFrame(
+        Teide::ShaderParameters{
+            .uniformData = Teide::ToBytes(sceneUniforms),
+        });
 
     // Update object uniforms
     const ObjectUniforms objectUniforms = {
