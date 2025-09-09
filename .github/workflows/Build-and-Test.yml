@@ -31,6 +31,7 @@ env:
   VULKAN_SDK: ./VULKAN_SDK
   CCACHE_DIR: ./ccache
   CCACHE_DEBUG: 1
+  CCACHE_DEBUGDIR: ./ccache_debug
 
   EXTRA_CMAKE_FLAGS: ${{inputs.profile-cmake && '--profiling-format=google-trace --profiling-output=CMakeTrace.json' || ''}}
 
