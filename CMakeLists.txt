@@ -7,7 +7,6 @@ include(tools/cmake/Build.cmake)
 include(tools/cmake/Cache.cmake)
 include(tools/cmake/CompileCommands.cmake)
 include(tools/cmake/Option.cmake)
-include(tools/cmake/Ccache.cmake)
 
 option_feature(TEIDE_BUILD_EXAMPLES examples "Build examples for Teide" ON)
 option_feature(TEIDE_BUILD_TESTS tests "Build tests for Teide" ON)
@@ -107,7 +106,8 @@ td_add_library(
 target_include_directories(Teide SYSTEM PRIVATE "${GENERATED_INCLUDE_DIR}")
 
 if(TEIDE_CCACHE)
-    enable_ccache()
+    include(tools/cmake/Ccache.cmake)
+    td_enable_ccache()
 endif()
 
 if(TEIDE_PRECOMPILED_HEADERS)
