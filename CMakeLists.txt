@@ -50,7 +50,7 @@ if(TEIDE_CCACHE)
     td_enable_ccache()
 endif()
 
-message("Before project: MSVC=${MSVC}, MSVC_VERSION=${MSVC_VERSION}")
+message("Before project: MSVC=${MSVC}, MSVC_VERSION=${MSVC_VERSION}, CMAKE_GENERATOR=${CMAKE_GENERATOR}")
 
 project(
     Teide
@@ -58,7 +58,7 @@ project(
     DESCRIPTION "Vulkan-based 3D renderer"
     LANGUAGES CXX)
 
-message("After project: MSVC=${MSVC}, MSVC_VERSION=${MSVC_VERSION}")
+message("After project: MSVC=${MSVC}, MSVC_VERSION=${MSVC_VERSION}, CMAKE_GENERATOR=${CMAKE_GENERATOR}")
 
 enable_testing()
 

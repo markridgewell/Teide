@@ -14,7 +14,7 @@ function(_enable_ccache_msvc)
 endfunction()
 
 function(td_enable_ccache)
-    if(MSVC)
+    if(CMAKE_GENERATOR MATCHES "Visual Studio .*")
         _enable_ccache_msvc()
     else()
         set(CMAKE_CXX_COMPILER_LAUNCHER ccache)
