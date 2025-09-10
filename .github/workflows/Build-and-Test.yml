@@ -169,6 +169,10 @@ jobs:
       shell: bash
       run: |
         dir=$(ccache -k debug_dir)
+        if [[ -z "$dir" ]]; then
+          dir=$CCACHE_DIR
+        fi
+        echo "Cache debug dir: $dir"
         for file in $(find $dir -type f); do
           if file -bL --mime $file | grep -q "charset=binary"; then
             echo "$file (binary)"
