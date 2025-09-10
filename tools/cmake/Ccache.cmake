@@ -8,8 +8,10 @@ macro(_enable_ccache_msvc)
         message(STATUS "Setting MSVC debug information format to 'Embedded'")
         set(CMAKE_MSVC_DEBUG_INFORMATION_FORMAT "$<$<CONFIG:Debug,RelWithDebInfo>:Embedded>")
 
-        set(CMAKE_VS_GLOBALS "CLToolExe=cl.exe" "CLToolPath=${CMAKE_BINARY_DIR}" "UseMultiToolTask=true"
-                             "DebugInformationFormat=OldStyle" PARENT_SCOPE)
+        set(CMAKE_VS_GLOBALS
+            "CLToolExe=cl.exe" "CLToolPath=${CMAKE_BINARY_DIR}" "UseMultiToolTask=true"
+            "DebugInformationFormat=OldStyle"
+            PARENT_SCOPE)
     endif()
 endmacro()
 
