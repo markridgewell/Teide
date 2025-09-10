@@ -87,6 +87,11 @@ if("${VK_XML_PATH}" IS_NEWER_THAN "${GENERATED_INCLUDE_DIR}/vkex/vkex.hpp")
                             "${VK_XML_PATH}" -o "${GENERATED_INCLUDE_DIR}/vkex" COMMAND_ERROR_IS_FATAL ANY)
 endif()
 
+if(TEIDE_CCACHE)
+    include(tools/cmake/Ccache.cmake)
+    td_enable_ccache()
+endif()
+
 include(FileLists.cmake)
 td_add_library(
     Teide
@@ -104,11 +109,6 @@ td_add_library(
         glslang::SPIRV
         glslang::glslang)
 target_include_directories(Teide SYSTEM PRIVATE "${GENERATED_INCLUDE_DIR}")
-
-if(TEIDE_CCACHE)
-    include(tools/cmake/Ccache.cmake)
-    td_enable_ccache()
-endif()
 
 if(TEIDE_PRECOMPILED_HEADERS)
     target_precompile_headers(
