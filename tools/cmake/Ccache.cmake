@@ -1,4 +1,4 @@
-function(_enable_ccache_msvc)
+macro(_enable_ccache_msvc)
     find_program(ccache_exe ccache)
     if(ccache_exe)
         file(COPY_FILE ${ccache_exe} ${CMAKE_BINARY_DIR}/cl.exe ONLY_IF_DIFFERENT)
@@ -9,9 +9,9 @@ function(_enable_ccache_msvc)
         set(CMAKE_MSVC_DEBUG_INFORMATION_FORMAT "$<$<CONFIG:Debug,RelWithDebInfo>:Embedded>")
 
         set(CMAKE_VS_GLOBALS "CLToolExe=cl.exe" "CLToolPath=${CMAKE_BINARY_DIR}" "UseMultiToolTask=true"
-                             "DebugInformationFormat=OldStyle")
+                             "DebugInformationFormat=OldStyle" PARENT_SCOPE)
     endif()
-endfunction()
+endmacro()
 
 function(td_enable_ccache)
     if(CMAKE_GENERATOR MATCHES "Visual Studio .*")

@@ -52,6 +52,8 @@ endif()
 
 message("Before project: MSVC=${MSVC}, MSVC_VERSION=${MSVC_VERSION}, CMAKE_GENERATOR=${CMAKE_GENERATOR}")
 
+message("CMAKE_VS_GLOBALS: ${CMAKE_VS_GLOBALS}")
+
 project(
     Teide
     VERSION 0.0.0
