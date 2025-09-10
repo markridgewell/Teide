@@ -145,7 +145,7 @@ jobs:
         -DTEIDE_SANITIZER=${{matrix.sanitizer}}
         -DCMAKE_CONFIGURATION_TYPES=${{matrix.buildtype}}
         -DCMAKE_TRY_COMPILE_CONFIGURATION=${{matrix.buildtype}}
-        -DCMAKE_CXX_COMPILER_LAUNCHER=${{(inputs.ccache || github.event_name == 'pull_request') && 'ccache' || ''}}
+        -DTEIDE_CCACHE=${{inputs.ccache || github.event_name == 'pull_request'}}
         ${{env.EXTRA_CMAKE_FLAGS}}
 
     - name: Save CMake trace

@@ -19,6 +19,7 @@ option(TEIDE_TEST_COVERAGE "Enable code coverage reporting when running tests" O
 option(TEIDE_TEST_WINDOWLESS "Disable tests requiring a windowing system" OFF)
 option(TEIDE_CLANG_TIDY "Enable static analysis with clang-tidy" OFF)
 option(TEIDE_CPPCHECK "Enable static analysis with Cppcheck" OFF)
+option(TEIDE_CCACHE "Use ccache to accelerate builds" OFF)
 option(TEIDE_PRECOMPILED_HEADERS "Enable precompiled headers when building" OFF)
 option_enum(TEIDE_SANITIZER "Name of a sanitizer to enable, or OFF to disable" "OFF;ASAN;UBSAN")
 
@@ -104,6 +105,10 @@ td_add_library(
         glslang::SPIRV
         glslang::glslang)
 target_include_directories(Teide SYSTEM PRIVATE "${GENERATED_INCLUDE_DIR}")
+
+if(TEIDE_CCACHE)
+    enable_ccache()
+endif()
 
 if(TEIDE_PRECOMPILED_HEADERS)
     target_precompile_headers(
