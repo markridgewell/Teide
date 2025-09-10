@@ -138,7 +138,7 @@ jobs:
         cmake --preset ${{matrix.preset}}
         -DTEIDE_USE_VCPKG=OFF
         -DCMAKE_PREFIX_PATH=${{steps.packages.outputs.install-dir}}
-        -DTEIDE_PRECOMPILED_HEADERS=ON
+        -DTEIDE_PRECOMPILED_HEADERS=${{!(inputs.ccache || github.event_name == 'pull_request')}}
         -DTEIDE_UNIT_TEST_SW_RENDER=ON
         -DTEIDE_TEST_WINDOWLESS=${{runner.os == 'Linux'}}
         -DTEIDE_TEST_COVERAGE=${{matrix.coverage}}
