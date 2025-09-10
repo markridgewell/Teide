@@ -7,6 +7,7 @@ include(tools/cmake/Build.cmake)
 include(tools/cmake/Cache.cmake)
 include(tools/cmake/CompileCommands.cmake)
 include(tools/cmake/Option.cmake)
+include(tools/cmake/Ccache.cmake)
 
 option_feature(TEIDE_BUILD_EXAMPLES examples "Build examples for Teide" ON)
 option_feature(TEIDE_BUILD_TESTS tests "Build tests for Teide" ON)
