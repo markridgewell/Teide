@@ -45,11 +45,20 @@ if(TEIDE_USE_VCPKG)
     set(CMAKE_TOOLCHAIN_FILE "${CMAKE_SOURCE_DIR}/external/vcpkg/scripts/buildsystems/vcpkg.cmake")
 endif()
 
+if(TEIDE_CCACHE)
+    include(tools/cmake/Ccache.cmake)
+    td_enable_ccache()
+endif()
+
+message("Before project: MSVC=${MSVC}, MSVC_VERSION=${MSVC_VERSION}")
+
 project(
     Teide
     VERSION 0.0.0
     DESCRIPTION "Vulkan-based 3D renderer"
     LANGUAGES CXX)
+
+message("After project: MSVC=${MSVC}, MSVC_VERSION=${MSVC_VERSION}")
 
 enable_testing()
 
@@ -85,11 +94,6 @@ set(VK_XML_PATH "${Vulkan_INCLUDE_DIR}/../share/vulkan/registry/vk.xml")
 if("${VK_XML_PATH}" IS_NEWER_THAN "${GENERATED_INCLUDE_DIR}/vkex/vkex.hpp")
     execute_process(COMMAND "${Python_EXECUTABLE}" "${CMAKE_SOURCE_DIR}/tools/vkex/genvkex.py" -registry
                             "${VK_XML_PATH}" -o "${GENERATED_INCLUDE_DIR}/vkex" COMMAND_ERROR_IS_FATAL ANY)
-endif()
-
-if(TEIDE_CCACHE)
-    include(tools/cmake/Ccache.cmake)
-    td_enable_ccache()
 endif()
 
 include(FileLists.cmake)
