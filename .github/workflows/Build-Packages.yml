@@ -28,10 +28,10 @@ jobs:
           runner: windows-2022
         - preset: clang++-18
           runner: ubuntu-latest
-          extra-packages: ninja-build clang++-18
+          extra-packages: ninja-build clang++-18 mono-complete
         - preset: clang++-18
           runner: ubuntu-latest
-          extra-packages: ninja-build clang++-18
+          extra-packages: ninja-build clang++-18 mono-complete
           sanitizer: MSAN
 
     name: ${{startsWith(matrix.runner, 'windows') && 'Windows' || 'Linux'}}${{matrix.sanitizer != 'OFF' && matrix.sanitizer || ''}}
@@ -64,7 +64,7 @@ jobs:
 
     - name: Checkout
       if: steps.package-config.outputs.changed != 'false'
-      uses: actions/checkout@v4.1.7
+      uses: actions/checkout@v4.2.2
       with:
         lfs: false
         submodules: recursive
@@ -79,23 +79,36 @@ jobs:
     - name: Cache packages
       if: steps.package-config.outputs.changed != 'false'
       id: cache
-      uses: actions/cache@v4.0.2
+      uses: actions/cache@v4.2.0
       with:
         key: ${{ steps.cache-key.outputs.cache-key }}
         path: './exports'
+
+    - name: Bootstrap vcpkg
+      if: steps.package-config.outputs.changed != 'false'
+      shell: 'bash'
+      run: |
+        external/vcpkg/bootstrap-vcpkg.sh
+
+    - name: Install dependencies
+      if: steps.package-config.outputs.changed != 'false' && steps.cache.outputs.cache-hit != 'true'
+      uses: ./.github/actions/install-dependencies
+      with:
+        extra-packages: ${{matrix.extra-packages}}
 
     - name: 'Setup NuGet credentials'
       if: steps.package-config.outputs.changed != 'false' && steps.cache.outputs.cache-hit != 'true'
       shell: 'bash'
       run: |
-        alias nuget=${{runner.os == 'Linux' && 'mono ' || ''}}$(./external/vcpkg/vcpkg fetch nuget | tail -n 1)
-        nuget sources add \
+        wget https://dist.nuget.org/win-x86-commandline/latest/nuget.exe
+        nuget="${{runner.os == 'Linux' && 'mono ' || ''}}${{github.workspace}}/nuget.exe"
+        $nuget sources add \
           -source "https://nuget.pkg.github.com/markridgewell/index.json" \
           -storepasswordincleartext \
           -name "GitHub" \
           -username markridgewell \
           -password "${{secrets.GITHUB_TOKEN}}"
-        nuget setapikey "${{secrets.GITHUB_TOKEN}}" \
+        $nuget setapikey "${{secrets.GITHUB_TOKEN}}" \
           -source "https://nuget.pkg.github.com/markridgewell/index.json"
 
     - name: Setup vcpkg
@@ -104,12 +117,6 @@ jobs:
       with:
         vcpkgDirectory: '${{github.workspace}}/external/vcpkg'
         vcpkgJsonGlob: 'vcpkg.json'
-
-    - name: Install dependencies
-      if: steps.package-config.outputs.changed != 'false' && steps.cache.outputs.cache-hit != 'true'
-      uses: ./.github/actions/install-dependencies
-      with:
-        extra-packages: ${{matrix.extra-packages}}
 
     - name: Cache libc++
       if: steps.package-config.outputs.changed != 'false' && steps.cache.outputs.cache-hit != 'true'
@@ -136,7 +143,7 @@ jobs:
 
     - name: Save packages as artifact
       if: steps.package-config.outputs.changed != 'false' && steps.cache.outputs.cache-hit != 'true'
-      uses: actions/upload-artifact@v4.3.6
+      uses: actions/upload-artifact@v4.5.0
       with:
         name: vcpkg-export-${{ steps.cache-key.outputs.cache-key }}
         path: './exports'

@@ -29,20 +29,20 @@ void VulkanTexture::GenerateMipmaps(TextureState& state, vk::CommandBuffer cmdBu
             }};
     };
 
-    const auto origin = vk::Offset3D{0, 0, 0};
+    const auto origin = vk::Offset3D{.x = 0, .y = 0, .z = 0};
     auto prevMipSize = vk::Offset3D{
-        static_cast<int32>(properties.size.x),
-        static_cast<int32>(properties.size.y),
-        static_cast<int32>(1),
+        .x = static_cast<int32>(properties.size.x),
+        .y = static_cast<int32>(properties.size.y),
+        .z = static_cast<int32>(1),
     };
 
     // Iterate all mip levels starting at 1
     for (uint32_t i = 1; i < properties.mipLevelCount; i++)
     {
         const vk::Offset3D currMipSize = {
-            prevMipSize.x > 1 ? prevMipSize.x / 2 : 1,
-            prevMipSize.y > 1 ? prevMipSize.y / 2 : 1,
-            prevMipSize.z > 1 ? prevMipSize.z / 2 : 1,
+            .x = prevMipSize.x > 1 ? prevMipSize.x / 2 : 1,
+            .y = prevMipSize.y > 1 ? prevMipSize.y / 2 : 1,
+            .z = prevMipSize.z > 1 ? prevMipSize.z / 2 : 1,
         };
 
         // Transition previous mip level to be a transfer source

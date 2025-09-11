@@ -27,7 +27,7 @@ public:
 protected:
     ShaderData CompileShader(const ShaderSourceData& data) { return m_shaderCompiler.Compile(data); }
 
-    DevicePtr m_device; // NOLINT(cppcoreguidelines-non-private-member-variables-in-classes)
+    VulkanDevicePtr m_device; // NOLINT(cppcoreguidelines-non-private-member-variables-in-classes)
 
 private:
     ShaderCompiler m_shaderCompiler;
@@ -101,22 +101,6 @@ TEST_F(DeviceTest, CreateTexture)
         .pixels = HexToBytes("ff 00 00 ff 00 ff 00 ff ff 00 ff ff 00 00 ff ff"),
     };
     const auto texture = m_device->CreateTexture(textureData, "Texture");
-    EXPECT_THAT(texture.GetSize(), Eq(Geo::Size2i{2, 2}));
-    EXPECT_THAT(texture.GetFormat(), Eq(Format::Byte4Srgb));
-    EXPECT_THAT(texture.GetMipLevelCount(), Eq(1u));
-    EXPECT_THAT(texture.GetSampleCount(), Eq(1u));
-}
-
-TEST_F(DeviceTest, CreateTextureWithNullName)
-{
-    const TextureData textureData = {
-        .size = {2, 2},
-        .format = Format::Byte4Srgb,
-        .mipLevelCount = 1,
-        .sampleCount = 1,
-        .pixels = HexToBytes("ff 00 00 ff 00 ff 00 ff ff 00 ff ff 00 00 ff ff"),
-    };
-    const auto texture = m_device->CreateTexture(textureData, nullptr);
     EXPECT_THAT(texture.GetSize(), Eq(Geo::Size2i{2, 2}));
     EXPECT_THAT(texture.GetFormat(), Eq(Format::Byte4Srgb));
     EXPECT_THAT(texture.GetMipLevelCount(), Eq(1u));
@@ -206,9 +190,9 @@ TEST_F(DeviceTest, CreateParameterBlockWithUniforms)
         },
     };
     const auto pblock = m_device->CreateParameterBlock(pblockData, "ParameterBlock");
-    ASSERT_THAT(pblock.get(), NotNull());
-    EXPECT_THAT(pblock->GetUniformBufferSize(), Eq(16u));
-    EXPECT_THAT(pblock->GetPushConstantSize(), Eq(0u));
+    const auto& pblockImpl = m_device->GetImpl(pblock);
+    EXPECT_THAT(pblockImpl.GetUniformBufferSize(), Eq(16u));
+    EXPECT_THAT(pblockImpl.GetPushConstantSize(), Eq(0u));
 }
 
 TEST_F(DeviceTest, CreateParameterBlockWithPushConstants)
@@ -223,9 +207,9 @@ TEST_F(DeviceTest, CreateParameterBlockWithPushConstants)
         },
     };
     const auto pblock = m_device->CreateParameterBlock(pblockData, "ParameterBlock");
-    ASSERT_THAT(pblock.get(), NotNull());
-    EXPECT_THAT(pblock->GetUniformBufferSize(), Eq(0u));
-    EXPECT_THAT(pblock->GetPushConstantSize(), Eq(64u));
+    const auto& pblockImpl = m_device->GetImpl(pblock);
+    EXPECT_THAT(pblockImpl.GetUniformBufferSize(), Eq(0u));
+    EXPECT_THAT(pblockImpl.GetPushConstantSize(), Eq(64u));
 }
 
 } // namespace

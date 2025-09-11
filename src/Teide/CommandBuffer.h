@@ -4,6 +4,7 @@
 #include "Vulkan.h"
 
 #include "Teide/ForwardDeclare.h"
+#include "Teide/ParameterBlock.h"
 #include "Teide/Texture.h"
 
 namespace Teide
@@ -17,7 +18,7 @@ public:
     void AddReference(const Texture& p);
     void AddReference(const BufferPtr& p);
     void AddReference(const MeshPtr& p);
-    void AddReference(const ParameterBlockPtr& p);
+    void AddReference(const ParameterBlock& p);
     void AddReference(const PipelinePtr& p);
 
     void TakeOwnership(vk::UniqueBuffer buffer);
@@ -50,7 +51,7 @@ private:
     std::unordered_set<Texture> m_referencedTextures;
     std::unordered_set<BufferPtr> m_referencedBuffers;
     std::unordered_set<MeshPtr> m_referencedMeshes;
-    std::unordered_set<ParameterBlockPtr> m_referencedParameterBlocks;
+    std::unordered_set<ParameterBlock> m_referencedParameterBlocks;
     std::unordered_set<PipelinePtr> m_referencedPipelines;
     std::vector<vk::UniqueBuffer> m_ownedBuffers;
     std::vector<vma::UniqueAllocation> m_ownedAllocations;

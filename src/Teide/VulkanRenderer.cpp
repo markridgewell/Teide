@@ -59,10 +59,11 @@ namespace
         }
         if (framebuffer.layout.depthStencilFormat.has_value())
         {
-            clearValues.emplace_back(vk::ClearDepthStencilValue{
-                .depth = clearState.depthValue.value_or(1.0f),
-                .stencil = clearState.stencilValue.value_or(0),
-            });
+            clearValues.emplace_back(
+                vk::ClearDepthStencilValue{
+                    .depth = clearState.depthValue.value_or(1.0f),
+                    .stencil = clearState.stencilValue.value_or(0),
+                });
         };
         return clearValues;
     }
@@ -297,11 +298,11 @@ RenderToTextureResult VulkanRenderer::RenderToTexture(const RenderTargetInfo& re
         RecordRenderListCommands(commandBuffer, renderList, renderPass, renderPassDesc, framebuffer);
     });
 
+    const auto& colorRet = colorResolved ? colorResolved : color;
+    const auto& depthRet = depthStencilResolved ? depthStencilResolved : depthStencil;
     return {
-        .colorTexture = renderTarget.framebufferLayout.captureColor ? (colorResolved ? colorResolved : color) : std::nullopt,
-        .depthStencilTexture = renderTarget.framebufferLayout.captureDepthStencil
-            ? (depthStencilResolved ? depthStencilResolved : depthStencil)
-            : std::nullopt,
+        .colorTexture = renderTarget.framebufferLayout.captureColor ? colorRet : std::nullopt,
+        .depthStencilTexture = renderTarget.framebufferLayout.captureDepthStencil ? depthRet : std::nullopt,
     };
 }
 
@@ -358,7 +359,11 @@ Task<TextureData> VulkanRenderer::CopyTextureData(Texture texture)
             .lastPipelineStageUsage = vk::PipelineStageFlagBits::eFragmentShader,
         };
         textureImpl.TransitionToTransferSrc(textureState, commandBuffer);
-        const auto extent = vk::Extent3D{textureImpl.properties.size.x, textureImpl.properties.size.y, 1};
+        const vk::Extent3D extent = {
+            .width = textureImpl.properties.size.x,
+            .height = textureImpl.properties.size.y,
+            .depth = 1,
+        };
         CopyImageToBuffer(
             commandBuffer, textureImpl.image.get(), buffer.buffer.get(), textureImpl.properties.format, extent,
             textureImpl.properties.mipLevelCount);
@@ -405,14 +410,15 @@ void VulkanRenderer::RecordRenderListCommands(
     const vkex::RenderPassBeginInfo renderPassBegin = {
         .renderPass = renderPass,
         .framebuffer = framebuffer.framebuffer,
-        .renderArea = {.offset = {0, 0}, .extent = {framebuffer.size.x, framebuffer.size.y}},
+        .renderArea = {.offset = {.x = 0, .y = 0}, .extent = {.width = framebuffer.size.x, .height = framebuffer.size.y}},
         .clearValues = MakeClearValues(framebuffer, renderList.clearState),
     };
 
     const auto viewport = MakeViewport(framebuffer.size, renderList.viewportRegion);
     commandBuffer.setViewport(0, viewport);
-    const auto scissor = renderList.scissor ? ToVulkan(*renderList.scissor)
-                                            : vk::Rect2D{.extent = {framebuffer.size.x, framebuffer.size.y}};
+    const auto scissor = renderList.scissor
+        ? ToVulkan(*renderList.scissor)
+        : vk::Rect2D{.extent = {.width = framebuffer.size.x, .height = framebuffer.size.y}};
     commandBuffer.setScissor(0, scissor);
 
     const ParameterBlockData viewParamsData = {
@@ -458,10 +464,9 @@ void VulkanRenderer::RecordRenderObjectCommands(
     commandBufferWrapper.AddReference(obj.materialParameters);
     commandBufferWrapper.AddReference(obj.pipeline);
 
-    if (obj.materialParameters)
+    if (const auto dset = GetDescriptorSet(obj.materialParameters))
     {
-        commandBuffer.bindDescriptorSets(
-            vk::PipelineBindPoint::eGraphics, pipeline.layout, 2, GetDescriptorSet(obj.materialParameters.get()), {});
+        commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipeline.layout, 2, dset, {});
     }
 
     commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, pipeline.GetPipeline(renderPassDesc));
@@ -505,13 +510,9 @@ std::optional<SurfaceImage> VulkanRenderer::AddSurfaceToPresent(VulkanSurface& s
     });
 }
 
-vk::DescriptorSet VulkanRenderer::GetDescriptorSet(const ParameterBlock* parameterBlock) const
+vk::DescriptorSet VulkanRenderer::GetDescriptorSet(const ParameterBlock& parameterBlock) const
 {
-    if (parameterBlock == nullptr)
-    {
-        return {};
-    }
-    const auto& parameterBlockImpl = m_device.GetImpl(*parameterBlock);
+    const auto& parameterBlockImpl = m_device.GetImpl(parameterBlock);
     return parameterBlockImpl.descriptorSet.get();
 }
 

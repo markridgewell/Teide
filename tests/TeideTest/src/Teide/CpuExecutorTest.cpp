@@ -4,6 +4,7 @@
 #include <gmock/gmock.h>
 
 #include <algorithm>
+#include <chrono>
 #include <memory>
 
 using namespace testing;

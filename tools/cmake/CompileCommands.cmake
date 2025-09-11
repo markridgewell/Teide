@@ -45,14 +45,31 @@ macro(_gather_system_include_dirs target out_var)
     endif()
 endmacro()
 
-function(dump_targets filename)
+function(dump_targets)
     _get_all_targets(all_targets)
-    set(content "")
+    set(types_content "")
+    set(files_content "")
     foreach(target IN LISTS all_targets)
-        get_target_property(target_type ${target} TYPE)
-        string(APPEND content "${target} ${target_type}\n")
+        get_target_property(type ${target} TYPE)
+        string(APPEND types_content "${target} ${type}\n")
+        if(type MATCHES "EXECUTABLE|.*_LIBRARY")
+            string(APPEND files_content "${target} $<TARGET_FILE:${target}>\n")
+        endif()
     endforeach()
-    file(WRITE "${filename}" "${content}")
+    file(WRITE "${CMAKE_BINARY_DIR}/TargetTypes.txt" "${types_content}")
+    if(CMAKE_CONFIGURATION_TYPES)
+        # Generate one files list for each configuration
+        file(
+            GENERATE
+            OUTPUT "TargetFiles$<CONFIG>.txt"
+            CONTENT "${files_content}")
+    else()
+        # Only one file needed
+        file(
+            GENERATE
+            OUTPUT "TargetFiles.txt"
+            CONTENT "${files_content}")
+    endif()
 endfunction()
 
 function(compile_commands)

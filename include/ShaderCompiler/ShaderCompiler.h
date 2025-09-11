@@ -1,6 +1,7 @@
 
 #pragma once
 
+#include "Teide/BasicTypes.h"
 #include "Teide/ShaderData.h"
 
 #include <atomic>
@@ -9,7 +10,7 @@
 #include <string_view>
 #include <vector>
 
-enum class ShaderLanguage
+enum class ShaderLanguage : Teide::uint8
 {
     Glsl,
     Hlsl,
@@ -30,6 +31,14 @@ struct ShaderSourceData
     Teide::ParameterBlockDesc objectPblock;
     ShaderStageDefinition vertexShader;
     ShaderStageDefinition pixelShader;
+};
+
+struct KernelSourceData
+{
+    ShaderLanguage language = ShaderLanguage::Glsl;
+    Teide::ShaderEnvironmentData environment;
+    Teide::ParameterBlockDesc paramsPblock;
+    ShaderStageDefinition kernelShader;
 };
 
 class CompileError : public std::exception
@@ -55,4 +64,5 @@ public:
     ShaderCompiler& operator=(ShaderCompiler&&) = delete;
 
     Teide::ShaderData Compile(const ShaderSourceData& sourceData) const;
+    Teide::KernelData Compile(const KernelSourceData& sourceData) const;
 };

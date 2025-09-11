@@ -59,7 +59,7 @@ public:
     Texture CreateTexture(const TextureData& data, const char* name) override;
     MeshPtr CreateMesh(const MeshData& data, const char* name) override;
     PipelinePtr CreatePipeline(const PipelineData& data) override;
-    ParameterBlockPtr CreateParameterBlock(const ParameterBlockData& data, const char* name) override;
+    ParameterBlock CreateParameterBlock(const ParameterBlockData& data, const char* name) override;
 
     // Internal
     vk::Device GetVulkanDevice() { return m_device.get(); }
@@ -68,15 +68,27 @@ public:
 
     template <class T>
     auto& GetImpl(T& obj)
+        requires std::is_polymorphic_v<T>
+    {
+        return dynamic_cast<typename VulkanImpl<std::remove_const_t<T>>::type&>(obj);
+    }
+
+    template <class T>
+    auto& GetImpl(const T& obj)
+        requires std::is_polymorphic_v<T>
     {
         return dynamic_cast<const typename VulkanImpl<std::remove_const_t<T>>::type&>(obj);
     }
 
     template <class T>
-        requires std::same_as<std::remove_const_t<T>, Texture>
-    const VulkanTexture& GetImpl(T& obj)
+    const auto& GetImpl(T& obj)
     {
-        return m_textures.Get(obj);
+        using Handle = std::remove_const_t<T>;
+        using Impl = VulkanImpl<Handle>::type;
+        using Map = ResourceMap<Handle, Impl>;
+        using MemPtrType = Map VulkanDevice::*;
+        constexpr auto MemPtr = std::get<MemPtrType>(ResourceMaps);
+        return (this->*MemPtr).Get(obj);
     }
 
     template <class T>
@@ -85,14 +97,7 @@ public:
         return std::dynamic_pointer_cast<const typename VulkanImpl<std::remove_const_t<T>>::type>(ptr);
     }
 
-    struct TextureAndState
-    {
-        VulkanTexture texture;
-        TextureState state;
-    };
-
-    TextureAndState
-    CreateTextureImpl(const TextureData& data, vk::ImageUsageFlags usage, CommandBuffer& cmdBuffer, const char* debugName);
+    TextureState CreateTextureImpl(VulkanTexture& texture, vk::ImageUsageFlags usage);
 
     VulkanBuffer CreateBufferUninitialized(
         vk::DeviceSize size, vk::BufferUsageFlags usage, vma::AllocationCreateFlags allocationFlags = {},
@@ -107,9 +112,9 @@ public:
     Texture CreateRenderableTexture(const TextureData& data, const char* name);
     Texture CreateRenderableTexture(const TextureData& data, const char* name, CommandBuffer& cmdBuffer);
     MeshPtr CreateMesh(const MeshData& data, const char* name, CommandBuffer& cmdBuffer);
-    ParameterBlockPtr
+    ParameterBlock
     CreateParameterBlock(const ParameterBlockData& data, const char* name, CommandBuffer& cmdBuffer, uint32 threadIndex);
-    ParameterBlockPtr CreateParameterBlock(
+    ParameterBlock CreateParameterBlock(
         const ParameterBlockData& data, const char* name, CommandBuffer& cmdBuffer, vk::DescriptorPool descriptorPool);
     TransientParameterBlock
     CreateTransientParameterBlock(const ParameterBlockData& data, const char* name, DescriptorPool& descriptorPool);
@@ -120,6 +125,8 @@ public:
     CreateRenderPass(const FramebufferLayout& framebufferLayout, const ClearState& clearState, FramebufferUsage usage);
     Framebuffer CreateFramebuffer(
         vk::RenderPass renderPass, const FramebufferLayout& layout, Geo::Size2i size, std::vector<vk::ImageView> attachments);
+
+    VulkanParameterBlockLayoutPtr CreateParameterBlockLayout(const ParameterBlockDesc& desc, int set);
 
 private:
     struct RenderPassDesc
@@ -142,12 +149,12 @@ private:
         void Visit(auto f) const { return f(renderPass, size, attachments); }
     };
 
+    vk::UniqueSampler CreateSampler(const SamplerState& ss);
+
     vk::UniqueDescriptorSet CreateUniqueDescriptorSet(
         vk::DescriptorPool pool, vk::DescriptorSetLayout layout, const Buffer* uniformBuffer,
         std::span<const Texture> textures, const char* name);
     void WriteDescriptorSet(vk::DescriptorSet descriptorSet, const Buffer* uniformBuffer, std::span<const Texture> textures);
-
-    VulkanParameterBlockLayoutPtr CreateParameterBlockLayout(const ParameterBlockDesc& desc, int set);
 
     VulkanLoader m_loader;
     vk::UniqueInstance m_instance;
@@ -171,7 +178,12 @@ private:
     vma::UniqueAllocator m_allocator;
 
     ResourceMap<Texture, VulkanTexture> m_textures;
+    ResourceMap<ParameterBlock, VulkanParameterBlock> m_parameterBlocks;
 
+    static constexpr auto ResourceMaps = std::tuple{
+        &VulkanDevice::m_textures,
+        &VulkanDevice::m_parameterBlocks,
+    };
     Scheduler m_scheduler;
 };
 

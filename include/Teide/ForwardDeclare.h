@@ -1,6 +1,8 @@
 
 #pragma once
 
+#include "Teide/BasicTypes.h"
+
 #include <memory>
 
 namespace Teide
@@ -30,9 +32,8 @@ using ShaderEnvironmentPtr = std::shared_ptr<const ShaderEnvironment>;
 using MeshPtr = std::shared_ptr<const Mesh>;
 using PipelinePtr = std::shared_ptr<const Pipeline>;
 using ParameterBlockLayoutPtr = std::shared_ptr<const ParameterBlockLayout>;
-using ParameterBlockPtr = std::shared_ptr<const ParameterBlock>;
 
-enum class ResourceLifetime
+enum class ResourceLifetime : uint8
 {
     Permanent,
     Transient

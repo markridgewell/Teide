@@ -12,13 +12,13 @@
 namespace Teide
 {
 
-enum class VertexClass
+enum class VertexClass : uint8
 {
     PerVertex,
     PerInstance,
 };
 
-enum class PrimitiveTopology
+enum class PrimitiveTopology : uint8
 {
     PointList,
     LineList,

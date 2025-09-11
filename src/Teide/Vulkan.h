@@ -31,8 +31,8 @@ namespace Teide
 
 struct FramebufferLayout;
 class VulkanLoader;
-enum class PrimitiveTopology;
-enum class VertexClass;
+enum class PrimitiveTopology : uint8;
+enum class VertexClass : uint8;
 
 struct QueueFamilies
 {
@@ -77,7 +77,7 @@ struct Framebuffer
     Geo::Size2i size;
 };
 
-enum class FramebufferUsage
+enum class FramebufferUsage : uint8
 {
     ShaderInput,
     PresentSrc

@@ -16,6 +16,11 @@ on:
         required: true
         default: true
         type: boolean
+      debug:
+        description: 'Enable debug logging'
+        required: true
+        default: false
+        type: boolean
 
 env:
   VULKAN_SDK: ./VULKAN_SDK
@@ -89,7 +94,7 @@ jobs:
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v4.1.7
+      uses: actions/checkout@v4.2.2
       with:
         lfs: true
         submodules: false
@@ -122,6 +127,7 @@ jobs:
         -DTEIDE_TEST_VERBOSE=ON
         -DTEIDE_TEST_WINDOWLESS=${{runner.os == 'Linux'}}
         -DTEIDE_TEST_COVERAGE=${{matrix.coverage}}
+        -DTEIDE_TEST_VERBOSE=${{runner.debug || inputs.debug}}
         -DTEIDE_SANITIZER=${{matrix.sanitizer}}
         -DCMAKE_CONFIGURATION_TYPES=${{matrix.buildtype}}
         -DCMAKE_TRY_COMPILE_CONFIGURATION=${{matrix.buildtype}}
@@ -129,7 +135,7 @@ jobs:
 
     - name: Save CMake trace
       if: inputs.profile-cmake
-      uses: actions/upload-artifact@v4.3.6
+      uses: actions/upload-artifact@v4.5.0
       with:
         name: CMakeTrace-${{env.job_name}}
         path: ./CMakeTrace.json
@@ -156,7 +162,7 @@ jobs:
 
     - name: Save render test output
       if: failure() && steps.test.outcome == 'failure'
-      uses: actions/upload-artifact@v4.3.6
+      uses: actions/upload-artifact@v4.5.0
       with:
         name: RenderTestOutput-${{env.job_name}}
         path: ${{env.RT_OUTPUT_DIR}}
@@ -174,14 +180,14 @@ jobs:
 
     - name: Save test log
       if: failure() && steps.test.outcome == 'failure'
-      uses: actions/upload-artifact@v4.3.6
+      uses: actions/upload-artifact@v4.5.0
       with:
         name: TestLog-${{env.job_name}}
         path: build/${{matrix.preset}}/Testing/Temporary/LastTest.log
 
     - name: Upload coverage report
       if: matrix.coverage == 'ON'
-      uses: codecov/codecov-action@v4.5.0
+      uses: codecov/codecov-action@v5.1.2
       with:
         directory: build/${{matrix.preset}}/coverage/output
         fail_ci_if_error: false
@@ -190,7 +196,7 @@ jobs:
 
     - name: Save coverage report
       if: matrix.coverage == 'ON'
-      uses: actions/upload-artifact@v4.3.6
+      uses: actions/upload-artifact@v4.5.0
       with:
         name: CoverageReport-${{env.job_name}}
         path: build/${{matrix.preset}}/coverage/output

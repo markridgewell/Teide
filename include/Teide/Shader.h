@@ -7,7 +7,7 @@
 namespace Teide
 {
 
-enum class ParameterBlockType
+enum class ParameterBlockType : uint8
 {
     Scene,
     View,

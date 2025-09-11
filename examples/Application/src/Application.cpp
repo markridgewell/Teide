@@ -66,7 +66,11 @@ Teide::RenderStates MakeRenderStates(float depthBiasConstant = 0.0f, float depth
 {
     return {
         .blendState = Teide::BlendState{
-            .blendFunc = { Teide::BlendFactor::One, Teide::BlendFactor::Zero, Teide::BlendOp::Add },
+            .blendFunc = {
+                .source = Teide::BlendFactor::One,
+                .dest = Teide::BlendFactor::Zero,
+                .op = Teide::BlendOp::Add,
+            },
         },
         .depthState = {
             .depthTest = true,
@@ -82,6 +86,27 @@ Teide::RenderStates MakeRenderStates(float depthBiasConstant = 0.0f, float depth
     };
 }
 
+Material CreateMaterial(Teide::Device& device, const char* imageFilename)
+{
+    const ShaderCompiler shaderCompiler;
+    auto shader = device.CreateShader(shaderCompiler.Compile(ModelShader), "ModelShader");
+
+    const auto* const textureName = imageFilename ? imageFilename : "DefaultTexture";
+    const auto texture = device.CreateTexture(LoadTexture(imageFilename), textureName);
+
+    const Teide::ParameterBlockData materialData = {
+        .layout = shader->GetMaterialPblockLayout(),
+        .parameters = {
+            .textures = {texture},
+        },
+    };
+    auto params = device.CreateParameterBlock(materialData, "Material");
+
+    return {
+        .shader = std::move(shader),
+        .params = std::move(params),
+    };
+}
 } // namespace
 
 Application::Application(SDL_Window* window, const char* imageFilename, const char* modelFilename) :
@@ -94,10 +119,10 @@ Application::Application(
     m_device{std::move(deviceAndSurface.device)},
     m_surface{std::move(deviceAndSurface.surface)},
     m_shaderEnvironment{m_device->CreateShaderEnvironment(ShaderEnv, "ShaderEnv")},
+    m_material{CreateMaterial(*m_device, imageFilename)},
     m_renderer{m_device->CreateRenderer(m_shaderEnvironment)}
 {
     CreateMesh(modelFilename);
-    CreateMaterial(imageFilename);
     CreatePipelines();
 
     spdlog::info("Vulkan initialised successfully");
@@ -146,9 +171,10 @@ void Application::OnRender()
         .shadowMatrix = m_shadowMatrix,
     };
 
-    m_renderer->BeginFrame(Teide::ShaderParameters{
-        .uniformData = Teide::ToBytes(sceneUniforms),
-    });
+    m_renderer->BeginFrame(
+        Teide::ShaderParameters{
+            .uniformData = Teide::ToBytes(sceneUniforms),
+        });
 
     // Update object uniforms
     const ObjectUniforms objectUniforms = {
@@ -363,22 +389,6 @@ void Application::CreateMesh(const char* filename)
     }
 }
 
-void Application::CreateMaterial(const char* imageFilename)
-{
-    m_material.shader = m_device->CreateShader(CompileShader(ModelShader), "ModelShader");
-
-    const auto* const textureName = imageFilename ? imageFilename : "DefaultTexture";
-    const auto texture = m_device->CreateTexture(LoadTexture(imageFilename), textureName);
-
-    const Teide::ParameterBlockData materialData = {
-        .layout = m_material.shader->GetMaterialPblockLayout(),
-        .parameters = {
-            .textures = {texture},
-        },
-    };
-    m_material.params = m_device->CreateParameterBlock(materialData, "Material");
-}
-
 void Application::CreatePipelines()
 {
     m_pipeline = m_device->CreatePipeline({
@@ -394,9 +404,4 @@ void Application::CreatePipelines()
                .renderOverrides = ShadowRenderOverrides,
            }},
     });
-}
-
-Teide::ShaderData Application::CompileShader(const ShaderSourceData& data) const
-{
-    return m_shaderCompiler.Compile(data);
 }

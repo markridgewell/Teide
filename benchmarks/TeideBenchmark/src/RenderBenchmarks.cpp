@@ -7,6 +7,9 @@
 #include <benchmark/benchmark.h>
 #include <spdlog/spdlog.h>
 
+namespace
+{
+
 inline const std::string SimpleVertexShader = R"--(
 void main() {
     gl_Position = inPosition;
@@ -131,7 +134,10 @@ void RenderToTexture(benchmark::State& state)
         .vertexLayout = vertexLayout,
         .renderPasses = {{.framebufferLayout = renderTarget.framebufferLayout}},
     });
-    const std::vector<Teide::RenderObject> renderObjects = {{.mesh = mesh, .pipeline = pipeline}};
+    const auto materialParams = device->CreateParameterBlock({}, "EmptyMaterialParams");
+
+    const std::vector<Teide::RenderObject> renderObjects
+        = {{.mesh = mesh, .pipeline = pipeline, .materialParameters = materialParams}};
 
     for (auto _ [[maybe_unused]] : state)
     {
@@ -140,3 +146,4 @@ void RenderToTexture(benchmark::State& state)
     }
 }
 BENCHMARK(RenderToTexture)->Arg(8); //->Arg(256)->Arg(4096);
+} // namespace

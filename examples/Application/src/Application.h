@@ -20,7 +20,7 @@ using namespace Geo::Literals;
 struct Material
 {
     Teide::ShaderPtr shader;
-    Teide::ParameterBlockPtr params;
+    Teide::ParameterBlock params;
 };
 
 class ApplicationError : public std::exception
@@ -52,7 +52,6 @@ public:
 
 private:
     void CreateMesh(const char* filename);
-    void CreateMaterial(const char* imageFilename);
     void CreatePipelines();
     Teide::ShaderData CompileShader(const ShaderSourceData& data) const;
 
@@ -61,7 +60,6 @@ private:
     Teide::DevicePtr m_device;
     Teide::SurfacePtr m_surface;
     Teide::ShaderEnvironmentPtr m_shaderEnvironment;
-    ShaderCompiler m_shaderCompiler;
 
     // Object setup
     Teide::MeshPtr m_mesh;
