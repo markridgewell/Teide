@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       profile-cmake:
-        description: 'Enable CMake profiling'
+        description: 'Enable CMake trace'
         required: true
         default: false
         type: boolean
@@ -31,7 +31,7 @@ env:
   VULKAN_SDK: ./VULKAN_SDK
   CCACHE_DEBUG: 1
 
-  EXTRA_CMAKE_FLAGS: ${{inputs.profile-cmake && '--profiling-format=google-trace --profiling-output=CMakeTrace.json' || ''}}
+  EXTRA_CMAKE_FLAGS: ${{inputs.profile-cmake && '--trace-expand --profiling-format=google-trace --profiling-output=CMakeTrace.json' || ''}}
 
 jobs:
   build-packages:
