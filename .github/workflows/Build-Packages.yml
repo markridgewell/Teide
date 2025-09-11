@@ -64,6 +64,7 @@ jobs:
       with:
         lfs: false
         submodules: recursive
+        fetch-depth: 0
 
     - name: Determine cache key
       if: steps.package-config.outputs.changed != 'false'
