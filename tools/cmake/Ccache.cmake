@@ -6,7 +6,9 @@ macro(_enable_ccache_msvc)
         # By default Visual Studio generators will use /Zi which is not compatible with ccache, so tell Visual Studio to
         # use /Z7 instead.
         message(STATUS "Setting MSVC debug information format to 'Embedded'")
-        set(CMAKE_MSVC_DEBUG_INFORMATION_FORMAT "$<$<CONFIG:Debug,RelWithDebInfo>:Embedded>" PARENT_SCOPE)
+        set(CMAKE_MSVC_DEBUG_INFORMATION_FORMAT
+            "$<$<CONFIG:Debug,RelWithDebInfo>:Embedded>"
+            PARENT_SCOPE)
 
         set(CMAKE_VS_GLOBALS
             "CLToolExe=cl.exe" "CLToolPath=${CMAKE_BINARY_DIR}" "UseMultiToolTask=true"
@@ -19,6 +21,8 @@ function(td_enable_ccache)
     if(CMAKE_GENERATOR MATCHES "Visual Studio .*")
         _enable_ccache_msvc()
     else()
-        set(CMAKE_CXX_COMPILER_LAUNCHER ccache PARENT_SCOPE)
+        set(CMAKE_CXX_COMPILER_LAUNCHER
+            ccache
+            PARENT_SCOPE)
     endif()
 endfunction()
