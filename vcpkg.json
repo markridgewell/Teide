@@ -31,7 +31,10 @@
     "stdexec"
   ],
   "overrides": [
-    { "name": "taskflow", "version": "3.7.0" }
+    {
+      "name": "taskflow",
+      "version": "3.7.0"
+    }
   ],
   "features": {
     "benchmarks": {
