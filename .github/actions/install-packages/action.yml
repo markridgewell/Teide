@@ -31,7 +31,7 @@ runs:
         path: './exports'
 
     - name: Determine install directory
-      if: steps.get-key.outputs.cache-hit
+      if: steps.cache.outputs.cache-hit
       id: get-dir
       shell: bash
       run: |
@@ -41,4 +41,5 @@ runs:
       id: get-status
       shell: bash
       run: |
-        echo success=${{ steps.get-key.outputs.cache-hit }} >> $GITHUB_OUTPUT
+        echo success=${{ steps.cache.outputs.cache-hit }} >> $GITHUB_OUTPUT
+
