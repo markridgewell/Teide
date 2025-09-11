@@ -1,7 +1,9 @@
 macro(_enable_ccache_msvc)
     find_program(ccache_exe ccache)
     if(ccache_exe)
+        message(STATUS "ccache executable found at: ${ccache_exe}")
         file(COPY_FILE ${ccache_exe} ${CMAKE_BINARY_DIR}/cl.exe ONLY_IF_DIFFERENT)
+        execute_process(COMMAND ${CMAKE_BINARY_DIR}/cl.exe /?)
 
         # By default Visual Studio generators will use /Zi which is not compatible with ccache, so tell Visual Studio to
         # use /Z7 instead.
