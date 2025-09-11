@@ -21,7 +21,7 @@ runs:
 
     - name: Cache libc++
       if: inputs.sanitizer == 'MSAN'
-      uses: actions/cache@v4.0.2
+      uses: actions/cache@v4
       with:
         key: libcxx-${{ steps.clang.outputs.version }}-msan-${{ hashFiles('**/Findcustomlibcxx.cmake') }}
         path: |
