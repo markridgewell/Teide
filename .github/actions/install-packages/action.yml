@@ -18,7 +18,7 @@ runs:
       id: get-key
       uses: ./.github/actions/get-packages-cache-key
       with:
-        sanitizer: ${{ matrix.sanitizer }}
+        sanitizer: ${{ inputs.sanitizer }}
 
     - name: Determine install directory
       id: get-dir
