@@ -149,7 +149,7 @@ jobs:
         ${{env.EXTRA_CMAKE_FLAGS}}
 
     - name: Save CMake trace
-      if: inputs.profile-cmake
+      if: always() && inputs.profile-cmake
       uses: actions/upload-artifact@v4.5.0
       with:
         name: CMakeTrace-${{env.job_name}}
