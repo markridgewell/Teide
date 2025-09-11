@@ -70,6 +70,12 @@ jobs:
           extra-packages: ninja-build clang++-18
           sanitizer: UBSAN
           name-suffix: -ubsan
+        - preset: clang++-18
+          buildtype: Debug
+          runner: ubuntu-latest
+          extra-packages: ninja-build clang++-18
+          sanitizer: MSAN
+          name-suffix: -msan
 
     name: ${{startsWith(matrix.runner, 'windows') && 'Windows' || 'Linux'}}-${{matrix.buildtype}}-${{matrix.preset}}${{matrix.name-suffix}}
     runs-on: ${{matrix.runner}}
@@ -78,6 +84,9 @@ jobs:
       job_name: ${{startsWith(matrix.runner, 'windows') && 'Windows' || 'Linux'}}-${{matrix.buildtype}}-${{matrix.preset}}${{matrix.name-suffix}}
       CMAKE_BUILD_TYPE: ${{matrix.buildtype}}
       RT_OUTPUT_DIR: build/${{matrix.preset}}/tests/RenderTest/RenderTestOutput
+      LIBCXX_DIR: ${{github.workspace}}/build/${{matrix.preset}}/libcxx
+      LIBCXX_INCLUDE_DIR: ${{github.workspace}}/build/${{matrix.preset}}/libcxx/include
+      LIBCXX_LIB_DIR: ${{github.workspace}}/build/${{matrix.preset}}/libcxx/lib
 
     outputs:
       rendertest-failures: ${{steps.rendertest.outputs.failure == 'true'}}
@@ -90,16 +99,16 @@ jobs:
         lfs: true
         submodules: false
 
+    - name: Install dependencies
+      uses: ./.github/actions/install-dependencies
+      with:
+        extra-packages: ${{matrix.extra-packages}}
+
     - name: Install packages
       id: packages
       uses: ./.github/actions/install-packages
       with:
         sanitizer: ${{matrix.sanitizer}}
-
-    - name: Install dependencies
-      uses: ./.github/actions/install-dependencies
-      with:
-        extra-packages: ${{matrix.extra-packages}}
 
     - if: matrix.coverage == 'ON' && runner.os == 'Windows'
       name: Install OpenCppCoverage
@@ -115,6 +124,7 @@ jobs:
         -DCMAKE_PREFIX_PATH=${{steps.packages.outputs.install-dir}}
         -DTEIDE_PRECOMPILED_HEADERS=ON
         -DTEIDE_UNIT_TEST_SW_RENDER=ON
+        -DTEIDE_TEST_VERBOSE=ON
         -DTEIDE_TEST_WINDOWLESS=${{runner.os == 'Linux'}}
         -DTEIDE_TEST_COVERAGE=${{matrix.coverage}}
         -DTEIDE_TEST_VERBOSE=${{runner.debug || inputs.debug}}
