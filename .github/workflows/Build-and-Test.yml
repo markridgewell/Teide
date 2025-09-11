@@ -34,7 +34,6 @@ jobs:
       pr_number: ${{ github.event_name == 'pull_request' && github.event.number || '' }}
 
   build-and-test:
-    needs: build-packages
     strategy:
       fail-fast: false
       matrix:
@@ -111,7 +110,7 @@ jobs:
     - name: Configure CMake
       run: >
         cmake --preset ${{matrix.preset}}
-        -DTEIDE_USE_VCPKG=OFF
+        -DTEIDE_USE_VCPKG=${{!steps.packages.outputs.success}}
         -DCMAKE_PREFIX_PATH=${{steps.packages.outputs.install-dir}}
         -DTEIDE_PRECOMPILED_HEADERS=ON
         -DTEIDE_UNIT_TEST_SW_RENDER=ON
