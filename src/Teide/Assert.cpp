@@ -2,6 +2,7 @@
 #include "Teide/Assert.h"
 
 #include <algorithm>
+#include <cstdlib>
 #include <filesystem>
 #include <ranges>
 #include <stack>
@@ -96,10 +97,14 @@ void PopAssertHandler()
 bool IsDebuggerAttached()
 {
 #ifdef _WIN32
-    return IsDebuggerPresent();
-#else
-    return false;
+    const auto varLen = GetEnvironmentVariable("CI", nullptr, 0);
+    if (varLen == 0)
+    {
+        return IsDebuggerPresent();
+    }
 #endif
+
+    return false;
 }
 
 } // namespace Teide

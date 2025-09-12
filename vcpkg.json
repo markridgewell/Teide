@@ -1,7 +1,7 @@
 {
   "name": "teide",
   "version": "0.0.0",
-  "builtin-baseline": "8ae59b5b1329a51875abc71d528da93d9c3e8972",
+  "builtin-baseline": "7e19f3c64cb636ee21f41bfe8558a6dfaae6236f",
   "dependencies": [
     "fmt",
     "function2",
@@ -29,6 +29,12 @@
     "vulkan-headers",
     "vulkan-memory-allocator-hpp",
     "stdexec"
+  ],
+  "overrides": [
+    {
+      "name": "taskflow",
+      "version": "3.7.0"
+    }
   ],
   "features": {
     "benchmarks": {

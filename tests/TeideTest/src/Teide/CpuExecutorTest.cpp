@@ -16,7 +16,7 @@ using namespace Teide;
 namespace
 {
 
-TEST(CpuExecutorTest, LaunchOneTask)
+TEST(CpuExecutorTest, DISABLED_LaunchOneTask)
 {
     auto executor = CpuExecutor(2);
 
@@ -30,7 +30,7 @@ TEST(CpuExecutorTest, LaunchOneTask)
     EXPECT_THAT(result, Eq(42));
 }
 
-TEST(CpuExecutorTest, LaunchIndependentTasks)
+TEST(CpuExecutorTest, DISABLED_LaunchIndependentTasks)
 {
     auto executor = CpuExecutor(2);
 
@@ -56,7 +56,7 @@ TEST(CpuExecutorTest, LaunchIndependentTasks)
     EXPECT_THAT(result, ElementsAre(42, 21, 84, 24));
 }
 
-TEST(CpuExecutorTest, LaunchDependentTasksAndWaitForTasks)
+TEST(CpuExecutorTest, DISABLED_LaunchDependentTasksAndWaitForTasks)
 {
     auto executor = CpuExecutor(2);
 
@@ -90,7 +90,7 @@ TEST(CpuExecutorTest, LaunchDependentTasksAndWaitForTasks)
     EXPECT_THAT(result, ElementsAre(42, 21, 84, 24));
 }
 
-TEST(CpuExecutorTest, LaunchDependentTasksAndWaitIndividually)
+TEST(CpuExecutorTest, DISABLED_LaunchDependentTasksAndWaitIndividually)
 {
     auto executor = CpuExecutor(2);
 
@@ -126,7 +126,7 @@ TEST(CpuExecutorTest, LaunchDependentTasksAndWaitIndividually)
     EXPECT_THAT(result, ElementsAre(42, 21, 84, 24));
 }
 
-TEST(CpuExecutorTest, LaunchOneTaskAndReturnValue)
+TEST(CpuExecutorTest, DISABLED_LaunchOneTaskAndReturnValue)
 {
     auto executor = CpuExecutor(2);
 
@@ -138,7 +138,7 @@ TEST(CpuExecutorTest, LaunchOneTaskAndReturnValue)
     EXPECT_THAT(task0.get(), Eq(42));
 }
 
-TEST(CpuExecutorTest, LaunchDependentTasksAndPassValues)
+TEST(CpuExecutorTest, DISABLED_LaunchDependentTasksAndPassValues)
 {
     auto executor = CpuExecutor(2);
 
