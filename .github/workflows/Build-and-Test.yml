@@ -27,12 +27,6 @@ env:
   EXTRA_CMAKE_FLAGS: ${{inputs.profile-cmake && '--profiling-format=google-trace --profiling-output=CMakeTrace.json' || ''}}
 
 jobs:
-  build-packages:
-    name: Packages
-    uses: ./.github/workflows/Build-Packages.yml
-    with:
-      pr_number: ${{ github.event_name == 'pull_request' && github.event.number || '' }}
-
   build-and-test:
     strategy:
       fail-fast: false
