@@ -64,6 +64,7 @@ jobs:
       with:
         lfs: false
         submodules: recursive
+        fetch-depth: 0
 
     - name: Determine cache key
       if: steps.package-config.outputs.changed != 'false'
@@ -92,19 +93,28 @@ jobs:
       with:
         extra-packages: ${{matrix.extra-packages}}
 
+    - name: Install NuGet (Linux only)
+      if: steps.package-config.outputs.changed != 'false' && steps.cache.outputs.cache-hit != 'true' && runner.os == 'Linux'
+      shell: 'bash'
+      run: |
+        bin=$HOME/nuget_bin
+        mkdir $bin
+        wget -O $bin/nuget.exe https://dist.nuget.org/win-x86-commandline/latest/nuget.exe
+        echo "mono $bin/nuget.exe $@" > $bin/nuget
+        chmod +x $bin/nuget
+        echo "$bin" >> $GITHUB_PATH
+
     - name: 'Setup NuGet credentials'
       if: steps.package-config.outputs.changed != 'false' && steps.cache.outputs.cache-hit != 'true'
       shell: 'bash'
       run: |
-        wget https://dist.nuget.org/win-x86-commandline/latest/nuget.exe
-        nuget="${{runner.os == 'Linux' && 'mono ' || ''}}${{github.workspace}}/nuget.exe"
-        $nuget sources add \
+        nuget sources add \
           -source "https://nuget.pkg.github.com/markridgewell/index.json" \
           -storepasswordincleartext \
           -name "GitHub" \
           -username markridgewell \
           -password "${{secrets.GITHUB_TOKEN}}"
-        $nuget setapikey "${{secrets.GITHUB_TOKEN}}" \
+        nuget setapikey "${{secrets.GITHUB_TOKEN}}" \
           -source "https://nuget.pkg.github.com/markridgewell/index.json"
 
     - name: Setup vcpkg
