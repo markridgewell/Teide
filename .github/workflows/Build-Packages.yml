@@ -117,13 +117,6 @@ jobs:
         nuget setapikey "${{secrets.GITHUB_TOKEN}}" \
           -source "https://nuget.pkg.github.com/markridgewell/index.json"
 
-    - name: Setup vcpkg
-      if: steps.package-config.outputs.changed != 'false' && steps.cache.outputs.cache-hit != 'true'
-      uses: lukka/run-vcpkg@v11.5
-      with:
-        vcpkgDirectory: '${{github.workspace}}/external/vcpkg'
-        vcpkgJsonGlob: 'vcpkg.json'
-
     - name: Configure CMake
       if: steps.package-config.outputs.changed != 'false' && steps.cache.outputs.cache-hit != 'true'
       run: cmake --preset ${{matrix.preset}} -DTEIDE_SANITIZER=${{matrix.sanitizer}} "-DVCPKG_INSTALL_OPTIONS=--x-abi-tools-use-exact-versions${{runner.debug && ';--debug' || ''}}"
