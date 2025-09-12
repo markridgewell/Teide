@@ -76,7 +76,7 @@ void PrintTo(const std::span<T, N>& span, std::ostream* os)
             statement;                                                                                                 \
         }
 #else
-#    define EXPECT_UNREACHABLE(statement) EXPECT_DEATH(statement, UnreachableMessage)
+#    define EXPECT_UNREACHABLE(statement) EXPECT_THROW(statement, UnreachableError)
 #endif
 
 #define CONSTEXPR_EXPECT_EQ(a, b)                                                                                      \
