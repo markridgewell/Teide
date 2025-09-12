@@ -33,7 +33,7 @@ jobs:
     name: ${{startsWith(matrix.runner, 'windows') && 'Windows' || 'Linux'}}
     runs-on: ${{matrix.runner}}
     env:
-      PATTERNS: vcpkg.json vcpkg-configuration.json tools/vcpkg/** .github/workflows/${{ github.workflow }}.yml
+      PATTERNS: vcpkg.json vcpkg-configuration.json tools/vcpkg/** .github/workflows/Build-Packages.yml
 
     steps:
     - name: Detect package configuration changes
