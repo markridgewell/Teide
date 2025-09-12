@@ -63,8 +63,6 @@ jobs:
       uses: actions/checkout@v4.2.2
       with:
         lfs: false
-        submodules: recursive
-        fetch-depth: 0
 
     - name: Determine cache key
       if: steps.package-config.outputs.changed != 'false'
@@ -122,7 +120,7 @@ jobs:
     - name: Export packages
       if: steps.package-config.outputs.changed != 'false' && steps.cache.outputs.cache-hit != 'true'
       run: |
-        ./external/vcpkg/vcpkg export --raw --output=exports --output-dir=. --x-install-root=build/${{matrix.preset}}/vcpkg_installed
+        vcpkg/vcpkg export --raw --output=exports --output-dir=. --x-install-root=build/${{matrix.preset}}/vcpkg_installed
         echo ""
         echo "::group::Contents of exported packages:"
         ls -R exports
