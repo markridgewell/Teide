@@ -28,7 +28,9 @@ function(vcpkg_determine_triplet)
         set(triplet "x64-windows-static-md")
     endif()
 
-    set(VCPKG_TARGET_TRIPLET ${triplet} CACHE STRING "Triplet respresenting target machine for vcpkg")
+    set(VCPKG_TARGET_TRIPLET
+        ${triplet}
+        CACHE STRING "Triplet respresenting target machine for vcpkg")
     set(VCPKG_HOST_TRIPLET
         ${triplet}
         CACHE STRING "Triplet respresenting host machine for vcpkg")
@@ -54,5 +56,7 @@ function(vcpkg_init)
         execute_process(COMMAND git clone https://github.com/microsoft/vcpkg "${vcpkg_root}")
     endif()
 
-    set(CMAKE_TOOLCHAIN_FILE "${vcpkg_root}/scripts/buildsystems/vcpkg.cmake" PARENT_SCOPE)
+    set(CMAKE_TOOLCHAIN_FILE
+        "${vcpkg_root}/scripts/buildsystems/vcpkg.cmake"
+        PARENT_SCOPE)
 endfunction()
