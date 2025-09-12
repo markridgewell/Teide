@@ -33,7 +33,7 @@ jobs:
     name: ${{startsWith(matrix.runner, 'windows') && 'Windows' || 'Linux'}}
     runs-on: ${{matrix.runner}}
     env:
-      PATTERNS: vcpkg.json vcpkg-configuration.json tools/vcpkg/**
+      PATTERNS: vcpkg.json vcpkg-configuration.json tools/vcpkg/** .github/workflows/Build-Packages.yml
 
     steps:
     - name: Detect package configuration changes
@@ -63,8 +63,6 @@ jobs:
       uses: actions/checkout@v4.2.2
       with:
         lfs: false
-        submodules: recursive
-        fetch-depth: 0
 
     - name: Determine cache key
       if: steps.package-config.outputs.changed != 'false'
@@ -80,12 +78,6 @@ jobs:
       with:
         key: ${{ steps.cache-key.outputs.cache-key }}
         path: './exports'
-
-    - name: Bootstrap vcpkg
-      if: steps.package-config.outputs.changed != 'false'
-      shell: 'bash'
-      run: |
-        external/vcpkg/bootstrap-vcpkg.sh
 
     - name: Install dependencies
       if: steps.package-config.outputs.changed != 'false' && steps.cache.outputs.cache-hit != 'true'
@@ -117,13 +109,6 @@ jobs:
         nuget setapikey "${{secrets.GITHUB_TOKEN}}" \
           -source "https://nuget.pkg.github.com/markridgewell/index.json"
 
-    - name: Setup vcpkg
-      if: steps.package-config.outputs.changed != 'false' && steps.cache.outputs.cache-hit != 'true'
-      uses: lukka/run-vcpkg@v11.5
-      with:
-        vcpkgDirectory: '${{github.workspace}}/external/vcpkg'
-        vcpkgJsonGlob: 'vcpkg.json'
-
     - name: Configure CMake
       if: steps.package-config.outputs.changed != 'false' && steps.cache.outputs.cache-hit != 'true'
       run: cmake --preset ${{matrix.preset}} -DTEIDE_SANITIZER=${{matrix.sanitizer}} "-DVCPKG_INSTALL_OPTIONS=--x-abi-tools-use-exact-versions${{runner.debug && ';--debug' || ''}}"
@@ -135,7 +120,7 @@ jobs:
     - name: Export packages
       if: steps.package-config.outputs.changed != 'false' && steps.cache.outputs.cache-hit != 'true'
       run: |
-        ./external/vcpkg/vcpkg export --raw --output=exports --output-dir=. --x-install-root=build/${{matrix.preset}}/vcpkg_installed
+        vcpkg/vcpkg export --raw --output=exports --output-dir=. --x-install-root=build/${{matrix.preset}}/vcpkg_installed
         echo ""
         echo "::group::Contents of exported packages:"
         ls -R exports
