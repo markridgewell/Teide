@@ -35,26 +35,8 @@ cmake_dependent_option(
     OFF)
 
 if(TEIDE_USE_VCPKG)
-    if(DEFINED VCPKG_TARGET_TRIPLET)
-        message(STATUS "Using pre-defined vcpkg target triplet ${VCPKG_TARGET_TRIPLET}")
-    else()
-        include(tools/cmake/Triplet.cmake)
-        message(STATUS "Target triplet for vcpkg determined to be ${VCPKG_TARGET_TRIPLET}")
-    endif()
-
-    if(DEFINED ENV{VCPKG_ROOT})
-        message(STATUS "vcpkg found at $ENV{VCPKG_ROOT}")
-        set(vcpkg_root "$ENV{VCPKG_ROOT}")
-    elseif(IS_DIRECTORY "${CMAKE_SOURCE_DIR}/vcpkg")
-        message(STATUS "vcpkg subdirectory found")
-        set(vcpkg_root "${CMAKE_SOURCE_DIR}/vcpkg")
-    else()
-        message(STATUS "vcpkg not found, installing...")
-        set(vcpkg_root "${CMAKE_SOURCE_DIR}/vcpkg")
-        execute_process(COMMAND git clone https://github.com/microsoft/vcpkg "${vcpkg_root}")
-    endif()
-
-    set(CMAKE_TOOLCHAIN_FILE "${vcpkg_root}/scripts/buildsystems/vcpkg.cmake")
+    include(tools/cmake/Vcpkg.cmake)
+    vcpkg_init()
 endif()
 
 project(
