@@ -13,6 +13,11 @@
 #    include <sys/ioctl.h>
 #endif
 
+#if defined(_WIN32) && __has_include("StackWalker.h")
+#    define STACKWALKER_ENABLED
+#    include "StackWalker.h"
+#endif
+
 namespace
 {
 std::optional<std::size_t> GetNumConsoleColumns()
@@ -58,13 +63,6 @@ bool AssertDie(std::string_view msg, std::string_view expression, Teide::SourceL
     }
     std::terminate();
 }
-
-} // namespace
-
-#if defined(_WIN32) && __has_include("StackWalker.h")
-#    define STACKWALKER_ENABLED
-#    include "StackWalker.h"
-#endif
 
 class LogSuppressor : public testing::EmptyTestEventListener
 {
@@ -223,6 +221,8 @@ int Run(int argc, char** argv)
 
     return RUN_ALL_TESTS();
 }
+
+} // namespace
 
 #ifdef STACKWALKER_ENABLED
 class MyStackWalker : public StackWalker
