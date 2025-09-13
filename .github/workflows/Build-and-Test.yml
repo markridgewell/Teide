@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       profile-cmake:
-        description: 'Enable CMake profiling'
+        description: 'Enable CMake trace'
         required: true
         default: false
         type: boolean
@@ -21,10 +21,20 @@ on:
         required: true
         default: false
         type: boolean
+      ccache:
+        description: 'Enable ccache'
+        required: true
+        default: true
+        type: boolean
 
 env:
-  VULKAN_SDK: ./VULKAN_SDK
-  EXTRA_CMAKE_FLAGS: ${{inputs.profile-cmake && '--profiling-format=google-trace --profiling-output=CMakeTrace.json' || ''}}
+  VULKAN_SDK: ../vulkan_sdk
+  CCACHE_DEBUG: 1
+  CCACHE_DEBUGLLEVEL: 2
+  CCACHE_DEBUGDIR: ${{ github.workspace }}/ccache_debug
+  CCACHE_LOGFILE: ${{ github.workspace }}/ccache.log
+
+  EXTRA_CMAKE_FLAGS: ${{inputs.profile-cmake && '--trace-expand --profiling-format=google-trace --profiling-output=CMakeTrace.json' || ''}}
 
 jobs:
   build-and-test:
@@ -92,7 +102,29 @@ jobs:
     - name: Install dependencies
       uses: ./.github/actions/install-dependencies
       with:
-        extra-packages: ${{matrix.extra-packages}}
+        extra-packages: ${{matrix.extra-packages}} ${{(inputs.ccache || github.event_name == 'pull_request') && 'ccache' || ''}}
+
+    - name: Get ccache dir
+      if: inputs.ccache || github.event_name == 'pull_request'
+      shell: bash
+      run: |
+        echo -n "CCACHE_DIR=" >> $GITHUB_ENV
+        ccache -k cache_dir >> $GITHUB_ENV
+        echo "ccache -k cache_dir  ->  $(ccache -k cache_dir)"
+        echo "ccache -k debug_dir  ->  $(ccache -k debug_dir)"
+        echo "ccache -k debug  ->  $(ccache -k debug)"
+        echo "ccache -k debug_level  ->  $(ccache -k debug_level)"
+        echo "ccache -k log_file  ->  $(ccache -k log_file)"
+
+    - name: Save/restore ccache dir
+      # I heard you like caches, so I put some caches in your caches
+      if: inputs.ccache || github.event_name == 'pull_request'
+      uses: actions/cache@v4
+      with:
+        path: ${{ env.CCACHE_DIR }}
+        key: ${{ env.job_name }}-ccache-${{ github.run_id }}
+        restore-keys: |
+          ${{ env.job_name }}-ccache
 
     - if: matrix.coverage == 'ON' && runner.os == 'Windows'
       name: Install OpenCppCoverage
@@ -106,7 +138,7 @@ jobs:
         cmake --preset ${{matrix.preset}}
         -DTEIDE_USE_VCPKG=${{!steps.packages.outputs.success}}
         -DCMAKE_PREFIX_PATH=${{steps.packages.outputs.install-dir}}
-        -DTEIDE_PRECOMPILED_HEADERS=ON
+        -DTEIDE_PRECOMPILED_HEADERS=${{!(inputs.ccache || github.event_name == 'pull_request') && 'ON' || 'OFF'}}
         -DTEIDE_UNIT_TEST_SW_RENDER=ON
         -DTEIDE_TEST_WINDOWLESS=${{runner.os == 'Linux'}}
         -DTEIDE_TEST_COVERAGE=${{matrix.coverage}}
@@ -114,17 +146,55 @@ jobs:
         -DTEIDE_SANITIZER=${{matrix.sanitizer}}
         -DCMAKE_CONFIGURATION_TYPES=${{matrix.buildtype}}
         -DCMAKE_TRY_COMPILE_CONFIGURATION=${{matrix.buildtype}}
+        -DTEIDE_CCACHE=${{inputs.ccache || github.event_name == 'pull_request'}}
         ${{env.EXTRA_CMAKE_FLAGS}}
 
     - name: Save CMake trace
-      if: inputs.profile-cmake
+      if: always() && inputs.profile-cmake
       uses: actions/upload-artifact@v4.5.0
       with:
         name: CMakeTrace-${{env.job_name}}
         path: ./CMakeTrace.json
 
     - name: Build
-      run: cmake --build --preset ${{matrix.preset}} --config ${{matrix.buildtype}}
+      shell: bash
+      run: |
+        mkdir -p ${{ env.CCACHE_DIR }}
+        cmake --build --preset ${{matrix.preset}} --config ${{matrix.buildtype}}
+
+        echo "::group::Ccache stats"
+        ccache -sv
+        echo "::endgroup::"
+
+        echo "::group::Ccache config"
+        ccache -p
+        echo "::endgroup::"
+
+        echo "::group::Ccache log"
+        ls $CCACHE_LOGFILE
+        cat $CCACHE_LOGFILE
+        echo "::endgroup::"
+
+    - name: Ccache debugging
+      if: inputs.ccache || github.event_name == 'pull_request'
+      shell: bash
+      run: |
+        dir=$(ccache -k debug_dir)
+        if [[ -z "$dir" ]]; then
+          dir=$CCACHE_DIR
+        fi
+        echo "Cache debug dir: $dir"
+        for file in $(find $dir -type f); do
+          if file -bL --mime $file | grep -q "charset=binary"; then
+            echo "$file (binary)"
+          else
+              if [ -s ${file} ]; then
+                  echo "::group::${file}"
+                  cat ${file}
+                  echo "::endgroup::"
+              fi
+          fi
+        done
 
     - name: Dump CMake output logs
       if: failure()
