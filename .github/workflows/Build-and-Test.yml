@@ -167,7 +167,7 @@ jobs:
         echo "::endgroup::"
 
         echo "::group::Ccache config"
-        cache -p
+        ccache -p
         echo "::endgroup::"
 
         echo "::group::Ccache log"
