@@ -21,8 +21,8 @@ for file in $log_files; do
     if [ -s ${file} ]; then
         # print the file contents, excluding any line containing 'TryCompile-'
         # this is to reduce the number of false positive errors
-        group "${file}"
+        echo "::group::${file}"
         sed -n '/TryCompile-/!p' ${file}
-        endgroup
+        echo "::endgroup::"
     fi
 done
