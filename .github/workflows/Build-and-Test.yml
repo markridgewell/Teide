@@ -30,6 +30,7 @@ on:
 env:
   VULKAN_SDK: ../vulkan_sdk
   CCACHE_DEBUG: 1
+  CCACHE_DEBUGLLEVEL: 2
   CCACHE_DEBUGDIR: ${{ github.workspace }}/ccache_debug
   CCACHE_LOGFILE: ${{ github.workspace }}/ccache.log
 
@@ -164,7 +165,7 @@ jobs:
         with_group=.github/scripts/with_group.sh
         $with_group "Ccache stats" "ccache -sv"
         $with_group "Ccache config" "ccache -p"
-        $with_group "Ccache log" "ls $CCACHE_LOGFILE; cadebugt $CCACHE_LOGFILE"
+        $with_group "Ccache log" "ls $CCACHE_LOGFILE && cat $CCACHE_LOGFILE"
 
     - name: Ccache debugging
       if: inputs.ccache || github.event_name == 'pull_request'
