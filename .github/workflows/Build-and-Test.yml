@@ -162,11 +162,20 @@ jobs:
         mkdir -p ${{ env.CCACHE_DIR }}
         cmake --build --preset ${{matrix.preset}} --config ${{matrix.buildtype}}
 
-        with_group=.github/scripts/with_group.sh
-        $with_group "Ccache stats" "ccache -sv"
-        $with_group "Ccache config" "ccache -p"
+        . .github/scripts/with_group.sh
+
+        group "Ccache stats"
+        ccache -sv
+        endgroup
+
+        group "Ccache config"
+        cache -p
+        endgroup
+
+        group "Ccache log"
         ls $CCACHE_LOGFILE
-        $with_group "Ccache log" "cat $CCACHE_LOGFILE"
+        cat $CCACHE_LOGFILE
+        endgroup
 
     - name: Ccache debugging
       if: inputs.ccache || github.event_name == 'pull_request'
