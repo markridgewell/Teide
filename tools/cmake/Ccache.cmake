@@ -1,11 +1,7 @@
 macro(_enable_ccache_msvc)
     find_program(ccache_exe ccache)
     if(ccache_exe)
-        message(STATUS "ccache executable found at: ${ccache_exe}")
-        message(STATUS "ChocolateyInstall = \"$ENV{ChocolateyInstall}\"")
-        file(RELATIVE_PATH rel_path $ENV{ChocolateyInstall} ${ccache_exe})
         set(choco_install $ENV{ChocolateyInstall})
-        message(STATUS "path relative to ChocolateyInstall: \"${rel_path}\"")
         cmake_path(
             IS_PREFIX
             choco_install
@@ -15,10 +11,14 @@ macro(_enable_ccache_msvc)
         if(is_chocolatey)
             message(STATUS "ccache was installed via chocolatey")
             file(GLOB_RECURSE glob_result "${choco_install}/lib/ccache.exe")
-            message(STATUS "glob result: ${glob_result}")
+            if(NOT glob_result)
+                message(ERROR "ccache executable not found!")
+                return()
+            endif()
             list(GET glob_result 0 ccache_exe)
         endif()
         message(STATUS "ccache executable found at: ${ccache_exe}")
+
         file(COPY_FILE ${ccache_exe} ${CMAKE_BINARY_DIR}/cl.exe ONLY_IF_DIFFERENT)
         message(STATUS "${CMAKE_BINARY_DIR}/cl.exe /?")
         execute_process(COMMAND ${CMAKE_BINARY_DIR}/cl.exe /?)
