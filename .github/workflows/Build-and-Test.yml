@@ -28,10 +28,10 @@ on:
         type: boolean
 
 env:
-  VULKAN_SDK: ./VULKAN_SDK
+  VULKAN_SDK: ../vulkan_sdk
   CCACHE_DEBUG: 1
-  CCACHE_DEBUGDIR: ~/ccache_debug
-  CCACHE_LOGFILE: ~/ccache.log
+  CCACHE_DEBUGDIR: ../ccache_debug
+  CCACHE_LOGFILE: ../ccache.log
 
   EXTRA_CMAKE_FLAGS: ${{inputs.profile-cmake && '--trace-expand --profiling-format=google-trace --profiling-output=CMakeTrace.json' || ''}}
 
