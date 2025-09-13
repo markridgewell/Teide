@@ -163,8 +163,8 @@ jobs:
 
         with_group=.github/scripts/with_group.sh
         $with_group "Ccache stats" "ccache -sv"
-        $with_group "Ccache stats" "ccache -sv"
-        $with_group "Ccache log" "ls $CCACHE_LOGFILE; cat $CCACHE_LOGFILE"
+        $with_group "Ccache config" "ccache -p"
+        $with_group "Ccache log" "ls $CCACHE_LOGFILE; cadebugt $CCACHE_LOGFILE"
 
     - name: Ccache debugging
       if: inputs.ccache || github.event_name == 'pull_request'
