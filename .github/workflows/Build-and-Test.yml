@@ -30,8 +30,8 @@ on:
 env:
   VULKAN_SDK: ../vulkan_sdk
   CCACHE_DEBUG: 1
-  CCACHE_DEBUGDIR: ../ccache_debug
-  CCACHE_LOGFILE: ../ccache.log
+  CCACHE_DEBUGDIR: ${{ github.workspace }}/ccache_debug
+  CCACHE_LOGFILE: ${{ github.workspace }}/ccache.log
 
   EXTRA_CMAKE_FLAGS: ${{inputs.profile-cmake && '--trace-expand --profiling-format=google-trace --profiling-output=CMakeTrace.json' || ''}}
 
@@ -113,6 +113,7 @@ jobs:
         echo "ccache -k debug_dir  ->  $(ccache -k debug_dir)"
         echo "ccache -k debug  ->  $(ccache -k debug)"
         echo "ccache -k debug_level  ->  $(ccache -k debug_level)"
+        echo "ccache -k log_file  ->  $(ccache -k log_file)"
 
     - name: Save/restore ccache dir
       # I heard you like caches, so I put some caches in your caches
@@ -163,7 +164,7 @@ jobs:
         with_group=.github/scripts/with_group.sh
         $with_group "Ccache stats" "ccache -sv"
         $with_group "Ccache stats" "ccache -sv"
-        $with_group "Ccache log" "cat $CCACHE_LOGFILE"
+        $with_group "Ccache log" "ls $CCACHE_LOGFILE; cat $CCACHE_LOGFILE"
 
     - name: Ccache debugging
       if: inputs.ccache || github.event_name == 'pull_request'
