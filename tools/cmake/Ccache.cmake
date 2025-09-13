@@ -4,10 +4,11 @@ macro(_enable_ccache_msvc)
         message(STATUS "ccache executable found at: ${ccache_exe}")
         message(STATUS "ChocolateyInstall = \"$ENV{ChocolateyInstall}\"")
         file(RELATIVE_PATH rel_path $ENV{ChocolateyInstall} ${ccache_exe})
+        set(ChocolateyInstall $ENV{ChocolateyInstall})
         message(STATUS "path relative to ChocolateyInstall: \"${rel_path}\"")
         cmake_path(
             IS_PREFIX
-            $ENV{ChocolateyInstall}
+            ChocolateyInstall
             ${ccache_exe}
             NORMALIZE
             is_chocolatey)
