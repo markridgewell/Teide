@@ -19,6 +19,6 @@ for file in $log_files; do
     if [ -s ${file} ]; then
         # print the file contents, excluding any line containing 'TryCompile-'
         # this is to reduce the number of false positive errors
-        .github/scripts/withgroup.sh "${file}" "sed -n '/TryCompile-/!p' ${file}"
+        .github/scripts/with_group.sh "${file}" "sed -n '/TryCompile-/!p' ${file}"
     fi
 done
