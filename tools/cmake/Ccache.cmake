@@ -1,3 +1,12 @@
+# call as: _remove_arg(command "-Werror")
+macro(_remove_arg command_var arg)
+    string(REPLACE " ${arg} " " " tmp_var " ${${command_var}} ")
+    string(STRIP "${tmp_var}" tmp_var)
+    set(${command_var}
+        ${tmp_var}
+        PARENT_SCOPE)
+endmacro()
+
 macro(_enable_ccache_msvc)
     find_program(ccache_exe ccache)
     if(ccache_exe)
@@ -27,6 +36,8 @@ macro(_enable_ccache_msvc)
         set(CMAKE_MSVC_DEBUG_INFORMATION_FORMAT
             "$<$<CONFIG:Debug,RelWithDebInfo>:Embedded>"
             PARENT_SCOPE)
+        _remove_arg(CMAKE_CXX_FLAGS "/Zi")
+        _remove_arg(CMAKE_CXX_FLAGS_DEBUG "/Zi")
 
         set(CMAKE_VS_GLOBALS
             "CLToolExe=cl.exe" "CLToolPath=${CMAKE_BINARY_DIR}" "UseMultiToolTask=true"
