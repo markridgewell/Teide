@@ -159,7 +159,7 @@ jobs:
       run: |
         mkdir -p ${{ env.CCACHE_DIR }}
         cmake --build --preset ${{matrix.preset}} --config ${{matrix.buildtype}}
-        
+
         with_group=.github/scripts/withgroup.sh
         $with_group "Ccache stats" "ccache -sv"
         $with_group "Ccache stats" "ccache -sv"

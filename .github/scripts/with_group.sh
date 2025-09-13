@@ -8,4 +8,3 @@ fi
 echo "::group::$1"
 $2
 echo "::endgroup::"
-
