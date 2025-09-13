@@ -4,16 +4,20 @@ macro(_enable_ccache_msvc)
         message(STATUS "ccache executable found at: ${ccache_exe}")
         message(STATUS "ChocolateyInstall = \"$ENV{ChocolateyInstall}\"")
         file(RELATIVE_PATH rel_path $ENV{ChocolateyInstall} ${ccache_exe})
-        set(ChocolateyInstall $ENV{ChocolateyInstall})
+        set(choco_install $ENV{ChocolateyInstall})
         message(STATUS "path relative to ChocolateyInstall: \"${rel_path}\"")
         cmake_path(
             IS_PREFIX
-            ChocolateyInstall
+            choco_install
             ${ccache_exe}
             NORMALIZE
             is_chocolatey)
         if(is_chocolatey)
             message(STATUS "ccache was installed via chocolatey")
+            file(GLOB_RECURSE glob_result "${choco_install}/*/ccache.exe")
+            message(STATUS "glob result: ${glob_result}")
+            file(GLOB_RECURSE glob_result "${choco_install}/*/ccache.exe")
+            message(STATUS "glob result 2: ${glob_result}")
         endif()
         message(STATUS "${ccache_exe} --shimgen-help")
         execute_process(COMMAND ${ccache_exe} --shimgen-help)
