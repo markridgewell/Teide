@@ -18,6 +18,7 @@ option(TEIDE_TEST_COVERAGE "Enable code coverage reporting when running tests" O
 option(TEIDE_TEST_WINDOWLESS "Disable tests requiring a windowing system" OFF)
 option(TEIDE_CLANG_TIDY "Enable static analysis with clang-tidy" OFF)
 option(TEIDE_CPPCHECK "Enable static analysis with Cppcheck" OFF)
+option(TEIDE_CCACHE "Use ccache to accelerate builds" OFF)
 option(TEIDE_PRECOMPILED_HEADERS "Enable precompiled headers when building" OFF)
 option_enum(TEIDE_SANITIZER "Name of a sanitizer to enable, or OFF to disable" "OFF;ASAN;UBSAN")
 
@@ -39,11 +40,22 @@ if(TEIDE_USE_VCPKG)
     vcpkg_init()
 endif()
 
+if(TEIDE_CCACHE)
+    include(tools/cmake/Ccache.cmake)
+    td_enable_ccache()
+endif()
+
+message("Before project: MSVC=${MSVC}, MSVC_VERSION=${MSVC_VERSION}, CMAKE_GENERATOR=${CMAKE_GENERATOR}")
+
+message("CMAKE_VS_GLOBALS: ${CMAKE_VS_GLOBALS}")
+
 project(
     Teide
     VERSION 0.0.0
     DESCRIPTION "Vulkan-based 3D renderer"
     LANGUAGES CXX)
+
+message("After project: MSVC=${MSVC}, MSVC_VERSION=${MSVC_VERSION}, CMAKE_GENERATOR=${CMAKE_GENERATOR}")
 
 enable_testing()
 
