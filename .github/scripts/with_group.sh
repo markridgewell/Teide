@@ -12,4 +12,3 @@ function group() {
 function endgroup() {
     echo "::endgroup::"
 }
-
