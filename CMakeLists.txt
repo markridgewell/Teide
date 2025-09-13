@@ -59,7 +59,9 @@ project(
     DESCRIPTION "Vulkan-based 3D renderer"
     LANGUAGES CXX)
 
-message("After project: MSVC=${MSVC}, MSVC_VERSION=${MSVC_VERSION}, CMAKE_GENERATOR=${CMAKE_GENERATOR}, CMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS}")
+message(
+    "After project: MSVC=${MSVC}, MSVC_VERSION=${MSVC_VERSION}, CMAKE_GENERATOR=${CMAKE_GENERATOR}, CMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS}"
+)
 
 enable_testing()
 
