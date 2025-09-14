@@ -15,20 +15,6 @@ runs:
 
     - uses: ammaraskar/gcc-problem-matcher@master
 
-    - shell: bash
-      run: |
-        echo "::endgroup::"
-        echo "::group::Setup Vulkan SDK"
-
-    - uses: edvn0/setup-vulkan-sdk@v1.3.0
-      with:
-        vulkan-query-version: 1.3.243.0
-        vulkan-components: Vulkan-Headers, Vulkan-Loader
-        vulkan-use-cache: true
-
-    - shell: bash
-      run: echo "::endgroup::"
-
     - if: ${{runner.os == 'Windows' && inputs.extra-packages != ''}}
       shell: pwsh
       run: |
