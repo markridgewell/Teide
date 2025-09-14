@@ -160,6 +160,8 @@ jobs:
       shell: bash
       run: |
         mkdir -p ${{ env.CCACHE_DIR }}
+        ccache --zero-stats
+
         cmake --build --preset ${{matrix.preset}} --config ${{matrix.buildtype}}
 
         echo "::group::Ccache stats"
