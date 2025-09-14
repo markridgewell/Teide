@@ -28,7 +28,12 @@ macro(_enable_ccache_msvc)
         endif()
         message(STATUS "ccache executable found at: ${ccache_exe}")
 
-        file(COPY_FILE ${ccache_exe} ${CMAKE_BINARY_DIR}/cl.exe ONLY_IF_DIFFERENT)
+        set(compiler_exe "cl.exe")
+        if(CMAKE_GENERATOR_TOOLSET EQUAL "ClangCL")
+            set(compiler_exe "clang-cl.exe")
+        endif
+
+        file(COPY_FILE ${ccache_exe} ${CMAKE_BINARY_DIR}/${compiler_exe} ONLY_IF_DIFFERENT)
 
         # By default Visual Studio generators will use /Zi which is not compatible with ccache, so tell Visual Studio to
         # use /Z7 instead.
@@ -40,7 +45,7 @@ macro(_enable_ccache_msvc)
         _remove_arg(CMAKE_CXX_FLAGS_DEBUG "/Zi")
 
         set(CMAKE_VS_GLOBALS
-            "CLToolExe=cl.exe" "CLToolPath=${CMAKE_BINARY_DIR}" "UseMultiToolTask=true"
+            "CLToolExe=${compiler_exe}" "CLToolPath=${CMAKE_BINARY_DIR}" "UseMultiToolTask=true"
             "DebugInformationFormat=OldStyle"
             PARENT_SCOPE)
     endif()
