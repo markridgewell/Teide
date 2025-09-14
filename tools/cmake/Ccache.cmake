@@ -1,11 +1,4 @@
-# call as: _remove_arg(command "-Werror")
-macro(_remove_arg command_var arg)
-    string(REPLACE " ${arg} " " " tmp_var " ${${command_var}} ")
-    string(STRIP "${tmp_var}" tmp_var)
-    set(${command_var}
-        ${tmp_var}
-        PARENT_SCOPE)
-endmacro()
+include(tools/cmake/Utils.cmake)
 
 macro(_enable_ccache_msvc)
     find_program(ccache_exe ccache)
@@ -28,13 +21,10 @@ macro(_enable_ccache_msvc)
         endif()
         message(STATUS "ccache executable found at: ${ccache_exe}")
 
-        set(compiler_exe "cl.exe")
         message(STATUS ${CMAKE_GENERATOR_TOOLSET})
         if(CMAKE_GENERATOR_TOOLSET STREQUAL "ClangCL")
-            message(STATUS "is clang")
             set(compiler_exe "clang-cl.exe")
         endif()
-        message(STATUS ${compiler_exe})
 
         file(COPY_FILE ${ccache_exe} ${CMAKE_BINARY_DIR}/${compiler_exe} ONLY_IF_DIFFERENT)
 
@@ -44,8 +34,8 @@ macro(_enable_ccache_msvc)
         set(CMAKE_MSVC_DEBUG_INFORMATION_FORMAT
             "$<$<CONFIG:Debug,RelWithDebInfo>:Embedded>"
             PARENT_SCOPE)
-        _remove_arg(CMAKE_CXX_FLAGS "/Zi")
-        _remove_arg(CMAKE_CXX_FLAGS_DEBUG "/Zi")
+        remove_arg(CMAKE_CXX_FLAGS "/Zi")
+        remove_arg(CMAKE_CXX_FLAGS_DEBUG "/Zi")
 
         set(CMAKE_VS_GLOBALS
             "CLToolExe=${compiler_exe}" "CLToolPath=${CMAKE_BINARY_DIR}" "UseMultiToolTask=true"
