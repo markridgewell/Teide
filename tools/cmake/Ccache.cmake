@@ -29,9 +29,12 @@ macro(_enable_ccache_msvc)
         message(STATUS "ccache executable found at: ${ccache_exe}")
 
         set(compiler_exe "cl.exe")
+        message(STATUS ${CMAKE_GENERATOR_TOOLSET})
         if(CMAKE_GENERATOR_TOOLSET EQUAL "ClangCL")
+            message(STATUS "is clang")
             set(compiler_exe "clang-cl.exe")
         endif()
+        message(STATUS ${compiler_exe})
 
         file(COPY_FILE ${ccache_exe} ${CMAKE_BINARY_DIR}/${compiler_exe} ONLY_IF_DIFFERENT)
 
