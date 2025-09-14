@@ -1,8 +1,9 @@
 include(tools/cmake/Utils.cmake)
 
 macro(_enable_ccache_msvc)
-    find_program(ccache_exe ccache)
+    find_program(ccache_exe ccache PATH_SUFFIXES lib)
     if(ccache_exe)
+        message(STATUS "ccache executable found at: ${ccache_exe}")
         set(choco_install $ENV{ChocolateyInstall})
         cmake_path(
             IS_PREFIX
