@@ -21,7 +21,7 @@ macro(_enable_ccache_msvc)
         endif()
         message(STATUS "ccache executable found at: ${ccache_exe}")
 
-        message(STATUS ${CMAKE_GENERATOR_TOOLSET})
+        set(compiler_exe "cl.exe")
         if(CMAKE_GENERATOR_TOOLSET STREQUAL "ClangCL")
             set(compiler_exe "clang-cl.exe")
         endif()
