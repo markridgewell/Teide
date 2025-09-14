@@ -29,8 +29,10 @@ on:
 
 env:
   VULKAN_SDK: ../vulkan_sdk
-  CCACHE_DEBUG: 1
-  CCACHE_DEBUGLLEVEL: 2
+
+  use_ccache: ${{ inputs.ccache || github.event_name == 'pull_request' }}
+  CCACHE_DEBUG: ${{ inputs.debug && 1 || 0 }}
+  CCACHE_DEBUGLLEVEL: 1
   CCACHE_DEBUGDIR: ${{ github.workspace }}/ccache_debug
   CCACHE_LOGFILE: ${{ github.workspace }}/ccache.log
 
@@ -102,10 +104,10 @@ jobs:
     - name: Install dependencies
       uses: ./.github/actions/install-dependencies
       with:
-        extra-packages: ${{matrix.extra-packages}} ${{(inputs.ccache || github.event_name == 'pull_request') && 'ccache' || ''}}
+        extra-packages: ${{matrix.extra-packages}} ${{ env.use_ccache && 'ccache' || '' }}
 
     - name: Get ccache dir
-      if: inputs.ccache || github.event_name == 'pull_request'
+      if: env.use_ccache
       shell: bash
       run: |
         echo -n "CCACHE_DIR=" >> $GITHUB_ENV
@@ -118,7 +120,7 @@ jobs:
 
     - name: Save/restore ccache dir
       # I heard you like caches, so I put some caches in your caches
-      if: inputs.ccache || github.event_name == 'pull_request'
+      if: env.use_ccache
       uses: actions/cache@v4
       with:
         path: ${{ env.CCACHE_DIR }}
@@ -138,7 +140,8 @@ jobs:
         cmake --preset ${{matrix.preset}}
         -DTEIDE_USE_VCPKG=${{!steps.packages.outputs.success}}
         -DCMAKE_PREFIX_PATH=${{steps.packages.outputs.install-dir}}
-        -DTEIDE_PRECOMPILED_HEADERS=${{!(inputs.ccache || github.event_name == 'pull_request') && 'ON' || 'OFF'}}
+        -DTEIDE_CCACHE=${{env.use_ccache}}
+        -DTEIDE_PRECOMPILED_HEADERS=${{!env.use_ccache}}
         -DTEIDE_UNIT_TEST_SW_RENDER=ON
         -DTEIDE_TEST_WINDOWLESS=${{runner.os == 'Linux'}}
         -DTEIDE_TEST_COVERAGE=${{matrix.coverage}}
@@ -146,7 +149,6 @@ jobs:
         -DTEIDE_SANITIZER=${{matrix.sanitizer}}
         -DCMAKE_CONFIGURATION_TYPES=${{matrix.buildtype}}
         -DCMAKE_TRY_COMPILE_CONFIGURATION=${{matrix.buildtype}}
-        -DTEIDE_CCACHE=${{inputs.ccache || github.event_name == 'pull_request'}}
         ${{env.EXTRA_CMAKE_FLAGS}}
 
     - name: Save CMake trace
