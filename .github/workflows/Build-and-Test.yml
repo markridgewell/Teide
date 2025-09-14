@@ -34,7 +34,7 @@ env:
   CCACHE_DEBUGLLEVEL: 1
   CCACHE_DEBUGDIR: ${{ github.workspace }}/ccache_debug
   CCACHE_LOGFILE: ${{ github.workspace }}/ccache.log
-  CCACHE_SLOPPINESS: include_file_ctime,include_file_mtime,system_headers
+  CCACHE_SLOPPINESS: include_file_ctime,include_file_mtime
 
   EXTRA_CMAKE_FLAGS: ${{inputs.profile-cmake && '--trace-expand --profiling-format=google-trace --profiling-output=CMakeTrace.json' || ''}}
 
@@ -129,9 +129,9 @@ jobs:
       uses: actions/cache@v4
       with:
         path: ${{ env.CCACHE_DIR }}
-        key: ccache-${{ env.job_name }}-${{ github.run_id }}
+        key: ccache_${{ env.job_name }}_${{ github.run_id }}
         restore-keys: |
-          ccache-${{ env.job_name }}
+          ccache_${{ env.job_name }}_
 
     - if: matrix.coverage == 'ON' && runner.os == 'Windows'
       name: Install OpenCppCoverage
