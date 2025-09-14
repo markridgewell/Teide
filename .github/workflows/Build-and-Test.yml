@@ -31,7 +31,6 @@ env:
   VULKAN_SDK: ../vulkan_sdk
 
   use_ccache: ${{ inputs.ccache || github.event_name == 'pull_request' }}
-  CCACHE_DEBUG: ${{ inputs.debug && '1' || '' }}
   CCACHE_DEBUGLLEVEL: 1
   CCACHE_DEBUGDIR: ${{ github.workspace }}/ccache_debug
   CCACHE_LOGFILE: ${{ github.workspace }}/ccache.log
@@ -110,7 +109,7 @@ jobs:
       if: env.use_ccache
       shell: bash
       run: |
-        if [[ -n "${{ runner.debug || inputs.debug }}" ]]; then
+        if [[ ${{ runner.debug || inputs.debug }} ]]; then
           echo "CCACHE_DEBUG=1" >> $GITHUB_ENV
         fi
         echo "CCACHE_DIR=$(ccache -k cache_dir)" >> $GITHUB_ENV
