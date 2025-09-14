@@ -1,25 +1,32 @@
 include(tools/cmake/Utils.cmake)
 
-macro(_enable_ccache_msvc)
-    find_program(ccache_exe ccache PATH_SUFFIXES lib)
-    if(ccache_exe)
-        message(STATUS "ccache executable found at: ${ccache_exe}")
-        set(choco_install $ENV{ChocolateyInstall})
-        cmake_path(
-            IS_PREFIX
-            choco_install
-            ${ccache_exe}
-            NORMALIZE
-            is_chocolatey)
-        if(is_chocolatey)
-            message(STATUS "ccache was installed via chocolatey")
-            file(GLOB_RECURSE glob_result "${choco_install}/lib/ccache.exe")
-            if(NOT glob_result)
-                message(ERROR "ccache executable not found!")
-                return()
-            endif()
-            list(GET glob_result 0 ccache_exe)
+function _unshim(exe_var)
+    set(exe ${${exe_var}})
+    if(NOT exe)
+        return()
+    endif()
+
+    set(choco_install $ENV{ChocolateyInstall})
+    cmake_path(
+        IS_PREFIX
+        choco_install
+        ${exe}
+        NORMALIZE
+        is_chocolatey)
+    if(is_chocolatey)
+        file(GLOB_RECURSE glob_result "${choco_install}/lib/ccache.exe")
+        if(NOT glob_result)
+            return()
         endif()
+        list(GET glob_result 0 ${exe_var})
+    endif()
+endfunction()
+
+macro(_enable_ccache_msvc)
+    find_program(ccache_exe ccache)
+    _unshim(ccache_exe)
+
+    if(ccache_exe)
         message(STATUS "ccache executable found at: ${ccache_exe}")
 
         set(compiler_exe "cl.exe")
@@ -31,7 +38,6 @@ macro(_enable_ccache_msvc)
 
         # By default Visual Studio generators will use /Zi which is not compatible with ccache, so tell Visual Studio to
         # use /Z7 instead.
-        message(STATUS "Setting MSVC debug information format to 'Embedded'")
         set(CMAKE_MSVC_DEBUG_INFORMATION_FORMAT
             "$<$<CONFIG:Debug,RelWithDebInfo>:Embedded>"
             PARENT_SCOPE)
@@ -42,6 +48,8 @@ macro(_enable_ccache_msvc)
             "CLToolExe=${compiler_exe}" "CLToolPath=${CMAKE_BINARY_DIR}" "UseMultiToolTask=true"
             "DebugInformationFormat=OldStyle"
             PARENT_SCOPE)
+    else()
+        message(ERROR "ccache executable not found!")
     endif()
 endmacro()
 
