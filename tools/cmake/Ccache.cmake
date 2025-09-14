@@ -31,7 +31,7 @@ macro(_enable_ccache_msvc)
         set(compiler_exe "cl.exe")
         if(CMAKE_GENERATOR_TOOLSET EQUAL "ClangCL")
             set(compiler_exe "clang-cl.exe")
-        endif
+        endif()
 
         file(COPY_FILE ${ccache_exe} ${CMAKE_BINARY_DIR}/${compiler_exe} ONLY_IF_DIFFERENT)
 
