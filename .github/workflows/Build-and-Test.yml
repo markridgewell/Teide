@@ -34,6 +34,7 @@ env:
   CCACHE_DEBUGLLEVEL: 1
   CCACHE_DEBUGDIR: ${{ github.workspace }}/ccache_debug
   CCACHE_LOGFILE: ${{ github.workspace }}/ccache.log
+  CCACHE_SLOPPINESS: include_file_ctime,include_file_mtime,system_headers
 
   EXTRA_CMAKE_FLAGS: ${{inputs.profile-cmake && '--trace-expand --profiling-format=google-trace --profiling-output=CMakeTrace.json' || ''}}
 
@@ -114,11 +115,13 @@ jobs:
         fi
         echo "CCACHE_DIR=$(ccache -k cache_dir)" >> $GITHUB_ENV
 
-        echo "ccache -k cache_dir  ->  $(ccache -k cache_dir)"
-        echo "ccache -k debug_dir  ->  $(ccache -k debug_dir)"
-        echo "ccache -k debug  ->  $(ccache -k debug)"
-        echo "ccache -k debug_level  ->  $(ccache -k debug_level)"
-        echo "ccache -k log_file  ->  $(ccache -k log_file)"
+        echo "Ccache options"
+        echo "--------------"
+        echo "cache_dir    $(ccache -k cache_dir)"
+        echo "debug_dir    $(ccache -k debug_dir)"
+        echo "debug        $(ccache -k debug)"
+        echo "debug_level  $(ccache -k debug_level)"
+        echo "log_file     $(ccache -k log_file)"
 
     - name: Save/restore ccache dir
       # I heard you like caches, so I put some caches in your caches
