@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       profile-cmake:
-        description: 'Enable CMake profiling'
+        description: 'Enable CMake trace'
         required: true
         default: false
         type: boolean
@@ -21,20 +21,25 @@ on:
         required: true
         default: false
         type: boolean
+      ccache:
+        description: 'Enable ccache'
+        required: true
+        default: true
+        type: boolean
 
 env:
-  VULKAN_SDK: ./VULKAN_SDK
-  EXTRA_CMAKE_FLAGS: ${{inputs.profile-cmake && '--profiling-format=google-trace --profiling-output=CMakeTrace.json' || ''}}
+  VULKAN_SDK: ../vulkan_sdk
+
+  use_ccache: ${{ inputs.ccache || github.event_name == 'pull_request' }}
+  CCACHE_DEBUGLLEVEL: 1
+  CCACHE_DEBUGDIR: ${{ github.workspace }}/ccache_debug
+  CCACHE_LOGFILE: ${{ github.workspace }}/ccache.log
+  CCACHE_SLOPPINESS: include_file_ctime,include_file_mtime
+
+  EXTRA_CMAKE_FLAGS: ${{inputs.profile-cmake && '--trace-expand --profiling-format=google-trace --profiling-output=CMakeTrace.json' || ''}}
 
 jobs:
-  build-packages:
-    name: Packages
-    uses: ./.github/workflows/Build-Packages.yml
-    with:
-      pr_number: ${{ github.event_name == 'pull_request' && github.event.number || '' }}
-
   build-and-test:
-    needs: build-packages
     strategy:
       fail-fast: false
       matrix:
@@ -99,7 +104,34 @@ jobs:
     - name: Install dependencies
       uses: ./.github/actions/install-dependencies
       with:
-        extra-packages: ${{matrix.extra-packages}}
+        extra-packages: ${{matrix.extra-packages}} ${{ env.use_ccache && 'ccache' || '' }}
+
+    - name: Setup ccache
+      if: env.use_ccache
+      shell: bash
+      run: |
+        if [ ${{ runner.debug || inputs.debug }} ]; then
+          echo "CCACHE_DEBUG=1" >> $GITHUB_ENV
+        fi
+        echo "CCACHE_DIR=$(ccache -k cache_dir)" >> $GITHUB_ENV
+
+        echo "Ccache options"
+        echo "--------------"
+        echo "cache_dir    $(ccache -k cache_dir)"
+        echo "debug_dir    $(ccache -k debug_dir)"
+        echo "debug        $(ccache -k debug)"
+        echo "debug_level  $(ccache -k debug_level)"
+        echo "log_file     $(ccache -k log_file)"
+
+    - name: Save/restore ccache dir
+      # I heard you like caches, so I put some caches in your caches
+      if: env.use_ccache
+      uses: actions/cache@v4
+      with:
+        path: ${{ env.CCACHE_DIR }}
+        key: ccache_${{ env.job_name }}_${{ github.run_id }}
+        restore-keys: |
+          ccache_${{ env.job_name }}_
 
     - if: matrix.coverage == 'ON' && runner.os == 'Windows'
       name: Install OpenCppCoverage
@@ -111,9 +143,10 @@ jobs:
     - name: Configure CMake
       run: >
         cmake --preset ${{matrix.preset}}
-        -DTEIDE_USE_VCPKG=OFF
+        -DTEIDE_USE_VCPKG=${{!steps.packages.outputs.success}}
         -DCMAKE_PREFIX_PATH=${{steps.packages.outputs.install-dir}}
-        -DTEIDE_PRECOMPILED_HEADERS=ON
+        -DTEIDE_CCACHE=${{env.use_ccache}}
+        -DTEIDE_PRECOMPILED_HEADERS=${{!env.use_ccache}}
         -DTEIDE_UNIT_TEST_SW_RENDER=ON
         -DTEIDE_TEST_WINDOWLESS=${{runner.os == 'Linux'}}
         -DTEIDE_TEST_COVERAGE=${{matrix.coverage}}
@@ -124,14 +157,32 @@ jobs:
         ${{env.EXTRA_CMAKE_FLAGS}}
 
     - name: Save CMake trace
-      if: inputs.profile-cmake
+      if: always() && inputs.profile-cmake
       uses: actions/upload-artifact@v4.5.0
       with:
         name: CMakeTrace-${{env.job_name}}
         path: ./CMakeTrace.json
 
     - name: Build
-      run: cmake --build --preset ${{matrix.preset}} --config ${{matrix.buildtype}}
+      shell: bash
+      run: |
+        mkdir -p ${{ env.CCACHE_DIR }}
+        ccache --zero-stats
+
+        cmake --build --preset ${{matrix.preset}} --config ${{matrix.buildtype}}
+
+        echo "::group::Ccache stats"
+        ccache -sv
+        echo "::endgroup::"
+
+        echo "::group::Ccache config"
+        ccache -p
+        echo "::endgroup::"
+
+        echo "::group::Ccache log"
+        ls $CCACHE_LOGFILE
+        cat $CCACHE_LOGFILE
+        echo "::endgroup::"
 
     - name: Dump CMake output logs
       if: failure()
@@ -148,6 +199,7 @@ jobs:
 
     - name: Test
       id: test
+      env: {GTEST_CATCH_EXCEPTIONS: 0}
       run: ctest --preset ${{matrix.preset}} --build-config ${{matrix.buildtype}} --verbose --output-on-failure --no-tests=error
 
     - name: Save render test output
@@ -182,7 +234,6 @@ jobs:
         directory: build/${{matrix.preset}}/coverage/output
         fail_ci_if_error: false
         verbose: true
-        functionalities: fixes
 
     - name: Save coverage report
       if: matrix.coverage == 'ON'

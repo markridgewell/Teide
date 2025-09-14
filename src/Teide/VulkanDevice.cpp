@@ -60,7 +60,7 @@ namespace
         }
         TEIDE_ASSERT(surfaceTmp);
         spdlog::info("Surface created successfully");
-        const auto deleter = vk::ObjectDestroy<vk::Instance, vk::DispatchLoaderDynamic>(
+        const auto deleter = vk::detail::ObjectDestroy<vk::Instance, vk::detail::DispatchLoaderDynamic>(
             instance, s_allocator, VULKAN_HPP_DEFAULT_DISPATCHER);
         return vk::UniqueSurfaceKHR(surfaceTmp, deleter);
     }

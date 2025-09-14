@@ -8,7 +8,7 @@ if("$ENV{TEST_COVERAGE}")
             list(APPEND sources "--source=${native_path}")
         endforeach()
         set(RUNNER_COMMAND "$ENV{OPENCPPCOVERAGE}" "--export_type=binary:${coverage_dir}/${test_name}.cov"
-                           "--modules=*.exe" ${sources} --cover_children --)
+                           "--modules=*.exe" ${sources} --cover_children --continue_after_cpp_exception --)
     elseif(COMPILER STREQUAL "Clang")
         file(APPEND "$ENV{COVERAGE_DIR}/test_binaries.txt" "${TEST_BINARY}\n")
         list(JOIN SOURCES "\n" source_list)

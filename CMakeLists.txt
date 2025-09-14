@@ -18,6 +18,7 @@ option(TEIDE_TEST_COVERAGE "Enable code coverage reporting when running tests" O
 option(TEIDE_TEST_WINDOWLESS "Disable tests requiring a windowing system" OFF)
 option(TEIDE_CLANG_TIDY "Enable static analysis with clang-tidy" OFF)
 option(TEIDE_CPPCHECK "Enable static analysis with Cppcheck" OFF)
+option(TEIDE_CCACHE "Use ccache to accelerate builds" OFF)
 option(TEIDE_PRECOMPILED_HEADERS "Enable precompiled headers when building" OFF)
 option_enum(TEIDE_SANITIZER "Name of a sanitizer to enable, or OFF to disable" "OFF;ASAN;UBSAN")
 
@@ -35,13 +36,13 @@ cmake_dependent_option(
     OFF)
 
 if(TEIDE_USE_VCPKG)
-    if(DEFINED VCPKG_TARGET_TRIPLET)
-        message(STATUS "Using pre-defined vcpkg target triplet ${VCPKG_TARGET_TRIPLET}")
-    else()
-        include(tools/cmake/Triplet.cmake)
-        message(STATUS "Target triplet for vcpkg determined to be ${VCPKG_TARGET_TRIPLET}")
-    endif()
-    set(CMAKE_TOOLCHAIN_FILE "${CMAKE_SOURCE_DIR}/external/vcpkg/scripts/buildsystems/vcpkg.cmake")
+    include(tools/cmake/Vcpkg.cmake)
+    vcpkg_init()
+endif()
+
+if(TEIDE_CCACHE)
+    include(tools/cmake/Ccache.cmake)
+    td_enable_ccache()
 endif()
 
 project(

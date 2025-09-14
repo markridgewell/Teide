@@ -5,12 +5,6 @@ on:
     # Run at 5:20am and 5:20pm every day
     - cron:  '20 5,17 * * *'
   workflow_dispatch:
-  workflow_call:
-    inputs:
-      pr_number:
-        default: ''
-        required: false
-        type: string
 
 env:
   VULKAN_SDK: ./VULKAN_SDK
@@ -32,90 +26,58 @@ jobs:
 
     name: ${{startsWith(matrix.runner, 'windows') && 'Windows' || 'Linux'}}
     runs-on: ${{matrix.runner}}
-    env:
-      PATTERNS: vcpkg.json vcpkg-configuration.json tools/vcpkg/**
 
     steps:
-    - name: Detect package configuration changes
-      if: inputs.pr_number != ''
-      id: package-config
-      shell: bash
-      run: |
-        changes=$(gh pr diff \
-          --name-only \
-          --repo ${{ github.repository }} \
-          ${{ inputs.pr_number }})
-        set -f
-        for pattern in ${{ env.PATTERNS }}; do
-          for filename in $changes; do
-            if [[ $filename == $pattern ]]; then
-              echo "changed=true" >> $GITHUB_OUTPUT
-              exit 0
-            fi
-          done
-        done
-        echo "changed=false" >> $GITHUB_OUTPUT
-      env:
-        GH_TOKEN: ${{ github.token }}
-
     - name: Checkout
-      if: steps.package-config.outputs.changed != 'false'
       uses: actions/checkout@v4.2.2
       with:
         lfs: false
-        submodules: recursive
 
     - name: Determine cache key
-      if: steps.package-config.outputs.changed != 'false'
       id: cache-key
       uses: ./.github/actions/get-packages-cache-key
       with:
         sanitizer: ${{ matrix.sanitizer }}
 
     - name: Cache
-      if: steps.package-config.outputs.changed != 'false'
       id: cache
       uses: actions/cache@v4.2.0
       with:
         key: ${{ steps.cache-key.outputs.cache-key }}
         path: './exports'
 
-    - name: Bootstrap vcpkg
-      if: steps.package-config.outputs.changed != 'false'
-      shell: 'bash'
-      run: |
-        external/vcpkg/bootstrap-vcpkg.sh
-
     - name: Install dependencies
-      if: steps.package-config.outputs.changed != 'false' && steps.cache.outputs.cache-hit != 'true'
+      if: steps.cache.outputs.cache-hit != 'true'
       uses: ./.github/actions/install-dependencies
       with:
         extra-packages: ${{matrix.extra-packages}}
 
-    - name: 'Setup NuGet credentials'
-      if: steps.package-config.outputs.changed != 'false' && steps.cache.outputs.cache-hit != 'true'
+    - name: Install NuGet (Linux only)
+      if: steps.cache.outputs.cache-hit != 'true' && runner.os == 'Linux'
       shell: 'bash'
       run: |
-        wget https://dist.nuget.org/win-x86-commandline/latest/nuget.exe
-        nuget="${{runner.os == 'Linux' && 'mono ' || ''}}${{github.workspace}}/nuget.exe"
-        $nuget sources add \
+        bin=$HOME/nuget_bin
+        mkdir $bin
+        wget -O $bin/nuget.exe https://dist.nuget.org/win-x86-commandline/latest/nuget.exe
+        echo "mono $bin/nuget.exe $@" > $bin/nuget
+        chmod +x $bin/nuget
+        echo "$bin" >> $GITHUB_PATH
+
+    - name: 'Setup NuGet credentials'
+      if: steps.cache.outputs.cache-hit != 'true'
+      shell: 'bash'
+      run: |
+        nuget sources add \
           -source "https://nuget.pkg.github.com/markridgewell/index.json" \
           -storepasswordincleartext \
           -name "GitHub" \
           -username markridgewell \
           -password "${{secrets.GITHUB_TOKEN}}"
-        $nuget setapikey "${{secrets.GITHUB_TOKEN}}" \
+        nuget setapikey "${{secrets.GITHUB_TOKEN}}" \
           -source "https://nuget.pkg.github.com/markridgewell/index.json"
 
-    - name: Setup vcpkg
-      if: steps.package-config.outputs.changed != 'false' && steps.cache.outputs.cache-hit != 'true'
-      uses: lukka/run-vcpkg@v11.5
-      with:
-        vcpkgDirectory: '${{github.workspace}}/external/vcpkg'
-        vcpkgJsonGlob: 'vcpkg.json'
-
     - name: Configure CMake
-      if: steps.package-config.outputs.changed != 'false' && steps.cache.outputs.cache-hit != 'true'
+      if: steps.cache.outputs.cache-hit != 'true'
       run: cmake --preset ${{matrix.preset}} -DTEIDE_SANITIZER=${{matrix.sanitizer}} "-DVCPKG_INSTALL_OPTIONS=--x-abi-tools-use-exact-versions${{runner.debug && ';--debug' || ''}}"
 
     - name: Dump CMake output logs
@@ -123,16 +85,16 @@ jobs:
       run: bash .github/scripts/dump-vcpkg-logs.sh ${{matrix.preset}}
 
     - name: Export packages
-      if: steps.package-config.outputs.changed != 'false' && steps.cache.outputs.cache-hit != 'true'
+      if: steps.cache.outputs.cache-hit != 'true'
       run: |
-        ./external/vcpkg/vcpkg export --raw --output=exports --output-dir=. --x-install-root=build/${{matrix.preset}}/vcpkg_installed
+        vcpkg/vcpkg export --raw --output=exports --output-dir=. --x-install-root=build/${{matrix.preset}}/vcpkg_installed
         echo ""
         echo "::group::Contents of exported packages:"
         ls -R exports
         echo "::endgroup::"
 
     - name: Save packages as artifact
-      if: steps.package-config.outputs.changed != 'false' && steps.cache.outputs.cache-hit != 'true'
+      if: steps.cache.outputs.cache-hit != 'true'
       uses: actions/upload-artifact@v4.5.0
       with:
         name: vcpkg-export-${{ steps.cache-key.outputs.cache-key }}
