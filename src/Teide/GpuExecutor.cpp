@@ -11,6 +11,7 @@
 #include <chrono>
 #include <ranges>
 #include <span>
+#include <sstream>
 
 namespace Teide
 {
@@ -22,11 +23,20 @@ namespace
         SetDebugName(commandBuffer, "RenderThread{}:CommandBuffer{}", threadIndex, cbIndex);
     }
 
+    std::string GetThreadName(std::thread::id id)
+    {
+        std::stringstream ss;
+        ss << id;
+        return ss.str();
+    }
+
 } // namespace
 
 GpuExecutor::GpuExecutor(uint32 numThreads, vk::Device device, vk::Queue queue, uint32 queueFamilyIndex) :
     m_frameResources(numThreads, device, queueFamilyIndex), m_device{device}, m_queue{Queue(device, queue)}
 {
+    spdlog::info("Creating GpuExecutor");
+    spdlog::debug("this thread: {}", GetThreadName(std::this_thread::get_id()));
     m_schedulerThread = std::thread([this] {
         SetCurrentTheadName("GpuExecutor");
         constexpr auto timeout = std::chrono::milliseconds{2};
@@ -62,6 +72,9 @@ GpuExecutor::GpuExecutor(uint32 numThreads, vk::Device device, vk::Queue queue, 
 
 GpuExecutor::~GpuExecutor() noexcept
 {
+    spdlog::info("Destroying GpuExecutor");
+    spdlog::debug("main thread: {}", GetThreadName(m_mainThread));
+    spdlog::debug("this thread: {}", GetThreadName(std::this_thread::get_id()));
     TEIDE_ASSERT(m_mainThread == std::this_thread::get_id());
 
     m_schedulerStop = true;

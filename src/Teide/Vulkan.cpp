@@ -88,7 +88,7 @@ namespace
         {Format::Stencil8, vk::Format::eS8Uint},
     };
 
-    bool IsUnwantedMessage(const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData)
+    bool IsUnwantedMessage(const vk::DebugUtilsMessengerCallbackDataEXT* pCallbackData)
     {
         // Filter unwanted messages
         constexpr int32 UnwantedMessages[] = {
@@ -101,15 +101,19 @@ namespace
         return contains(UnwantedMessages, pCallbackData->messageIdNumber);
     }
 
-    std::string_view GetLogPrefix(vk::DebugUtilsMessageTypeFlagBitsEXT type)
+    std::string GetLogPrefix(vk::DebugUtilsMessageTypeFlagsEXT type)
     {
         using enum vk::DebugUtilsMessageTypeFlagBitsEXT;
-        switch (type)
+        std::string ret;
+        if (type & eValidation)
         {
-            case eValidation: return "[validation] ";
-            case ePerformance: return "[performance] ";
-            default: return "";
+            ret += "[validation] ";
         }
+        if (type & ePerformance)
+        {
+            ret += "[performance] ";
+        }
+        return ret;
     }
 
     spdlog::level::level_enum GetLogLevel(vk::DebugUtilsMessageSeverityFlagBitsEXT severity)
@@ -126,16 +130,13 @@ namespace
     }
 
     VKAPI_ATTR VkBool32 VKAPI_CALL DebugCallback(
-        VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, [[maybe_unused]] VkDebugUtilsMessageTypeFlagsEXT messageType,
-        const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, [[maybe_unused]] void* pUserData)
+        vk::DebugUtilsMessageSeverityFlagBitsEXT messageSeverity, vk::DebugUtilsMessageTypeFlagsEXT type,
+        const vk::DebugUtilsMessengerCallbackDataEXT* pCallbackData, void* /*pUserData*/)
     {
-        using MessageType = vk::DebugUtilsMessageTypeFlagBitsEXT;
         using MessageSeverity = vk::DebugUtilsMessageSeverityFlagBitsEXT;
 
         // Don't hide unwanted messages, just force them to only be visible at highest verbosity level
-        const auto severity = IsUnwantedMessage(pCallbackData) ? MessageSeverity::eVerbose
-                                                               : static_cast<MessageSeverity>(messageSeverity);
-        const auto type = static_cast<MessageType>(messageType);
+        const auto severity = IsUnwantedMessage(pCallbackData) ? MessageSeverity::eVerbose : messageSeverity;
         const auto prefix = GetLogPrefix(type);
         const auto logLevel = GetLogLevel(severity);
 
