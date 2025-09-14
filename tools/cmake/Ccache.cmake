@@ -18,7 +18,10 @@ function(_unshim exe_var)
         if(NOT glob_result)
             return()
         endif()
-        list(GET glob_result 0 ${exe_var})
+        list(GET glob_result 0 result)
+        set(${exe_var}
+            ${result}
+            PARENT_SCOPE)
     endif()
 endfunction()
 
