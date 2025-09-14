@@ -1,29 +1,58 @@
+include(tools/cmake/Utils.cmake)
+
+function(_unshim exe_var)
+    set(exe ${${exe_var}})
+    if(NOT exe)
+        return()
+    endif()
+
+    set(choco_install $ENV{ChocolateyInstall})
+    cmake_path(
+        IS_PREFIX
+        choco_install
+        ${exe}
+        NORMALIZE
+        is_chocolatey)
+    if(is_chocolatey)
+        file(GLOB_RECURSE glob_result "${choco_install}/lib/ccache.exe")
+        if(NOT glob_result)
+            return()
+        endif()
+        list(GET glob_result 0 result)
+        set(${exe_var}
+            ${result}
+            PARENT_SCOPE)
+    endif()
+endfunction()
+
 macro(_enable_ccache_msvc)
     find_program(ccache_exe ccache)
+    _unshim(ccache_exe)
+
     if(ccache_exe)
         message(STATUS "ccache executable found at: ${ccache_exe}")
-        message(STATUS "ChocolateyInstall = \"$ENV{ChocolateyInstall}\"")
-        file(RELATIVE_PATH RELATIVE_PATH $ENV{ChocolateyInstall} ${ccache_exe})
-        message(STATUS "path relative to ChocolateyInstall: \"${relative_path}\"")
-        message(STATUS ${ccache_exe} --shimgen-usetargetworkingdirectory)
-        execute_process(COMMAND ${ccache_exe} --shimgen-usetargetworkingdirectory)
-        message(STATUS ${ccache_exe} --shimgen-noop)
-        execute_process(COMMAND ${ccache_exe} --shimgen-noop)
-        file(COPY_FILE ${ccache_exe} ${CMAKE_BINARY_DIR}/cl.exe ONLY_IF_DIFFERENT)
-        message(STATUS ${CMAKE_BINARY_DIR}/cl.exe /?)
-        execute_process(COMMAND ${CMAKE_BINARY_DIR}/cl.exe /?)
+
+        set(compiler_exe "cl.exe")
+        if(CMAKE_GENERATOR_TOOLSET STREQUAL "ClangCL")
+            set(compiler_exe "clang-cl.exe")
+        endif()
+
+        file(COPY_FILE ${ccache_exe} ${CMAKE_BINARY_DIR}/${compiler_exe} ONLY_IF_DIFFERENT)
 
         # By default Visual Studio generators will use /Zi which is not compatible with ccache, so tell Visual Studio to
         # use /Z7 instead.
-        message(STATUS "Setting MSVC debug information format to 'Embedded'")
         set(CMAKE_MSVC_DEBUG_INFORMATION_FORMAT
             "$<$<CONFIG:Debug,RelWithDebInfo>:Embedded>"
             PARENT_SCOPE)
+        remove_arg(CMAKE_CXX_FLAGS "/Zi")
+        remove_arg(CMAKE_CXX_FLAGS_DEBUG "/Zi")
 
         set(CMAKE_VS_GLOBALS
-            "CLToolExe=cl.exe" "CLToolPath=${CMAKE_BINARY_DIR}" "UseMultiToolTask=true"
+            "CLToolExe=${compiler_exe}" "CLToolPath=${CMAKE_BINARY_DIR}" "UseMultiToolTask=true"
             "DebugInformationFormat=OldStyle"
             PARENT_SCOPE)
+    else()
+        message(ERROR "ccache executable not found!")
     endif()
 endmacro()
 
