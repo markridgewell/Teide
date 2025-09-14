@@ -15,13 +15,11 @@ function get_logs {
 
 log_files=$(get_logs build/${preset}/vcpkg-manifest-install.log | sort | uniq)
 
-. .github/scripts/with_group.sh
-
 for file in $log_files; do
     if [ -s ${file} ]; then
+        echo "::group::${file}"
         # print the file contents, excluding any line containing 'TryCompile-'
         # this is to reduce the number of false positive errors
-        echo "::group::${file}"
         sed -n '/TryCompile-/!p' ${file}
         echo "::endgroup::"
     fi
