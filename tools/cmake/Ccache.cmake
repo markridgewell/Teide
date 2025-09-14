@@ -1,6 +1,6 @@
 include(tools/cmake/Utils.cmake)
 
-function _unshim(exe_var)
+function(_unshim exe_var)
     set(exe ${${exe_var}})
     if(NOT exe)
         return()
