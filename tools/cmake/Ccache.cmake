@@ -30,7 +30,7 @@ macro(_enable_ccache_msvc)
 
         set(compiler_exe "cl.exe")
         message(STATUS ${CMAKE_GENERATOR_TOOLSET})
-        if(CMAKE_GENERATOR_TOOLSET EQUAL "ClangCL")
+        if(CMAKE_GENERATOR_TOOLSET STREQUAL "ClangCL")
             message(STATUS "is clang")
             set(compiler_exe "clang-cl.exe")
         endif()
