@@ -175,27 +175,6 @@ jobs:
         cat $CCACHE_LOGFILE
         echo "::endgroup::"
 
-    - name: Ccache debugging
-      if: inputs.ccache || github.event_name == 'pull_request'
-      shell: bash
-      run: |
-        dir=$(ccache -k debug_dir)
-        if [[ -z "$dir" ]]; then
-          dir=$CCACHE_DIR
-        fi
-        echo "Cache debug dir: $dir"
-        for file in $(find $dir -type f); do
-          if file -bL --mime $file | grep -q "charset=binary"; then
-            echo "$file (binary)"
-          else
-              if [ -s ${file} ]; then
-                  echo "::group::${file}"
-                  cat ${file}
-                  echo "::endgroup::"
-              fi
-          fi
-        done
-
     - name: Dump CMake output logs
       if: failure()
       shell: bash
