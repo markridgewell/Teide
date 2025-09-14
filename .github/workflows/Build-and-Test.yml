@@ -122,9 +122,9 @@ jobs:
       uses: actions/cache@v4
       with:
         path: ${{ env.CCACHE_DIR }}
-        key: ${{ env.job_name }}-ccache-${{ github.run_id }}
+        key: ccache-${{ env.job_name }}-${{ github.run_id }}
         restore-keys: |
-          ${{ env.job_name }}-ccache
+          ccache-${{ env.job_name }}
 
     - if: matrix.coverage == 'ON' && runner.os == 'Windows'
       name: Install OpenCppCoverage
