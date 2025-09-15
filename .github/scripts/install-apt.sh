@@ -29,11 +29,11 @@ function extract() {
   archive=$1
   dir=$2
   if [[ $1 == *.zip ]]; then
-    echo "${archive}: zip file"
+    echo "Extracting zip file"
     unzip ${archive} -d ${dir}
   elif [[ ${archive} == *.tar.* ]]; then
-    echo "${archive}: tar archive"
-  tar xvf ${archive} --directory ${dir}
+    echo "Extracting tar archive"
+    tar xvf ${archive} --directory ${dir}
   fi
 }
 
@@ -89,7 +89,7 @@ if [ -n "${LLVM_VERSIONS}" ]; then
   sudo apt-get install -y llvm
 fi
 
-echo "Installing packages: ${packages}"
+echo "Installing packages"
 for i in ${packages}; do
   install_package $i
 done
@@ -102,7 +102,7 @@ exec_dirs=$(find ${installed_dir} \
 echo "Installed packages dir: $(realpath ${downloads_dir})"
 tree ${installed_dir}
 echo
-echo "Directories with executable files:"
+echo "Directories with executable files (added to PATH):"
 printf '%s\n' "${exec_dirs[@]}"
 
 for i in ${exec_dirs}; do
