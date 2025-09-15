@@ -44,54 +44,72 @@ function install_from_github() {
   gh release download \
     --repo ${repo} \
     --pattern "${pattern}" \
-    --dir ${downloads_dir}/$1
-  extract ${downloads_dir}/$1/${pattern} ${installed_dir}
+    --dir ${downloads_dir}/${package} \
+    --clobber
+  extract ${downloads_dir}/${package}/${pattern} ${installed_dir}
+}
+
+function install_from_package_manager() {
+  echo "Installing package \"$1\" from default provider..."
+  sudo apt-get install -y $1
+}
+
+function install-ccache() {
+  echo "Installing ccache from GitHub..."
+  install_from_github $1 ccache/ccache '*-linux-x86_64.tar.xz'
+}
+
+function install-ninja-build() {
+  echo "Installing ninja from GitHub..."
+  install_from_github $1 ninja-build/ninja ninja-linux.zip
+}
+
+function install-clang() {
+  echo "Installing clang..."
+  if sudo apt-get install $1; then
+    sudo apt-get install -y llvm
+    return
+  fi
+
+  # If clang not already installed, add the appropriate llvm repository
+  LLVM_VERSIONS=$(echo ${packages} | tr ' ' '\n' | sed -n 's/^clang.*-\([1-9][0-9]*\)$/\1/p' | sort | uniq)
+  if [ -n "${LLVM_VERSIONS}" ]; then
+    echo "Clang requested, adding LLVM repositories..."
+    wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key | sudo tee /etc/apt/trusted.gpg.d/apt.llvm.org.asc
+    UBUNTU_CODENAME=`sudo cat /etc/os-release | sed -n s/UBUNTU_CODENAME=//p`
+    for VERSION in ${LLVM_VERSIONS}; do
+      REPO="deb http://apt.llvm.org/${UBUNTU_CODENAME}/ llvm-toolchain-${UBUNTU_CODENAME}-${VERSION} main"
+      echo Adding repository "${REPO}"
+      sudo add-apt-repository "${REPO}"
+    done
+    sudo apt-get update
+    sudo apt-get install -y llvm
+  fi
 }
 
 function install_package() {
-  start=`date +%s`
-  tempfile=${tempdir}/$1.out.log
-  > ${tempfile}
-  if [[ ${dry_run} ]]; then
-    echo sudo apt-get install -y $1
-    sleep 1
+  if declare -F install-$1 >/dev/null; then
+    install-$1 $1
+  elif [[ $1 == clang* ]]; then
+    install-clang $1
   else
-    if [[ $1 == ccache ]]; then
-      install_from_github $1 ccache/ccache '*-linux-x86_64.tar.xz' \
-        >${tempfile} 2>&1
-    elif [[ $1 == ninja-build ]]; then
-      install_from_github $1 ninja-build/ninja ninja-linux.zip \
-        >${tempfile} 2>&1
-    else
-      sudo apt-get install -y $1 >${tempfile} 2>&1
-    fi
+    install_from_package_manager $1
   fi
-  end=`date +%s`
-
-  duration=$(( end - start ))
-  printf "::group::%-${max_len}s | %ds\n" $1 ${duration}
-  cat ${tempfile}
-  echo "::endgroup::"
 }
-
-# If clang packages requested, add the appropriate llvm repository
-LLVM_VERSIONS=$(echo ${packages} | tr ' ' '\n' | sed -n 's/^clang.*-\([1-9][0-9]*\)$/\1/p' | sort | uniq)
-if [ -n "${LLVM_VERSIONS}" ]; then
-  echo "Clang requested, adding LLVM repositories..."
-  wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key | sudo tee /etc/apt/trusted.gpg.d/apt.llvm.org.asc
-  UBUNTU_CODENAME=`sudo cat /etc/os-release | sed -n s/UBUNTU_CODENAME=//p`
-  for VERSION in ${LLVM_VERSIONS}; do
-    REPO="deb http://apt.llvm.org/${UBUNTU_CODENAME}/ llvm-toolchain-${UBUNTU_CODENAME}-${VERSION} main"
-    echo Adding repository "${REPO}"
-    sudo add-apt-repository "${REPO}"
-  done
-  sudo apt-get update
-  sudo apt-get install -y llvm
-fi
 
 echo "Installing packages"
 for i in ${packages}; do
-  install_package $i
+  start=`date +%s`
+  tempfile=${tempdir}/$i.out.log
+  > ${tempfile}
+
+  install_package $i >${tempfile} 2>&1
+
+  end=`date +%s`
+  duration=$(( end - start ))
+  printf "::group::%-${max_len}s | %ds\n" $i ${duration}
+  cat ${tempfile}
+  echo "::endgroup::"
 done
 
 exec_dirs=$(find ${installed_dir} \
