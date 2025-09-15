@@ -18,18 +18,34 @@ fi
 
 packages="$@ tree"
 tempdir=${RUNNER_TEMP:-${TMPDIR}}/install-apt
-downloads_dir=../downloads
+downloads_dir=$(realpath ../downloads)
+installed_dir=$(realpath ../installed)
 
 mkdir -p ${tempdir}
 mkdir -p ${downloads_dir}
+mkdir -p ${installed_dir}
+
+function extract() {
+  archive=$1
+  dir=$2
+  if [[ $1 == *.zip ]]; then
+    echo "${archive}: zip file"
+    unzip ${archive} -d ${dir}
+  elif [[ ${archive} == *.tar.* ]]; then
+    echo "${archive}: tar archive"
+  tar xvf ${archive} --directory ${dir}
+  fi
+}
 
 function install_from_github() {
+  package=$1
+  repo=$2
+  pattern="$3"
   gh release download \
-    --repo ccache/ccache \
-    --pattern '*-linux-x86_64.tar.xz' \
+    --repo ${repo} \
+    --pattern "${pattern}" \
     --dir ${downloads_dir}/$1
-  tar xvf ${downloads_dir}/$1/*.tar.xz \
-    --directory ${downloads_dir}
+  extract ${downloads_dir}/$1/${pattern} ${installed_dir}
 }
 
 function install_package() {
@@ -41,7 +57,11 @@ function install_package() {
     sleep 1
   else
     if [[ $1 == ccache ]]; then
-      install_from_github $1 >${tempfile} 2>&1
+      install_from_github $1 ccache/ccache '*-linux-x86_64.tar.xz' \
+        >${tempfile} 2>&1
+    elif [[ $1 == ninja-build ]]; then
+      install_from_github $1 ninja-build/ninja ninja-linux.zip \
+        >${tempfile} 2>&1
     else
       sudo apt-get install -y $1 >${tempfile} 2>&1
     fi
@@ -69,16 +89,22 @@ if [ -n "${LLVM_VERSIONS}" ]; then
   sudo apt-get install -y llvm
 fi
 
-echo "Installing apt packages: ${packages}"
+echo "Installing packages: ${packages}"
 for i in ${packages}; do
   install_package $i
 done
 
-echo "Downloads dir: $(realpath ${downloads_dir})"
-tree ${downloads_dir}
-echo
-echo "Directories with executable files:"
-find ${downloads_dir} \
+exec_dirs=$(find ${installed_dir} \
   -type f -executable\
   -exec dirname '{}' \; \
-  | sort | uniq
+  | sort | uniq)
+
+echo "Installed packages dir: $(realpath ${downloads_dir})"
+tree ${installed_dir}
+echo
+echo "Directories with executable files:"
+printf '%s\n' "${exec_dirs[@]}"
+
+for i in ${exec_dirs}; do
+  echo "$i" >> "$GITHUB_PATH"
+done
