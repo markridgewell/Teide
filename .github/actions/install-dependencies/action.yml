@@ -30,6 +30,4 @@ runs:
     - if: ${{runner.os == 'Linux' && inputs.extra-packages != ''}}
       shell: bash
       run: |
-        echo "::group::Install apt packages"
         bash .github/scripts/install-apt.sh ${{ inputs.extra-packages }}
-        echo "::endgroup::"
