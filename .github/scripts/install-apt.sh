@@ -66,22 +66,35 @@ function install-ninja-build() {
 
 function install-clang() {
   echo "Installing clang..."
+  # install_from_github $1 llvm/llvm-project LLVM-*-Linux-X64.tar.xz
+  package=$1
+  repo=llvm/llvm-project
+  pattern="LLVM-*-Linux-X64.tar.xz"
+  llvm_version=$(echo $package | tr ' ' '\n' | sed -n 's/^clang.*-\([1-9][0-9]*\)$/\1/p' | sort | uniq)
+  echo "Downloading LLVM release ${llvm_version}"
+  time gh release download llvmorg-${llvm_version}\
+    --repo ${repo} \
+    --pattern "${pattern}" \
+    --dir ${downloads_dir}/${package} \
+    --clobber
+  time tar xvf ${downloads_dir}/${package}/${pattern} \
+    --directory ${installed_dir} \
+    --wildcards */bin/llvm-profdata \
+    --occurrence=1
+  return
   if sudo apt-get install $1; then
     sudo apt-get install -y llvm
     return
   fi
 
   # If clang not already installed, add the appropriate llvm repository
-  LLVM_VERSIONS=$(echo ${packages} | tr ' ' '\n' | sed -n 's/^clang.*-\([1-9][0-9]*\)$/\1/p' | sort | uniq)
-  if [ -n "${LLVM_VERSIONS}" ]; then
+  if [ -n "${llvm_version}" ]; then
     echo "Clang requested, adding LLVM repositories..."
     wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key | sudo tee /etc/apt/trusted.gpg.d/apt.llvm.org.asc
-    UBUNTU_CODENAME=`sudo cat /etc/os-release | sed -n s/UBUNTU_CODENAME=//p`
-    for VERSION in ${LLVM_VERSIONS}; do
-      REPO="deb http://apt.llvm.org/${UBUNTU_CODENAME}/ llvm-toolchain-${UBUNTU_CODENAME}-${VERSION} main"
-      echo Adding repository "${REPO}"
-      sudo add-apt-repository "${REPO}"
-    done
+    ubuntu_codename=`sudo cat /etc/os-release | sed -n s/UBUNTU_CODENAME=//p`
+    repo="deb http://apt.llvm.org/${ubuntu_codename}/ llvm-toolchain-${ubuntu_codename}-${llvm_version} main"
+    echo Adding repository "${repo}"
+    sudo add-apt-repository "${repo}"
     sudo apt-get update
     sudo apt-get install -y llvm
   fi
