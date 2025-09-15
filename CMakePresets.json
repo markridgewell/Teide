@@ -65,16 +65,16 @@
     },
     {
       "name": "g++-14",
-      "inherits": "ninja",
-      "displayName": "Ninja with GCC 14",
+      "inherits": "make",
+      "displayName": "Makefiles with GCC 14",
       "cacheVariables": {
         "CMAKE_CXX_COMPILER": "g++-14"
       }
     },
     {
       "name": "clang++-18",
-      "inherits": "ninja",
-      "displayName": "Ninja with Clang 17",
+      "inherits": "make",
+      "displayName": "Makefiles with Clang 17",
       "cacheVariables": {
         "CMAKE_CXX_COMPILER": "clang++-18"
       }

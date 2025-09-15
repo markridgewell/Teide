@@ -22,7 +22,7 @@ jobs:
           runner: windows-2022
         - preset: clang++-18
           runner: ubuntu-latest
-          extra-packages: ninja-build clang++-18 mono-complete
+          extra-packages: clang++-18 mono-complete
 
     name: ${{startsWith(matrix.runner, 'windows') && 'Windows' || 'Linux'}}
     runs-on: ${{matrix.runner}}

@@ -33,7 +33,7 @@ jobs:
     - name: Install dependencies
       uses: ./.github/actions/install-dependencies
       with:
-        extra-packages: ninja-build g++-14
+        extra-packages: g++-14
 
     - name: Install google benchmark tools
       run: |

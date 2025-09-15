@@ -56,23 +56,23 @@ jobs:
           runner: windows-2022
         - preset: g++-14
           runner: ubuntu-24.04
-          extra-packages: ninja-build g++-14
+          extra-packages: g++-14
         - preset: clang++-18
           runner: ubuntu-24.04
-          extra-packages: ninja-build clang++-18
+          extra-packages: clang++-18
           coverage: ${{toJSON(inputs.coverage) != 'false' && 'ON' || 'OFF'}}
 
         # Additional jobs
         - preset: clang++-18
           buildtype: Debug
           runner: ubuntu-24.04
-          extra-packages: ninja-build clang++-18
+          extra-packages: clang++-18
           sanitizer: ASAN
           name-suffix: -asan
         - preset: clang++-18
           buildtype: Debug
           runner: ubuntu-24.04
-          extra-packages: ninja-build clang++-18
+          extra-packages: clang++-18
           sanitizer: UBSAN
           name-suffix: -ubsan
 
