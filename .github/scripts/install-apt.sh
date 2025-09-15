@@ -1,5 +1,16 @@
 #!/bin/bash
 
+if [[ $1 == '-n' ]]; then
+  dry_run=1
+  shift
+fi
+
+max_len=0
+for i in $@; do
+  len=${#i}
+  max_len=$(( len > max_len ? len : max_len ))
+done
+
 if [[ $# -eq 0 ]]; then
   echo "No packages selected to install"
   exit
@@ -14,10 +25,16 @@ function install_package() {
   start=`date +%s`
   tempfile=${tempdir}/$1.out.log
   > ${tempfile}
-  sudo apt-get install -y $1 >${tempfile} 2>&1
+  if [[ ${dry_run} ]]; then
+    echo sudo apt-get install -y $1
+    sleep 1
+  else
+    sudo apt-get install -y $1 >${tempfile} 2>&1
+  fi
   end=`date +%s`
 
-  echo "::group::$1 $(( end - $start ))s"
+  duration=$(( end - start ))
+  printf "::group::%-${max_len}s | %ds\n" $1 ${duration}
   cat ${tempfile}
   echo "::endgroup::"
 }
