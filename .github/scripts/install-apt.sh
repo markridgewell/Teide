@@ -16,10 +16,21 @@ if [[ $# -eq 0 ]]; then
   exit
 fi
 
-packages=$@
+packages="$@ tree"
 tempdir=${RUNNER_TEMP:-${TMPDIR}}/install-apt
+downloads_dir=../downloads
 
 mkdir -p ${tempdir}
+mkdir -p ${downloads_dir}
+
+function install_from_github() {
+  gh release download \
+    --repo ccache/ccache \
+    --pattern '*-linux-x86_64.tar.xz' \
+    --dir ${downloads_dir}/$1
+  tar xvf ${downloads_dir}/$1/*.tar.xz \
+    --directory ${downloads_dir}
+}
 
 function install_package() {
   start=`date +%s`
@@ -29,7 +40,11 @@ function install_package() {
     echo sudo apt-get install -y $1
     sleep 1
   else
-    sudo apt-get install -y $1 >${tempfile} 2>&1
+    if [[ $1 == ccache ]]; then
+      install_from_github $1 >${tempfile} 2>&1
+    else
+      sudo apt-get install -y $1 >${tempfile} 2>&1
+    fi
   fi
   end=`date +%s`
 
@@ -58,3 +73,12 @@ echo "Installing apt packages: ${packages}"
 for i in ${packages}; do
   install_package $i
 done
+
+echo "Downloads dir: $(realpath ${downloads_dir})"
+tree ${downloads_dir}
+echo
+echo "Directories with executable files:"
+find ${downloads_dir} \
+  -type f -executable\
+  -exec dirname '{}' \; \
+  | sort | uniq

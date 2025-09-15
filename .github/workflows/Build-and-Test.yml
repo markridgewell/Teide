@@ -105,6 +105,8 @@ jobs:
       uses: ./.github/actions/install-dependencies
       with:
         extra-packages: ${{matrix.extra-packages}} ${{ env.use_ccache && 'ccache' || '' }}
+      env:
+        GH_TOKEN: ${{ github.token }}
 
     - name: Install Vulkan SDK
       uses: edvn0/setup-vulkan-sdk@v1.3.0
