@@ -12,8 +12,17 @@ runs:
       run: |
         echo "::group::Install problem matchers"
         echo "::add-matcher::.github/msvc-problem-matcher.json"
+        echo "-- .github/msvc-problem-matcher.json --"
+        cat ".github/msvc-problem-matcher.json"
+        curl https://raw.githubusercontent.com/microsoft/vscode-cpptools/refs/heads/main/Extension/package.json 2>/dev/null \
+        | jq '{ problemMatcher: .contributes.problemMatchers[0] | [{owner,pattern:[.pattern]}] }' \
+          > gcc-problem-matcher.json
+        echo "-- gcc-problem-matcher.json --"
+        cat gcc-problem-matcher.json
+        echo "::add-matcher::gcc-problem-matcher.json"
+        echo "::endgroup::"
 
-    - uses: ammaraskar/gcc-problem-matcher@master
+    # - uses: ammaraskar/gcc-problem-matcher@master
 
     - if: ${{runner.os == 'Windows' && inputs.extra-packages != ''}}
       shell: pwsh
