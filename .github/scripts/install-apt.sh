@@ -84,6 +84,7 @@ function install-ninja-build() {
 
 function install-clang() {
   echo "Installing clang..."
+  return
   # install_from_github $1 llvm/llvm-project LLVM-*-Linux-X64.tar.xz
   package=$1
   repo=llvm/llvm-project
@@ -118,10 +119,6 @@ function install-clang() {
     --directory ${installed_dir} \
     --wildcards */bin/llvm-profdata \
     --occurrence=1
-
-  sudo apt update
-  wget http://security.ubuntu.com/ubuntu/pool/universe/n/ncurses/libtinfo5_6.3-2ubuntu0.1_amd64.deb
-  sudo apt install ./libtinfo5_6.3-2ubuntu0.1_amd64.deb
 
   return 0
   if sudo apt-get install $1; then
