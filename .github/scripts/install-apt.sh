@@ -13,40 +13,56 @@ done
 
 if [[ $# -eq 0 ]]; then
   echo "No packages selected to install"
-  exit
+  exit 1
 fi
 
-packages="$@ tree"
+packages=($@)
 tempdir=${RUNNER_TEMP:-${TMPDIR}}/install-apt
 downloads_dir=$(realpath ../downloads)
 installed_dir=$(realpath ../installed)
 
-mkdir -p ${tempdir}
-mkdir -p ${downloads_dir}
-mkdir -p ${installed_dir}
+function ensure_empty() {
+  rm -fr "$1"
+  mkdir -p "$1"
+}
+
+ensure_empty ${tempdir}
+ensure_empty ${downloads_dir}
+ensure_empty ${installed_dir}
 
 function extract() {
   archive=$1
   dir=$2
-  if [[ $1 == *.zip ]]; then
+  if [[ ! -f "${archive}" ]]; then
+    echo "File not found: \"${archive}\""
+    return 1
+  elif [[ "${archive}" == *.zip ]]; then
     echo "Extracting zip file"
-    unzip ${archive} -d ${dir}
-  elif [[ ${archive} == *.tar.* ]]; then
+    unzip "${archive}" -d ${dir}
+  elif [[ "${archive}" == *.tar.* ]]; then
     echo "Extracting tar archive"
-    tar xvf ${archive} --directory ${dir}
+    tar xvf "${archive}" --directory ${dir}
+  else
+    echo "I don't know how to extract the file ${archive}"
+    return 1
   fi
 }
 
 function install_from_github() {
-  package=$1
-  repo=$2
-  pattern="$3"
+  package=$1; shift
+  repo=$1; shift
+  pattern=($@)
   gh release download \
     --repo ${repo} \
-    --pattern "${pattern}" \
-    --dir ${downloads_dir}/${package} \
-    --clobber
-  extract ${downloads_dir}/${package}/${pattern} ${installed_dir}
+    ${pattern[@]/#/--pattern } \
+    --dir ${downloads_dir}/${package}
+  archive=(${downloads_dir}/${package}/*)
+  if [[ ${#archive[@]} -gt 1 ]]; then
+    echo "Multiple files downloaded! ${archive[@]}"
+    return 1
+  fi
+  extract "${archive}" ${installed_dir}
+  return $?
 }
 
 function install_from_package_manager() {
@@ -57,11 +73,13 @@ function install_from_package_manager() {
 function install-ccache() {
   echo "Installing ccache from GitHub..."
   install_from_github $1 ccache/ccache '*-linux-x86_64.tar.xz'
+  return $?
 }
 
 function install-ninja-build() {
   echo "Installing ninja from GitHub..."
   install_from_github $1 ninja-build/ninja ninja-linux.zip
+  return $?
 }
 
 function install-clang() {
@@ -69,19 +87,43 @@ function install-clang() {
   # install_from_github $1 llvm/llvm-project LLVM-*-Linux-X64.tar.xz
   package=$1
   repo=llvm/llvm-project
-  pattern="LLVM-*-Linux-X64.tar.xz"
-  llvm_version=$(echo $package | tr ' ' '\n' | sed -n 's/^clang.*-\([1-9][0-9]*\)$/\1/p' | sort | uniq)
+  llvm_version=$(echo $package | sed -n 's/^clang.*-\([1-9][0-9]*\)$/\1/p')
+  release_tag=$(gh release list \
+    --repo llvm/llvm-project \
+    --json tagName \
+    --exclude-drafts \
+    --exclude-pre-releases \
+    --jq """
+      map(
+        select(
+          .tagName | startswith(\"llvmorg-${llvm_version}\")
+          )
+      ).[0].tagName
+    """)
+
   echo "Downloading LLVM release ${llvm_version}"
-  time gh release download llvmorg-${llvm_version}\
+  echo "Release tag: ${release_tag}"
+  time gh release download ${release_tag} \
     --repo ${repo} \
-    --pattern "${pattern}" \
-    --dir ${downloads_dir}/${package} \
-    --clobber
-  time tar xvf ${downloads_dir}/${package}/${pattern} \
+    --pattern "LLVM-*-Linux-X64.tar.xz" \
+    --pattern "clang+llvm-*x86_64-linux*" \
+    --dir ${downloads_dir}/${package}
+  archive=(${downloads_dir}/${package}/*)
+  if [[ ${#archive[@]} -gt 1 ]]; then
+    echo "Multiple files downloaded! ${archive[@]}"
+    return 1
+  fi
+  echo "Extracting ${archive}"
+  time tar xvf ${downloads_dir}/${package}/* \
     --directory ${installed_dir} \
     --wildcards */bin/llvm-profdata \
     --occurrence=1
-  return
+
+  sudo apt update
+  wget http://security.ubuntu.com/ubuntu/pool/universe/n/ncurses/libtinfo5_6.3-2ubuntu0.1_amd64.deb
+  sudo apt install ./libtinfo5_6.3-2ubuntu0.1_amd64.deb
+
+  return 0
   if sudo apt-get install $1; then
     sudo apt-get install -y llvm
     return
@@ -108,15 +150,18 @@ function install_package() {
   else
     install_from_package_manager $1
   fi
+  return $?
 }
 
 echo "Installing packages"
-for i in ${packages}; do
+error_count=0
+for i in ${packages[@]}; do
   start=`date +%s`
   tempfile=${tempdir}/$i.out.log
   > ${tempfile}
 
   install_package $i >${tempfile} 2>&1
+  error_count=$(( error_count + $? ))
 
   end=`date +%s`
   duration=$(( end - start ))
@@ -124,6 +169,8 @@ for i in ${packages}; do
   cat ${tempfile}
   echo "::endgroup::"
 done
+
+echo "Packages with errors: ${error_count}"
 
 exec_dirs=$(find ${installed_dir} \
   -type f -executable\
