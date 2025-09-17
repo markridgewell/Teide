@@ -81,6 +81,9 @@ function install-ccache() {
     pattern='*-linux-x86_64.tar.xz'
   elif [[ ${RUNNER_OS} == Windows ]]; then
     pattern='*-windows-x86_64.zip'
+  else
+    echo "Unknown OS: ${RUNNER_OS}"
+    return 1
   fi
   install_from_github $1 ccache/ccache ${pattern}
   return $?
@@ -197,7 +200,11 @@ echo "Installed packages dir: $(realpath ${downloads_dir})"
 if [[ ${RUNNER_OS} == Linux ]]; then
   tree ${installed_dir}
 elif [[ ${RUNNER_OS} == Windows ]]; then
+<<<<<<< HEAD
   cmd //c tree //f //a $(cygpath -w ${installed_dir})
+=======
+  cmd /c "tree /f ${installed_dir}"
+>>>>>>> a92a1ca (Use install script for Windows as well as Linux)
 fi
 echo
 
