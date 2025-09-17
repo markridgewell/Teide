@@ -43,44 +43,54 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        preset: [msvc2022, msvc2022-clang, g++-14, clang++-18]
+        toolchain: [msvc2022, msvc2022-clang, g++-14, clang++-18]
         buildtype: [Debug, Release]
         sanitizer: [OFF]
         include:
+
         # Overrides
-        - coverage: OFF
-        - preset: msvc2022
+        - toolchain: msvc2022
           runner: windows-2022
-          coverage: ${{toJSON(inputs.coverage) != 'false' && 'ON' || 'OFF'}}
-        - preset: msvc2022-clang
+          preset: msvc2022
+          coverage: true
+
+        - toolchain: msvc2022-clang
           runner: windows-2022
-        - preset: g++-14
+          preset: msvc2022-clang
+          coverage: false
+
+        - toolchain: g++-14
           runner: ubuntu-24.04
-          extra-packages: g++-14
-        - preset: clang++-18
+          preset: make
+          compiler: g++-14
+          coverage: false
+
+        - toolchain: clang++-18
           runner: ubuntu-24.04
-          extra-packages: clang++-18
-          coverage: ${{toJSON(inputs.coverage) != 'false' && 'ON' || 'OFF'}}
+          preset: make
+          compiler: clang++-18
+          coverage: true
 
         # Additional jobs
         - preset: clang++-18
           buildtype: Debug
           runner: ubuntu-24.04
-          extra-packages: clang++-18
+          compiler: clang++-18
           sanitizer: ASAN
           name-suffix: -asan
+
         - preset: clang++-18
           buildtype: Debug
           runner: ubuntu-24.04
-          extra-packages: clang++-18
+          compiler: clang++-18
           sanitizer: UBSAN
           name-suffix: -ubsan
 
-    name: ${{startsWith(matrix.runner, 'windows') && 'Windows' || 'Linux'}}-${{matrix.buildtype}}-${{matrix.preset}}${{matrix.name-suffix}}
+    name: ${{startsWith(matrix.runner, 'windows') && 'Windows' || 'Linux'}}-${{matrix.buildtype}}-${{matrix.toolchain}}${{matrix.name-suffix}}
     runs-on: ${{matrix.runner}}
 
     env:
-      job_name: ${{startsWith(matrix.runner, 'windows') && 'Windows' || 'Linux'}}-${{matrix.buildtype}}-${{matrix.preset}}${{matrix.name-suffix}}
+      job_name: ${{startsWith(matrix.runner, 'windows') && 'Windows' || 'Linux'}}-${{matrix.buildtype}}-${{matrix.toolchain}}${{matrix.name-suffix}}
       CMAKE_BUILD_TYPE: ${{matrix.buildtype}}
       RT_OUTPUT_DIR: build/${{matrix.preset}}/tests/RenderTest/RenderTestOutput
 
