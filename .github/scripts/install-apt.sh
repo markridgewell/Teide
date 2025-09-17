@@ -186,12 +186,16 @@ echo "Installed packages dir: $(realpath ${downloads_dir})"
 if [[ ${RUNNER_OS} == Linux ]]; then
   tree ${installed_dir}
 elif [[ ${RUNNER_OS} == Windows ]]; then
-  cmd /c tree /f ../installed
+  cmd /c tree /f $(cygpath -w ${installed_dir})
 fi
 echo
 echo "Directories with executable files (added to PATH):"
-printf '%s\n' "${exec_dirs[@]}"
+# printf '%s\n' "${exec_dirs[@]}"
 
 for i in ${exec_dirs}; do
-  echo "$i" >> "$GITHUB_PATH"
+  if [[ ${RUNNER_OS} == Linux ]]; then
+    echo "$i" | tee -a "${GITHUB_PATH}"
+  elif [[ ${RUNNER_OS} == Windows ]]; then
+    echo $(cygpath -w "$i") | tee -a "${GITHUB_PATH}"
+  fi
 done
