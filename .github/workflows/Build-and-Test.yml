@@ -104,7 +104,10 @@ jobs:
     - name: Install dependencies
       uses: ./.github/actions/install-dependencies
       with:
-        extra-packages: ${{matrix.extra-packages}} ${{ env.use_ccache && 'ccache' || '' }}
+        extra-packages: >
+          ${{ matrix.extra-packages }}
+          ${{ env.use_ccache && 'ccache' || '' }}
+          ${{ matrix.coverage == 'ON' && runner.os == 'Windows' && 'OpenCppCoverage' || '' }}
       env:
         GH_TOKEN: ${{ github.token }}
 
@@ -141,13 +144,6 @@ jobs:
         key: ccache_${{ env.job_name }}_${{ github.run_id }}
         restore-keys: |
           ccache_${{ env.job_name }}_
-
-    - if: matrix.coverage == 'ON' && runner.os == 'Windows'
-      name: Install OpenCppCoverage
-      uses: ./.github/actions/choco-install
-      with:
-        package-name: OpenCppCoverage
-        package-version: 0.9.9.0
 
     - name: Configure CMake
       run: >

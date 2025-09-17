@@ -76,11 +76,15 @@ function install-ccache() {
     pattern='*-linux-x86_64.tar.xz'
   elif [[ ${RUNNER_OS} == Windows ]]; then
     pattern='*-windows-x86_64.zip'
-  else
-    echo "Unknown OS: ${RUNNER_OS}"
-    return 1
   fi
   install_from_github $1 ccache/ccache ${pattern}
+  return $?
+}
+
+function install-OpenCppCoverage() {
+  echo "Installing OpenCppCoverage from GitHub..."
+  # Windows only
+  install_from_github $1 OpenCppCoverage/OpenCppCoverage *-x64-*.exe
   return $?
 }
 
@@ -189,9 +193,8 @@ elif [[ ${RUNNER_OS} == Windows ]]; then
   cmd //c tree //f //a $(cygpath -w ${installed_dir})
 fi
 echo
-echo "Directories with executable files (added to PATH):"
-# printf '%s\n' "${exec_dirs[@]}"
 
+echo "Directories with executable files (added to PATH):"
 for i in ${exec_dirs}; do
   if [[ ${RUNNER_OS} == Linux ]]; then
     echo "$i" | tee -a "${GITHUB_PATH}"
