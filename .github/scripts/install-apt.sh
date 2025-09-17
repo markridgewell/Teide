@@ -48,21 +48,26 @@ function extract() {
   fi
 }
 
-function install_from_github() {
+function install_from_github_noextract() {
   package=$1; shift
   repo=$1; shift
   pattern=($@)
   gh release download \
     --repo ${repo} \
     ${pattern[@]/#/--pattern } \
-    --dir ${downloads_dir}/${package}
+    --dir ${downloads_dir}/${package} || return $?
   archive=(${downloads_dir}/${package}/*)
   if [[ ${#archive[@]} -gt 1 ]]; then
     echo "Multiple files downloaded! ${archive[@]}"
     return 1
   fi
-  extract "${archive}" ${installed_dir}
-  return $?
+}
+
+function install_from_github() {
+  package=$1
+  install_from_github_noextract $@ || return $?
+  archive=(${downloads_dir}/${package}/*)
+  extract "${archive}" ${installed_dir} || return $?
 }
 
 function install_from_package_manager() {
@@ -84,8 +89,9 @@ function install-ccache() {
 function install-OpenCppCoverage() {
   echo "Installing OpenCppCoverage from GitHub..."
   # Windows only
-  install_from_github $1 OpenCppCoverage/OpenCppCoverage *-x64-*.exe
-  return $?
+  install_from_github_noextract $1 OpenCppCoverage/OpenCppCoverage *-x64-*.exe || return $?
+  installer=(${downloads_dir}/${package}/*)
+  ${installer} /VERYSILENT /SUPPRESSMSGBOXES /NORESTART /SP-
 }
 
 function install-ninja-build() {
