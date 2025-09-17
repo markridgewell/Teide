@@ -91,7 +91,8 @@ function install-OpenCppCoverage() {
   # Windows only
   install_from_github_noextract $1 OpenCppCoverage/OpenCppCoverage *-x64-*.exe || return $?
   installer=(${downloads_dir}/${package}/*)
-  ${installer} /VERYSILENT /SUPPRESSMSGBOXES /NORESTART /SP-
+  echo "Running installer ${installer}..."
+  ${installer} //VERYSILENT //SUPPRESSMSGBOXES //NORESTART //SP-
 }
 
 function install-ninja-build() {
