@@ -186,7 +186,7 @@ echo "Installed packages dir: $(realpath ${downloads_dir})"
 if [[ ${RUNNER_OS} == Linux ]]; then
   tree ${installed_dir}
 elif [[ ${RUNNER_OS} == Windows ]]; then
-  cmd //c tree //f $(cygpath -w ${installed_dir})
+  cmd //c tree //f //a $(cygpath -w ${installed_dir})
 fi
 echo
 echo "Directories with executable files (added to PATH):"
