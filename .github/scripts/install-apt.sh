@@ -72,7 +72,15 @@ function install_from_package_manager() {
 
 function install-ccache() {
   echo "Installing ccache from GitHub..."
-  install_from_github $1 ccache/ccache '*-linux-x86_64.tar.xz'
+  if [[ ${RUNNER_OS} == Linux ]]; then
+    pattern='*-linux-x86_64.tar.xz'
+  elif [[ ${RUNNER_OS} == Windows ]]; then
+    pattern='*-windows-x86_64.zip'
+  else
+    echo "Unknown OS: ${RUNNER_OS}"
+    return 1
+  fi
+  install_from_github $1 ccache/ccache ${pattern}
   return $?
 }
 
@@ -175,7 +183,11 @@ exec_dirs=$(find ${installed_dir} \
   | sort | uniq)
 
 echo "Installed packages dir: $(realpath ${downloads_dir})"
-tree ${installed_dir}
+if [[ ${RUNNER_OS} == Linux ]]; then
+  tree ${installed_dir}
+elif [[ ${RUNNER_OS} == Windows ]]; then
+  cmd /c "tree /f ${installed_dir}"
+fi
 echo
 echo "Directories with executable files (added to PATH):"
 printf '%s\n' "${exec_dirs[@]}"
