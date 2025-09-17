@@ -24,19 +24,7 @@ runs:
 
     # - uses: ammaraskar/gcc-problem-matcher@master
 
-    - if: ${{runner.os == 'Windows' && inputs.extra-packages != ''}}
-      shell: pwsh
-      run: |
-        echo "::group::Install chocolatey packages"
-        choco install --ignorepackageexitcodes ${{inputs.extra-packages}}
-        $env:ChocolateyInstall = Convert-Path "$((Get-Command choco).Path)\..\.."
-        Import-Module "$env:ChocolateyInstall\helpers\chocolateyProfile.psm1"
-        refreshenv
-        echo PATH:
-        echo $env:path -split ";"
-        echo "::endgroup::"
-
-    - if: ${{runner.os == 'Linux' && inputs.extra-packages != ''}}
+    - if: ${{inputs.extra-packages != ''}}
       shell: bash
       run: |
         bash .github/scripts/install-apt.sh ${{ inputs.extra-packages }}

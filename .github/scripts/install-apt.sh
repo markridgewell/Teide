@@ -48,21 +48,26 @@ function extract() {
   fi
 }
 
-function install_from_github() {
+function install_from_github_noextract() {
   package=$1; shift
   repo=$1; shift
   pattern=($@)
   gh release download \
     --repo ${repo} \
     ${pattern[@]/#/--pattern } \
-    --dir ${downloads_dir}/${package}
+    --dir ${downloads_dir}/${package} || return $?
   archive=(${downloads_dir}/${package}/*)
   if [[ ${#archive[@]} -gt 1 ]]; then
     echo "Multiple files downloaded! ${archive[@]}"
     return 1
   fi
-  extract "${archive}" ${installed_dir}
-  return $?
+}
+
+function install_from_github() {
+  package=$1
+  install_from_github_noextract $@ || return $?
+  archive=(${downloads_dir}/${package}/*)
+  extract "${archive}" ${installed_dir} || return $?
 }
 
 function install_from_package_manager() {
@@ -72,8 +77,22 @@ function install_from_package_manager() {
 
 function install-ccache() {
   echo "Installing ccache from GitHub..."
-  install_from_github $1 ccache/ccache '*-linux-x86_64.tar.xz'
+  if [[ ${RUNNER_OS} == Linux ]]; then
+    pattern='*-linux-x86_64.tar.xz'
+  elif [[ ${RUNNER_OS} == Windows ]]; then
+    pattern='*-windows-x86_64.zip'
+  fi
+  install_from_github $1 ccache/ccache ${pattern}
   return $?
+}
+
+function install-OpenCppCoverage() {
+  echo "Installing OpenCppCoverage from GitHub..."
+  # Windows only
+  install_from_github_noextract $1 OpenCppCoverage/OpenCppCoverage *-x64-*.exe || return $?
+  installer=(${downloads_dir}/${package}/*)
+  echo "Running installer ${installer}..."
+  ${installer} //VERYSILENT //SUPPRESSMSGBOXES //NORESTART //SP- //DIR="$(cygpath -w ${installed_dir}/OpenCppCoverage)"
 }
 
 function install-ninja-build() {
@@ -175,11 +194,18 @@ exec_dirs=$(find ${installed_dir} \
   | sort | uniq)
 
 echo "Installed packages dir: $(realpath ${downloads_dir})"
-tree ${installed_dir}
+if [[ ${RUNNER_OS} == Linux ]]; then
+  tree ${installed_dir}
+elif [[ ${RUNNER_OS} == Windows ]]; then
+  cmd //c tree //f //a $(cygpath -w ${installed_dir})
+fi
 echo
-echo "Directories with executable files (added to PATH):"
-printf '%s\n' "${exec_dirs[@]}"
 
+echo "Directories with executable files (added to PATH):"
 for i in ${exec_dirs}; do
-  echo "$i" >> "$GITHUB_PATH"
+  if [[ ${RUNNER_OS} == Linux ]]; then
+    echo "$i" | tee -a "${GITHUB_PATH}"
+  elif [[ ${RUNNER_OS} == Windows ]]; then
+    echo $(cygpath -w "$i") | tee -a "${GITHUB_PATH}"
+  fi
 done
