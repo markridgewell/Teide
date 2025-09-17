@@ -179,7 +179,7 @@ for i in ${packages[@]}; do
   tempfile=${tempdir}/$i.out.log
   > ${tempfile}
 
-  install_package $i #>${tempfile} 2>&1
+  install_package $i >${tempfile} 2>&1
   error_count=$(( error_count + $? ))
 
   end=`date +%s`
