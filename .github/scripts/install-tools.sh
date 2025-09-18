@@ -215,7 +215,6 @@ elif [[ ${RUNNER_OS} == Windows ]]; then
   cmd //c tree //f //a $(cygpath -w ${installed_dir})
 fi
 echo "::endgroup::"
-echo
 
 echo "Directories with executable files (added to PATH):"
 for i in ${exec_dirs}; do
