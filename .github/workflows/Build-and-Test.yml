@@ -255,6 +255,7 @@ jobs:
       env:
         GH_TOKEN: ${{ github.token }}
       run: |
+        set +e # don't fail the job if there's an error here
         for key in $(gh cache list \
           --ref ${{ github.ref }} \
           --key 'ccache_${{ env.job_name }}_' \
