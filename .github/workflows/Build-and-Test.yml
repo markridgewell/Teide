@@ -249,13 +249,16 @@ jobs:
 
     - name: Delete old caches
       shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
       run: |
         for key in $(gh cache list \
-          --ref ${{github.ref}} \
+          --ref ${{ github.ref }} \
           --key 'ccache_${job_name}_' \
           --json key --jq '.[].key' \
           | grep 'ccache_${job_name}-18_')
         do
+          echo ${key}
           gh cache delete ${key}
         done
 
