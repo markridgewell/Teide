@@ -119,6 +119,7 @@ jobs:
         vulkan-use-cache: true
 
     - name: Setup ccache
+      id: ccache
       if: env.use_ccache
       shell: bash
       run: |
@@ -126,6 +127,9 @@ jobs:
           echo "CCACHE_DEBUG=1" >> $GITHUB_ENV
         fi
         echo "CCACHE_DIR=$(ccache -k cache_dir)" >> $GITHUB_ENV
+        key_prefix=ccache_${{ env.job_name }}_
+        echo "key=${key_prefix}${{ github.run_id }}" >> $GITHUB_OUTPUT
+        echo "restore-key=${key_prefix}" >> $GITHUB_OUTPUT
 
         echo "Ccache options"
         echo "--------------"
@@ -141,9 +145,8 @@ jobs:
       uses: actions/cache@v4
       with:
         path: ${{ env.CCACHE_DIR }}
-        key: ccache_${{ env.job_name }}_${{ github.run_id }}
-        restore-keys: |
-          ccache_${{ env.job_name }}_
+        key: ${{ steps.ccache.outputs.key }}
+        restore-keys: ${{ steps.ccache.outputs.restore-key }}
 
     - name: Configure CMake
       run: >
@@ -252,14 +255,19 @@ jobs:
       env:
         GH_TOKEN: ${{ github.token }}
       run: |
+        set +e # don't fail the job if there's an error here
         for key in $(gh cache list \
           --ref ${{ github.ref }} \
           --key 'ccache_${{ env.job_name }}_' \
           --json key --jq '.[].key' \
           | grep 'ccache_${{ env.job_name }}_')
         do
-          echo ${key}
-          gh cache delete ${key}
+          # Don't delete the cache we just created!
+          # (this becomes important on workflow reruns)
+          if [[ ${key} != ${{ steps.ccache.outputs.key }} ]]; then
+            echo ${key}
+            gh cache delete ${key}
+          fi
         done
 
 
