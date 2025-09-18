@@ -234,6 +234,7 @@ jobs:
         directory: build/${{matrix.preset}}/coverage/output
         fail_ci_if_error: false
         verbose: true
+        token: ${{ secrets.CODECOV_TOKEN }}
 
     - name: Save coverage report
       if: matrix.coverage == 'ON'
