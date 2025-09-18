@@ -208,12 +208,14 @@ exec_dirs=$(find ${installed_dir} \
   -exec dirname '{}' \; \
   | sort | uniq)
 
-echo "Installed packages dir: $(realpath ${downloads_dir})"
+echo "Installed packages dir: ${installed_dir}"
+echo -n "::group::"
 if [[ ${RUNNER_OS} == Linux ]]; then
   tree ${installed_dir}
 elif [[ ${RUNNER_OS} == Windows ]]; then
   cmd //c tree //f //a $(cygpath -w ${installed_dir})
 fi
+echo "::endgroup::"
 echo
 
 echo "Directories with executable files (added to PATH):"
