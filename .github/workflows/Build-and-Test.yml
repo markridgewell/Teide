@@ -101,8 +101,8 @@ jobs:
       with:
         sanitizer: ${{matrix.sanitizer}}
 
-    - name: Install dependencies
-      uses: ./.github/actions/install-dependencies
+    - name: Install tools
+      uses: ./.github/actions/install-tools
       with:
         extra-packages: >
           ${{ matrix.extra-packages }}

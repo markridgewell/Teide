@@ -17,8 +17,8 @@ if [[ $# -eq 0 ]]; then
 fi
 
 packages=($@)
-tempdir=${RUNNER_TEMP:-${TMPDIR}}/install-apt
-downloads_dir=$(realpath ../downloads)
+tempdir=${RUNNER_TEMP:-${TMPDIR}}/install-tools
+downloads_dir=${tempdir}/downloads
 installed_dir=$(realpath ../installed)
 
 function ensure_empty() {

@@ -1,9 +1,9 @@
-name: 'install-dependencies'
-description: 'Install dependencies required for building Teide'
+name: 'install-tools'
+description: 'Install tools required for building on CI'
 
 inputs:
   extra-packages:
-    description: 'Additional packages to install with apt-get (Linux) or chocolatey (Windows)'
+    description: 'Additional packages to install'
     required: false
 runs:
   using: composite
@@ -22,9 +22,7 @@ runs:
         echo "::add-matcher::gcc-problem-matcher.json"
         echo "::endgroup::"
 
-    # - uses: ammaraskar/gcc-problem-matcher@master
-
     - if: ${{inputs.extra-packages != ''}}
       shell: bash
       run: |
-        bash .github/scripts/install-apt.sh ${{ inputs.extra-packages }}
+        bash .github/scripts/install-tools.sh ${{ inputs.extra-packages }}
