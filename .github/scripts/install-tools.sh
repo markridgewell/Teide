@@ -25,7 +25,12 @@ if [[ ${RUNNER_OS} != Linux && ${RUNNER_OS} != Windows ]]; then
 fi
 
 packages=($@)
+
 tempdir=${RUNNER_TEMP:-${TMPDIR}}/install-tools
+if [[ ${RUNNER_OS} == Windows ]]; then
+  tempdir=$(cygpath -u ${tempdir})
+fi
+
 downloads_dir=${tempdir}/downloads
 installed_dir=$(realpath ../installed)
 
