@@ -89,12 +89,11 @@ function install_from_package_manager() {
 
 function install-ccache() {
   echo "Installing ccache from GitHub..."
-  if [[ ${RUNNER_OS} == Linux ]]; then
-    pattern='*-linux-x86_64.tar.xz'
-  elif [[ ${RUNNER_OS} == Windows ]]; then
-    pattern='*-windows-x86_64.zip'
-  fi
-  install_from_github $1 ccache/ccache ${pattern}
+  declare -A patterns=(
+    [Linux]='*-linux-x86_64.tar.xz'
+    [Windows]='*-windows-x86_64.zip'
+  )
+  install_from_github $1 ccache/ccache ${patterns[${RUNNER_OS}]}
 }
 
 function install-OpenCppCoverage() {
