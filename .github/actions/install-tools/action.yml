@@ -10,6 +10,7 @@ runs:
   steps:
     - shell: bash
       run: |
+        # Install tools
         echo "::group::Install problem matchers"
         echo "::add-matcher::.github/msvc-problem-matcher.json"
         echo "-- .github/msvc-problem-matcher.json --"
@@ -21,8 +22,8 @@ runs:
         cat gcc-problem-matcher.json
         echo "::add-matcher::gcc-problem-matcher.json"
         echo "::endgroup::"
+        echo
 
-    - if: ${{inputs.extra-packages != ''}}
-      shell: bash
-      run: |
-        bash .github/scripts/install-tools.sh ${{ inputs.extra-packages }}
+        if ${{inputs.extra-packages != ''}}; then
+          bash .github/scripts/install-tools.sh ${{ inputs.extra-packages }}
+        fi
