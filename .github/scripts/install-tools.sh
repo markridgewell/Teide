@@ -11,9 +11,17 @@ for i in $@; do
   max_len=$(( len > max_len ? len : max_len ))
 done
 
-if [[ $# -eq 0 ]]; then
-  echo "No packages selected to install"
+function panic() {
+  echo "::error::$*" >&2
   exit 1
+}
+
+if [[ $# -eq 0 ]]; then
+  panic "No packages selected to install"
+fi
+
+if [[ ${RUNNER_OS} != Linux && ${RUNNER_OS} != Windows ]]; then
+  panic "RUNNER_OS not specified, must be one of Linux or Windows"
 fi
 
 packages=($@)
@@ -34,8 +42,7 @@ function extract() {
   archive=$1
   dir=$2
   if [[ ! -f "${archive}" ]]; then
-    echo "File not found: \"${archive}\""
-    return 1
+    panic "File not found: \"${archive}\""
   elif [[ "${archive}" == *.zip ]]; then
     echo "Extracting zip file"
     unzip "${archive}" -d ${dir}
@@ -43,8 +50,7 @@ function extract() {
     echo "Extracting tar archive"
     tar xvf "${archive}" --directory ${dir}
   else
-    echo "I don't know how to extract the file ${archive}"
-    return 1
+    panic "I don't know how to extract the file ${archive}"
   fi
 }
 
@@ -55,24 +61,25 @@ function install_from_github_noextract() {
   gh release download \
     --repo ${repo} \
     ${pattern[@]/#/--pattern } \
-    --dir ${downloads_dir}/${package} || return $?
+    --dir ${downloads_dir}/${package} \
+    || panic "Failed to download release from GitHub"
   archive=(${downloads_dir}/${package}/*)
   if [[ ${#archive[@]} -gt 1 ]]; then
-    echo "Multiple files downloaded! ${archive[@]}"
-    return 1
+    panic "Multiple files downloaded! ${archive[@]}"
   fi
 }
 
 function install_from_github() {
   package=$1
-  install_from_github_noextract $@ || return $?
+  install_from_github_noextract $@
   archive=(${downloads_dir}/${package}/*)
-  extract "${archive}" ${installed_dir} || return $?
+  extract "${archive}" ${installed_dir}
 }
 
 function install_from_package_manager() {
   echo "Installing package \"$1\" from default provider..."
-  sudo apt-get install -y $1
+  sudo apt-get install -y $1 \
+    || panic "Failed to install package from apt-get"
 }
 
 function install-ccache() {
@@ -83,7 +90,6 @@ function install-ccache() {
     pattern='*-windows-x86_64.zip'
   fi
   install_from_github $1 ccache/ccache ${pattern}
-  return $?
 }
 
 function install-OpenCppCoverage() {
@@ -92,13 +98,13 @@ function install-OpenCppCoverage() {
   install_from_github_noextract $1 OpenCppCoverage/OpenCppCoverage *-x64-*.exe || return $?
   installer=(${downloads_dir}/${package}/*)
   echo "Running installer ${installer}..."
-  ${installer} //VERYSILENT //SUPPRESSMSGBOXES //NORESTART //SP- //DIR="$(cygpath -w ${installed_dir}/OpenCppCoverage)"
+  ${installer} //VERYSILENT //SUPPRESSMSGBOXES //NORESTART //SP- //DIR="$(cygpath -w ${installed_dir}/OpenCppCoverage)" \
+    || panic "OpenCppCoverage installer returned an error"
 }
 
 function install-ninja-build() {
   echo "Installing ninja from GitHub..."
   install_from_github $1 ninja-build/ninja ninja-linux.zip
-  return $?
 }
 
 function install-clang() {
@@ -130,8 +136,7 @@ function install-clang() {
     --dir ${downloads_dir}/${package}
   archive=(${downloads_dir}/${package}/*)
   if [[ ${#archive[@]} -gt 1 ]]; then
-    echo "Multiple files downloaded! ${archive[@]}"
-    return 1
+    panic "Multiple files downloaded! ${archive[@]}"
   fi
   echo "Extracting ${archive}"
   time tar xvf ${downloads_dir}/${package}/* \
@@ -176,12 +181,17 @@ for i in ${packages[@]}; do
   tempfile=${tempdir}/$i.out.log
   > ${tempfile}
 
-  install_package $i >${tempfile} 2>&1
-  error_count=$(( error_count + $? ))
+  # Run install_package in a subshell, to catch per-package errors
+  if (install_package $i >${tempfile} 2>&1); then
+    end=`date +%s`
+    duration=$(( end - start ))
+    status="${duration}s"
+  else
+    status="FAILED"
+    error_count=$(( error_count + 1 ))
+  fi
 
-  end=`date +%s`
-  duration=$(( end - start ))
-  printf "::group::%-${max_len}s | %ds\n" $i ${duration}
+  printf "::group::%-${max_len}s | %s\n" $i ${status}
   cat ${tempfile}
   echo "::endgroup::"
 done
@@ -204,8 +214,10 @@ echo
 echo "Directories with executable files (added to PATH):"
 for i in ${exec_dirs}; do
   if [[ ${RUNNER_OS} == Linux ]]; then
-    echo "$i" | tee -a "${GITHUB_PATH}"
+    echo "$i" | tee -a ${GITHUB_PATH}
   elif [[ ${RUNNER_OS} == Windows ]]; then
-    echo $(cygpath -w "$i") | tee -a "${GITHUB_PATH}"
+    echo $(cygpath -w "$i") | tee -a ${GITHUB_PATH}
   fi
 done
+
+exit ${error_count}
