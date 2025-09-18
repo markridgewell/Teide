@@ -247,6 +247,18 @@ jobs:
         name: CoverageReport-${{env.job_name}}
         path: build/${{matrix.preset}}/coverage/output
 
+    - name: Delete old caches
+      shell: bash
+      run: |
+        for key in $(gh cache list \
+          --ref ${{github.ref}} \
+          --key 'ccache_${job_name}_' \
+          --json key --jq '.[].key' \
+          | grep 'ccache_${job_name}-18_')
+        do
+          gh cache delete ${key}
+        done
+
 
   render-test-report:
     name: Render-Test-Report
