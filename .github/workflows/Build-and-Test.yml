@@ -254,9 +254,9 @@ jobs:
       run: |
         for key in $(gh cache list \
           --ref ${{ github.ref }} \
-          --key 'ccache_${job_name}_' \
+          --key 'ccache_${{ env.job_name }}_' \
           --json key --jq '.[].key' \
-          | grep 'ccache_${job_name}-18_')
+          | grep 'ccache_${{ env.job_name }}_')
         do
           echo ${key}
           gh cache delete ${key}
