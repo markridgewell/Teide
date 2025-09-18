@@ -89,15 +89,11 @@ function install_from_package_manager() {
 
 function install-ccache() {
   echo "Installing ccache from GitHub..."
-  if [[ ${RUNNER_OS} == Linux ]]; then
-    pattern='*-linux-x86_64.tar.xz'
-  elif [[ ${RUNNER_OS} == Windows ]]; then
-    pattern='*-windows-x86_64.zip'
-  else
-    echo "Unknown OS: ${RUNNER_OS}"
-    return 1
-  fi
-  install_from_github $1 ccache/ccache ${pattern}
+  declare -A patterns=(
+    [Linux]='*-linux-x86_64.tar.xz'
+    [Windows]='*-windows-x86_64.zip'
+  )
+  install_from_github $1 ccache/ccache ${patterns[${RUNNER_OS}]}
 }
 
 function install-OpenCppCoverage() {
@@ -216,11 +212,7 @@ echo -n "::group::"
 if [[ ${RUNNER_OS} == Linux ]]; then
   tree ${installed_dir}
 elif [[ ${RUNNER_OS} == Windows ]]; then
-<<<<<<< HEAD
   cmd //c tree //f //a $(cygpath -w ${installed_dir})
-=======
-  cmd /c "tree /f ${installed_dir}"
->>>>>>> a92a1ca (Use install script for Windows as well as Linux)
 fi
 echo "::endgroup::"
 echo
