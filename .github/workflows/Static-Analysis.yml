@@ -42,9 +42,9 @@ jobs:
       id: packages
       uses: ./.github/actions/install-packages
 
-    - name: Install dependencies
+    - name: Install tools
       if: steps.get-changes.outputs.changed-files != ''
-      uses: ./.github/actions/install-dependencies
+      uses: ./.github/actions/install-tools
       with:
         extra-packages: cppcheck
 
@@ -86,9 +86,9 @@ jobs:
       id: packages
       uses: ./.github/actions/install-packages
 
-    - name: Install dependencies
+    - name: Install tools
       if: steps.get-changes.outputs.changed-files != ''
-      uses: ./.github/actions/install-dependencies
+      uses: ./.github/actions/install-tools
       with:
         extra-packages: clang-tidy-${{env.clang_tidy_version}} clang-tools
 
