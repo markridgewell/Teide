@@ -96,6 +96,10 @@ jobs:
         echo "::group::Contents of exported packages:"
         ls -R exports
         echo "::endgroup::"
+        echo ""
+        echo "::group::CMakeCache.txt:"
+        cat build/${{matrix.preset}}/CMakeCache.txt
+        echo "::endgroup::"
 
     - name: Save packages as artifact
       if: steps.cache.outputs.cache-hit != 'true'
