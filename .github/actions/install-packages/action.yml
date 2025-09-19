@@ -36,6 +36,34 @@ runs:
       shell: bash
       run: |
         echo "dir=${{ github.workspace }}/exports/installed/${{ steps.get-key.outputs.triplet }}" >> $GITHUB_OUTPUT
+        echo """
+        set(GTest_DIR $PWD/exports/installed/x64-windows-static-md/share/gtest CACHE PATH cache)
+        set(PNG_PNG_INCLUDE_DIR $PWD/exports/installed/x64-windows-static-md/include CACHE PATH cache)
+        set(RapidJSON_DIR $PWD/exports/installed/x64-windows-static-md/share/rapidjson CACHE PATH cache)
+        set(SDL2_DIR $PWD/exports/installed/x64-windows-static-md/share/sdl2 CACHE PATH cache)
+        set(SDL2_image_DIR $PWD/exports/installed/x64-windows-static-md/share/SDL2_image CACHE PATH cache)
+        set(StackWalker_DIR $PWD/exports/installed/x64-windows-static-md/share/stackwalker CACHE PATH cache)
+        set(Stb_INCLUDE_DIR $PWD/exports/installed/x64-windows-static-md/include CACHE PATH cache)
+        set(SwiftShader_DIR $PWD/exports/installed/x64-windows-static-md/share/swiftshader CACHE PATH cache)
+        set(Taskflow_DIR $PWD/exports/installed/x64-windows-static-md/share/taskflow CACHE PATH cache)
+        set(VulkanMemoryAllocator_DIR $PWD/exports/installed/x64-windows-static-md/share/VulkanMemoryAllocator CACHE PATH cache)
+        set(Vulkan_INCLUDE_DIR $PWD/exports/installed/x64-windows-static-md/include CACHE PATH cache)
+        set(ZLIB_INCLUDE_DIR $PWD/exports/installed/x64-windows-static-md/include CACHE PATH cache)
+        set(assimp_DIR $PWD/exports/installed/x64-windows-static-md/share/assimp CACHE PATH cache)
+        set(benchmark_DIR $PWD/exports/installed/x64-windows-static-md/share/benchmark CACHE PATH cache)
+        set(fmt_DIR $PWD/exports/installed/x64-windows-static-md/share/fmt CACHE PATH cache)
+        set(function2_DIR $PWD/exports/installed/x64-windows-static-md/share/function2 CACHE PATH cache)
+        set(glslang_DIR $PWD/exports/installed/x64-windows-static-md/share/glslang CACHE PATH cache)
+        set(poly2tri_DIR $PWD/exports/installed/x64-windows-static-md/share/poly2tri CACHE PATH cache)
+        set(polyclipping_DIR $PWD/exports/installed/x64-windows-static-md/share/polyclipping CACHE PATH cache)
+        set(pugixml_DIR $PWD/exports/installed/x64-windows-static-md/share/pugixml CACHE PATH cache)
+        set(spdlog_DIR $PWD/exports/installed/x64-windows-static-md/share/spdlog CACHE PATH cache)
+        set(stdexec_DIR $PWD/exports/installed/x64-windows-static-md/share/stdexec CACHE PATH cache)
+        set(unofficial-minizip_DIR $PWD/exports/installed/x64-windows-static-md/share/unofficial-minizip CACHE PATH cache)
+        set(unofficial-vulkan-memory-allocator-hpp_DIR $PWD/exports/installed/x64-windows-static-md/share/unofficial-vulkan-memory-allocator-hpp CACHE PATH cache)
+        set(utf8cpp_DIR $PWD/exports/installed/x64-windows-static-md/share/utf8cpp CACHE PATH cache)
+        set(zip_DIR $PWD/exports/installed/x64-windows-static-md/share/zip-kuba-- CACHE PATH cache)
+        """ > exports/cache.txt
 
     - name: Determine success status
       id: get-status

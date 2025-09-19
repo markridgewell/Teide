@@ -151,6 +151,7 @@ jobs:
     - name: Configure CMake
       run: >
         cmake --preset ${{matrix.preset}}
+        -C ${{github.workspace}}/exports/cache.txt
         -DTEIDE_USE_VCPKG=${{!steps.packages.outputs.success}}
         -DCMAKE_PREFIX_PATH=${{steps.packages.outputs.install-dir}}
         -DTEIDE_CCACHE=${{env.use_ccache}}
