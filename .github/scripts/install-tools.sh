@@ -1,10 +1,5 @@
 #!/bin/bash
 
-if [[ $1 == '-n' ]]; then
-  dry_run=1
-  shift
-fi
-
 max_len=0
 for i in $@; do
   len=${#i}
