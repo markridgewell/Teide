@@ -59,7 +59,7 @@ jobs:
           extra-packages: g++-14
         - preset: clang++-18
           runner: ubuntu-24.04
-          extra-packages: clang++-19
+          extra-packages: clang++-18
           coverage: ${{toJSON(inputs.coverage) != 'false' && 'ON' || 'OFF'}}
 
         # Additional jobs
