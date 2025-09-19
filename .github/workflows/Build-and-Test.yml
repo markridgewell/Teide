@@ -72,14 +72,14 @@ jobs:
           coverage: true
 
         # Additional jobs
-        - preset: clang++-18
+        - preset: make
           buildtype: Debug
           runner: ubuntu-24.04
           compiler: clang++-18
           sanitizer: ASAN
           name-suffix: -asan
 
-        - preset: clang++-18
+        - preset: make
           buildtype: Debug
           runner: ubuntu-24.04
           compiler: clang++-18
@@ -93,6 +93,7 @@ jobs:
       job_name: ${{startsWith(matrix.runner, 'windows') && 'Windows' || 'Linux'}}-${{matrix.buildtype}}-${{matrix.toolchain}}${{matrix.name-suffix}}
       CMAKE_BUILD_TYPE: ${{matrix.buildtype}}
       RT_OUTPUT_DIR: build/${{matrix.preset}}/tests/RenderTest/RenderTestOutput
+      CXX: ${{matrix.compiler}}
 
     outputs:
       rendertest-failures: ${{steps.rendertest.outputs.failure == 'true'}}
@@ -115,9 +116,9 @@ jobs:
       uses: ./.github/actions/install-tools
       with:
         extra-packages: >
-          ${{ matrix.extra-packages }}
+          ${{ matrix.compiler }}
           ${{ env.use_ccache && 'ccache' || '' }}
-          ${{ matrix.coverage == 'ON' && runner.os == 'Windows' && 'OpenCppCoverage' || '' }}
+          ${{ (inputs.coverage && matrix.coverage && runner.os == 'Windows') && 'OpenCppCoverage' || '' }}
       env:
         GH_TOKEN: ${{ github.token }}
 
