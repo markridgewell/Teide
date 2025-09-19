@@ -113,58 +113,22 @@ function install-ninja-build() {
 
 function install-clang() {
   echo "Installing clang..."
-  return
-  # install_from_github $1 llvm/llvm-project LLVM-*-Linux-X64.tar.xz
   package=$1
-  repo=llvm/llvm-project
-  llvm_version=$(echo $package | sed -n 's/^clang.*-\([1-9][0-9]*\)$/\1/p')
-  release_tag=$(gh release list \
-    --repo llvm/llvm-project \
-    --json tagName \
-    --exclude-drafts \
-    --exclude-pre-releases \
-    --jq """
-      map(
-        select(
-          .tagName | startswith(\"llvmorg-${llvm_version}\")
-          )
-      ).[0].tagName
-    """)
-
-  echo "Downloading LLVM release ${llvm_version}"
-  echo "Release tag: ${release_tag}"
-  time gh release download ${release_tag} \
-    --repo ${repo} \
-    --pattern "LLVM-*-Linux-X64.tar.xz" \
-    --pattern "clang+llvm-*x86_64-linux*" \
-    --dir ${downloads_dir}/${package}
-  archive=(${downloads_dir}/${package}/*)
-  if [[ ${#archive[@]} -gt 1 ]]; then
-    panic "Multiple files downloaded! ${archive[@]}"
-  fi
-  echo "Extracting ${archive}"
-  time tar xvf ${downloads_dir}/${package}/* \
-    --directory ${installed_dir} \
-    --wildcards */bin/llvm-profdata \
-    --occurrence=1
-
-  return 0
-  if sudo apt-get install $1; then
-    sudo apt-get install -y llvm
+  if ${package} --version >/dev/null 2>&1; then
+    echo "Required version already installed"
     return
   fi
 
   # If clang not already installed, add the appropriate llvm repository
-  if [ -n "${llvm_version}" ]; then
-    echo "Clang requested, adding LLVM repositories..."
-    wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key | sudo tee /etc/apt/trusted.gpg.d/apt.llvm.org.asc
-    ubuntu_codename=`sudo cat /etc/os-release | sed -n s/UBUNTU_CODENAME=//p`
-    repo="deb http://apt.llvm.org/${ubuntu_codename}/ llvm-toolchain-${ubuntu_codename}-${llvm_version} main"
-    echo Adding repository "${repo}"
-    sudo add-apt-repository "${repo}"
-    sudo apt-get update
-    sudo apt-get install -y llvm
-  fi
+  echo "Adding LLVM repositories..."
+  wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key | sudo tee /etc/apt/trusted.gpg.d/apt.llvm.org.asc
+  llvm_version=$(echo ${package} | sed -n 's/^clang.*-\([1-9][0-9]*\)$/\1/p')
+  ubuntu_codename=`sudo cat /etc/os-release | sed -n s/UBUNTU_CODENAME=//p`
+  repo="deb http://apt.llvm.org/${ubuntu_codename}/ llvm-toolchain-${ubuntu_codename}-${llvm_version} main"
+  echo Adding repository "${repo}"
+  sudo add-apt-repository "${repo}"
+  sudo apt-get update
+  sudo apt-get install -y llvm
 }
 
 function install_package() {
