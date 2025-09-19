@@ -11,7 +11,6 @@
       "hidden": true,
       "binaryDir": "${sourceDir}/build/${presetName}",
       "cacheVariables": {
-        "VCPKG_INSTALL_OPTIONS": "--x-abi-tools-use-exact-versions;--no-print-usage",
         "CMAKE_OPTIMIZE_DEPENDENCIES": "ON"
       }
     },
@@ -65,16 +64,16 @@
     },
     {
       "name": "g++-14",
-      "inherits": "ninja",
-      "displayName": "Ninja with GCC 14",
+      "inherits": "make",
+      "displayName": "Makefiles with GCC 14",
       "cacheVariables": {
         "CMAKE_CXX_COMPILER": "g++-14"
       }
     },
     {
       "name": "clang++-18",
-      "inherits": "ninja",
-      "displayName": "Ninja with Clang 17",
+      "inherits": "make",
+      "displayName": "Makefiles with Clang 18",
       "cacheVariables": {
         "CMAKE_CXX_COMPILER": "clang++-18"
       }

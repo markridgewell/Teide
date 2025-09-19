@@ -30,10 +30,10 @@ jobs:
       id: packages
       uses: ./.github/actions/install-packages
 
-    - name: Install dependencies
-      uses: ./.github/actions/install-dependencies
+    - name: Install tools
+      uses: ./.github/actions/install-tools
       with:
-        extra-packages: ninja-build g++-14
+        extra-packages: g++-14
 
     - name: Install google benchmark tools
       run: |

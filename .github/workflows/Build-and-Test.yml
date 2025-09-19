@@ -30,7 +30,7 @@ on:
 env:
   VULKAN_SDK: ../vulkan_sdk
 
-  use_ccache: ${{ inputs.ccache || github.event_name == 'pull_request' }}
+  use_ccache: ${{ inputs.ccache || github.event_name != 'workflow_dispatch' }}
   CCACHE_DEBUGLLEVEL: 1
   CCACHE_DEBUGDIR: ${{ github.workspace }}/ccache_debug
   CCACHE_LOGFILE: ${{ github.workspace }}/ccache.log
@@ -56,23 +56,23 @@ jobs:
           runner: windows-2022
         - preset: g++-14
           runner: ubuntu-24.04
-          extra-packages: ninja-build g++-14
+          extra-packages: g++-14
         - preset: clang++-18
           runner: ubuntu-24.04
-          extra-packages: ninja-build clang++-18
+          extra-packages: clang++-18
           coverage: ${{toJSON(inputs.coverage) != 'false' && 'ON' || 'OFF'}}
 
         # Additional jobs
         - preset: clang++-18
           buildtype: Debug
           runner: ubuntu-24.04
-          extra-packages: ninja-build clang++-18
+          extra-packages: clang++-18
           sanitizer: ASAN
           name-suffix: -asan
         - preset: clang++-18
           buildtype: Debug
           runner: ubuntu-24.04
-          extra-packages: ninja-build clang++-18
+          extra-packages: clang++-18
           sanitizer: UBSAN
           name-suffix: -ubsan
 
@@ -101,12 +101,25 @@ jobs:
       with:
         sanitizer: ${{matrix.sanitizer}}
 
-    - name: Install dependencies
-      uses: ./.github/actions/install-dependencies
+    - name: Install tools
+      uses: ./.github/actions/install-tools
       with:
-        extra-packages: ${{matrix.extra-packages}} ${{ env.use_ccache && 'ccache' || '' }}
+        extra-packages: >
+          ${{ matrix.extra-packages }}
+          ${{ env.use_ccache && 'ccache' || '' }}
+          ${{ matrix.coverage == 'ON' && runner.os == 'Windows' && 'OpenCppCoverage' || '' }}
+      env:
+        GH_TOKEN: ${{ github.token }}
+
+    - name: Install Vulkan SDK
+      uses: edvn0/setup-vulkan-sdk@v1.3.0
+      with:
+        vulkan-query-version: 1.3.243.0
+        vulkan-components: Vulkan-Headers, Vulkan-Loader
+        vulkan-use-cache: true
 
     - name: Setup ccache
+      id: ccache
       if: env.use_ccache
       shell: bash
       run: |
@@ -114,6 +127,9 @@ jobs:
           echo "CCACHE_DEBUG=1" >> $GITHUB_ENV
         fi
         echo "CCACHE_DIR=$(ccache -k cache_dir)" >> $GITHUB_ENV
+        key_prefix=ccache_${{ env.job_name }}_
+        echo "key=${key_prefix}${{ github.run_id }}" >> $GITHUB_OUTPUT
+        echo "restore-key=${key_prefix}" >> $GITHUB_OUTPUT
 
         echo "Ccache options"
         echo "--------------"
@@ -129,16 +145,8 @@ jobs:
       uses: actions/cache@v4
       with:
         path: ${{ env.CCACHE_DIR }}
-        key: ccache_${{ env.job_name }}_${{ github.run_id }}
-        restore-keys: |
-          ccache_${{ env.job_name }}_
-
-    - if: matrix.coverage == 'ON' && runner.os == 'Windows'
-      name: Install OpenCppCoverage
-      uses: ./.github/actions/choco-install
-      with:
-        package-name: OpenCppCoverage
-        package-version: 0.9.9.0
+        key: ${{ steps.ccache.outputs.key }}
+        restore-keys: ${{ steps.ccache.outputs.restore-key }}
 
     - name: Configure CMake
       run: >
@@ -234,6 +242,7 @@ jobs:
         directory: build/${{matrix.preset}}/coverage/output
         fail_ci_if_error: false
         verbose: true
+        token: ${{ secrets.CODECOV_TOKEN }}
 
     - name: Save coverage report
       if: matrix.coverage == 'ON'
@@ -241,6 +250,26 @@ jobs:
       with:
         name: CoverageReport-${{env.job_name}}
         path: build/${{matrix.preset}}/coverage/output
+
+    - name: Delete old caches
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        set +e # don't fail the job if there's an error here
+        for key in $(gh cache list \
+          --ref ${{ github.ref }} \
+          --key 'ccache_${{ env.job_name }}_' \
+          --json key --jq '.[].key' \
+          | grep 'ccache_${{ env.job_name }}_')
+        do
+          # Don't delete the cache we just created!
+          # (this becomes important on workflow reruns)
+          if [[ ${key} != ${{ steps.ccache.outputs.key }} ]]; then
+            echo ${key}
+            gh cache delete ${key}
+          fi
+        done
 
 
   render-test-report:
