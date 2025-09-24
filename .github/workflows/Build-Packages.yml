@@ -4,6 +4,7 @@ on:
   schedule:
     # Run at 5:20am and 5:20pm every day
     - cron:  '20 5,17 * * *'
+  pull_request:
   workflow_dispatch:
 
 env:
@@ -22,7 +23,7 @@ jobs:
           runner: windows-2022
         - preset: clang++-18
           runner: ubuntu-latest
-          extra-packages: ninja-build clang++-18 mono-complete
+          extra-packages: clang++-18 mono-complete
 
     name: ${{startsWith(matrix.runner, 'windows') && 'Windows' || 'Linux'}}
     runs-on: ${{matrix.runner}}
@@ -46,9 +47,9 @@ jobs:
         key: ${{ steps.cache-key.outputs.cache-key }}
         path: './exports'
 
-    - name: Install dependencies
+    - name: Install tools
       if: steps.cache.outputs.cache-hit != 'true'
-      uses: ./.github/actions/install-dependencies
+      uses: ./.github/actions/install-tools
       with:
         extra-packages: ${{matrix.extra-packages}}
 
@@ -78,7 +79,10 @@ jobs:
 
     - name: Configure CMake
       if: steps.cache.outputs.cache-hit != 'true'
-      run: cmake --preset ${{matrix.preset}} -DTEIDE_SANITIZER=${{matrix.sanitizer}} "-DVCPKG_INSTALL_OPTIONS=--x-abi-tools-use-exact-versions${{runner.debug && ';--debug' || ''}}"
+      run: >
+        cmake --preset ${{matrix.preset}}
+        -DTEIDE_SANITIZER=${{matrix.sanitizer}}
+        -DVCPKG_INSTALL_OPTIONS=--x-abi-tools-use-exact-versions${{runner.debug && ';--debug' || ''}}
 
     - name: Dump CMake output logs
       if: failure()

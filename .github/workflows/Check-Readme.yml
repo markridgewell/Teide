@@ -32,8 +32,8 @@ jobs:
         lfs: false
         submodules: recursive
 
-    - name: Install dependencies
-      uses: ./.github/actions/install-dependencies
+    - name: Install tools
+      uses: ./.github/actions/install-tools
 
     - name: Setup vcpkg
       uses: lukka/run-vcpkg@v11.5
