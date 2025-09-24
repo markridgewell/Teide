@@ -369,6 +369,10 @@ vk::UniqueDevice CreateDevice(VulkanLoader& loader, const PhysicalDevice& physic
 
     std::vector<const char*> extensions = physicalDevice.requiredExtensions;
     EnableVulkanExtension(extensions, availableExtensions, "VK_EXT_descriptor_indexing", Required::True);
+    EnableVulkanExtension(extensions, availableExtensions, "VK_KHR_depth_stencil_resolve", Required::True);
+    EnableVulkanExtension(
+        extensions, availableExtensions, "VK_KHR_create_renderpass2",
+        Required::True); // required by "VK_KHR_depth_stencil_resolve"
 
     const vk::StructureChain createInfo = {
         vk::DeviceCreateInfo{
