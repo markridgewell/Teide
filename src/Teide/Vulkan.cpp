@@ -13,6 +13,11 @@
 #include <SDL_vulkan.h>
 #include <spdlog/spdlog.h>
 
+#include <memory>
+#if __cpp_lib_stacktrace >= 202012L
+#    include <stacktrace>
+#endif
+
 namespace Teide
 {
 
@@ -152,6 +157,14 @@ namespace
             // Vulkan error triggered a debug break
             TEIDE_ASSERT(severity != MessageSeverity::eError, "{}", pCallbackData->pMessage);
         }
+
+#if __cpp_lib_stacktrace >= 202012L
+        if (severity == MessageSeverity::eError)
+        {
+            std::cout << "Stack trace:\n";
+            std::cout << std::stacktrace::current() << "\n";
+        }
+#endif
         return VK_FALSE;
     }
 
