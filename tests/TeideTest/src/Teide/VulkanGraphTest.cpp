@@ -5,19 +5,46 @@
 #include "TestUtils.h"
 
 #include "Teide/Device.h"
+#include "Teide/VulkanRenderer.h"
 
 #include <gmock/gmock.h>
 
+#include <iterator>
 #include <span>
+#include <string>
 
 using namespace testing;
 using namespace Teide;
 
-using RenderNode = VulkanGraph::RenderNode;
-using TextureNode = VulkanGraph::TextureNode;
-
 namespace
 {
+std::string MakeDotURL(std::string_view dot)
+{
+    std::string ret = "https://quickchart.io/graphviz?graph=";
+    auto out = std::back_inserter(ret);
+
+    for (char c : dot)
+    {
+        if (std::isalnum(c) || c == '$' || c == '-' || c == '_' || c == '.' || c == '+' || c == '\'' || c == '!'
+            || c == '*' || c == '(' || c == ')')
+        {
+            *out = c;
+            ++out;
+        }
+        else if (c != '\n' && c != '\r')
+        {
+            std::format_to(out, "%{:02X}", c);
+        }
+    }
+
+    return ret;
+}
+
+std::string FormatDot(const std::string& dot)
+{
+    return dot + "\nGraph: " + MakeDotURL(dot);
+}
+
 class VulkanGraphTest : public testing::Test
 {
 public:
@@ -26,7 +53,15 @@ public:
     {}
 
 protected:
-    Texture CreateDummyTexture(const char* name) { return m_device->CreateTexture(OnePixelWhiteTexture, name); }
+    Texture CreateDummyTexture(const char* name)
+    {
+        return m_device->AllocateTexture({
+            .size = {1, 1},
+            .format = Format::Byte4Norm,
+            .name = name,
+        });
+    }
+
     ShaderData CompileShader(const ShaderSourceData& data) { return m_shaderCompiler.Compile(data); }
 
     VulkanGraph CreateThreeRenderPasses()
@@ -220,7 +255,7 @@ TEST_F(VulkanGraphTest, VisualizingGraphWithThreeDependentRenderNodes)
 
     const auto dot = VisualizeGraph(graph);
 
-    ASSERT_THAT(dot, Eq(ThreeRenderPassesDot)) << dot;
+    ASSERT_THAT(dot, Eq(ThreeRenderPassesDot)) << FormatDot(dot);
 }
 
 constexpr auto CopyCpuToGpuDot = R"--(strict digraph {
@@ -242,7 +277,7 @@ TEST_F(VulkanGraphTest, VisualizingGraphWithCopyToGpu)
 
     const auto dot = VisualizeGraph(graph);
 
-    ASSERT_THAT(dot, Eq(CopyCpuToGpuDot)) << dot;
+    ASSERT_THAT(dot, Eq(CopyCpuToGpuDot)) << FormatDot(dot);
 }
 
 constexpr auto CopyGpuToCpuDot = R"--(strict digraph {
@@ -260,12 +295,34 @@ TEST_F(VulkanGraphTest, VisualizingGraphWithCopyToCpu)
 {
     VulkanGraph graph;
     const auto render = graph.AddRenderNode({.name = "render1"});
+
     const auto tex = graph.AddTextureNode(CreateDummyTexture("tex"), render);
     const auto copy = graph.AddCopyNode(tex);
     graph.AddTextureDataNode("texData", OnePixelWhiteTexture, copy);
 
     const auto dot = VisualizeGraph(graph);
 
-    ASSERT_THAT(dot, Eq(CopyGpuToCpuDot)) << dot;
+    ASSERT_THAT(dot, Eq(CopyGpuToCpuDot)) << FormatDot(dot) << "\nGraph: " << MakeDotURL(dot);
 }
+
+TEST_F(VulkanGraphTest, ExecutingGraphWithCopyNode)
+{
+    VulkanGraph graph;
+    const auto texDataInput = graph.AddTextureDataNode("input", OnePixelWhiteTexture);
+    const auto copy1 = graph.AddCopyNode(texDataInput);
+    const auto tex = graph.AddTextureNode(CreateDummyTexture("tex"), copy1);
+    const auto copy2 = graph.AddCopyNode(tex);
+    const auto texDataOutput = graph.AddTextureDataNode("output", {}, copy2);
+    (void)texDataOutput;
+
+    auto renderer = m_device->CreateRenderer({});
+
+    spdlog::info(VisualizeGraph(graph));
+    ExecuteGraph(graph, *m_device, m_device->GetImpl(*renderer));
+
+    const VulkanTexture& texture = m_device->GetImpl(graph.textureNodes.at(tex.index).texture);
+    EXPECT_THAT(texture.image, IsValidVkHandle());
+    EXPECT_THAT(texture.imageView, IsValidVkHandle());
+}
+
 } // namespace
