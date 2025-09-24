@@ -108,6 +108,7 @@ jobs:
           ${{ matrix.extra-packages }}
           ${{ env.use_ccache && 'ccache' || '' }}
           ${{ matrix.coverage == 'ON' && runner.os == 'Windows' && 'OpenCppCoverage' || '' }}
+          ${{ runner.os == 'Linux' && 'vulkan-validationlayers' || '' }}
       env:
         GH_TOKEN: ${{ github.token }}
 
