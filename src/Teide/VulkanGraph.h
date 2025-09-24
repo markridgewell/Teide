@@ -10,6 +10,7 @@
 namespace Teide
 {
 class VulkanDevice;
+class VulkanRenderer;
 
 enum class ResourceType : uint8
 {
@@ -22,6 +23,7 @@ enum class CommandType : uint8
 {
     Copy,
     Render,
+    Dispatch,
 };
 std::string to_string(CommandType type);
 
@@ -45,6 +47,7 @@ struct VulkanGraph
 
     static auto CopyRef(usize i) -> CommandNodeRef { return {.type = CommandType::Copy, .index = i}; }
     static auto RenderRef(usize i) -> CommandNodeRef { return {.type = CommandType::Render, .index = i}; }
+    static auto DispatchRef(usize i) -> CommandNodeRef { return {.type = CommandType::Dispatch, .index = i}; }
     static auto TextureRef(usize i) -> ResourceNodeRef { return {.type = ResourceType::Texture, .index = i}; }
     static auto TextureDataRef(usize i) -> ResourceNodeRef { return {.type = ResourceType::TextureData, .index = i}; }
 
@@ -56,6 +59,12 @@ struct VulkanGraph
     struct RenderNode
     {
         RenderList renderList;
+        std::vector<ResourceNodeRef> dependencies;
+    };
+
+    struct DispatchNode
+    {
+        Kernel kernel;
         std::vector<ResourceNodeRef> dependencies;
     };
 
@@ -74,6 +83,7 @@ struct VulkanGraph
 
     std::vector<CopyNode> copyNodes;
     std::vector<RenderNode> renderNodes;
+    std::vector<DispatchNode> dispatchNodes;
     std::vector<TextureNode> textureNodes;
     std::vector<TextureDataNode> textureDataNodes;
 
@@ -89,6 +99,12 @@ struct VulkanGraph
         return RenderRef(renderNodes.size() - 1);
     }
 
+    auto AddDispatchNode(Kernel kernel)
+    {
+        dispatchNodes.emplace_back(std::move(kernel));
+        return DispatchRef(dispatchNodes.size() - 1);
+    }
+
     auto AddTextureNode(Texture texture, CommandNodeRef source)
     {
         textureNodes.emplace_back(std::move(texture), source);
@@ -100,9 +116,47 @@ struct VulkanGraph
         textureDataNodes.emplace_back(std::move(name), std::move(texture), source);
         return TextureDataRef(textureDataNodes.size() - 1);
     }
+
+    std::string_view GetNodeName(ResourceNodeRef ref);
+    std::optional<std::string_view> FindNodeWithSource(CommandNodeRef source);
+
+    void ForEachCopyNode(auto f)
+    {
+        for (auto i = VulkanGraph::CopyRef(0); i.index < copyNodes.size(); i.index++)
+        {
+            const auto& node = copyNodes[i.index];
+            f(i, fmt::format("copy{}", i.index + 1), std::span(&node.source, 1));
+        }
+    };
+
+    void ForEachRenderNode(auto f)
+    {
+        for (auto i = VulkanGraph::RenderRef(0); i.index < renderNodes.size(); i.index++)
+        {
+            const auto& node = renderNodes[i.index];
+            f(i, node.renderList.name, node.dependencies);
+        }
+    };
+
+    void ForEachDispatchNode(auto f)
+    {
+        for (auto i = VulkanGraph::DispatchRef(0); i.index < dispatchNodes.size(); i.index++)
+        {
+            const auto& node = dispatchNodes[i.index];
+            f(i, fmt::format("dispatch{}", i.index + 1), node.dependencies);
+        }
+    };
+
+    void ForEachCommandNode(auto f)
+    {
+        ForEachCopyNode(f);
+        ForEachRenderNode(f);
+        ForEachDispatchNode(f);
+    }
 };
 
 void BuildGraph(VulkanGraph& graph, VulkanDevice& device);
 std::string VisualizeGraph(VulkanGraph& graph);
+void ExecuteGraph(VulkanGraph& graph, VulkanDevice& device, VulkanRenderer& renderer);
 
 } // namespace Teide
