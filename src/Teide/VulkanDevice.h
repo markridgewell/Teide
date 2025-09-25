@@ -109,7 +109,7 @@ public:
     SurfacePtr CreateSurface(vk::UniqueSurfaceKHR surface, SDL_Window* window, bool multisampled);
     BufferPtr CreateBuffer(const BufferData& data, const char* name, CommandBuffer& cmdBuffer);
     VulkanBuffer CreateTransientBuffer(const BufferData& data, const char* name);
-    Texture AllocateTexture(const TextureProperties& props);
+    Texture AllocateTexture(const TextureProperties& props, const SamplerState& samplerState = {});
     Texture CreateTexture(const TextureData& data, const char* name, CommandBuffer& cmdBuffer);
     Texture CreateRenderableTexture(const TextureData& data, const char* name);
     Texture CreateRenderableTexture(const TextureData& data, const char* name, CommandBuffer& cmdBuffer);

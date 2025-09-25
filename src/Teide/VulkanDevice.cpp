@@ -764,9 +764,12 @@ Texture VulkanDevice::CreateTexture(const TextureData& data, const char* name)
     return task.get();
 }
 
-Texture VulkanDevice::AllocateTexture(const TextureProperties& props)
+Texture VulkanDevice::AllocateTexture(const TextureProperties& props, const SamplerState& samplerState)
 {
-    return m_textures.Insert({.properties = props});
+    return m_textures.Insert({
+        .sampler = CreateSampler(samplerState),
+        .properties = props,
+    });
 }
 
 Texture VulkanDevice::CreateTexture(const TextureData& data, const char* name, CommandBuffer& cmdBuffer)
