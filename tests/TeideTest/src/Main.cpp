@@ -41,8 +41,11 @@ std::optional<std::size_t> GetNumConsoleColumns()
     return std::nullopt;
 }
 
-bool AssertDie(std::string_view msg, std::string_view expression, Teide::SourceLocation location)
+bool AssertThrow(std::string_view msg, std::string_view expression, Teide::SourceLocation location)
 {
+    struct AssertException
+    {};
+
     std::cout << location.file_name();
     if (location.line() > 0)
     {
@@ -61,7 +64,7 @@ bool AssertDie(std::string_view msg, std::string_view expression, Teide::SourceL
     {
         std::cout << "Assertion failed: " << expression << ": " << msg << '\n';
     }
-    std::terminate();
+    throw AssertException{};
 }
 
 class LogSuppressor : public testing::EmptyTestEventListener
@@ -214,7 +217,7 @@ int Run(int argc, char** argv)
     }
     else
     {
-        Teide::SetAssertHandler(&AssertDie);
+        Teide::SetAssertHandler(&AssertThrow);
     }
 
     testing::FLAGS_gtest_break_on_failure = Teide::IsDebuggerAttached();
