@@ -156,7 +156,7 @@ void ExecuteGraph(VulkanGraph& graph, VulkanDevice& device, VulkanRenderer& rend
     {
         VulkanTexture& texture = device.GetImpl(node.texture);
         using enum vk::ImageUsageFlagBits;
-        device.CreateTextureImpl(texture, eTransferSrc | eTransferDst);
+        device.CreateTextureImpl(texture, eTransferSrc | eTransferDst | eSampled);
     }
 
     // 2. Create staging buffers
