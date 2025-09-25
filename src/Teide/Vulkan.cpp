@@ -25,7 +25,7 @@ namespace
 {
     constexpr auto VulkanApiVersion = VK_API_VERSION_1_1;
     constexpr bool BreakOnVulkanWarning = false;
-    constexpr bool BreakOnVulkanError = true;
+    constexpr bool BreakOnVulkanError = false;
 
     const vk::Optional<const vk::AllocationCallbacks> s_allocator = nullptr;
 
