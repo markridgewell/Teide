@@ -221,7 +221,7 @@ void ExecuteGraph(VulkanGraph& graph, VulkanDevice& device, VulkanRenderer& rend
                 const TextureData& data = sourceNode->data;
                 VulkanTexture& texture = device.GetImpl(node.texture);
                 using enum vk::ImageUsageFlagBits;
-                auto state = device.CreateTextureImpl(texture, eTransferSrc | eTransferDst);
+                auto state = device.CreateTextureImpl(texture, eTransferSrc | eTransferDst | eSampled);
 
                 // Copy staging buffer to image
                 TransitionImageLayout(
