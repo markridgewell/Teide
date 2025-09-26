@@ -64,6 +64,12 @@ bool AssertThrow(std::string_view msg, std::string_view expression, Teide::Sourc
     {
         std::cout << "Assertion failed: " << expression << ": " << msg << '\n';
     }
+
+    const auto* curTest = testing::UnitTest::GetInstance()->current_test_info();
+    if (curTest)
+    {
+        std::cout << "Current test: " << curTest->name() << "\n";
+    }
     throw AssertException{};
 }
 
