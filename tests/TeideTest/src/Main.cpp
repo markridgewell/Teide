@@ -2,6 +2,8 @@
 #include "Teide/Assert.h"
 #include "Teide/TestUtils.h"
 
+#include <cpptrace/basic.hpp>
+#include <cpptrace/cpptrace.hpp>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <spdlog/sinks/ostream_sink.h>
@@ -70,6 +72,8 @@ bool AssertThrow(std::string_view msg, std::string_view expression, Teide::Sourc
     {
         std::cout << "Current test: " << curTest->name() << "\n";
     }
+    std::cout << "Stack trace:\n";
+    cpptrace::generate_trace().print();
     throw AssertException{};
 }
 
