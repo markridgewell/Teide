@@ -73,7 +73,8 @@ bool AssertThrow(std::string_view msg, std::string_view expression, Teide::Sourc
         std::cout << "Current test: " << curTest->name() << "\n";
     }
     std::cout << "Stack trace:\n";
-    cpptrace::generate_trace().print();
+    const auto trace = cpptrace::generate_trace();
+    trace.print(std::cout, true);
     throw AssertException{};
 }
 
