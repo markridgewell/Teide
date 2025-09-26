@@ -10,6 +10,7 @@
 #include <spdlog/spdlog.h>
 
 #include <exception>
+#include <ranges>
 
 #if __linux__
 #    include <sys/ioctl.h>
@@ -48,6 +49,21 @@ bool AssertThrow(std::string_view msg, std::string_view expression, Teide::Sourc
     struct AssertException
     {};
 
+    const auto trace = cpptrace::generate_trace();
+    for (const auto& frame : trace | std::views::drop(1))
+    {
+        if (frame.filename.empty() || frame.filename.ends_with(".so"))
+        {
+            continue;
+        }
+        if (frame.symbol == "DebugCallback" || frame.symbol.starts_with("vk::"))
+        {
+            continue;
+        }
+        location = Teide::SourceLocation(frame.line.value_or(0), 0, frame.filename.c_str(), frame.symbol.c_str());
+        break;
+    }
+
     std::cout << location.file_name();
     if (location.line() > 0)
     {
@@ -73,7 +89,6 @@ bool AssertThrow(std::string_view msg, std::string_view expression, Teide::Sourc
         std::cout << "Current test: " << curTest->name() << "\n";
     }
     std::cout << "Stack trace:\n";
-    const auto trace = cpptrace::generate_trace();
     trace.print(std::cout, true);
     throw AssertException{};
 }
