@@ -67,7 +67,6 @@ find_package(glslang REQUIRED)
 find_package(Taskflow REQUIRED)
 find_package(function2 REQUIRED)
 find_package(stdexec REQUIRED)
-find_package(cpptrace CONFIG REQUIRED)
 find_package(RenderDoc)
 
 if(NOT TARGET SDL2_image::SDL2_image)
@@ -103,8 +102,7 @@ td_add_library(
         function2::function2
         STDEXEC::stdexec
         glslang::SPIRV
-        glslang::glslang
-        cpptrace::cpptrace)
+        glslang::glslang)
 target_include_directories(Teide SYSTEM PRIVATE "${GENERATED_INCLUDE_DIR}")
 
 if(TEIDE_PRECOMPILED_HEADERS)
@@ -133,6 +131,7 @@ endif()
 if(TEIDE_BUILD_TESTS)
     find_package(GTest REQUIRED)
     find_package(StackWalker QUIET)
+    find_package(cpptrace CONFIG REQUIRED)
 
     add_subdirectory(tests)
 endif()

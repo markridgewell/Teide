@@ -28,8 +28,7 @@
     "vulkan",
     "vulkan-headers",
     "vulkan-memory-allocator-hpp",
-    "stdexec",
-    "cpptrace"
+    "stdexec"
   ],
   "overrides": [
     {
@@ -60,6 +59,7 @@
       "description": "Build tests",
       "dependencies": [
         "gtest",
+        "cpptrace",
         {
           "name": "stackwalker",
           "platform": "windows & !uwp"
