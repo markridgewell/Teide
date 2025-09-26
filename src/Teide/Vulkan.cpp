@@ -11,7 +11,6 @@
 #include "Teide/Util/StaticMap.h"
 
 #include <SDL_vulkan.h>
-#include <cpptrace/cpptrace.hpp>
 #include <spdlog/spdlog.h>
 
 #include <memory>
@@ -156,11 +155,6 @@ namespace
             TEIDE_ASSERT(severity != MessageSeverity::eError, "{}", pCallbackData->pMessage);
         }
 
-        if (severity == MessageSeverity::eError)
-        {
-            std::cout << "Stack trace:\n";
-            cpptrace::generate_trace().print();
-        }
         return VK_FALSE;
     }
 
