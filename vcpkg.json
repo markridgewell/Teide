@@ -28,7 +28,8 @@
     "vulkan",
     "vulkan-headers",
     "vulkan-memory-allocator-hpp",
-    "stdexec"
+    "stdexec",
+    "cpptrace"
   ],
   "overrides": [
     {
