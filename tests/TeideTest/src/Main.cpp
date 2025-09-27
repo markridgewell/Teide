@@ -56,7 +56,7 @@ bool AssertThrow(std::string_view msg, std::string_view expression, Teide::Sourc
         {
             continue;
         }
-        if (frame.symbol == "DebugCallback" || frame.symbol.starts_with("vk::"))
+        if (frame.symbol.contains("::DebugCallback(") || frame.symbol.starts_with("vk::"))
         {
             continue;
         }
