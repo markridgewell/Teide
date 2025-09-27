@@ -14,6 +14,7 @@
 #include "VulkanSurface.h"
 #include "VulkanTexture.h"
 
+#include "Teide/Format.h"
 #include "Teide/ShaderData.h"
 #include "Teide/TextureData.h"
 #include "vkex/vkex.hpp"
@@ -21,6 +22,7 @@
 #include <SDL.h>
 #include <SDL_vulkan.h>
 #include <spdlog/spdlog.h>
+#include <vulkan/vulkan_enums.hpp>
 
 #include <algorithm>
 #include <cstdlib>
@@ -762,9 +764,12 @@ Texture VulkanDevice::CreateTexture(const TextureData& data, const char* name)
     return task.get();
 }
 
-Texture VulkanDevice::AllocateTexture(const TextureProperties& props)
+Texture VulkanDevice::AllocateTexture(const TextureProperties& props, const SamplerState& samplerState)
 {
-    return m_textures.Insert({.properties = props});
+    return m_textures.Insert({
+        .sampler = CreateSampler(samplerState),
+        .properties = props,
+    });
 }
 
 Texture VulkanDevice::CreateTexture(const TextureData& data, const char* name, CommandBuffer& cmdBuffer)
@@ -781,6 +786,14 @@ Texture VulkanDevice::CreateTexture(const TextureData& data, const char* name, C
     {
         // Need to transfer pixels between mip levels in order to generate mipmaps
         usage |= vk::ImageUsageFlagBits::eTransferSrc | vk::ImageUsageFlagBits::eTransferDst;
+    }
+
+    if (HasDepthOrStencilComponent(data.format))
+    {
+        // According to the Vulkan spec, depth/stencil textures must be created with the depth/stencil attachment bit,
+        // even if they are not intended to be used as attachments.
+        // https://registry.khronos.org/vulkan/specs/latest/html/vkspec.html#VUID-VkImageMemoryBarrier-oldLayout-01210
+        usage |= vk::ImageUsageFlagBits::eDepthStencilAttachment;
     }
 
     VulkanTexture texture;

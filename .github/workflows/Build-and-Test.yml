@@ -108,6 +108,7 @@ jobs:
           ${{ matrix.extra-packages }}
           ${{ env.use_ccache && 'ccache' || '' }}
           ${{ matrix.coverage == 'ON' && runner.os == 'Windows' && 'OpenCppCoverage' || '' }}
+          ${{ runner.os == 'Linux' && 'vulkan-validationlayers' || '' }}
       env:
         GH_TOKEN: ${{ github.token }}
 
@@ -117,6 +118,11 @@ jobs:
         vulkan-query-version: 1.3.243.0
         vulkan-components: Vulkan-Headers, Vulkan-Loader
         vulkan-use-cache: true
+
+    - name: Print Vulkan SDK Tree
+      uses: jaywcjlove/github-action-folder-tree@main
+      with:
+        path: ${{ env.VULKAN_SDK }}
 
     - name: Setup ccache
       id: ccache
@@ -139,10 +145,11 @@ jobs:
         echo "debug_level  $(ccache -k debug_level)"
         echo "log_file     $(ccache -k log_file)"
 
-    - name: Save/restore ccache dir
+    - name: Restore ccache dir
       # I heard you like caches, so I put some caches in your caches
+      id: ccache-restore
       if: env.use_ccache
-      uses: actions/cache@v4
+      uses: actions/cache/restore@v4
       with:
         path: ${{ env.CCACHE_DIR }}
         key: ${{ steps.ccache.outputs.key }}
@@ -192,6 +199,13 @@ jobs:
         cat $CCACHE_LOGFILE
         echo "::endgroup::"
 
+    - name: Save ccache dir
+      if: env.use_ccache
+      uses: actions/cache/save@v4
+      with:
+        path: ${{ env.CCACHE_DIR }}
+        key: ${{ steps.ccache-restore.outputs.cache-primary-key }}
+
     - name: Dump CMake output logs
       if: failure()
       shell: bash
@@ -207,7 +221,6 @@ jobs:
 
     - name: Test
       id: test
-      env: {GTEST_CATCH_EXCEPTIONS: 0}
       run: ctest --preset ${{matrix.preset}} --build-config ${{matrix.buildtype}} --verbose --output-on-failure --no-tests=error
 
     - name: Save render test output

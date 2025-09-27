@@ -13,12 +13,14 @@
 #include <SDL_vulkan.h>
 #include <spdlog/spdlog.h>
 
+#include <memory>
+
 namespace Teide
 {
 
 namespace
 {
-    constexpr auto VulkanApiVersion = VK_API_VERSION_1_0;
+    constexpr auto VulkanApiVersion = VK_API_VERSION_1_1;
     constexpr bool BreakOnVulkanWarning = false;
     constexpr bool BreakOnVulkanError = true;
 
@@ -152,6 +154,7 @@ namespace
             // Vulkan error triggered a debug break
             TEIDE_ASSERT(severity != MessageSeverity::eError, "{}", pCallbackData->pMessage);
         }
+
         return VK_FALSE;
     }
 
@@ -369,6 +372,10 @@ vk::UniqueDevice CreateDevice(VulkanLoader& loader, const PhysicalDevice& physic
 
     std::vector<const char*> extensions = physicalDevice.requiredExtensions;
     EnableVulkanExtension(extensions, availableExtensions, "VK_EXT_descriptor_indexing", Required::True);
+    EnableVulkanExtension(extensions, availableExtensions, "VK_KHR_depth_stencil_resolve", Required::True);
+    EnableVulkanExtension(
+        extensions, availableExtensions, "VK_KHR_create_renderpass2",
+        Required::True); // required by "VK_KHR_depth_stencil_resolve"
 
     const vk::StructureChain createInfo = {
         vk::DeviceCreateInfo{

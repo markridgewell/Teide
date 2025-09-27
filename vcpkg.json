@@ -59,6 +59,7 @@
       "description": "Build tests",
       "dependencies": [
         "gtest",
+        "cpptrace",
         {
           "name": "stackwalker",
           "platform": "windows & !uwp"
