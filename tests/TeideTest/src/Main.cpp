@@ -52,11 +52,12 @@ bool AssertThrow(std::string_view msg, std::string_view expression, Teide::Sourc
     const auto trace = cpptrace::generate_trace();
     for (const auto& frame : trace | std::views::drop(1))
     {
-        if (frame.filename.empty() || frame.filename.ends_with(".so"))
+        if (frame.filename.empty() || frame.filename.ends_with(".so") || frame.filename.contains("/exports/installed")
+            || frame.filename.contains("/vcpkg/buildtrees/"))
         {
             continue;
         }
-        if (frame.symbol.contains("::DebugCallback(") || frame.symbol.starts_with("vk::"))
+        if (frame.symbol.contains("::DebugCallback("))
         {
             continue;
         }
