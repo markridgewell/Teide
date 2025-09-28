@@ -144,15 +144,15 @@ namespace
 
         spdlog::log(logLevel, "{}{}", prefix, pCallbackData->pMessage);
 
-        if constexpr (BreakOnVulkanWarning)
+        if (BreakOnVulkanWarning && severity == MessageSeverity::eWarning)
         {
             // Vulkan warning triggered a debug break
-            TEIDE_ASSERT(severity != MessageSeverity::eWarning, "{}", pCallbackData->pMessage);
+            TEIDE_BREAK("{}", pCallbackData->pMessage);
         }
-        if constexpr (BreakOnVulkanError)
+        if (BreakOnVulkanError && severity == MessageSeverity::eError)
         {
             // Vulkan error triggered a debug break
-            TEIDE_ASSERT(severity != MessageSeverity::eError, "{}", pCallbackData->pMessage);
+            TEIDE_BREAK("{}", pCallbackData->pMessage);
         }
 
         return VK_FALSE;
