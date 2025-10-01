@@ -169,6 +169,8 @@ jobs:
         -DTEIDE_SANITIZER=${{matrix.sanitizer}}
         -DCMAKE_CONFIGURATION_TYPES=${{matrix.buildtype}}
         -DCMAKE_TRY_COMPILE_CONFIGURATION=${{matrix.buildtype}}
+        --sarif-output=sarif/
+        -C .github/cmake/sarif-${{ runner.os == 'Windows' && 'msvc' || 'gcc-clang' }}.cmake
         ${{env.EXTRA_CMAKE_FLAGS}}
 
     - name: Save CMake trace
@@ -210,6 +212,16 @@ jobs:
       if: failure()
       shell: bash
       run: |
+        echo "Scanning for sarif logs..."
+        pattern='sarif/*.sarif'
+        if compgen -G $pattern; then
+          for i in $pattern; do
+            cat $i | jq --compact-output
+          done
+        fi
+
+        echo
+        echo "Full CMake logs:"
         paths="external/vcpkg build/${{matrix.preset}}"
         for file in $(find $paths -name '*.log'); do
             if [ -s $file ]; then
