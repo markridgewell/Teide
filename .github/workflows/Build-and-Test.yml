@@ -27,6 +27,10 @@ on:
         default: true
         type: boolean
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 env:
   VULKAN_SDK: ../vulkan_sdk
 
