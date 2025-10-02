@@ -300,7 +300,7 @@ Teide::Texture RenderTest::CreateNullShadowmapTexture()
 
     const Teide::TextureData textureData = {
         .size = {1, 1},
-        .format = Teide::Format::Float1,
+        .format = Teide::Format::Depth32,
         .mipLevelCount = 1,
         .samplerState = {
             .magFilter = Teide::Filter::Nearest,
