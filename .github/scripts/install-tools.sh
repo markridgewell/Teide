@@ -77,9 +77,14 @@ function install_from_github() {
 }
 
 function install_from_package_manager() {
-  echo "Installing package \"$1\" from default provider..."
-  sudo apt-get install -y $1 \
-    || panic "Failed to install package from apt-get"
+  package=$1
+  echo "Installing package \"${package}\" from default provider..."
+  if [[ ${RUNNER_OS} == Linux ]]; then
+    sudo apt-get install -y $1 \
+      || panic "Failed to install package from apt-get"
+  elif [[ ${RUNNER_OS} == Windows ]]; then
+    choco install --ignorepackageexitcodes ${package}
+  fi
 }
 
 function install-ccache() {
