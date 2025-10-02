@@ -89,6 +89,8 @@ jobs:
       if: steps.get-changes.outputs.changed-files != ''
       id: packages
       uses: ./.github/actions/install-packages
+      with:
+        fail-on-cache-miss: true
 
     - name: Install tools
       if: steps.get-changes.outputs.changed-files != ''
