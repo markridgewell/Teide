@@ -117,6 +117,22 @@ TEST_F(GpuExecutorTest, TwoCommandBuffers)
 
     cmdBuffer1->begin(vk::CommandBufferBeginInfo{});
     cmdBuffer1->fillBuffer(buffer.buffer.get(), 0, 8, 0x01010101);
+    cmdBuffer1->pipelineBarrier(
+        vk::PipelineStageFlagBits::eTransfer, // srcStageMask
+        vk::PipelineStageFlagBits::eTransfer, // dstStageMask
+        {},                                   // dependencyFlags
+        {},                                   // memoryBarriers
+        vk::BufferMemoryBarrier{
+            .srcAccessMask = vk::AccessFlagBits::eTransferWrite,
+            .dstAccessMask = vk::AccessFlagBits::eTransferWrite,
+            .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            .buffer = buffer.buffer.get(),
+            .offset = 0,
+            .size = VK_WHOLE_SIZE,
+        },
+        {} // imageMemoryBarriers
+    );
     cmdBuffer2->begin(vk::CommandBufferBeginInfo{});
     cmdBuffer2->fillBuffer(buffer.buffer.get(), 4, 8, 0x02020202);
 
@@ -145,6 +161,22 @@ TEST_F(GpuExecutorTest, TwoCommandBuffersOutOfOrder)
 
     cmdBuffer1->begin(vk::CommandBufferBeginInfo{});
     cmdBuffer1->fillBuffer(buffer.buffer.get(), 0, 8, 0x01010101);
+    cmdBuffer1->pipelineBarrier(
+        vk::PipelineStageFlagBits::eTransfer, // srcStageMask
+        vk::PipelineStageFlagBits::eTransfer, // dstStageMask
+        {},                                   // dependencyFlags
+        {},                                   // memoryBarriers
+        vk::BufferMemoryBarrier{
+            .srcAccessMask = vk::AccessFlagBits::eTransferWrite,
+            .dstAccessMask = vk::AccessFlagBits::eTransferWrite,
+            .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            .buffer = buffer.buffer.get(),
+            .offset = 0,
+            .size = VK_WHOLE_SIZE,
+        },
+        {} // imageMemoryBarriers
+    );
     cmdBuffer2->begin(vk::CommandBufferBeginInfo{});
     cmdBuffer2->fillBuffer(buffer.buffer.get(), 4, 8, 0x02020202);
 

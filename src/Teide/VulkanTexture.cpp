@@ -3,6 +3,7 @@
 
 #include "Vulkan.h"
 
+#include "Teide/Format.h"
 #include "Teide/TextureData.h"
 
 namespace Teide
@@ -100,7 +101,7 @@ void VulkanTexture::GenerateMipmaps(TextureState& state, vk::CommandBuffer cmdBu
 void VulkanTexture::TransitionToShaderInput(TextureState& state, vk::CommandBuffer cmdBuffer) const
 {
     auto newLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
-    if (state.layout == vk::ImageLayout::eDepthStencilAttachmentOptimal)
+    if (HasDepthOrStencilComponent(properties.format))
     {
         newLayout = vk::ImageLayout::eDepthStencilReadOnlyOptimal;
     }
