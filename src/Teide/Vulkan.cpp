@@ -12,6 +12,9 @@
 
 #include <SDL_vulkan.h>
 #include <spdlog/spdlog.h>
+#include <vulkan/vulkan_enums.hpp>
+
+#include <memory>
 
 namespace Teide
 {
@@ -19,8 +22,8 @@ namespace Teide
 namespace
 {
     constexpr auto VulkanApiVersion = VK_API_VERSION_1_1;
-    constexpr bool BreakOnVulkanWarning = false;
-    constexpr bool BreakOnVulkanError = true;
+
+    constexpr vk::DebugUtilsMessageSeverityFlagsEXT BreakOnVulkanMessage = vk::DebugUtilsMessageSeverityFlagBitsEXT::eError;
 
     const vk::Optional<const vk::AllocationCallbacks> s_allocator = nullptr;
 
@@ -142,15 +145,9 @@ namespace
 
         spdlog::log(logLevel, "{}{}", prefix, pCallbackData->pMessage);
 
-        if constexpr (BreakOnVulkanWarning)
+        if (severity & BreakOnVulkanMessage)
         {
-            // Vulkan warning triggered a debug break
-            TEIDE_ASSERT(severity != MessageSeverity::eWarning, "{}", pCallbackData->pMessage);
-        }
-        if constexpr (BreakOnVulkanError)
-        {
-            // Vulkan error triggered a debug break
-            TEIDE_ASSERT(severity != MessageSeverity::eError, "{}", pCallbackData->pMessage);
+            TEIDE_BREAK("{}", pCallbackData->pMessage);
         }
         return VK_FALSE;
     }

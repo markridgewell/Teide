@@ -48,9 +48,13 @@ protected:
         return {2, GetDevice(), GetQueue(), m_physicalDevice.queueFamilies.transferFamily};
     }
 
-    vk::UniqueCommandBuffer CreateCommandBuffer()
+    vk::UniqueCommandBuffer CreateCommandBuffer(const char* debugName = nullptr)
     {
         auto list = m_device->allocateCommandBuffersUnique({.commandPool = m_commandPool.get(), .commandBufferCount = 1});
+        if (debugName)
+        {
+            Teide::SetDebugName(list.front(), debugName);
+        }
         return std::move(list.front());
     }
 
@@ -111,8 +115,8 @@ TEST_F(GpuExecutorTest, OneCommandBuffer)
 TEST_F(GpuExecutorTest, TwoCommandBuffers)
 {
     auto executor = CreateGpuExecutor();
-    auto cmdBuffer1 = CreateCommandBuffer();
-    auto cmdBuffer2 = CreateCommandBuffer();
+    auto cmdBuffer1 = CreateCommandBuffer("cmdBuffer1");
+    auto cmdBuffer2 = CreateCommandBuffer("cmdBuffer2");
     auto buffer = CreateHostVisibleBuffer(12);
 
     cmdBuffer1->begin(vk::CommandBufferBeginInfo{});
