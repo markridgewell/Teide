@@ -9,7 +9,6 @@
 #include "Teide/TextureData.h"
 
 #include <fmt/format.h>
-#include <spdlog/spdlog.h>
 
 #include <chrono>
 #include <span>
@@ -124,7 +123,6 @@ void SetDebugName(vk::Device device [[maybe_unused]], Handle handle [[maybe_unus
     {
         if (VULKAN_HPP_DEFAULT_DISPATCHER.vkSetDebugUtilsObjectNameEXT != nullptr)
         {
-            spdlog::debug("Setting debug name '{}'", debugName);
             device.setDebugUtilsObjectNameEXT({
                 .objectType = handle.objectType,
                 .objectHandle = std::bit_cast<uint64_t>(handle),
