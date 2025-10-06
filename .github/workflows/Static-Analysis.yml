@@ -62,8 +62,14 @@ jobs:
 
     - name: Run Cppcheck
       if: steps.get-changes.outputs.changed-files != ''
+      shell: bash
       run: |
-        cmake --build --preset ${{env.preset}} --target Cppcheck
+        if ! cmake --build --preset ${{env.preset}} --target Cppcheck 2> cppcheck.log; then
+          echo
+          echo "Results:"
+          cat cppcheck.log
+          exit 1
+        fi
 
   clang-tidy:
     name: ClangTidy

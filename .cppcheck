@@ -10,4 +10,3 @@
 --suppress-xml=./tools/cppcheck_suppressions.xml
 --inline-suppr
 --check-level=exhaustive
---output-format=sarif
