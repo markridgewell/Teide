@@ -5,6 +5,7 @@
 #include "Teide/VulkanDevice.h"
 
 #include <fmt/core.h>
+#include <vulkan/vulkan_enums.hpp>
 
 #include <algorithm>
 
@@ -212,6 +213,7 @@ void ExecuteGraph(VulkanGraph& graph, VulkanDevice& device, VulkanRenderer& rend
 
     auto cmdBuffers = vkdevice.allocateCommandBuffersUnique({.commandPool = commandPool.get(), .commandBufferCount = 1});
     auto cmdBuffer = std::move(cmdBuffers.front());
+    cmdBuffer->begin({.flags = {vk::CommandBufferUsageFlagBits::eOneTimeSubmit}});
     for (const VulkanGraph::TextureNode& node : graph.textureNodes)
     {
         if (const auto* copyNode = graph.GetIf<VulkanGraph::CopyNode>(node.source))
@@ -232,12 +234,13 @@ void ExecuteGraph(VulkanGraph& graph, VulkanDevice& device, VulkanRenderer& rend
                     .layout = vk::ImageLayout::eTransferDstOptimal,
                     .lastPipelineStageUsage = vk::PipelineStageFlagBits::eTransfer,
                 };
-                const auto imageExtent = vk::Extent3D{data.size.x, data.size.y, 1};
+                const auto imageExtent = vk::Extent3D{.width = data.size.x, .height = data.size.y, .depth = 1};
                 CopyBufferToImage(
                     cmdBuffer.get(), inputStagingBuffer.buffer.get(), texture.image.get(), data.format, imageExtent);
             }
         }
     }
+    cmdBuffer->end();
 
     // 4. Submit to GPU executor
     (void)renderer;
