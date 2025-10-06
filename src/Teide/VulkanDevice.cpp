@@ -1112,7 +1112,6 @@ ParameterBlock VulkanDevice::CreateParameterBlock(
     const auto& layout = GetImpl(*data.layout);
     const bool isPushConstant = layout.HasPushConstants();
     const auto setLayout = layout.setLayout.get();
-    const auto descriptorSetName = DebugFormat("{}DescriptorSet", name);
 
     VulkanParameterBlock ret{layout};
     ret.textures = data.parameters.textures;
