@@ -226,6 +226,7 @@ jobs:
       with:
         name: RenderTestOutput-${{env.job_name}}
         path: ${{env.RT_OUTPUT_DIR}}
+        if-no-files-found: ignore
 
     - name: Record render test outcome
       id: rendertest
