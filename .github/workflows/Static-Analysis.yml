@@ -63,11 +63,15 @@ jobs:
     - name: Run Cppcheck
       if: steps.get-changes.outputs.changed-files != ''
       shell: bash
+      env:
+        TEIDE_CPPCHECK_ARGS: --output-format=sarif
+        TEIDE_CPPCHECK_OUTPUT_FILE: sarif/cppcheck.sarif
       run: |
-        if ! cmake --build --preset ${{env.preset}} --target Cppcheck 2> cppcheck.log; then
+        mkdir -p sarif
+        if ! cmake --build --preset ${{env.preset}} --target Cppcheck; then
           echo
           echo "Results:"
-          cat cppcheck.log
+          jq --compact-output <sarif/cppcheck.sarif
           exit 1
         fi
 

@@ -24,18 +24,15 @@ list(FILTER CPPCHECK_ARGS INCLUDE REGEX ".+")
 # Build cppcheck command
 list(APPEND cppcheck_args ${SOURCES})
 
-# Set the format for message output
-if(DEFINED ENV{CI})
-    # For CI runs, use SARIF format
-    list(APPEND cppcheck_args "--output-format=sarif")
-else()
-    # For local runs, use colour-highlighted output
-    string(ASCII 27 esc)
-    set(_location "{file}({line},{column})")
-    set(template_location "${esc}[96m${_location}): note: {info}${esc}[0m\\n{code}")
-    set(template "${esc}[31m${_location}: {severity}: {message} [{id}]${esc}[0m\\n{code}")
-    list(APPEND cppcheck_args "--template=${template}" "--template-location=${template_location}")
+if(DEFINED ENV{TEIDE_CPPCHECK_ARGS})
+    list(APPEND cppcheck_args $ENV{TEIDE_CPPCHECK_ARGS})
 endif()
+
+# Set the format for message output
+string(ASCII 27 esc)
+set(_location "{file}({line},{column})")
+set(template_location "${esc}[96m${_location}): note: {info}${esc}[0m\\n{code}")
+set(template "${esc}[31m${_location}: {severity}: {message} [{id}]${esc}[0m\\n{code}")
 
 # Remove system include dirs - Cppcheck works better without them
 list(REMOVE_ITEM INCLUDE_DIRS ${SYSTEM_INCLUDE_DIRS})
@@ -50,7 +47,12 @@ endforeach()
 # Add the rest of the command-line arguments
 list(APPEND cppcheck_args ${CPPCHECK_ARGS})
 
+if(DEFINED ENV{TEIDE_CPPCHECK_OUTPUT_FILE})
+    message("Redirecting Cppcheck output to $ENV{TEIDE_CPPCHECK_OUTPUT_FILE}")
+    list(APPEND cppcheck_args ERROR_FILE $ENV{TEIDE_CPPCHECK_OUTPUT_FILE})
+endif()
+
 # Run the command and propogate error code
-list(JOIN cppcheck_args "\" \"" cppcheck_arg_str)
 execute_process(COMMAND "${cppcheck}" --version)
-execute_process(COMMAND "${cppcheck}" ${cppcheck_args} COMMAND_ERROR_IS_FATAL ANY)
+execute_process(COMMAND "${cppcheck}" "--template=${template}" "--template-location=${template_location}"
+                        ${cppcheck_args} COMMAND_ERROR_IS_FATAL ANY)
