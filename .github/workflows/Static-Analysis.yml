@@ -78,7 +78,7 @@ jobs:
         fi
 
     - name: Upload SARIF files
-      if: always()
+      if: always() && steps.get-changes.outputs.changed-files != ''
       uses: github/codeql-action/upload-sarif@v3
       with:
         sarif_file: sarif
