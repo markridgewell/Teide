@@ -69,6 +69,9 @@ jobs:
       run: |
         mkdir -p sarif
         if ! cmake --build --preset ${{env.preset}} --target Cppcheck; then
+          # Fix paths by appending file:///
+          jq '.runs.[].results.[].locations.[].physicalLocation.artifactLocation.uri |= "file:///"+.' <sarif/cppcheck.sarif >tmp.sarif && mv tmp.sarif sarif/cppcheck.sarif
+
           echo
           echo "Results:"
           jq --compact-output <sarif/cppcheck.sarif
