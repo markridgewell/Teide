@@ -64,8 +64,7 @@ jobs:
       if: steps.get-changes.outputs.changed-files != ''
       shell: bash
       env:
-        TEIDE_CPPCHECK_ARGS: --output-format=sarif
-        TEIDE_CPPCHECK_OUTPUT_FILE: sarif/cppcheck.sarif
+        TEIDE_CPPCHECK_ARGS: --output-format=sarif --output-file sarif/cppcheck.sarif
       run: |
         mkdir -p sarif
         if ! cmake --build --preset ${{env.preset}} --target Cppcheck; then
