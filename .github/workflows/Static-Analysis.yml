@@ -75,6 +75,13 @@ jobs:
           exit 1
         fi
 
+    - name: Upload SARIF files
+      if: always()
+      uses: github/codeql-action/upload-sarif@v3
+      with:
+        sarif_file: sarif/
+        category: cppcheck
+
   clang-tidy:
     name: ClangTidy
     runs-on: ubuntu-latest
