@@ -47,7 +47,12 @@ endforeach()
 # Add the rest of the command-line arguments
 list(APPEND cppcheck_args ${CPPCHECK_ARGS})
 
+if(DEFINED ENV{TEIDE_CPPCHECK_OUTPUT_FILE})
+    message("Redirecting Cppcheck output to $ENV{TEIDE_CPPCHECK_OUTPUT_FILE}")
+    list(APPEND cppcheck_args ERROR_FILE $ENV{TEIDE_CPPCHECK_OUTPUT_FILE})
+endif()
+
 # Run the command and propogate error code
 execute_process(COMMAND "${cppcheck}" --version)
-execute_process(COMMAND "${cppcheck}" ${cppcheck_args} "--template=${template}"
-                        "--template-location=${template_location}" COMMAND_ERROR_IS_FATAL ANY)
+execute_process(COMMAND "${cppcheck}" "--template=${template}" "--template-location=${template_location}"
+                        ${cppcheck_args} COMMAND_ERROR_IS_FATAL ANY)
