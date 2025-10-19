@@ -162,12 +162,32 @@ CommandBuffer& GpuExecutor::GetCommandBuffer()
 
 uint32 GpuExecutor::AddCommandBufferSlot()
 {
-    return m_queue.Lock(&Queue::AddCommandBufferSlot);
+    m_readyCommandBuffers.emplace_back();
+    m_completionHandlers.emplace_back();
+    return static_cast<uint32>(m_readyCommandBuffers.size() - 1);
 }
 
 void GpuExecutor::SubmitCommandBuffer(uint32 index, vk::CommandBuffer commandBuffer, OnCompleteFunction func)
 {
-    m_queue.Lock(&Queue::SubmitCommandBuffer, index, commandBuffer, std::move(func));
+    commandBuffer.end();
+    m_readyCommandBuffers.at(index) = commandBuffer;
+    m_completionHandlers.at(index) = std::move(func);
+
+    const auto unsubmittedCommandBuffers = std::span(m_readyCommandBuffers).subspan(m_numSubmittedCommandBuffers);
+    const auto unsubmittedCompletionHandlers = std::span(m_completionHandlers).subspan(m_numSubmittedCommandBuffers);
+
+    const auto end = std::ranges::find(unsubmittedCommandBuffers, vk::CommandBuffer{});
+    const auto commandBuffersToSubmit = std::span(unsubmittedCommandBuffers.begin(), end);
+
+    if (!commandBuffersToSubmit.empty())
+    {
+        std::vector<OnCompleteFunction> callbacks;
+        std::ranges::move(
+            unsubmittedCompletionHandlers | std::views::filter([](const auto& x) { return x != nullptr; }),
+            std::back_inserter(callbacks));
+        m_queue.Lock(&Queue::Submit, commandBuffersToSubmit, std::move(callbacks));
+        m_numSubmittedCommandBuffers += commandBuffersToSubmit.size();
+    }
 }
 
 //---------------------------------------------------------------------------------------------------------------------
@@ -199,36 +219,6 @@ void GpuExecutor::Queue::Flush()
 
     // Remove done tasks
     std::erase_if(m_inFlightSubmits, [](const auto& entry) { return !entry.fence; });
-}
-
-uint32 GpuExecutor::Queue::AddCommandBufferSlot()
-{
-    m_readyCommandBuffers.emplace_back();
-    m_completionHandlers.emplace_back();
-    return static_cast<uint32>(m_readyCommandBuffers.size() - 1);
-}
-
-void GpuExecutor::Queue::SubmitCommandBuffer(uint32 index, vk::CommandBuffer commandBuffer, OnCompleteFunction func)
-{
-    commandBuffer.end();
-    m_readyCommandBuffers.at(index) = commandBuffer;
-    m_completionHandlers.at(index) = std::move(func);
-
-    const auto unsubmittedCommandBuffers = std::span(m_readyCommandBuffers).subspan(m_numSubmittedCommandBuffers);
-    const auto unsubmittedCompletionHandlers = std::span(m_completionHandlers).subspan(m_numSubmittedCommandBuffers);
-
-    const auto end = std::ranges::find(unsubmittedCommandBuffers, vk::CommandBuffer{});
-    const auto commandBuffersToSubmit = std::span(unsubmittedCommandBuffers.begin(), end);
-
-    if (!commandBuffersToSubmit.empty())
-    {
-        std::vector<OnCompleteFunction> callbacks;
-        std::ranges::move(
-            unsubmittedCompletionHandlers | std::views::filter([](const auto& x) { return x != nullptr; }),
-            std::back_inserter(callbacks));
-        Submit(commandBuffersToSubmit, std::move(callbacks));
-        m_numSubmittedCommandBuffers += commandBuffersToSubmit.size();
-    }
 }
 
 void GpuExecutor::Queue::Submit(std::span<const vk::CommandBuffer> commandBuffers, std::vector<OnCompleteFunction> callbacks)
