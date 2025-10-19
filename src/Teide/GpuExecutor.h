@@ -71,18 +71,14 @@ private:
 
         void Flush();
         uint32 AddCommandBufferSlot();
-        void Submit(uint32 index, vk::CommandBuffer commandBuffer, OnCompleteFunction func);
+        void SubmitCommandBuffer(uint32 index, vk::CommandBuffer commandBuffer, OnCompleteFunction func);
+        void Submit(std::span<const vk::CommandBuffer> commandBuffers, std::vector<OnCompleteFunction> callbacks);
 
     private:
         vk::UniqueFence GetFence();
 
         struct InFlightSubmit
         {
-            InFlightSubmit() = default;
-            InFlightSubmit(vk::UniqueFence f, std::vector<OnCompleteFunction> c) :
-                fence{std::move(f)}, callbacks{std::move(c)}
-            {}
-
             vk::Fence GetFence() const { return fence.get(); }
 
             vk::UniqueFence fence;
@@ -94,9 +90,9 @@ private:
 
         std::vector<vk::CommandBuffer> m_readyCommandBuffers;
         std::vector<OnCompleteFunction> m_completionHandlers;
-        std::queue<vk::UniqueFence> m_unusedSubmitFences;
         usize m_numSubmittedCommandBuffers = 0;
 
+        std::queue<vk::UniqueFence> m_unusedSubmitFences;
         std::vector<InFlightSubmit> m_inFlightSubmits;
     };
 
