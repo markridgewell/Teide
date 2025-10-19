@@ -43,7 +43,7 @@ GpuExecutor::GpuExecutor(uint32 numThreads, vk::Device device, vk::Queue queue, 
 
         while (!m_schedulerStop)
         {
-            const auto fences = m_queue.Lock(&Queue::GetInFlightFences);
+            const auto fences = m_queue.GetInFlightFences();
 
             if (fences.empty())
             {
@@ -57,7 +57,7 @@ GpuExecutor::GpuExecutor(uint32 numThreads, vk::Device device, vk::Queue queue, 
                 {
                     if (m_device.waitForFences(fences, false, Timeout(timeout)) == vk::Result::eSuccess)
                     {
-                        m_queue.Lock(&Queue::Flush);
+                        m_queue.Flush();
                     }
                 }
                 catch (const vk::DeviceLostError&)
@@ -85,10 +85,7 @@ GpuExecutor::~GpuExecutor() noexcept
 
 void GpuExecutor::WaitForTasks()
 {
-    const auto fencesRange = m_queue.Lock(&Queue::GetInFlightFences);
-    const std::vector<vk::Fence> fences(fencesRange.begin(), fencesRange.end());
-    // TODO C++23: Replace previous 2 lines with:
-    // const auto fences = m_queue.Lock(&Queue::GetInFlightFences) | std::ranges::to<std::vector>();
+    const auto fences = m_queue.GetInFlightFences();
 
     if (!fences.empty())
     {
@@ -185,7 +182,7 @@ void GpuExecutor::SubmitCommandBuffer(uint32 index, vk::CommandBuffer commandBuf
         std::ranges::move(
             unsubmittedCompletionHandlers | std::views::filter([](const auto& x) { return x != nullptr; }),
             std::back_inserter(callbacks));
-        m_queue.Lock(&Queue::Submit, commandBuffersToSubmit, std::move(callbacks));
+        m_queue.Submit(commandBuffersToSubmit, std::move(callbacks));
         m_numSubmittedCommandBuffers += commandBuffersToSubmit.size();
     }
 }
@@ -194,12 +191,17 @@ void GpuExecutor::SubmitCommandBuffer(uint32 index, vk::CommandBuffer commandBuf
 
 std::vector<vk::Fence> GpuExecutor::Queue::GetInFlightFences() const
 {
-    const auto range = m_inFlightSubmits | std::views::transform(&InFlightSubmit::GetFence);
-    return {range.begin(), range.end()};
+    auto _ = std::unique_lock(m_mutex);
+
+    return m_inFlightSubmits //
+        | std::views::transform(&InFlightSubmit::GetFence)
+        | std::ranges::to<std::vector>();
 }
 
 void GpuExecutor::Queue::Flush()
 {
+    auto _ = std::unique_lock(m_mutex);
+
     // Iterate the fences to find out which have been signalled
     for (auto& [fence, callbacks] : m_inFlightSubmits)
     {
@@ -223,6 +225,8 @@ void GpuExecutor::Queue::Flush()
 
 void GpuExecutor::Queue::Submit(std::span<const vk::CommandBuffer> commandBuffers, std::vector<OnCompleteFunction> callbacks)
 {
+    auto _ = std::unique_lock(m_mutex);
+
     auto fence = GetFence();
 
     const vk::SubmitInfo submitInfo = {
