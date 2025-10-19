@@ -96,8 +96,7 @@ private:
     const std::thread::id m_mainThread = std::this_thread::get_id();
 
     vk::Device m_device;
-    std::thread m_schedulerThread;
-    std::atomic_bool m_schedulerStop = false;
+    std::jthread m_schedulerThread;
 
     std::vector<vk::CommandBuffer> m_readyCommandBuffers;
     std::vector<OnCompleteFunction> m_completionHandlers;
