@@ -86,6 +86,7 @@ private:
         vk::Device m_device;
         vk::Queue m_queue;
 
+        mutable std::mutex m_mutex;
         std::queue<vk::UniqueFence> m_unusedSubmitFences;
         std::vector<InFlightSubmit> m_inFlightSubmits;
     };
@@ -102,7 +103,7 @@ private:
     std::vector<OnCompleteFunction> m_completionHandlers;
     usize m_numSubmittedCommandBuffers = 0;
 
-    Synchronized<Queue> m_queue;
+    Queue m_queue;
 };
 
 } // namespace Teide
