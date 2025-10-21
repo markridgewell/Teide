@@ -65,7 +65,7 @@ private:
     class Queue
     {
     public:
-        explicit Queue(vk::Device device, vk::Queue queue) : m_device{device}, m_queue{queue} {}
+        explicit Queue(vk::Device device, vk::Queue queue);
 
         std::vector<vk::Fence> GetInFlightFences() const;
 
@@ -89,6 +89,9 @@ private:
         mutable std::mutex m_mutex;
         std::queue<vk::UniqueFence> m_unusedSubmitFences;
         std::vector<InFlightSubmit> m_inFlightSubmits;
+
+        // Must be the last member so it is destroyed first!
+        std::jthread m_schedulerThread;
     };
 
     FrameArray<FrameResources, MaxFramesInFlight> m_frameResources;
@@ -102,7 +105,6 @@ private:
     usize m_numSubmittedCommandBuffers = 0;
 
     Queue m_queue;
-    std::jthread m_schedulerThread;
 };
 
 } // namespace Teide
