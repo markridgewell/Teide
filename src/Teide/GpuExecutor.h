@@ -70,8 +70,6 @@ private:
         std::vector<vk::Fence> GetInFlightFences() const;
 
         void Flush();
-        uint32 AddCommandBufferSlot();
-        void SubmitCommandBuffer(uint32 index, vk::CommandBuffer commandBuffer, OnCompleteFunction func);
         void Submit(std::span<const vk::CommandBuffer> commandBuffers, std::vector<OnCompleteFunction> callbacks);
 
     private:
@@ -88,10 +86,6 @@ private:
         vk::Device m_device;
         vk::Queue m_queue;
 
-        std::vector<vk::CommandBuffer> m_readyCommandBuffers;
-        std::vector<OnCompleteFunction> m_completionHandlers;
-        usize m_numSubmittedCommandBuffers = 0;
-
         std::queue<vk::UniqueFence> m_unusedSubmitFences;
         std::vector<InFlightSubmit> m_inFlightSubmits;
     };
@@ -103,6 +97,10 @@ private:
     vk::Device m_device;
     std::thread m_schedulerThread;
     std::atomic_bool m_schedulerStop = false;
+
+    std::vector<vk::CommandBuffer> m_readyCommandBuffers;
+    std::vector<OnCompleteFunction> m_completionHandlers;
+    usize m_numSubmittedCommandBuffers = 0;
 
     Synchronized<Queue> m_queue;
 };
