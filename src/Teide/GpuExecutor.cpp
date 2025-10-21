@@ -38,7 +38,7 @@ GpuExecutor::GpuExecutor(uint32 numThreads, vk::Device device, vk::Queue queue, 
 {
     spdlog::info("Creating GpuExecutor");
     spdlog::debug("this thread: {}", GetThreadName(std::this_thread::get_id()));
-    m_schedulerThread = std::jthread([this](std::stop_token stop) {
+    m_schedulerThread = std::jthread([this](const std::stop_token& stop) {
         SetCurrentTheadName("GpuExecutor");
         constexpr auto timeout = std::chrono::milliseconds{2};
 
@@ -68,6 +68,8 @@ GpuExecutor::GpuExecutor(uint32 numThreads, vk::Device device, vk::Queue queue, 
                 }
             }
         }
+
+        WaitForTasks();
     });
 }
 
@@ -77,8 +79,6 @@ GpuExecutor::~GpuExecutor() noexcept
     spdlog::debug("main thread: {}", GetThreadName(m_mainThread));
     spdlog::debug("this thread: {}", GetThreadName(std::this_thread::get_id()));
     TEIDE_ASSERT(m_mainThread == std::this_thread::get_id());
-
-    WaitForTasks();
 }
 
 void GpuExecutor::WaitForTasks()
