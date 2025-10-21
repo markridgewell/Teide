@@ -5,6 +5,8 @@
 #include "CpuExecutor.h"
 #include "GpuExecutor.h"
 
+#include "Util/ThreadUtils.h"
+
 #include <vector>
 
 namespace Teide
@@ -26,7 +28,7 @@ public:
     template <std::invocable<CommandBuffer&> F>
     auto ScheduleGpu(F&& f) -> TaskForCallable<F, CommandBuffer&> // NOLINT(cppcoreguidelines-missing-std-forward)
     {
-        const uint32 sequenceIndex = m_gpuExecutor.AddCommandBufferSlot();
+        const uint32 sequenceIndex = m_gpuExecutor.Lock(&GpuExecutor::AddCommandBufferSlot);
 
         using FRet = std::invoke_result_t<F, CommandBuffer&>;
 
@@ -37,13 +39,13 @@ public:
             // TODO: This is dangerous as we're passing references to an asynchronous callback.
             // If the GPU executor is destroyed while this task is still alive it will crash.
             // Try to refactor so this isn't possible!
-            CommandBuffer& commandBuffer = m_gpuExecutor.GetCommandBuffer();
+            CommandBuffer& commandBuffer = m_gpuExecutor.Lock(&GpuExecutor::GetCommandBuffer);
 
             if constexpr (std::is_void_v<FRet>)
             {
                 std::forward<F>(f)(commandBuffer); // call the callback
                 auto callback = [promise = std::move(promise)]() mutable { promise->set_value(); };
-                m_gpuExecutor.SubmitCommandBuffer(sequenceIndex, commandBuffer, std::move(callback));
+                m_gpuExecutor.Lock(&GpuExecutor::SubmitCommandBuffer, sequenceIndex, commandBuffer, std::move(callback));
             }
             else
             {
@@ -51,7 +53,7 @@ public:
                 auto callback = [promise = std::move(promise), ret = std::move(ret)]() mutable {
                     promise->set_value(std::move(ret));
                 };
-                m_gpuExecutor.SubmitCommandBuffer(sequenceIndex, commandBuffer, std::move(callback));
+                m_gpuExecutor.Lock(&GpuExecutor::SubmitCommandBuffer, sequenceIndex, commandBuffer, std::move(callback));
             }
         });
 
@@ -77,7 +79,7 @@ public:
 
 private:
     CpuExecutor m_cpuExecutor;
-    GpuExecutor m_gpuExecutor;
+    Synchronized<GpuExecutor> m_gpuExecutor;
 };
 
 } // namespace Teide
