@@ -145,7 +145,7 @@ void GpuExecutor::SubmitCommandBuffer(uint32 index, vk::CommandBuffer commandBuf
 
 //---------------------------------------------------------------------------------------------------------------------
 
-GpuExecutor::Queue::Queue(vk::Device device, vk::Queue queue) :
+Queue::Queue(vk::Device device, vk::Queue queue) :
     m_device{device}, m_queue{queue}, m_schedulerThread([this](const std::stop_token& stop) {
         SetCurrentTheadName("GpuExecutor");
         constexpr auto timeout = std::chrono::milliseconds{2};
@@ -181,7 +181,7 @@ GpuExecutor::Queue::Queue(vk::Device device, vk::Queue queue) :
     })
 {}
 
-std::vector<vk::Fence> GpuExecutor::Queue::GetInFlightFences() const
+std::vector<vk::Fence> Queue::GetInFlightFences() const
 {
     auto _ = std::unique_lock(m_mutex);
 
@@ -190,7 +190,7 @@ std::vector<vk::Fence> GpuExecutor::Queue::GetInFlightFences() const
         | std::ranges::to<std::vector>();
 }
 
-void GpuExecutor::Queue::Flush()
+void Queue::Flush()
 {
     auto _ = std::unique_lock(m_mutex);
 
@@ -215,7 +215,7 @@ void GpuExecutor::Queue::Flush()
     std::erase_if(m_inFlightSubmits, [](const auto& entry) { return !entry.fence; });
 }
 
-void GpuExecutor::Queue::Submit(std::span<const vk::CommandBuffer> commandBuffers, std::vector<OnCompleteFunction> callbacks)
+void Queue::Submit(std::span<const vk::CommandBuffer> commandBuffers, std::vector<OnCompleteFunction> callbacks)
 {
     auto _ = std::unique_lock(m_mutex);
 
@@ -230,7 +230,7 @@ void GpuExecutor::Queue::Submit(std::span<const vk::CommandBuffer> commandBuffer
     m_inFlightSubmits.emplace_back(std::move(fence), std::move(callbacks));
 }
 
-void GpuExecutor::Queue::WaitForTasks()
+void Queue::WaitForTasks()
 {
     const auto fences = GetInFlightFences();
 
@@ -244,7 +244,7 @@ void GpuExecutor::Queue::WaitForTasks()
     }
 }
 
-vk::UniqueFence GpuExecutor::Queue::GetFence()
+vk::UniqueFence Queue::GetFence()
 {
     if (m_unusedSubmitFences.empty())
     {
