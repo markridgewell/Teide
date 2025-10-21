@@ -167,7 +167,7 @@ uint32 GpuExecutor::AddCommandBufferSlot()
 
 void GpuExecutor::SubmitCommandBuffer(uint32 index, vk::CommandBuffer commandBuffer, OnCompleteFunction func)
 {
-    m_queue.Lock(&Queue::Submit, index, commandBuffer, std::move(func));
+    m_queue.Lock(&Queue::SubmitCommandBuffer, index, commandBuffer, std::move(func));
 }
 
 //---------------------------------------------------------------------------------------------------------------------
@@ -208,7 +208,7 @@ uint32 GpuExecutor::Queue::AddCommandBufferSlot()
     return static_cast<uint32>(m_readyCommandBuffers.size() - 1);
 }
 
-void GpuExecutor::Queue::Submit(uint32 index, vk::CommandBuffer commandBuffer, OnCompleteFunction func)
+void GpuExecutor::Queue::SubmitCommandBuffer(uint32 index, vk::CommandBuffer commandBuffer, OnCompleteFunction func)
 {
     commandBuffer.end();
     m_readyCommandBuffers.at(index) = commandBuffer;
@@ -222,21 +222,26 @@ void GpuExecutor::Queue::Submit(uint32 index, vk::CommandBuffer commandBuffer, O
 
     if (!commandBuffersToSubmit.empty())
     {
-        auto fence = GetFence();
-        m_numSubmittedCommandBuffers += commandBuffersToSubmit.size();
-
-        const vk::SubmitInfo submitInfo = {
-            .commandBufferCount = size32(commandBuffersToSubmit),
-            .pCommandBuffers = data(commandBuffersToSubmit),
-        };
-        m_queue.submit(submitInfo, fence.get());
-
         std::vector<OnCompleteFunction> callbacks;
         std::ranges::move(
             unsubmittedCompletionHandlers | std::views::filter([](const auto& x) { return x != nullptr; }),
             std::back_inserter(callbacks));
-        m_inFlightSubmits.emplace_back(std::move(fence), std::move(callbacks));
+        Submit(commandBuffersToSubmit, std::move(callbacks));
+        m_numSubmittedCommandBuffers += commandBuffersToSubmit.size();
     }
+}
+
+void GpuExecutor::Queue::Submit(std::span<const vk::CommandBuffer> commandBuffers, std::vector<OnCompleteFunction> callbacks)
+{
+    auto fence = GetFence();
+
+    const vk::SubmitInfo submitInfo = {
+        .commandBufferCount = size32(commandBuffers),
+        .pCommandBuffers = data(commandBuffers),
+    };
+    m_queue.submit(submitInfo, fence.get());
+
+    m_inFlightSubmits.emplace_back(std::move(fence), std::move(callbacks));
 }
 
 vk::UniqueFence GpuExecutor::Queue::GetFence()
