@@ -1,7 +1,7 @@
 {
   "name": "teide",
   "version": "0.0.0",
-  "builtin-baseline": "7e19f3c64cb636ee21f41bfe8558a6dfaae6236f",
+  "builtin-baseline": "74e6536215718009aae747d86d84b78376bf9e09",
   "dependencies": [
     "fmt",
     "function2",
@@ -13,6 +13,7 @@
     },
     {
       "name": "sdl2",
+      "default-features": false,
       "features": [
         "vulkan"
       ]
