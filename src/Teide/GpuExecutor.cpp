@@ -48,18 +48,9 @@ GpuExecutor::~GpuExecutor() noexcept
     TEIDE_ASSERT(m_mainThread == std::this_thread::get_id());
 }
 
-void GpuExecutor::Queue::WaitForTasks()
+void GpuExecutor::WaitForTasks()
 {
-    const auto fences = GetInFlightFences();
-
-    if (!fences.empty())
-    {
-        constexpr auto timeout = std::chrono::seconds{4};
-        if (m_device.waitForFences(fences, true, Timeout(timeout)) == vk::Result::eTimeout)
-        {
-            spdlog::error("Timeout (>{}) while waiting for command buffer execution to complete!", timeout);
-        }
-    }
+    m_queue.WaitForTasks();
 }
 
 void GpuExecutor::NextFrame()
@@ -237,6 +228,20 @@ void GpuExecutor::Queue::Submit(std::span<const vk::CommandBuffer> commandBuffer
     m_queue.submit(submitInfo, fence.get());
 
     m_inFlightSubmits.emplace_back(std::move(fence), std::move(callbacks));
+}
+
+void GpuExecutor::Queue::WaitForTasks()
+{
+    const auto fences = GetInFlightFences();
+
+    if (!fences.empty())
+    {
+        constexpr auto timeout = std::chrono::seconds{4};
+        if (m_device.waitForFences(fences, true, Timeout(timeout)) == vk::Result::eTimeout)
+        {
+            spdlog::error("Timeout (>{}) while waiting for command buffer execution to complete!", timeout);
+        }
+    }
 }
 
 vk::UniqueFence GpuExecutor::Queue::GetFence()
