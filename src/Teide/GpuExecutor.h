@@ -96,13 +96,13 @@ private:
     const std::thread::id m_mainThread = std::this_thread::get_id();
 
     vk::Device m_device;
-    std::jthread m_schedulerThread;
 
     std::vector<vk::CommandBuffer> m_readyCommandBuffers;
     std::vector<OnCompleteFunction> m_completionHandlers;
     usize m_numSubmittedCommandBuffers = 0;
 
     Queue m_queue;
+    std::jthread m_schedulerThread;
 };
 
 } // namespace Teide
