@@ -38,39 +38,6 @@ GpuExecutor::GpuExecutor(uint32 numThreads, vk::Device device, vk::Queue queue, 
 {
     spdlog::info("Creating GpuExecutor");
     spdlog::debug("this thread: {}", GetThreadName(std::this_thread::get_id()));
-    m_schedulerThread = std::jthread([this](const std::stop_token& stop) {
-        SetCurrentTheadName("GpuExecutor");
-        constexpr auto timeout = std::chrono::milliseconds{2};
-
-        while (!stop.stop_requested())
-        {
-            const auto fences = m_queue.GetInFlightFences();
-
-            if (fences.empty())
-            {
-                // If there are no fences to wait on, sleep for a bit and try again
-                std::this_thread::sleep_for(timeout);
-            }
-            else
-            {
-                // If there are fences, wait on them and see if any are signalled
-                try
-                {
-                    if (m_device.waitForFences(fences, false, Timeout(timeout)) == vk::Result::eSuccess)
-                    {
-                        m_queue.Flush();
-                    }
-                }
-                catch (const vk::DeviceLostError&)
-                {
-                    spdlog::critical("Device lost while waiting for fences");
-                    std::abort();
-                }
-            }
-        }
-
-        WaitForTasks();
-    });
 }
 
 GpuExecutor::~GpuExecutor() noexcept
@@ -83,16 +50,7 @@ GpuExecutor::~GpuExecutor() noexcept
 
 void GpuExecutor::WaitForTasks()
 {
-    const auto fences = m_queue.GetInFlightFences();
-
-    if (!fences.empty())
-    {
-        constexpr auto timeout = std::chrono::seconds{4};
-        if (m_device.waitForFences(fences, true, Timeout(timeout)) == vk::Result::eTimeout)
-        {
-            spdlog::error("Timeout (>{}) while waiting for command buffer execution to complete!", timeout);
-        }
-    }
+    m_queue.WaitForTasks();
 }
 
 void GpuExecutor::NextFrame()
@@ -187,6 +145,42 @@ void GpuExecutor::SubmitCommandBuffer(uint32 index, vk::CommandBuffer commandBuf
 
 //---------------------------------------------------------------------------------------------------------------------
 
+GpuExecutor::Queue::Queue(vk::Device device, vk::Queue queue) :
+    m_device{device}, m_queue{queue}, m_schedulerThread([this](const std::stop_token& stop) {
+        SetCurrentTheadName("GpuExecutor");
+        constexpr auto timeout = std::chrono::milliseconds{2};
+
+        while (!stop.stop_requested())
+        {
+            const auto fences = GetInFlightFences();
+
+            if (fences.empty())
+            {
+                // If there are no fences to wait on, sleep for a bit and try again
+                std::this_thread::sleep_for(timeout);
+            }
+            else
+            {
+                // If there are fences, wait on them and see if any are signalled
+                try
+                {
+                    if (m_device.waitForFences(fences, false, Timeout(timeout)) == vk::Result::eSuccess)
+                    {
+                        Flush();
+                    }
+                }
+                catch (const vk::DeviceLostError&)
+                {
+                    spdlog::critical("Device lost while waiting for fences");
+                    std::abort();
+                }
+            }
+        }
+
+        WaitForTasks();
+    })
+{}
+
 std::vector<vk::Fence> GpuExecutor::Queue::GetInFlightFences() const
 {
     auto _ = std::unique_lock(m_mutex);
@@ -234,6 +228,20 @@ void GpuExecutor::Queue::Submit(std::span<const vk::CommandBuffer> commandBuffer
     m_queue.submit(submitInfo, fence.get());
 
     m_inFlightSubmits.emplace_back(std::move(fence), std::move(callbacks));
+}
+
+void GpuExecutor::Queue::WaitForTasks()
+{
+    const auto fences = GetInFlightFences();
+
+    if (!fences.empty())
+    {
+        constexpr auto timeout = std::chrono::seconds{4};
+        if (m_device.waitForFences(fences, true, Timeout(timeout)) == vk::Result::eTimeout)
+        {
+            spdlog::error("Timeout (>{}) while waiting for command buffer execution to complete!", timeout);
+        }
+    }
 }
 
 vk::UniqueFence GpuExecutor::Queue::GetFence()
