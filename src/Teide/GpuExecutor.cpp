@@ -12,6 +12,7 @@
 #include <ranges>
 #include <span>
 #include <sstream>
+#include <stop_token>
 
 namespace Teide
 {
@@ -37,11 +38,11 @@ GpuExecutor::GpuExecutor(uint32 numThreads, vk::Device device, vk::Queue queue, 
 {
     spdlog::info("Creating GpuExecutor");
     spdlog::debug("this thread: {}", GetThreadName(std::this_thread::get_id()));
-    m_schedulerThread = std::thread([this] {
+    m_schedulerThread = std::jthread([this](const std::stop_token& stop) {
         SetCurrentTheadName("GpuExecutor");
         constexpr auto timeout = std::chrono::milliseconds{2};
 
-        while (!m_schedulerStop)
+        while (!stop.stop_requested())
         {
             const auto fences = m_queue.GetInFlightFences();
 
@@ -67,6 +68,8 @@ GpuExecutor::GpuExecutor(uint32 numThreads, vk::Device device, vk::Queue queue, 
                 }
             }
         }
+
+        WaitForTasks();
     });
 }
 
@@ -76,11 +79,6 @@ GpuExecutor::~GpuExecutor() noexcept
     spdlog::debug("main thread: {}", GetThreadName(m_mainThread));
     spdlog::debug("this thread: {}", GetThreadName(std::this_thread::get_id()));
     TEIDE_ASSERT(m_mainThread == std::this_thread::get_id());
-
-    m_schedulerStop = true;
-    m_schedulerThread.join();
-
-    WaitForTasks();
 }
 
 void GpuExecutor::WaitForTasks()
