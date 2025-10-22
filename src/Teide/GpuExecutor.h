@@ -38,8 +38,6 @@ public:
     CommandBuffer& GetCommandBuffer();
     void SubmitCommandBuffer(uint32 index, vk::CommandBuffer commandBuffer, OnCompleteFunction func = nullptr);
 
-    void WaitForTasks();
-
 private:
     static constexpr uint32 MaxFramesInFlight = 2;
 
@@ -74,6 +72,8 @@ private:
 
     private:
         vk::UniqueFence GetFence();
+
+        void WaitForTasks();
 
         struct InFlightSubmit
         {

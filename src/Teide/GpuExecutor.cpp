@@ -48,9 +48,9 @@ GpuExecutor::~GpuExecutor() noexcept
     TEIDE_ASSERT(m_mainThread == std::this_thread::get_id());
 }
 
-void GpuExecutor::WaitForTasks()
+void GpuExecutor::Queue::WaitForTasks()
 {
-    const auto fences = m_queue.GetInFlightFences();
+    const auto fences = GetInFlightFences();
 
     if (!fences.empty())
     {
@@ -185,6 +185,8 @@ GpuExecutor::Queue::Queue(vk::Device device, vk::Queue queue) :
                 }
             }
         }
+
+        WaitForTasks();
     })
 {}
 
