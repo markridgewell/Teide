@@ -44,6 +44,8 @@ set(sources
     src/Teide/Format.cpp
     src/Teide/GpuExecutor.cpp
     src/Teide/GpuExecutor.h
+    src/Teide/Queue.cpp
+    src/Teide/Queue.h
     src/Teide/Scheduler.cpp
     src/Teide/Scheduler.h
     src/Teide/ShaderData.cpp
