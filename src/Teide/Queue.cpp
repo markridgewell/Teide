@@ -18,11 +18,6 @@ namespace Teide
 Queue::SubmitSender::SubmitSender(CommandsRef commands, Queue& queue) : m_commands{commands}, m_queue{queue}
 {}
 
-auto Queue::SubmitSender::connect(ex::receiver auto receiver)
-{
-    return SubmitOperation(m_commands, m_queue, std::move(receiver));
-}
-
 Queue::Queue(vk::Device device, vk::Queue queue) :
     m_device{device}, m_queue{queue}, m_schedulerThread([this](const std::stop_token& stop) {
         SetCurrentTheadName("GpuExecutor");
@@ -73,15 +68,12 @@ void Queue::Flush()
     auto _ = std::unique_lock(m_mutex);
 
     // Iterate the fences to find out which have been signalled
-    for (auto& [fence, callbacks] : m_inFlightSubmits)
+    for (auto& [fence, callback] : m_inFlightSubmits)
     {
         if (m_device.waitForFences(fence.get(), false, 0) == vk::Result::eSuccess)
         {
             // Found one, call the attached callbacks (if any)
-            for (auto&& callback : std::exchange(callbacks, {}))
-            {
-                callback();
-            }
+            std::exchange(callback, {})();
 
             // Reuse the fence for later and mark the task as done
             m_device.resetFences(fence.get());
@@ -93,19 +85,19 @@ void Queue::Flush()
     std::erase_if(m_inFlightSubmits, [](const auto& entry) { return !entry.fence; });
 }
 
-void Queue::Submit(std::span<const vk::CommandBuffer> commandBuffers, std::vector<OnCompleteFunction> callbacks)
+void Queue::Submit(CommandsRef commands, OnCompleteFunction callback)
 {
     auto _ = std::unique_lock(m_mutex);
 
     auto fence = GetFence();
 
     const vk::SubmitInfo submitInfo = {
-        .commandBufferCount = size32(commandBuffers),
-        .pCommandBuffers = data(commandBuffers),
+        .commandBufferCount = size32(commands),
+        .pCommandBuffers = data(commands),
     };
     m_queue.submit(submitInfo, fence.get());
 
-    m_inFlightSubmits.emplace_back(std::move(fence), std::move(callbacks));
+    m_inFlightSubmits.emplace_back(std::move(fence), std::move(callback));
 }
 
 auto Queue::LazySubmit(CommandsRef commands) -> SubmitSender

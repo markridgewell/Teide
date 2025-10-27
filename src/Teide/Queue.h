@@ -23,6 +23,25 @@ class Queue
 public:
     using CommandsRef = std::span<const vk::CommandBuffer>;
 
+    template <class Receiver>
+    class SubmitOperation : Immovable
+    {
+    public:
+        explicit SubmitOperation(CommandsRef commands, Queue& queue, Receiver receiver) :
+            m_commands{commands}, m_queue{queue}, m_receiver{std::move(receiver)}
+        {}
+
+        void start() noexcept
+        {
+            m_queue.Submit(m_commands, [rec = std::move(m_receiver)]() mutable { rec.set_value(); });
+        }
+
+    private:
+        CommandsRef m_commands;
+        Queue& m_queue;
+        Receiver m_receiver;
+    };
+
     class SubmitSender
     {
     public:
@@ -32,7 +51,14 @@ public:
 
         explicit SubmitSender(CommandsRef commands, Queue& queue);
 
-        auto connect(ex::receiver auto receiver);
+        // Hopefully C++26:
+        // auto connect(ex::receiver auto receiver) { return SubmitOperation(m_commands, m_queue, std::move(receiver)); }
+
+        template <ex::receiver R>
+        friend auto tag_invoke(ex::connect_t /*tag*/, const SubmitSender& sender, R&& receiver) -> SubmitOperation<R>
+        {
+            return SubmitOperation(sender.m_commands, sender.m_queue, std::forward<R>(receiver));
+        }
 
     private:
         CommandsRef m_commands;
@@ -47,7 +73,7 @@ public:
 
     void Flush();
 
-    void Submit(std::span<const vk::CommandBuffer> commandBuffers, std::vector<OnCompleteFunction> callbacks);
+    void Submit(CommandsRef commands, OnCompleteFunction callback);
 
     auto LazySubmit(CommandsRef commands) -> SubmitSender;
 
@@ -56,30 +82,12 @@ public:
 private:
     vk::UniqueFence GetFence();
 
-    template <class Receiver>
-    struct SubmitOperation : Immovable
-    {
-        explicit SubmitOperation(CommandsRef commands, Queue& queue, Receiver receiver) :
-            m_commands{commands}, m_queue{queue}, m_receiver{std::move(receiver)}
-        {}
-
-        void start() noexcept
-        {
-            m_queue.Submit(m_commands, {[rec = std::move(m_receiver)] { rec.set_value(); }});
-        }
-
-    private:
-        CommandsRef m_commands;
-        Queue& m_queue;
-        Receiver m_receiver;
-    };
-
     struct InFlightSubmit
     {
         vk::Fence GetFence() const { return fence.get(); }
 
         vk::UniqueFence fence;
-        std::vector<OnCompleteFunction> callbacks;
+        OnCompleteFunction callback;
     };
 
     vk::Device m_device;
