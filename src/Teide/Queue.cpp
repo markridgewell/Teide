@@ -15,6 +15,14 @@
 namespace Teide
 {
 
+Queue::SubmitSender::SubmitSender(CommandsRef commands, Queue& queue) : m_commands{commands}, m_queue{queue}
+{}
+
+auto Queue::SubmitSender::connect(ex::receiver auto receiver)
+{
+    return SubmitOperation(m_commands, m_queue, std::move(receiver));
+}
+
 Queue::Queue(vk::Device device, vk::Queue queue) :
     m_device{device}, m_queue{queue}, m_schedulerThread([this](const std::stop_token& stop) {
         SetCurrentTheadName("GpuExecutor");
@@ -98,6 +106,11 @@ void Queue::Submit(std::span<const vk::CommandBuffer> commandBuffers, std::vecto
     m_queue.submit(submitInfo, fence.get());
 
     m_inFlightSubmits.emplace_back(std::move(fence), std::move(callbacks));
+}
+
+auto Queue::LazySubmit(CommandsRef commands) -> SubmitSender
+{
+    return SubmitSender(commands, *this);
 }
 
 void Queue::WaitForTasks()
