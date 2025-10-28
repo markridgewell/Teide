@@ -55,6 +55,7 @@ set(sources
     src/Teide/Util/StaticMap.h
     src/Teide/Util/ThreadUtils.cpp
     src/Teide/Util/ThreadUtils.h
+    src/Teide/Util/TypeHelpers.h
     src/Teide/VmaImpl.cpp
     src/Teide/Vulkan.cpp
     src/Teide/Vulkan.h

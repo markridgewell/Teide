@@ -135,7 +135,12 @@ void GpuExecutor::SubmitCommandBuffer(uint32 index, vk::CommandBuffer commandBuf
         std::ranges::move(
             unsubmittedCompletionHandlers | std::views::filter([](const auto& x) { return x != nullptr; }),
             std::back_inserter(callbacks));
-        m_queue.Submit(commandBuffersToSubmit, std::move(callbacks));
+        m_queue.Submit(commandBuffersToSubmit, [callbacks = std::move(callbacks)]() mutable {
+            for (auto&& callback : std::move(callbacks))
+            {
+                callback();
+            }
+        });
         m_numSubmittedCommandBuffers += commandBuffersToSubmit.size();
     }
 }
