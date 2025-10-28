@@ -9,7 +9,6 @@
 #include "Teide/VulkanLoader.h"
 
 #include <gmock/gmock.h>
-#include <stdexec/__detail/__sync_wait.hpp>
 
 #include <algorithm>
 #include <memory>
@@ -112,10 +111,9 @@ TEST_F(QueueTest, OneCommandBuffer)
     EXPECT_THAT(result, Eq(expected));
 }
 
-/*
 TEST_F(QueueTest, TwoCommandBuffers)
 {
-    auto executor = CreateQueue();
+    auto queue = CreateQueue();
     auto cmdBuffer1 = CreateCommandBuffer("cmdBuffer1");
     auto cmdBuffer2 = CreateCommandBuffer("cmdBuffer2");
     auto buffer = CreateHostVisibleBuffer(12);
@@ -138,100 +136,35 @@ TEST_F(QueueTest, TwoCommandBuffers)
         },
         {} // imageMemoryBarriers
     );
+    cmdBuffer1->end();
     cmdBuffer2->begin(vk::CommandBufferBeginInfo{});
     cmdBuffer2->fillBuffer(buffer.buffer.get(), 4, 8, 0x02020202);
+    cmdBuffer2->end();
 
-    const auto slot1 = executor.AddCommandBufferSlot();
-    const auto slot2 = executor.AddCommandBufferSlot();
-    const auto future1 = SubmitCommandBuffer(executor, slot1, cmdBuffer1.get());
-    const auto future2 = SubmitCommandBuffer(executor, slot2, cmdBuffer2.get());
-    ASSERT_THAT(future1.valid(), IsTrue());
-    ASSERT_THAT(future2.valid(), IsTrue());
-    future2.wait();
-    EXPECT_THAT(future1.wait_for(0s), Eq(std::future_status::ready));
-    EXPECT_THAT(future2.wait_for(0s), Eq(std::future_status::ready));
+    auto future1 = queue.LazySubmit(One(cmdBuffer1.get()));
+    auto future2 = queue.LazySubmit(One(cmdBuffer2.get()));
+    auto both = ex::when_all(future1, future2);
+    EXPECT_NO_THROW(ex::sync_wait(both));
 
     InvalidateAllocation(buffer.allocation);
     const auto result = std::vector(buffer.mappedData.begin(), buffer.mappedData.end());
     const auto expected = HexToBytes("01 01 01 01 02 02 02 02 02 02 02 02");
     EXPECT_THAT(result, Eq(expected));
-}
-
-TEST_F(QueueTest, TwoCommandBuffersOutOfOrder)
-{
-    auto executor = CreateQueue();
-    auto cmdBuffer1 = CreateCommandBuffer();
-    auto cmdBuffer2 = CreateCommandBuffer();
-    auto buffer = CreateHostVisibleBuffer(12);
-
-    cmdBuffer1->begin(vk::CommandBufferBeginInfo{});
-    cmdBuffer1->fillBuffer(buffer.buffer.get(), 0, 8, 0x01010101);
-    cmdBuffer1->pipelineBarrier(
-        vk::PipelineStageFlagBits::eTransfer, // srcStageMask
-        vk::PipelineStageFlagBits::eTransfer, // dstStageMask
-        {},                                   // dependencyFlags
-        {},                                   // memoryBarriers
-        vk::BufferMemoryBarrier{
-            .srcAccessMask = vk::AccessFlagBits::eTransferWrite,
-            .dstAccessMask = vk::AccessFlagBits::eTransferWrite,
-            .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-            .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-            .buffer = buffer.buffer.get(),
-            .offset = 0,
-            .size = VK_WHOLE_SIZE,
-        },
-        {} // imageMemoryBarriers
-    );
-    cmdBuffer2->begin(vk::CommandBufferBeginInfo{});
-    cmdBuffer2->fillBuffer(buffer.buffer.get(), 4, 8, 0x02020202);
-
-    const auto slot1 = executor.AddCommandBufferSlot();
-    const auto slot2 = executor.AddCommandBufferSlot();
-    const auto future2 = SubmitCommandBuffer(executor, slot2, cmdBuffer2.get()); // submission order switched
-    const auto future1 = SubmitCommandBuffer(executor, slot1, cmdBuffer1.get());
-    ASSERT_THAT(future1.valid(), IsTrue());
-    ASSERT_THAT(future2.valid(), IsTrue());
-    future2.wait();
-    EXPECT_THAT(future1.wait_for(0s), Eq(std::future_status::ready));
-    EXPECT_THAT(future2.wait_for(0s), Eq(std::future_status::ready));
-
-    InvalidateAllocation(buffer.allocation);
-    const auto result = std::vector(buffer.mappedData.begin(), buffer.mappedData.end());
-    const auto expected = HexToBytes("01 01 01 01 02 02 02 02 02 02 02 02");
-    EXPECT_THAT(result, Eq(expected));
-}
-
-TEST_F(QueueTest, DontWait)
-{
-    auto buffer = CreateHostVisibleBuffer(12);
-    auto cmdBuffer = CreateCommandBuffer();
-    {
-        auto executor = CreateQueue();
-
-        cmdBuffer->begin(vk::CommandBufferBeginInfo{});
-        cmdBuffer->fillBuffer(buffer.buffer.get(), 0, 12, 0x01010101);
-
-        const auto slot = executor.AddCommandBufferSlot();
-        const auto future = SubmitCommandBuffer(executor, slot, cmdBuffer.get());
-        ASSERT_THAT(future.valid(), IsTrue());
-    }
 }
 
 TEST_F(QueueTest, SubmitMultipleCommandBuffers)
 {
-    auto executor = CreateQueue();
+    auto queue = CreateQueue();
     for (int i = 0; i < 10; i++)
     {
         auto cmdBuffer = CreateCommandBuffer();
         auto buffer = CreateHostVisibleBuffer(12);
         cmdBuffer->begin(vk::CommandBufferBeginInfo{});
         cmdBuffer->fillBuffer(buffer.buffer.get(), 0, 12, 0x01010101);
+        cmdBuffer->end();
 
-        const auto slot = executor.AddCommandBufferSlot();
-        const auto future = SubmitCommandBuffer(executor, slot, cmdBuffer.get());
-        ASSERT_THAT(future.valid(), IsTrue());
-        future.wait();
-        EXPECT_THAT(future.wait_for(0s), Eq(std::future_status::ready));
+        auto future = queue.LazySubmit(One(cmdBuffer.get()));
+        ex::sync_wait(future);
 
         InvalidateAllocation(buffer.allocation);
         const auto result = std::vector(buffer.mappedData.begin(), buffer.mappedData.end());
@@ -239,6 +172,5 @@ TEST_F(QueueTest, SubmitMultipleCommandBuffers)
         EXPECT_THAT(result, Eq(expected));
     }
 }
-*/
 
 } // namespace
