@@ -154,4 +154,6 @@ endif()
 
 mark_as_advanced_pattern("[a-z0-9]+_DIR|VCPKG_|FETCHCONTENT_")
 
+file(WRITE ${CMAKE_BINARY_DIR}/.gitignore "*")
+
 dump_targets()
