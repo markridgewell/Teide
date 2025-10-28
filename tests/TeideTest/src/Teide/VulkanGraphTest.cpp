@@ -25,8 +25,7 @@ std::string MakeDotURL(std::string_view dot)
 
     for (char c : dot)
     {
-        if (std::isalnum(c) || c == '$' || c == '-' || c == '_' || c == '.' || c == '+' || c == '\'' || c == '!'
-            || c == '*' || c == '(' || c == ')')
+        if (std::isalnum(c) || c == '$' || c == '-' || c == '_' || c == '.' || c == '+' || c == '\'' || c == '!' || c == '*' || c == '(' || c == ')')
         {
             *out = c;
             ++out;
