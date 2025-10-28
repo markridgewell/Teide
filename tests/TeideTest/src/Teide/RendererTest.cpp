@@ -85,29 +85,53 @@ private:
 MATCHER_P(MatchesColorTarget, renderTarget, "")
 {
     (void)result_listener;
-    return arg.size == renderTarget.size && arg.format == renderTarget.framebufferLayout.colorFormat
-        && arg.mipLevelCount == 1 && arg.sampleCount == renderTarget.framebufferLayout.sampleCount;
+    return arg.size
+        == renderTarget.size
+        && arg.format
+        == renderTarget.framebufferLayout.colorFormat
+        && arg.mipLevelCount
+        == 1
+        && arg.sampleCount
+        == renderTarget.framebufferLayout.sampleCount;
 }
 
 MATCHER_P(MatchesDepthTarget, renderTarget, "")
 {
     (void)result_listener;
-    return arg.size == renderTarget.size && arg.format == renderTarget.framebufferLayout.depthStencilFormat
-        && arg.mipLevelCount == 1 && arg.sampleCount == renderTarget.framebufferLayout.sampleCount;
+    return arg.size
+        == renderTarget.size
+        && arg.format
+        == renderTarget.framebufferLayout.depthStencilFormat
+        && arg.mipLevelCount
+        == 1
+        && arg.sampleCount
+        == renderTarget.framebufferLayout.sampleCount;
 }
 
 MATCHER_P(MatchesResolvedColorTarget, renderTarget, "")
 {
     (void)result_listener;
-    return arg.size == renderTarget.size && arg.format == renderTarget.framebufferLayout.colorFormat
-        && arg.mipLevelCount == 1 && arg.sampleCount == 1;
+    return arg.size
+        == renderTarget.size
+        && arg.format
+        == renderTarget.framebufferLayout.colorFormat
+        && arg.mipLevelCount
+        == 1
+        && arg.sampleCount
+        == 1;
 }
 
 MATCHER_P(MatchesResolvedDepthTarget, renderTarget, "")
 {
     (void)result_listener;
-    return arg.size == renderTarget.size && arg.format == renderTarget.framebufferLayout.depthStencilFormat
-        && arg.mipLevelCount == 1 && arg.sampleCount == 1;
+    return arg.size
+        == renderTarget.size
+        && arg.format
+        == renderTarget.framebufferLayout.depthStencilFormat
+        && arg.mipLevelCount
+        == 1
+        && arg.sampleCount
+        == 1;
 }
 
 auto BytesEq(std::string_view bytesStr)

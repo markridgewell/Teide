@@ -25,6 +25,10 @@ public:
     explicit Synchronized(const T& object) : m_object{object} {}
     explicit Synchronized(T&& object) : m_object{std::move(object)} {}
 
+    template <class... Args>
+    explicit Synchronized(Args&&... args) : m_object{std::forward<Args>(args)...}
+    {}
+
     template <class F, class... Args>
     decltype(auto) Lock(const F& callable, Args&&... args)
     {

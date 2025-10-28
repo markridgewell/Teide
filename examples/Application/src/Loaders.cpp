@@ -53,9 +53,15 @@ Teide::MeshData LoadMesh(const char* filename)
 
     Assimp::Importer importer;
 
-    const auto importFlags = aiProcess_CalcTangentSpace | aiProcess_Triangulate | aiProcess_JoinIdenticalVertices
-        | aiProcess_SortByPType | aiProcess_RemoveComponent | aiProcess_RemoveRedundantMaterials
-        | aiProcess_OptimizeMeshes | aiProcess_OptimizeGraph | aiProcess_ConvertToLeftHanded;
+    const auto importFlags = aiProcess_CalcTangentSpace
+        | aiProcess_Triangulate
+        | aiProcess_JoinIdenticalVertices
+        | aiProcess_SortByPType
+        | aiProcess_RemoveComponent
+        | aiProcess_RemoveRedundantMaterials
+        | aiProcess_OptimizeMeshes
+        | aiProcess_OptimizeGraph
+        | aiProcess_ConvertToLeftHanded;
 
     const aiScene* scene = importer.ReadFile(filename, importFlags);
     if (!scene)

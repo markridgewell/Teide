@@ -83,20 +83,44 @@ uint32 GetFormatElementSize(Format format)
 
 bool HasDepthComponent(Format format)
 {
-    return format == Format::Depth16 || format == Format::Depth32 || format == Format::Depth16Stencil8
-        || format == Format::Depth24Stencil8 || format == Format::Depth32Stencil8;
+    return format
+        == Format::Depth16
+        || format
+        == Format::Depth32
+        || format
+        == Format::Depth16Stencil8
+        || format
+        == Format::Depth24Stencil8
+        || format
+        == Format::Depth32Stencil8;
 }
 
 bool HasStencilComponent(Format format)
 {
-    return format == Format::Stencil8 || format == Format::Depth16Stencil8 || format == Format::Depth24Stencil8
-        || format == Format::Depth32Stencil8;
+    return format
+        == Format::Stencil8
+        || format
+        == Format::Depth16Stencil8
+        || format
+        == Format::Depth24Stencil8
+        || format
+        == Format::Depth32Stencil8;
 }
 
 bool HasDepthOrStencilComponent(Format format)
 {
-    return format == Format::Depth16 || format == Format::Depth32 || format == Format::Depth16Stencil8
-        || format == Format::Depth24Stencil8 || format == Format::Depth32Stencil8 || format == Format::Stencil8;
+    return format
+        == Format::Depth16
+        || format
+        == Format::Depth32
+        || format
+        == Format::Depth16Stencil8
+        || format
+        == Format::Depth24Stencil8
+        || format
+        == Format::Depth32Stencil8
+        || format
+        == Format::Stencil8;
 }
 
 } // namespace Teide

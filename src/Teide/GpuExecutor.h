@@ -2,6 +2,7 @@
 #pragma once
 
 #include "CommandBuffer.h"
+#include "Queue.h"
 
 #include "Teide/BasicTypes.h"
 #include "Teide/Util/FrameArray.h"
@@ -10,15 +11,12 @@
 
 #include <function2/function2.hpp>
 
-#include <atomic>
-#include <future>
-#include <queue>
-#include <ranges>
-#include <thread>
+#include <deque>
 #include <vector>
 
 namespace Teide
 {
+
 class GpuExecutor
 {
 public:
@@ -62,53 +60,17 @@ private:
         ThreadMap<ThreadResources> threadResources;
     };
 
-    class Queue
-    {
-    public:
-        explicit Queue(vk::Device device, vk::Queue queue) : m_device{device}, m_queue{queue} {}
-
-        std::vector<vk::Fence> GetInFlightFences() const;
-
-        void Flush();
-        uint32 AddCommandBufferSlot();
-        void Submit(uint32 index, vk::CommandBuffer commandBuffer, OnCompleteFunction func);
-
-    private:
-        vk::UniqueFence GetFence();
-
-        struct InFlightSubmit
-        {
-            InFlightSubmit() = default;
-            InFlightSubmit(vk::UniqueFence f, std::vector<OnCompleteFunction> c) :
-                fence{std::move(f)}, callbacks{std::move(c)}
-            {}
-
-            vk::Fence GetFence() const { return fence.get(); }
-
-            vk::UniqueFence fence;
-            std::vector<OnCompleteFunction> callbacks;
-        };
-
-        vk::Device m_device;
-        vk::Queue m_queue;
-
-        std::vector<vk::CommandBuffer> m_readyCommandBuffers;
-        std::vector<OnCompleteFunction> m_completionHandlers;
-        std::queue<vk::UniqueFence> m_unusedSubmitFences;
-        usize m_numSubmittedCommandBuffers = 0;
-
-        std::vector<InFlightSubmit> m_inFlightSubmits;
-    };
-
     FrameArray<FrameResources, MaxFramesInFlight> m_frameResources;
 
     const std::thread::id m_mainThread = std::this_thread::get_id();
 
     vk::Device m_device;
-    std::thread m_schedulerThread;
-    std::atomic_bool m_schedulerStop = false;
 
-    Synchronized<Queue> m_queue;
+    std::vector<vk::CommandBuffer> m_readyCommandBuffers;
+    std::vector<OnCompleteFunction> m_completionHandlers;
+    usize m_numSubmittedCommandBuffers = 0;
+
+    Queue m_queue;
 };
 
 } // namespace Teide
