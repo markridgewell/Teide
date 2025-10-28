@@ -143,8 +143,8 @@ TEST_F(QueueTest, TwoCommandBuffers)
 
     auto future1 = queue.LazySubmit(One(cmdBuffer1.get()));
     auto future2 = queue.LazySubmit(One(cmdBuffer2.get()));
-    auto both = ex::when_all(future1, future2);
-    EXPECT_NO_THROW(ex::sync_wait(both));
+    EXPECT_NO_THROW(ex::sync_wait(future1));
+    EXPECT_NO_THROW(ex::sync_wait(future2));
 
     InvalidateAllocation(buffer.allocation);
     const auto result = std::vector(buffer.mappedData.begin(), buffer.mappedData.end());
@@ -164,7 +164,7 @@ TEST_F(QueueTest, SubmitMultipleCommandBuffers)
         cmdBuffer->end();
 
         auto future = queue.LazySubmit(One(cmdBuffer.get()));
-        ex::sync_wait(future);
+        EXPECT_NO_THROW(ex::sync_wait(future));
 
         InvalidateAllocation(buffer.allocation);
         const auto result = std::vector(buffer.mappedData.begin(), buffer.mappedData.end());
