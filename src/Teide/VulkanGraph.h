@@ -3,6 +3,7 @@
 
 #include "Teide/BasicTypes.h"
 #include "Teide/Renderer.h"
+#include "Teide/VulkanTexture.h"
 
 #include <string>
 #include <vector>
@@ -10,7 +11,7 @@
 namespace Teide
 {
 class VulkanDevice;
-class VulkanRenderer;
+class Queue;
 
 enum class ResourceType : uint8
 {
@@ -70,6 +71,7 @@ struct VulkanGraph
 
         Texture texture;
         CommandNodeRef source;
+        TextureState state;
 
         std::string_view GetName() const { return texture.GetName(); }
     };
@@ -147,6 +149,6 @@ struct VulkanGraph
 
 void BuildGraph(VulkanGraph& graph, VulkanDevice& device);
 std::string VisualizeGraph(VulkanGraph& graph);
-void ExecuteGraph(VulkanGraph& graph, VulkanDevice& device, VulkanRenderer& renderer);
+void ExecuteGraph(VulkanGraph& graph, VulkanDevice& device, Queue& queue);
 
 } // namespace Teide

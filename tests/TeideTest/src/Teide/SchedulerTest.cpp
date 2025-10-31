@@ -47,10 +47,10 @@ protected:
 
     VulkanBuffer CreateHostVisibleBuffer(vk::DeviceSize size)
     {
-        return CreateBufferUninitialized(
+        return VulkanBuffer{CreateBufferUninitialized(
             size, vk::BufferUsageFlagBits::eTransferDst,
             vma::AllocationCreateFlagBits::eMapped | vma::AllocationCreateFlagBits::eHostAccessRandom,
-            vma::MemoryUsage::eAuto, m_device.get(), m_allocator.get());
+            vma::MemoryUsage::eAuto, m_device.get(), m_allocator.get())};
     }
 
     void InvalidateAllocation(const vma::UniqueAllocation& allocation) const
