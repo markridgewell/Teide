@@ -312,16 +312,19 @@ TEST_F(VulkanGraphTest, ExecutingGraphWithCopyNode)
     const auto tex = graph.AddTextureNode(CreateDummyTexture("tex"), copy1);
     const auto copy2 = graph.AddCopyNode(tex);
     const auto texDataOutput = graph.AddTextureDataNode("output", {}, copy2);
-    (void)texDataOutput;
 
     auto renderer = m_device->CreateRenderer({});
 
     spdlog::info(VisualizeGraph(graph));
-    ExecuteGraph(graph, *m_device, m_device->GetImpl(*renderer));
+    auto queue = Queue(m_device->GetVulkanDevice(), m_device->GetGraphicsQueue());
+    ExecuteGraph(graph, *m_device, queue);
 
     const VulkanTexture& texture = m_device->GetImpl(graph.textureNodes.at(tex.index).texture);
     EXPECT_THAT(texture.image, IsValidVkHandle());
     EXPECT_THAT(texture.imageView, IsValidVkHandle());
+    const auto tdi = graph.Get<VulkanGraph::TextureDataNode>(texDataInput.index).data;
+    const auto tdo = graph.Get<VulkanGraph::TextureDataNode>(texDataOutput.index).data;
+    EXPECT_THAT(tdo, Eq(tdi));
 }
 
 } // namespace

@@ -63,6 +63,7 @@ public:
 
     // Internal
     vk::Device GetVulkanDevice() { return m_device.get(); }
+    vk::Queue GetGraphicsQueue() { return m_graphicsQueue; }
     vma::Allocator& GetAllocator() { return m_allocator.get(); }
     Scheduler& GetScheduler() { return m_scheduler; }
     QueueFamilies GetQueueFamilies() const { return m_physicalDevice.queueFamilies; }
@@ -100,7 +101,7 @@ public:
 
     TextureState CreateTextureImpl(VulkanTexture& texture, vk::ImageUsageFlags usage);
 
-    VulkanBuffer CreateBufferUninitialized(
+    VulkanBufferData CreateBufferUninitialized(
         vk::DeviceSize size, vk::BufferUsageFlags usage, vma::AllocationCreateFlags allocationFlags = {},
         vma::MemoryUsage memoryUsage = vma::MemoryUsage::eAuto);
     VulkanBuffer CreateBufferWithData(BytesView data, BufferUsage usage, ResourceLifetime lifetime, CommandBuffer& cmdBuffer);

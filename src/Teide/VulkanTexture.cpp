@@ -113,6 +113,11 @@ void VulkanTexture::TransitionToTransferSrc(TextureState& state, vk::CommandBuff
     DoTransition(state, cmdBuffer, vk::ImageLayout::eTransferSrcOptimal, vk::PipelineStageFlagBits::eTransfer);
 }
 
+void VulkanTexture::TransitionToTransferDst(TextureState& state, vk::CommandBuffer cmdBuffer) const
+{
+    DoTransition(state, cmdBuffer, vk::ImageLayout::eTransferDstOptimal, vk::PipelineStageFlagBits::eTransfer);
+}
+
 void VulkanTexture::DoTransition(
     TextureState& state, vk::CommandBuffer cmdBuffer, vk::ImageLayout newLayout,
     vk::PipelineStageFlags newPipelineStageFlags) const

@@ -58,7 +58,7 @@ protected:
         return std::move(list.front());
     }
 
-    VulkanBuffer CreateHostVisibleBuffer(vk::DeviceSize size)
+    VulkanBufferData CreateHostVisibleBuffer(vk::DeviceSize size)
     {
         return CreateBufferUninitialized(
             size, vk::BufferUsageFlagBits::eTransferDst,

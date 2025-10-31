@@ -528,7 +528,7 @@ VulkanDevice::~VulkanDevice()
     m_device->waitIdle();
 }
 
-VulkanBuffer VulkanDevice::CreateBufferUninitialized(
+VulkanBufferData VulkanDevice::CreateBufferUninitialized(
     vk::DeviceSize size, vk::BufferUsageFlags usage, vma::AllocationCreateFlags allocationFlags, vma::MemoryUsage memoryUsage)
 {
     return Teide::CreateBufferUninitialized(size, usage, allocationFlags, memoryUsage, m_device.get(), m_allocator.get());
@@ -541,9 +541,9 @@ VulkanDevice::CreateBufferWithData(BytesView data, BufferUsage usage, ResourceLi
 
     if (lifetime == ResourceLifetime::Transient)
     {
-        VulkanBuffer ret = CreateBufferUninitialized(
+        auto ret = VulkanBuffer{CreateBufferUninitialized(
             data.size(), usageFlags | vk::BufferUsageFlagBits::eTransferDst,
-            vma::AllocationCreateFlagBits::eHostAccessSequentialWrite);
+            vma::AllocationCreateFlagBits::eHostAccessSequentialWrite)};
         SetBufferData(ret, data);
         return ret;
     }
@@ -555,7 +555,7 @@ VulkanDevice::CreateBufferWithData(BytesView data, BufferUsage usage, ResourceLi
     SetBufferData(*stagingBuffer, data);
 
     // Create device-local buffer
-    VulkanBuffer ret = CreateBufferUninitialized(data.size(), usageFlags | vk::BufferUsageFlagBits::eTransferDst);
+    auto ret = VulkanBuffer{CreateBufferUninitialized(data.size(), usageFlags | vk::BufferUsageFlagBits::eTransferDst)};
     CopyBuffer(cmdBuffer, stagingBuffer->buffer.get(), ret.buffer.get(), data.size());
 
     // Add pipeline barrier to make the buffer usable in shader
@@ -813,9 +813,9 @@ Texture VulkanDevice::CreateTexture(const TextureData& data, const char* name, C
         const auto imageExtent = vk::Extent3D{.width = data.size.x, .height = data.size.y, .depth = 1};
 
         // Create staging buffer
-        auto stagingBuffer = CreateBufferUninitialized(
+        auto stagingBuffer = VulkanBuffer{CreateBufferUninitialized(
             data.pixels.size(), vk::BufferUsageFlagBits::eTransferSrc,
-            vma::AllocationCreateFlagBits::eHostAccessSequentialWrite);
+            vma::AllocationCreateFlagBits::eHostAccessSequentialWrite)};
         SetBufferData(stagingBuffer, data.pixels);
 
         // Copy staging buffer to image
