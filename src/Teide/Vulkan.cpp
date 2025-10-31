@@ -100,6 +100,7 @@ namespace
             -2111305990, // UNASSIGNED-BestPractices-vkCreateInstance-specialuse-extension-debugging
             -671457468,  // UNASSIGNED-khronos-validation-createinstance-status-message
             -1993852625, // UNASSIGNED-BestPractices-NonSuccess-Result
+            1734198062,  // BestPractices-specialuse-extension
         };
         return contains(UnwantedMessages, pCallbackData->messageIdNumber);
     }

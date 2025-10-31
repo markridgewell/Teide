@@ -10,7 +10,7 @@ namespace
     const vk::Optional<const vk::AllocationCallbacks> s_allocator = nullptr;
 }
 
-VulkanBuffer CreateBufferUninitialized(
+VulkanBufferData CreateBufferUninitialized(
     vk::DeviceSize size, vk::BufferUsageFlags usage, vma::AllocationCreateFlags allocationFlags,
     vma::MemoryUsage memoryUsage, vk::Device device, vma::Allocator& allocator)
 {
@@ -32,12 +32,12 @@ VulkanBuffer CreateBufferUninitialized(
         mappedData = {static_cast<std::byte*>(allocInfo.pMappedData), size};
     }
 
-    return VulkanBuffer({
+    return {
         .size = size,
         .buffer = vk::UniqueBuffer(buffer.release(), device),
         .allocation = std::move(allocation),
         .mappedData = mappedData,
-    });
+    };
 }
 
 vk::BufferUsageFlags GetBufferUsageFlags(BufferUsage usage)
