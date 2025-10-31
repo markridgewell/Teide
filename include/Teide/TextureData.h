@@ -53,6 +53,8 @@ struct SamplerState
     SamplerAddressMode addressModeW = SamplerAddressMode::Repeat;
     std::optional<float> maxAnisotropy;
     std::optional<CompareOp> compareOp;
+
+    bool operator==(const SamplerState&) const noexcept = default;
 };
 
 struct TextureData
@@ -63,6 +65,8 @@ struct TextureData
     uint32 sampleCount = 1;
     SamplerState samplerState;
     std::vector<byte> pixels;
+
+    bool operator==(const TextureData&) const noexcept = default;
 };
 
 usize GetByteSize(const TextureData& data);
