@@ -52,7 +52,8 @@ std::string to_string(CommandType type)
 {
     switch (type)
     {
-        case CommandType::Copy: return "Copy";
+        case CommandType::Write: return "Write";
+        case CommandType::Read: return "Read";
         case CommandType::Render: return "Render";
     }
     return "";
@@ -119,35 +120,24 @@ std::string VisualizeGraph(VulkanGraph& graph)
         }
     }
 
-    for (auto i = VulkanGraph::CopyRef(0); i.index < graph.copyNodes.size(); i.index++)
+    int copyIndex = 0;
+    for (const auto& node : graph.writeNodes)
     {
-        const auto& node = graph.copyNodes[i.index];
-        std::string nodeName = fmt::format("copy{}", i.index + 1);
+        std::string nodeName = fmt::format("copy{}", ++copyIndex);
 
-        if (const auto it1 = std::ranges::find(graph.textureNodes, i, &VulkanGraph::TextureNode::source);
-            it1 != graph.textureNodes.end())
-        {
-            fmt::format_to(out, "    {} -> {}\n", nodeName, it1->texture.GetName());
-        }
-        else if (const auto it2 = std::ranges::find(graph.textureDataNodes, i, &VulkanGraph::TextureDataNode::source);
-                 it2 != graph.textureDataNodes.end())
-        {
-            fmt::format_to(out, "    {} -> {}\n", nodeName, it2->name);
-        }
-        else
-        {
-            fmt::format_to(out, "    {}\n", nodeName);
-        }
+        const auto& src = graph.Get<VulkanGraph::TextureDataNode>(node.source.index);
+        const auto& tgt = graph.Get<VulkanGraph::TextureNode>(node.target.index);
+        fmt::format_to(out, "    {} -> {}\n", nodeName, tgt.texture.GetName());
+        fmt::format_to(out, "    {} -> {}\n", src.name, nodeName);
+    }
+    for (const auto& node : graph.readNodes)
+    {
+        std::string nodeName = fmt::format("copy{}", ++copyIndex);
 
-        switch (node.source.type)
-        {
-            case ResourceType::Texture:
-                fmt::format_to(out, "    {} -> {}\n", graph.textureNodes.at(node.source.index).texture.GetName(), nodeName);
-                break;
-            case ResourceType::TextureData:
-                fmt::format_to(out, "    {} -> {}\n", graph.textureDataNodes.at(node.source.index).name, nodeName);
-                break;
-        }
+        const auto& src = graph.Get<VulkanGraph::TextureNode>(node.source.index);
+        const auto& tgt = graph.Get<VulkanGraph::TextureDataNode>(node.target.index);
+        fmt::format_to(out, "    {} -> {}\n", nodeName, tgt.name);
+        fmt::format_to(out, "    {} -> {}\n", src.texture.GetName(), nodeName);
     }
     ret += '}';
     return ret;
@@ -180,59 +170,53 @@ namespace
 
         // 2. Create staging buffers
         usize inputStagingBufferSize = 0;
-        for (const auto& node : graph.textureNodes)
-        {
-            if (const auto* copyNode = graph.GetIf<VulkanGraph::CopyNode>(node.source))
-            {
-                if (const auto* sourceNode = graph.GetIf<VulkanGraph::TextureDataNode>(copyNode->source))
-                {
-                    spdlog::info("Copy texture data to texture: {} -> {}", sourceNode->GetName(), node.GetName());
-                    spdlog::info("Size: {}", sourceNode->data.pixels.size());
-                    const auto offset = inputStagingBufferSize;
-                    const auto bufferSize = GetByteSize(sourceNode->data);
-                    inputStagingBufferSize += bufferSize;
-
-                    preparationFuncs.emplace_back([sourceNode, offset, bufferSize, &ret] {
-                        const auto& data = ret.inputStagingBuffer.mappedData.subspan(offset, bufferSize);
-
-                        std::ranges::copy(sourceNode->data.pixels, data.data());
-                    });
-                }
-            }
-        }
-
         usize outputStagingBufferSize = 0;
-        for (auto& node : graph.textureDataNodes)
+        for (const auto& copyNode : graph.writeNodes)
         {
-            if (const auto* copyNode = node.source ? graph.GetIf<VulkanGraph::CopyNode>(*node.source) : nullptr)
-            {
-                if (const auto* sourceNode = graph.GetIf<VulkanGraph::TextureNode>(copyNode->source))
-                {
-                    spdlog::info("Copy texture to texture data: {} -> {}", sourceNode->GetName(), node.GetName());
+            const auto& sourceNode = graph.Get<VulkanGraph::TextureDataNode>(copyNode.source.index);
+            const auto& targetNode = graph.Get<VulkanGraph::TextureNode>(copyNode.target.index);
 
-                    const VulkanTexture& textureImpl = device.GetImpl(sourceNode->texture);
+            spdlog::info("Copy texture data to texture: {} -> {}", sourceNode.GetName(), targetNode.GetName());
+            spdlog::info("Size: {}", sourceNode.data.pixels.size());
+            const auto offset = inputStagingBufferSize;
+            const auto bufferSize = GetByteSize(sourceNode.data);
+            inputStagingBufferSize += bufferSize;
 
-                    node.data = {
-                        .size = textureImpl.properties.size,
-                        .format = textureImpl.properties.format,
-                        .mipLevelCount = textureImpl.properties.mipLevelCount,
-                        .sampleCount = textureImpl.properties.sampleCount,
-                    };
+            preparationFuncs.emplace_back([&sourceNode, offset, bufferSize, &ret] {
+                const auto& data = ret.inputStagingBuffer.mappedData.subspan(offset, bufferSize);
 
-                    const auto offset = outputStagingBufferSize;
-                    const auto bufferSize = GetByteSize(node.data);
-                    outputStagingBufferSize += bufferSize;
-                    spdlog::info("Size: {}", bufferSize);
-
-                    ret.completionFuncs.emplace_back([&node, offset, bufferSize, &ret] {
-                        const auto& data = ret.outputStagingBuffer.mappedData.subspan(offset, bufferSize);
-
-                        node.data.pixels.resize(data.size());
-                        std::ranges::copy(data, node.data.pixels.data());
-                    });
-                }
-            }
+                std::ranges::copy(sourceNode.data.pixels, data.data());
+            });
         }
+        for (const auto& copyNode : graph.readNodes)
+        {
+            const auto& sourceNode = graph.Get<VulkanGraph::TextureNode>(copyNode.source.index);
+            auto& targetNode = graph.Get<VulkanGraph::TextureDataNode>(copyNode.target.index);
+
+            spdlog::info("Copy texture to texture data: {} -> {}", sourceNode.GetName(), targetNode.GetName());
+
+            const VulkanTexture& textureImpl = device.GetImpl(sourceNode.texture);
+
+            targetNode.data = {
+                .size = textureImpl.properties.size,
+                .format = textureImpl.properties.format,
+                .mipLevelCount = textureImpl.properties.mipLevelCount,
+                .sampleCount = textureImpl.properties.sampleCount,
+            };
+
+            const auto offset = outputStagingBufferSize;
+            const auto bufferSize = GetByteSize(targetNode.data);
+            outputStagingBufferSize += bufferSize;
+            spdlog::info("Size: {}", bufferSize);
+
+            ret.completionFuncs.emplace_back([&targetNode, offset, bufferSize, &ret] {
+                const auto& data = ret.outputStagingBuffer.mappedData.subspan(offset, bufferSize);
+
+                targetNode.data.pixels.resize(data.size());
+                std::ranges::copy(data, targetNode.data.pixels.data());
+            });
+        }
+
         ret.inputStagingBuffer = device.CreateBufferUninitialized(
             inputStagingBufferSize, vk::BufferUsageFlagBits::eTransferSrc,
             vma::AllocationCreateFlagBits::eMapped | vma::AllocationCreateFlagBits::eHostAccessSequentialWrite);
@@ -261,7 +245,7 @@ namespace
         cmdBuffer.begin({.flags = {vk::CommandBufferUsageFlagBits::eOneTimeSubmit}});
         for (auto& node : graph.textureNodes)
         {
-            if (const auto* copyNode = graph.GetIf<VulkanGraph::CopyNode>(node.source))
+            if (const auto* copyNode = graph.GetIf<VulkanGraph::WriteNode>(node.source))
             {
                 if (const auto* sourceNode = graph.GetIf<VulkanGraph::TextureDataNode>(copyNode->source))
                 {
@@ -284,7 +268,7 @@ namespace
             {
                 continue;
             }
-            if (const auto* copyNode = graph.GetIf<VulkanGraph::CopyNode>(*node.source))
+            if (const auto* copyNode = graph.GetIf<VulkanGraph::ReadNode>(*node.source))
             {
                 if (auto* sourceNode = graph.GetIf<VulkanGraph::TextureNode>(copyNode->source))
                 {

@@ -22,7 +22,8 @@ std::string to_string(ResourceType type);
 
 enum class CommandType : uint8
 {
-    Copy,
+    Write,
+    Read,
     Render,
 };
 std::string to_string(CommandType type);
@@ -45,16 +46,26 @@ struct VulkanGraph
         bool operator==(const CommandNodeRef&) const = default;
     };
 
-    static auto CopyRef(usize i) -> CommandNodeRef { return {.type = CommandType::Copy, .index = i}; }
+    static auto WriteRef(usize i) -> CommandNodeRef { return {.type = CommandType::Write, .index = i}; }
+    static auto ReadRef(usize i) -> CommandNodeRef { return {.type = CommandType::Read, .index = i}; }
     static auto RenderRef(usize i) -> CommandNodeRef { return {.type = CommandType::Render, .index = i}; }
     static auto TextureRef(usize i) -> ResourceNodeRef { return {.type = ResourceType::Texture, .index = i}; }
     static auto TextureDataRef(usize i) -> ResourceNodeRef { return {.type = ResourceType::TextureData, .index = i}; }
 
-    struct CopyNode
+    struct WriteNode
     {
-        static constexpr auto NodeType = CommandType::Copy;
+        static constexpr auto NodeType = CommandType::Write;
 
         ResourceNodeRef source;
+        ResourceNodeRef target;
+    };
+
+    struct ReadNode
+    {
+        static constexpr auto NodeType = CommandType::Read;
+
+        ResourceNodeRef source;
+        ResourceNodeRef target;
     };
 
     struct RenderNode
@@ -62,6 +73,8 @@ struct VulkanGraph
         static constexpr auto NodeType = CommandType::Render;
 
         RenderList renderList;
+        std::optional<ResourceNodeRef> colourTarget;
+        std::optional<ResourceNodeRef> depthStencilTarget;
         std::vector<ResourceNodeRef> dependencies;
     };
 
@@ -87,39 +100,75 @@ struct VulkanGraph
         std::string_view GetName() const { return name; }
     };
 
-    std::vector<CopyNode> copyNodes;
+    std::vector<WriteNode> writeNodes;
+    std::vector<ReadNode> readNodes;
     std::vector<RenderNode> renderNodes;
     std::vector<TextureNode> textureNodes;
     std::vector<TextureDataNode> textureDataNodes;
 
     static constexpr auto NodeLists = std::tuple{
-        &VulkanGraph::copyNodes,
-        &VulkanGraph::renderNodes,
-        &VulkanGraph::textureNodes,
-        &VulkanGraph::textureDataNodes,
+        &VulkanGraph::writeNodes,   &VulkanGraph::readNodes,        &VulkanGraph::renderNodes,
+        &VulkanGraph::textureNodes, &VulkanGraph::textureDataNodes,
     };
 
-    auto AddCopyNode(ResourceNodeRef source)
+    auto AddWriteNode(ResourceNodeRef source, ResourceNodeRef target)
     {
-        copyNodes.emplace_back(source);
-        return CopyRef(copyNodes.size() - 1);
+        writeNodes.emplace_back(source, target);
+        const auto r = WriteRef(writeNodes.size() - 1);
+        SetSource(target, r);
+        return r;
     }
 
-    auto AddRenderNode(RenderList renderList)
+    auto AddReadNode(ResourceNodeRef source, ResourceNodeRef target)
     {
-        renderNodes.emplace_back(std::move(renderList));
-        return RenderRef(renderNodes.size() - 1);
+        readNodes.emplace_back(source, target);
+        const auto r = ReadRef(readNodes.size() - 1);
+        SetSource(target, r);
+        return r;
     }
 
-    auto AddTextureNode(Texture texture, CommandNodeRef source)
+    // [[deprecated]]
+    void AddCopyNode(ResourceNodeRef source, ResourceNodeRef target)
     {
-        textureNodes.emplace_back(std::move(texture), source);
+        using enum ResourceType;
+        if (source.type == TextureData && target.type == Texture)
+        {
+            AddWriteNode(source, target);
+        }
+        else if (source.type == Texture && target.type == TextureData)
+        {
+            AddReadNode(source, target);
+        }
+        else
+        {
+            assert(false);
+        }
+    }
+
+    auto AddRenderNode(RenderList renderList, std::optional<ResourceNodeRef> colorTarget, std::optional<ResourceNodeRef> depthStencilTarget)
+    {
+        renderNodes.emplace_back(std::move(renderList), colorTarget, depthStencilTarget);
+        const auto r = RenderRef(renderNodes.size() - 1);
+        if (colorTarget)
+        {
+            SetSource(*colorTarget, r);
+        }
+        if (depthStencilTarget)
+        {
+            SetSource(*depthStencilTarget, r);
+        }
+        return r;
+    }
+
+    auto AddTextureNode(Texture texture)
+    {
+        textureNodes.emplace_back(std::move(texture));
         return TextureRef(textureNodes.size() - 1);
     }
 
-    auto AddTextureDataNode(std::string name, TextureData texture, std::optional<CommandNodeRef> source = {})
+    auto AddTextureDataNode(std::string name, TextureData texture)
     {
-        textureDataNodes.emplace_back(std::move(name), std::move(texture), source);
+        textureDataNodes.emplace_back(std::move(name), std::move(texture));
         return TextureDataRef(textureDataNodes.size() - 1);
     }
 
@@ -144,6 +193,16 @@ struct VulkanGraph
     T* GetIf(ResourceNodeRef ref)
     {
         return (ref.type == T::NodeType) ? &Get<T>(ref.index) : nullptr;
+    }
+
+private:
+    void SetSource(ResourceNodeRef ref, CommandNodeRef source)
+    {
+        switch (ref.type)
+        {
+            case ResourceType::Texture: Get<TextureNode>(ref.index).source = source; break;
+            case ResourceType::TextureData: Get<TextureDataNode>(ref.index).source = source; break;
+        }
     }
 };
 
