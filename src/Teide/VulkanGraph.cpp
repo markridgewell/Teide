@@ -146,150 +146,120 @@ std::string VisualizeGraph(VulkanGraph& graph)
 struct Commands
 {
     vk::UniqueCommandPool pool;
-    std::vector<vk::CommandBuffer> buffers;
-    VulkanBufferData inputStagingBuffer;
-    VulkanBufferData outputStagingBuffer;
+    std::vector<vk::CommandBuffer> cmdBuffers;
     std::vector<std::function<void()>> completionFuncs;
 };
 
 namespace
 {
+    void ProcessCommandNode(VulkanGraph& graph, VulkanGraph::WriteNode& writeNode, VulkanDevice& device, vk::CommandBuffer cmdBuffer)
+    {
+        const auto& sourceNode = graph.Get<VulkanGraph::TextureDataNode>(writeNode.source.index);
+        auto& targetNode = graph.Get<VulkanGraph::TextureNode>(writeNode.target.index);
+
+        spdlog::info("Copy texture data to texture: {} -> {}", sourceNode.GetName(), targetNode.GetName());
+        spdlog::info("Size: {}", sourceNode.data.pixels.size());
+        const auto bufferSize = GetByteSize(sourceNode.data);
+        writeNode.stagingBuffer = device.CreateBufferUninitialized(
+            bufferSize, vk::BufferUsageFlagBits::eTransferSrc,
+            vma::AllocationCreateFlagBits::eMapped | vma::AllocationCreateFlagBits::eHostAccessSequentialWrite);
+        std::ranges::fill(writeNode.stagingBuffer.mappedData, std::byte{0xab});
+
+        const auto& data = writeNode.stagingBuffer.mappedData;
+        std::ranges::copy(sourceNode.data.pixels, data.data());
+
+        VulkanTexture& texture = device.GetImpl(targetNode.texture);
+
+        // Copy staging buffer to image
+        texture.TransitionToTransferDst(targetNode.state, cmdBuffer);
+        const auto imageExtent
+            = vk::Extent3D{.width = sourceNode.data.size.x, .height = sourceNode.data.size.y, .depth = 1};
+        CopyBufferToImage(
+            cmdBuffer, writeNode.stagingBuffer.buffer.get(), texture.image.get(), sourceNode.data.format, imageExtent);
+    }
+
+    void ProcessCommandNode(
+        VulkanGraph& graph, VulkanGraph::ReadNode& readNode, VulkanDevice& device, vk::CommandBuffer cmdBuffer,
+        std::vector<std::function<void()>>& completionFuncs)
+    {
+        auto& sourceNode = graph.Get<VulkanGraph::TextureNode>(readNode.source.index);
+        auto& targetNode = graph.Get<VulkanGraph::TextureDataNode>(readNode.target.index);
+
+        spdlog::info("Copy texture to texture data: {} -> {}", sourceNode.GetName(), targetNode.GetName());
+
+        VulkanTexture& texture = device.GetImpl(sourceNode.texture);
+
+        spdlog::info("Copy texture to texture data: {} -> {}", sourceNode.GetName(), targetNode.GetName());
+
+        const VulkanTexture& textureImpl = device.GetImpl(sourceNode.texture);
+
+        targetNode.data = {
+            .size = textureImpl.properties.size,
+            .format = textureImpl.properties.format,
+            .mipLevelCount = textureImpl.properties.mipLevelCount,
+            .sampleCount = textureImpl.properties.sampleCount,
+        };
+
+        const auto bufferSize = GetByteSize(targetNode.data);
+        spdlog::info("Size: {}", bufferSize);
+        readNode.stagingBuffer = device.CreateBufferUninitialized(
+            bufferSize, vk::BufferUsageFlagBits::eTransferDst,
+            vma::AllocationCreateFlagBits::eMapped | vma::AllocationCreateFlagBits::eHostAccessRandom);
+        std::ranges::fill(readNode.stagingBuffer.mappedData, std::byte{0xef});
+
+        completionFuncs.emplace_back([&readNode, &targetNode] {
+            const auto& data = readNode.stagingBuffer.mappedData;
+
+            targetNode.data.pixels.resize(data.size());
+            std::ranges::copy(data, targetNode.data.pixels.data());
+        });
+
+        // Copy image to staging buffer
+        texture.TransitionToTransferSrc(sourceNode.state, cmdBuffer);
+        const vk::Extent3D extent = {
+            .width = texture.properties.size.x,
+            .height = texture.properties.size.y,
+            .depth = 1,
+        };
+        CopyImageToBuffer(
+            cmdBuffer, texture.image.get(), readNode.stagingBuffer.buffer.get(), texture.properties.format, extent,
+            texture.properties.mipLevelCount);
+    }
+
     auto RecordCommands(VulkanGraph& graph, VulkanDevice& device) -> Commands
     {
         Commands ret;
 
-        std::vector<std::function<void()>> preparationFuncs;
-
-        // 1. Create transient textures
+        // Create transient textures
         for (VulkanGraph::TextureNode& node : graph.textureNodes)
         {
             VulkanTexture& texture = device.GetImpl(node.texture);
             using enum vk::ImageUsageFlagBits;
-            device.CreateTextureImpl(texture, eTransferSrc | eTransferDst | eSampled);
+            node.state = device.CreateTextureImpl(texture, eTransferSrc | eTransferDst | eSampled);
         }
 
-        // 2. Create staging buffers
-        usize inputStagingBufferSize = 0;
-        usize outputStagingBufferSize = 0;
-        for (const auto& copyNode : graph.writeNodes)
-        {
-            const auto& sourceNode = graph.Get<VulkanGraph::TextureDataNode>(copyNode.source.index);
-            const auto& targetNode = graph.Get<VulkanGraph::TextureNode>(copyNode.target.index);
-
-            spdlog::info("Copy texture data to texture: {} -> {}", sourceNode.GetName(), targetNode.GetName());
-            spdlog::info("Size: {}", sourceNode.data.pixels.size());
-            const auto offset = inputStagingBufferSize;
-            const auto bufferSize = GetByteSize(sourceNode.data);
-            inputStagingBufferSize += bufferSize;
-
-            preparationFuncs.emplace_back([&sourceNode, offset, bufferSize, &ret] {
-                const auto& data = ret.inputStagingBuffer.mappedData.subspan(offset, bufferSize);
-
-                std::ranges::copy(sourceNode.data.pixels, data.data());
-            });
-        }
-        for (const auto& copyNode : graph.readNodes)
-        {
-            const auto& sourceNode = graph.Get<VulkanGraph::TextureNode>(copyNode.source.index);
-            auto& targetNode = graph.Get<VulkanGraph::TextureDataNode>(copyNode.target.index);
-
-            spdlog::info("Copy texture to texture data: {} -> {}", sourceNode.GetName(), targetNode.GetName());
-
-            const VulkanTexture& textureImpl = device.GetImpl(sourceNode.texture);
-
-            targetNode.data = {
-                .size = textureImpl.properties.size,
-                .format = textureImpl.properties.format,
-                .mipLevelCount = textureImpl.properties.mipLevelCount,
-                .sampleCount = textureImpl.properties.sampleCount,
-            };
-
-            const auto offset = outputStagingBufferSize;
-            const auto bufferSize = GetByteSize(targetNode.data);
-            outputStagingBufferSize += bufferSize;
-            spdlog::info("Size: {}", bufferSize);
-
-            ret.completionFuncs.emplace_back([&targetNode, offset, bufferSize, &ret] {
-                const auto& data = ret.outputStagingBuffer.mappedData.subspan(offset, bufferSize);
-
-                targetNode.data.pixels.resize(data.size());
-                std::ranges::copy(data, targetNode.data.pixels.data());
-            });
-        }
-
-        ret.inputStagingBuffer = device.CreateBufferUninitialized(
-            inputStagingBufferSize, vk::BufferUsageFlagBits::eTransferSrc,
-            vma::AllocationCreateFlagBits::eMapped | vma::AllocationCreateFlagBits::eHostAccessSequentialWrite);
-        std::ranges::fill(ret.inputStagingBuffer.mappedData, std::byte{0xab});
-
-        ret.outputStagingBuffer = device.CreateBufferUninitialized(
-            outputStagingBufferSize, vk::BufferUsageFlagBits::eTransferDst,
-            vma::AllocationCreateFlagBits::eMapped | vma::AllocationCreateFlagBits::eHostAccessRandom);
-        std::ranges::fill(ret.outputStagingBuffer.mappedData, std::byte{0xef});
-
-        for (const auto& callback : preparationFuncs)
-        {
-            callback();
-        }
-
-        // 3. Record command buffers
+        // Record command buffers
         auto vkdevice = device.GetVulkanDevice();
         ret.pool = vkdevice.createCommandPoolUnique({
             .flags = vk::CommandPoolCreateFlagBits::eTransient,
             .queueFamilyIndex = device.GetQueueFamilies().graphicsFamily,
         });
 
-        ret.buffers = vkdevice.allocateCommandBuffers({.commandPool = ret.pool.get(), .commandBufferCount = 1});
-        auto cmdBuffer = ret.buffers.front();
+        ret.cmdBuffers = vkdevice.allocateCommandBuffers({.commandPool = ret.pool.get(), .commandBufferCount = 1});
+        auto cmdBuffer = ret.cmdBuffers.front();
 
         cmdBuffer.begin({.flags = {vk::CommandBufferUsageFlagBits::eOneTimeSubmit}});
-        for (auto& node : graph.textureNodes)
+
+        for (auto& writeNode : graph.writeNodes)
         {
-            if (const auto* copyNode = graph.GetIf<VulkanGraph::WriteNode>(node.source))
-            {
-                if (const auto* sourceNode = graph.GetIf<VulkanGraph::TextureDataNode>(copyNode->source))
-                {
-                    const TextureData& data = sourceNode->data;
-                    VulkanTexture& texture = device.GetImpl(node.texture);
-                    using enum vk::ImageUsageFlagBits;
-                    node.state = device.CreateTextureImpl(texture, eTransferSrc | eTransferDst | eSampled);
-
-                    // Copy staging buffer to image
-                    texture.TransitionToTransferDst(node.state, cmdBuffer);
-                    const auto imageExtent = vk::Extent3D{.width = data.size.x, .height = data.size.y, .depth = 1};
-                    CopyBufferToImage(
-                        cmdBuffer, ret.inputStagingBuffer.buffer.get(), texture.image.get(), data.format, imageExtent);
-                }
-            }
+            ProcessCommandNode(graph, writeNode, device, cmdBuffer);
         }
-        for (const VulkanGraph::TextureDataNode& node : graph.textureDataNodes)
+
+        for (auto& readNode : graph.readNodes)
         {
-            if (!node.source.has_value())
-            {
-                continue;
-            }
-            if (const auto* copyNode = graph.GetIf<VulkanGraph::ReadNode>(*node.source))
-            {
-                if (auto* sourceNode = graph.GetIf<VulkanGraph::TextureNode>(copyNode->source))
-                {
-                    spdlog::info("Copy texture to texture data: {} -> {}", sourceNode->GetName(), node.GetName());
-
-                    VulkanTexture& texture = device.GetImpl(sourceNode->texture);
-
-                    // Copy image to staging buffer
-                    texture.TransitionToTransferSrc(sourceNode->state, cmdBuffer);
-                    const vk::Extent3D extent = {
-                        .width = texture.properties.size.x,
-                        .height = texture.properties.size.y,
-                        .depth = 1,
-                    };
-                    // TODO: take offset of outputStagingBuffer into account
-                    CopyImageToBuffer(
-                        cmdBuffer, texture.image.get(), ret.outputStagingBuffer.buffer.get(), texture.properties.format,
-                        extent, texture.properties.mipLevelCount);
-                }
-            }
+            ProcessCommandNode(graph, readNode, device, cmdBuffer, ret.completionFuncs);
         }
+
         cmdBuffer.end();
 
         return ret;
@@ -299,7 +269,7 @@ namespace
 void ExecuteGraph(VulkanGraph& graph, VulkanDevice& device, Queue& queue)
 {
     auto commands = RecordCommands(graph, device);
-    ex::sync_wait(queue.LazySubmit(commands.buffers));
+    ex::sync_wait(queue.LazySubmit(commands.cmdBuffers));
 
     for (const auto& callback : commands.completionFuncs)
     {

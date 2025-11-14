@@ -3,6 +3,7 @@
 
 #include "Teide/BasicTypes.h"
 #include "Teide/Renderer.h"
+#include "Teide/VulkanBuffer.h"
 #include "Teide/VulkanTexture.h"
 
 #include <string>
@@ -58,6 +59,7 @@ struct VulkanGraph
 
         ResourceNodeRef source;
         ResourceNodeRef target;
+        VulkanBufferData stagingBuffer;
     };
 
     struct ReadNode
@@ -66,6 +68,7 @@ struct VulkanGraph
 
         ResourceNodeRef source;
         ResourceNodeRef target;
+        VulkanBufferData stagingBuffer;
     };
 
     struct RenderNode
