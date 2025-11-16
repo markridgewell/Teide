@@ -10,6 +10,7 @@
 #include <gmock/gmock.h>
 
 #include <iterator>
+#include <optional>
 #include <span>
 #include <string>
 
@@ -158,12 +159,11 @@ TEST_F(VulkanGraphTest, BuildingEmptyGraphHasNoEffect)
     ASSERT_THAT(graph.textureNodes, IsEmpty());
 }
 
-/*
 TEST_F(VulkanGraphTest, BuildingGraphWithOneRenderNodeHasNoEffect)
 {
     VulkanGraph graph;
-    auto renderNode1 = graph.AddRenderNode({});
-    graph.AddTextureNode(CreateDummyTexture("tex1"), renderNode1);
+    const auto tex1 = graph.AddTextureNode(CreateDummyTexture("tex1"));
+    const auto renderNode1 = graph.AddRenderNode({}, tex1, std::nullopt);
 
     BuildGraph(graph, *m_device);
 
@@ -171,26 +171,26 @@ TEST_F(VulkanGraphTest, BuildingGraphWithOneRenderNodeHasNoEffect)
     ASSERT_THAT(graph.textureNodes, ElementsAre(HasSource(renderNode1)));
 }
 
-TEST_F(VulkanGraphTest, BuildingGraphWithOneCopyNodeHasNoEffect)
+TEST_F(VulkanGraphTest, BuildingGraphWithOneWriteNodeHasNoEffect)
 {
     VulkanGraph graph;
-    const auto tex = graph.AddTextureDataNode("texData1", OnePixelWhiteTexture);
-    const auto copy = graph.AddCopyNode(tex);
-    graph.AddTextureNode(CreateDummyTexture("tex1"), copy);
+    const auto texData = graph.AddTextureDataNode("texData1", OnePixelWhiteTexture);
+    const auto tex = graph.AddTextureNode(CreateDummyTexture("tex1"));
+    const auto write = graph.AddWriteNode(texData, tex);
 
     BuildGraph(graph, *m_device);
 
-    ASSERT_THAT(graph.copyNodes, ElementsAre(HasSource(tex)));
-    ASSERT_THAT(graph.textureNodes, ElementsAre(HasSource(copy)));
+    ASSERT_THAT(graph.writeNodes, ElementsAre(HasSource(texData)));
+    ASSERT_THAT(graph.textureNodes, ElementsAre(HasSource(write)));
 }
 
 TEST_F(VulkanGraphTest, BuildingGraphWithTwoIndependentRenderNodesHasNoEffect)
 {
     VulkanGraph graph;
-    auto render1 = graph.AddRenderNode({});
-    auto render2 = graph.AddRenderNode({});
-    graph.AddTextureNode(CreateDummyTexture("tex1"), render1);
-    graph.AddTextureNode(CreateDummyTexture("tex2"), render2);
+    const auto tex1 = graph.AddTextureNode(CreateDummyTexture("tex1"));
+    const auto tex2 = graph.AddTextureNode(CreateDummyTexture("tex2"));
+    auto render1 = graph.AddRenderNode({}, tex1, std::nullopt);
+    auto render2 = graph.AddRenderNode({}, tex2, std::nullopt);
 
     BuildGraph(graph, *m_device);
 
@@ -208,19 +208,16 @@ TEST_F(VulkanGraphTest, BuildingGraphWithTwoDependentRenderNodesAddsConnection)
     render2.viewParameters.textures.push_back(tex1);
 
     VulkanGraph graph;
-    const auto renderNode1 = graph.AddRenderNode(render1);
-    const auto renderNode2 = graph.AddRenderNode(render2);
-    const auto texNode1 = graph.AddTextureNode(tex1, VulkanGraph::RenderRef(0));
-    const auto texNode2 = graph.AddTextureNode(tex2, VulkanGraph::RenderRef(1));
-
-    (void)texNode2;
+    const auto texNode1 = graph.AddTextureNode(tex1);
+    const auto texNode2 = graph.AddTextureNode(tex2);
+    const auto renderNode1 = graph.AddRenderNode(render1, texNode1, std::nullopt);
+    const auto renderNode2 = graph.AddRenderNode(render2, texNode2, std::nullopt);
 
     BuildGraph(graph, *m_device);
 
     ASSERT_THAT(graph.renderNodes, ElementsAre(HasNoDependencies(), HasDependency(texNode1)));
     ASSERT_THAT(graph.textureNodes, ElementsAre(HasSource(renderNode1), HasSource(renderNode2)));
 }
-*/
 
 TEST_F(VulkanGraphTest, BuildingGraphWithThreeDependentRenderNodesAddsConnections)
 {
@@ -259,7 +256,6 @@ TEST_F(VulkanGraphTest, VisualizingGraphWithThreeDependentRenderNodes)
     ASSERT_THAT(dot, Eq(ThreeRenderPassesDot)) << FormatDot(dot);
 }
 
-/*
 constexpr auto CopyCpuToGpuDot = R"--(strict digraph {
     rankdir=LR
     node [shape=box]
@@ -270,12 +266,12 @@ constexpr auto CopyCpuToGpuDot = R"--(strict digraph {
     texData -> copy1
 })--";
 
-TEST_F(VulkanGraphTest, VisualizingGraphWithCopyToGpu)
+TEST_F(VulkanGraphTest, VisualizingGraphWithWriteNode)
 {
     VulkanGraph graph;
-    const auto tex = graph.AddTextureDataNode("texData", OnePixelWhiteTexture);
-    const auto copy = graph.AddCopyNode(tex);
-    graph.AddTextureNode(CreateDummyTexture("tex"), copy);
+    const auto texData = graph.AddTextureDataNode("texData", OnePixelWhiteTexture);
+    const auto tex = graph.AddTextureNode(CreateDummyTexture("tex"));
+    graph.AddWriteNode(texData, tex);
 
     const auto dot = VisualizeGraph(graph);
 
@@ -293,20 +289,19 @@ constexpr auto CopyGpuToCpuDot = R"--(strict digraph {
     tex -> copy1
 })--";
 
-TEST_F(VulkanGraphTest, VisualizingGraphWithCopyToCpu)
+TEST_F(VulkanGraphTest, VisualizingGraphWithReadNode)
 {
     VulkanGraph graph;
-    const auto render = graph.AddRenderNode({.name = "render1"});
+    const auto tex = graph.AddTextureNode(CreateDummyTexture("tex"));
+    graph.AddRenderNode({.name = "render1"}, tex, std::nullopt);
 
-    const auto tex = graph.AddTextureNode(CreateDummyTexture("tex"), render);
-    const auto copy = graph.AddCopyNode(tex);
-    graph.AddTextureDataNode("texData", OnePixelWhiteTexture, copy);
+    const auto texData = graph.AddTextureDataNode("texData", OnePixelWhiteTexture);
+    graph.AddReadNode(tex, texData);
 
     const auto dot = VisualizeGraph(graph);
 
     ASSERT_THAT(dot, Eq(CopyGpuToCpuDot)) << FormatDot(dot) << "\nGraph: " << MakeDotURL(dot);
 }
-*/
 
 TEST_F(VulkanGraphTest, ExecutingGraphWithCopyNode)
 {
