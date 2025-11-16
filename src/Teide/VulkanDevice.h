@@ -5,6 +5,7 @@
 #include "Scheduler.h"
 #include "Vulkan.h"
 #include "VulkanBuffer.h"
+#include "VulkanKernel.h"
 #include "VulkanLoader.h"
 #include "VulkanParameterBlock.h"
 #include "VulkanTexture.h"
@@ -56,6 +57,7 @@ public:
 
     ShaderEnvironmentPtr CreateShaderEnvironment(const ShaderEnvironmentData& data, const char* name) override;
     ShaderPtr CreateShader(const ShaderData& data, const char* name) override;
+    Kernel CreateKernel(const KernelData& data, const char* name) override;
     Texture CreateTexture(const TextureData& data, const char* name) override;
     MeshPtr CreateMesh(const MeshData& data, const char* name) override;
     PipelinePtr CreatePipeline(const PipelineData& data) override;
@@ -182,12 +184,15 @@ private:
     vma::UniqueAllocator m_allocator;
 
     ResourceMap<Texture, VulkanTexture> m_textures;
+    ResourceMap<Kernel, VulkanKernel> m_kernels;
     ResourceMap<ParameterBlock, VulkanParameterBlock> m_parameterBlocks;
 
     static constexpr auto ResourceMaps = std::tuple{
         &VulkanDevice::m_textures,
+        &VulkanDevice::m_kernels,
         &VulkanDevice::m_parameterBlocks,
     };
+
     Scheduler m_scheduler;
 };
 

@@ -26,6 +26,7 @@ public:
 
 protected:
     ShaderData CompileShader(const ShaderSourceData& data) { return m_shaderCompiler.Compile(data); }
+    KernelData CompileKernel(const KernelSourceData& data) { return m_shaderCompiler.Compile(data); }
 
     VulkanDevicePtr m_device; // NOLINT(cppcoreguidelines-non-private-member-variables-in-classes)
 
@@ -71,6 +72,12 @@ TEST_F(DeviceTest, CreateShaderWithNullName)
     const auto shaderData = CompileShader(SimpleShader);
     const auto shader = m_device->CreateShader(shaderData, nullptr);
     EXPECT_THAT(shader.get(), NotNull());
+}
+
+TEST_F(DeviceTest, CreateKernel)
+{
+    const auto kernelData = CompileKernel(SimpleKernel);
+    EXPECT_NO_THROW(m_device->CreateKernel(kernelData, "Kernel"));
 }
 
 TEST_F(DeviceTest, CreateAndReuseTexture)

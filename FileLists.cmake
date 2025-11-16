@@ -17,6 +17,7 @@ set(sources
     include/Teide/ForwardDeclare.h
     include/Teide/Handle.h
     include/Teide/Hash.h
+    include/Teide/Kernel.h
     include/Teide/Mesh.h
     include/Teide/MeshData.h
     include/Teide/ParameterBlock.h
@@ -52,6 +53,7 @@ set(sources
     src/Teide/TextureData.cpp
     src/Teide/Util/FrameArray.h
     src/Teide/Util/ResourceMap.h
+    src/Teide/Util/SafeMemCpy.h
     src/Teide/Util/StaticMap.h
     src/Teide/Util/ThreadUtils.cpp
     src/Teide/Util/ThreadUtils.h
@@ -66,6 +68,7 @@ set(sources
     src/Teide/VulkanDevice.h
     src/Teide/VulkanGraph.cpp
     src/Teide/VulkanGraph.h
+    src/Teide/VulkanKernel.h
     src/Teide/VulkanLoader.cpp
     src/Teide/VulkanLoader.h
     src/Teide/VulkanMesh.h

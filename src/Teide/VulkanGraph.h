@@ -26,6 +26,7 @@ enum class CommandType : uint8
     Write,
     Read,
     Render,
+    Dispatch,
 };
 std::string to_string(CommandType type);
 
@@ -50,6 +51,7 @@ struct VulkanGraph
     static auto WriteRef(usize i) -> CommandNodeRef { return {.type = CommandType::Write, .index = i}; }
     static auto ReadRef(usize i) -> CommandNodeRef { return {.type = CommandType::Read, .index = i}; }
     static auto RenderRef(usize i) -> CommandNodeRef { return {.type = CommandType::Render, .index = i}; }
+    static auto DispatchRef(usize i) -> CommandNodeRef { return {.type = CommandType::Dispatch, .index = i}; }
     static auto TextureRef(usize i) -> ResourceNodeRef { return {.type = ResourceType::Texture, .index = i}; }
     static auto TextureDataRef(usize i) -> ResourceNodeRef { return {.type = ResourceType::TextureData, .index = i}; }
 
@@ -81,6 +83,13 @@ struct VulkanGraph
         std::vector<ResourceNodeRef> dependencies;
     };
 
+    struct DispatchNode
+    {
+        Kernel kernel;
+        std::vector<ResourceNodeRef> dependencies;
+        std::vector<ResourceNodeRef> outputs;
+    };
+
     struct TextureNode
     {
         static constexpr auto NodeType = ResourceType::Texture;
@@ -106,6 +115,7 @@ struct VulkanGraph
     std::vector<WriteNode> writeNodes;
     std::vector<ReadNode> readNodes;
     std::vector<RenderNode> renderNodes;
+    std::vector<DispatchNode> dispatchNodes;
     std::vector<TextureNode> textureNodes;
     std::vector<TextureDataNode> textureDataNodes;
 
@@ -127,6 +137,17 @@ struct VulkanGraph
         readNodes.emplace_back(source, target);
         const auto r = ReadRef(readNodes.size() - 1);
         SetSource(target, r);
+        return r;
+    }
+
+    auto AddDispatchNode(Kernel kernel, std::vector<ResourceNodeRef> inputs, std::vector<ResourceNodeRef> outputs)
+    {
+        const auto& node = dispatchNodes.emplace_back(std::move(kernel), std::move(inputs), std::move(outputs));
+        const auto r = DispatchRef(dispatchNodes.size() - 1);
+        for (const auto output : node.outputs)
+        {
+            SetSource(output, r);
+        }
         return r;
     }
 
@@ -155,6 +176,53 @@ struct VulkanGraph
     {
         textureDataNodes.emplace_back(std::move(name), std::move(texture));
         return TextureDataRef(textureDataNodes.size() - 1);
+    }
+
+    std::string_view GetNodeName(ResourceNodeRef ref);
+    std::optional<std::string_view> FindNodeWithSource(CommandNodeRef source);
+
+    void ForEachWriteNode(auto f)
+    {
+        for (auto i = VulkanGraph::WriteRef(0); i.index < writeNodes.size(); i.index++)
+        {
+            const auto& node = writeNodes[i.index];
+            f(i, fmt::format("write{}", i.index + 1), std::span(&node.source, 1));
+        }
+    };
+
+    void ForEachReadNode(auto f)
+    {
+        for (auto i = VulkanGraph::ReadRef(0); i.index < readNodes.size(); i.index++)
+        {
+            const auto& node = readNodes[i.index];
+            f(i, fmt::format("read{}", i.index + 1), std::span(&node.source, 1));
+        }
+    };
+
+    void ForEachRenderNode(auto f)
+    {
+        for (auto i = VulkanGraph::RenderRef(0); i.index < renderNodes.size(); i.index++)
+        {
+            const auto& node = renderNodes[i.index];
+            f(i, node.renderList.name, node.dependencies);
+        }
+    };
+
+    void ForEachDispatchNode(auto f)
+    {
+        for (auto i = VulkanGraph::DispatchRef(0); i.index < dispatchNodes.size(); i.index++)
+        {
+            const auto& node = dispatchNodes[i.index];
+            f(i, fmt::format("dispatch{}", i.index + 1), node.dependencies);
+        }
+    };
+
+    void ForEachCommandNode(auto f)
+    {
+        ForEachWriteNode(f);
+        ForEachReadNode(f);
+        ForEachRenderNode(f);
+        ForEachDispatchNode(f);
     }
 
     template <class T>
