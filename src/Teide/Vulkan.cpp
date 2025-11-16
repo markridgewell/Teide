@@ -12,15 +12,18 @@
 
 #include <SDL_vulkan.h>
 #include <spdlog/spdlog.h>
+#include <vulkan/vulkan_enums.hpp>
+
+#include <memory>
 
 namespace Teide
 {
 
 namespace
 {
-    constexpr auto VulkanApiVersion = VK_API_VERSION_1_0;
-    constexpr bool BreakOnVulkanWarning = false;
-    constexpr bool BreakOnVulkanError = true;
+    constexpr auto VulkanApiVersion = VK_API_VERSION_1_1;
+
+    constexpr vk::DebugUtilsMessageSeverityFlagsEXT BreakOnVulkanMessage = vk::DebugUtilsMessageSeverityFlagBitsEXT::eError;
 
     const vk::Optional<const vk::AllocationCallbacks> s_allocator = nullptr;
 
@@ -97,6 +100,7 @@ namespace
             -2111305990, // UNASSIGNED-BestPractices-vkCreateInstance-specialuse-extension-debugging
             -671457468,  // UNASSIGNED-khronos-validation-createinstance-status-message
             -1993852625, // UNASSIGNED-BestPractices-NonSuccess-Result
+            1734198062,  // BestPractices-specialuse-extension
         };
         return contains(UnwantedMessages, pCallbackData->messageIdNumber);
     }
@@ -142,15 +146,9 @@ namespace
 
         spdlog::log(logLevel, "{}{}", prefix, pCallbackData->pMessage);
 
-        if constexpr (BreakOnVulkanWarning)
+        if (severity & BreakOnVulkanMessage)
         {
-            // Vulkan warning triggered a debug break
-            TEIDE_ASSERT(severity != MessageSeverity::eWarning, "{}", pCallbackData->pMessage);
-        }
-        if constexpr (BreakOnVulkanError)
-        {
-            // Vulkan error triggered a debug break
-            TEIDE_ASSERT(severity != MessageSeverity::eError, "{}", pCallbackData->pMessage);
+            TEIDE_BREAK("{}", pCallbackData->pMessage);
         }
         return VK_FALSE;
     }
@@ -369,6 +367,10 @@ vk::UniqueDevice CreateDevice(VulkanLoader& loader, const PhysicalDevice& physic
 
     std::vector<const char*> extensions = physicalDevice.requiredExtensions;
     EnableVulkanExtension(extensions, availableExtensions, "VK_EXT_descriptor_indexing", Required::True);
+    EnableVulkanExtension(extensions, availableExtensions, "VK_KHR_depth_stencil_resolve", Required::True);
+    EnableVulkanExtension(
+        extensions, availableExtensions, "VK_KHR_create_renderpass2",
+        Required::True); // required by "VK_KHR_depth_stencil_resolve"
 
     const vk::StructureChain createInfo = {
         vk::DeviceCreateInfo{

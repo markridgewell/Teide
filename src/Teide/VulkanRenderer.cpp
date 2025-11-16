@@ -512,7 +512,8 @@ std::optional<SurfaceImage> VulkanRenderer::AddSurfaceToPresent(VulkanSurface& s
 
 vk::DescriptorSet VulkanRenderer::GetDescriptorSet(const ParameterBlock& parameterBlock) const
 {
-    const auto& parameterBlockImpl = m_device.GetImpl(parameterBlock);
+    auto& parameterBlockImpl = m_device.GetImpl(parameterBlock);
+    m_device.InitParameterBlock(parameterBlockImpl);
     return parameterBlockImpl.descriptorSet.get();
 }
 

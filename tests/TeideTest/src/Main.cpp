@@ -2,12 +2,15 @@
 #include "Teide/Assert.h"
 #include "Teide/TestUtils.h"
 
+#include <cpptrace/basic.hpp>
+#include <cpptrace/cpptrace.hpp>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <spdlog/sinks/ostream_sink.h>
 #include <spdlog/spdlog.h>
 
 #include <exception>
+#include <ranges>
 
 #if __linux__
 #    include <sys/ioctl.h>
@@ -41,8 +44,29 @@ std::optional<std::size_t> GetNumConsoleColumns()
     return std::nullopt;
 }
 
-bool AssertDie(std::string_view msg, std::string_view expression, Teide::SourceLocation location)
+bool AssertThrow(std::string_view msg, std::string_view expression, Teide::SourceLocation location)
 {
+    struct AssertException
+    {};
+
+    const auto trace = cpptrace::generate_trace();
+    for (const auto& frame : trace | std::views::drop(1))
+    {
+        if (frame.filename.empty()
+            || frame.filename.ends_with(".so")
+            || frame.filename.contains("/exports/installed")
+            || frame.filename.contains("/vcpkg/buildtrees/"))
+        {
+            continue;
+        }
+        if (frame.symbol.contains("::DebugCallback("))
+        {
+            continue;
+        }
+        location = Teide::SourceLocation(frame.line.value_or(0), 0, frame.filename.c_str(), frame.symbol.c_str());
+        break;
+    }
+
     std::cout << location.file_name();
     if (location.line() > 0)
     {
@@ -61,7 +85,15 @@ bool AssertDie(std::string_view msg, std::string_view expression, Teide::SourceL
     {
         std::cout << "Assertion failed: " << expression << ": " << msg << '\n';
     }
-    std::terminate();
+
+    const auto* curTest = testing::UnitTest::GetInstance()->current_test_info();
+    if (curTest)
+    {
+        std::cout << "Current test: " << curTest->name() << "\n";
+    }
+    std::cout << "Stack trace:\n";
+    trace.print(std::cout, true);
+    throw AssertException{};
 }
 
 class LogSuppressor : public testing::EmptyTestEventListener
@@ -214,7 +246,7 @@ int Run(int argc, char** argv)
     }
     else
     {
-        Teide::SetAssertHandler(&AssertDie);
+        Teide::SetAssertHandler(&AssertThrow);
     }
 
     testing::FLAGS_gtest_break_on_failure = Teide::IsDebuggerAttached();

@@ -56,6 +56,10 @@ Teide::PhysicalDevice FindPhysicalDevice(vk::Instance instance)
 
     const uint32_t transferQueueIndex = GetTransferQueueIndex(*it).value();
 
+    // Call getFeatures to satisfy validation layer best practices warning
+    // (only do this for tests!)
+    auto _ [[maybe_unused]] = it->getFeatures();
+
     auto ret = Teide::PhysicalDevice(*it, {.transferFamily = transferQueueIndex});
     ret.queueFamilyIndices = {transferQueueIndex};
     return ret;

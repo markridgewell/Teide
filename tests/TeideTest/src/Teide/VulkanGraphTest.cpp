@@ -5,22 +5,50 @@
 #include "TestData.h"
 #include "TestUtils.h"
 
+#include "Teide/Device.h"
+#include "Teide/Kernel.h"
 #include "Teide/Util/SafeMemCpy.h"
 #include "Teide/VulkanDevice.h"
 #include "Teide/VulkanRenderer.h"
 
 #include <gmock/gmock.h>
 
+#include <iterator>
+#include <optional>
 #include <span>
+#include <string>
 
 using namespace testing;
 using namespace Teide;
 
-using RenderNode = VulkanGraph::RenderNode;
-using TextureNode = VulkanGraph::TextureNode;
-
 namespace
 {
+std::string MakeDotURL(std::string_view dot)
+{
+    std::string ret = "https://quickchart.io/graphviz?graph=";
+    auto out = std::back_inserter(ret);
+
+    for (char c : dot)
+    {
+        if (std::isalnum(c) || c == '$' || c == '-' || c == '_' || c == '.' || c == '+' || c == '\'' || c == '!' || c == '*' || c == '(' || c == ')')
+        {
+            *out = c;
+            ++out;
+        }
+        else if (c != '\n' && c != '\r')
+        {
+            std::format_to(out, "%{:02X}", c);
+        }
+    }
+
+    return ret;
+}
+
+std::string FormatDot(const std::string& dot)
+{
+    return dot + "\nGraph: " + MakeDotURL(dot);
+}
+
 class VulkanGraphTest : public testing::Test
 {
 public:
@@ -29,11 +57,17 @@ public:
     {}
 
 protected:
-    Texture CreateDummyTexture(const char* name) { return m_device->CreateTexture(OnePixelWhiteTexture, name); }
-    ShaderPtr CompileShader(const ShaderSourceData& data, const char* name)
+    Texture CreateDummyTexture(const char* name)
     {
-        return m_device->CreateShader(m_shaderCompiler.Compile(data), name);
+        return m_device->AllocateTexture({
+            .size = {1, 1},
+            .format = Format::Byte4Norm,
+            .name = name,
+        });
     }
+
+    ShaderData CompileShader(const ShaderSourceData& data) { return m_shaderCompiler.Compile(data); }
+
     Kernel CompileKernel(const KernelSourceData& data, const char* name)
     {
         return m_device->CreateKernel(m_shaderCompiler.Compile(data), name);
@@ -66,12 +100,12 @@ protected:
         };
 
         VulkanGraph graph;
-        const auto render1 = graph.AddRenderNode(renderList1);
-        const auto render2 = graph.AddRenderNode(renderList2);
-        const auto render3 = graph.AddRenderNode(renderList3);
-        graph.AddTextureNode(tex1, render1);
-        graph.AddTextureNode(tex2, render2);
-        graph.AddTextureNode(tex3, render3);
+        const auto texNode1 = graph.AddTextureNode(tex1);
+        const auto texNode2 = graph.AddTextureNode(tex2);
+        const auto texNode3 = graph.AddTextureNode(tex3);
+        graph.AddRenderNode(renderList1, texNode1, std::nullopt);
+        graph.AddRenderNode(renderList2, texNode2, std::nullopt);
+        graph.AddRenderNode(renderList3, texNode3, std::nullopt);
         return graph;
     }
 
@@ -137,13 +171,26 @@ TEST_F(VulkanGraphTest, BuildingEmptyGraphHasNoEffect)
 TEST_F(VulkanGraphTest, BuildingGraphWithOneRenderNodeHasNoEffect)
 {
     VulkanGraph graph;
-    auto renderNode1 = graph.AddRenderNode({});
-    graph.AddTextureNode(CreateDummyTexture("tex1"), renderNode1);
+    const auto tex1 = graph.AddTextureNode(CreateDummyTexture("tex1"));
+    const auto renderNode1 = graph.AddRenderNode({}, tex1, std::nullopt);
 
     BuildGraph(graph, *m_device);
 
     ASSERT_THAT(graph.renderNodes, ElementsAre(HasNoDependencies()));
     ASSERT_THAT(graph.textureNodes, ElementsAre(HasSource(renderNode1)));
+}
+
+TEST_F(VulkanGraphTest, BuildingGraphWithOneWriteNodeHasNoEffect)
+{
+    VulkanGraph graph;
+    const auto texData = graph.AddTextureDataNode("texData1", OnePixelWhiteTexture);
+    const auto tex = graph.AddTextureNode(CreateDummyTexture("tex1"));
+    const auto write = graph.AddWriteNode(texData, tex);
+
+    BuildGraph(graph, *m_device);
+
+    ASSERT_THAT(graph.writeNodes, ElementsAre(HasSource(texData)));
+    ASSERT_THAT(graph.textureNodes, ElementsAre(HasSource(write)));
 }
 
 TEST_F(VulkanGraphTest, BuildingGraphWithOneDispatchNodeHasNoEffect)
@@ -152,8 +199,8 @@ TEST_F(VulkanGraphTest, BuildingGraphWithOneDispatchNodeHasNoEffect)
 
     VulkanGraph graph;
     const auto kernel = Kernel(0, owner);
-    auto dispatchNode1 = graph.AddDispatchNode(kernel);
-    graph.AddTextureNode(CreateDummyTexture("tex1"), dispatchNode1);
+    const auto tex1 = graph.AddTextureNode(CreateDummyTexture("tex1"));
+    auto dispatchNode1 = graph.AddDispatchNode(kernel, {}, {tex1});
 
     BuildGraph(graph, *m_device);
 
@@ -161,26 +208,13 @@ TEST_F(VulkanGraphTest, BuildingGraphWithOneDispatchNodeHasNoEffect)
     ASSERT_THAT(graph.textureNodes, ElementsAre(HasSource(dispatchNode1)));
 }
 
-TEST_F(VulkanGraphTest, BuildingGraphWithOneCopyNodeHasNoEffect)
-{
-    VulkanGraph graph;
-    const auto tex = graph.AddTextureDataNode("texData1", OnePixelWhiteTexture);
-    const auto copy = graph.AddCopyNode(tex);
-    graph.AddTextureNode(CreateDummyTexture("tex1"), copy);
-
-    BuildGraph(graph, *m_device);
-
-    ASSERT_THAT(graph.copyNodes, ElementsAre(HasSource(tex)));
-    ASSERT_THAT(graph.textureNodes, ElementsAre(HasSource(copy)));
-}
-
 TEST_F(VulkanGraphTest, BuildingGraphWithTwoIndependentRenderNodesHasNoEffect)
 {
     VulkanGraph graph;
-    auto render1 = graph.AddRenderNode({});
-    auto render2 = graph.AddRenderNode({});
-    graph.AddTextureNode(CreateDummyTexture("tex1"), render1);
-    graph.AddTextureNode(CreateDummyTexture("tex2"), render2);
+    const auto tex1 = graph.AddTextureNode(CreateDummyTexture("tex1"));
+    const auto tex2 = graph.AddTextureNode(CreateDummyTexture("tex2"));
+    auto render1 = graph.AddRenderNode({}, tex1, std::nullopt);
+    auto render2 = graph.AddRenderNode({}, tex2, std::nullopt);
 
     BuildGraph(graph, *m_device);
 
@@ -198,12 +232,10 @@ TEST_F(VulkanGraphTest, BuildingGraphWithTwoDependentRenderNodesAddsConnection)
     render2.viewParameters.textures.push_back(tex1);
 
     VulkanGraph graph;
-    const auto renderNode1 = graph.AddRenderNode(render1);
-    const auto renderNode2 = graph.AddRenderNode(render2);
-    const auto texNode1 = graph.AddTextureNode(tex1, VulkanGraph::RenderRef(0));
-    const auto texNode2 = graph.AddTextureNode(tex2, VulkanGraph::RenderRef(1));
-
-    (void)texNode2;
+    const auto texNode1 = graph.AddTextureNode(tex1);
+    const auto texNode2 = graph.AddTextureNode(tex2);
+    const auto renderNode1 = graph.AddRenderNode(render1, texNode1, std::nullopt);
+    const auto renderNode2 = graph.AddRenderNode(render2, texNode2, std::nullopt);
 
     BuildGraph(graph, *m_device);
 
@@ -245,7 +277,7 @@ TEST_F(VulkanGraphTest, VisualizingGraphWithThreeDependentRenderNodes)
 
     const auto dot = VisualizeGraph(graph);
 
-    ASSERT_THAT(dot, Eq(ThreeRenderPassesDot)) << dot;
+    ASSERT_THAT(dot, Eq(ThreeRenderPassesDot)) << FormatDot(dot);
 }
 
 constexpr auto OneDispatchDot = R"--(strict digraph {
@@ -262,8 +294,8 @@ TEST_F(VulkanGraphTest, VisualizingGraphWithOneDispatchNode)
 
     VulkanGraph graph;
     const auto kernel = Kernel(0, owner);
-    auto dispatchNode1 = graph.AddDispatchNode(kernel);
-    graph.AddTextureNode(CreateDummyTexture("tex1"), dispatchNode1);
+    const auto tex1 = graph.AddTextureNode(CreateDummyTexture("tex1"));
+    graph.AddDispatchNode(kernel, {}, {tex1});
 
     const auto dot = VisualizeGraph(graph);
 
@@ -280,16 +312,16 @@ constexpr auto CopyCpuToGpuDot = R"--(strict digraph {
     texData -> copy1
 })--";
 
-TEST_F(VulkanGraphTest, VisualizingGraphWithCopyToGpu)
+TEST_F(VulkanGraphTest, VisualizingGraphWithWriteNode)
 {
     VulkanGraph graph;
-    const auto tex = graph.AddTextureDataNode("texData", OnePixelWhiteTexture);
-    const auto copy = graph.AddCopyNode(tex);
-    graph.AddTextureNode(CreateDummyTexture("tex"), copy);
+    const auto texData = graph.AddTextureDataNode("texData", OnePixelWhiteTexture);
+    const auto tex = graph.AddTextureNode(CreateDummyTexture("tex"));
+    graph.AddWriteNode(texData, tex);
 
     const auto dot = VisualizeGraph(graph);
 
-    ASSERT_THAT(dot, Eq(CopyCpuToGpuDot)) << dot;
+    ASSERT_THAT(dot, Eq(CopyCpuToGpuDot)) << FormatDot(dot);
 }
 
 constexpr auto CopyGpuToCpuDot = R"--(strict digraph {
@@ -303,32 +335,59 @@ constexpr auto CopyGpuToCpuDot = R"--(strict digraph {
     render1 -> tex
 })--";
 
-TEST_F(VulkanGraphTest, VisualizingGraphWithCopyToCpu)
+TEST_F(VulkanGraphTest, VisualizingGraphWithReadNode)
 {
     VulkanGraph graph;
-    const auto render = graph.AddRenderNode({.name = "render1"});
-    const auto tex = graph.AddTextureNode(CreateDummyTexture("tex"), render);
-    const auto copy = graph.AddCopyNode(tex);
-    graph.AddTextureDataNode("texData", OnePixelWhiteTexture, copy);
+    const auto tex = graph.AddTextureNode(CreateDummyTexture("tex"));
+    graph.AddRenderNode({.name = "render1"}, tex, std::nullopt);
+
+    const auto texData = graph.AddTextureDataNode("texData", OnePixelWhiteTexture);
+    graph.AddReadNode(tex, texData);
 
     const auto dot = VisualizeGraph(graph);
 
-    ASSERT_THAT(dot, Eq(CopyGpuToCpuDot)) << dot;
+    ASSERT_THAT(dot, Eq(CopyGpuToCpuDot)) << FormatDot(dot) << "\nGraph: " << MakeDotURL(dot);
+}
+
+TEST_F(VulkanGraphTest, ExecutingGraphWithCopyNode)
+{
+    VulkanGraph graph;
+    const auto texDataInput = graph.AddTextureDataNode("input", OnePixelWhiteTexture);
+    const auto tex = graph.AddTextureNode(CreateDummyTexture("tex"));
+    const auto texDataOutput = graph.AddTextureDataNode("output", {});
+    graph.AddWriteNode(texDataInput, tex);
+    graph.AddReadNode(tex, texDataOutput);
+
+    auto renderer = m_device->CreateRenderer({});
+
+    spdlog::info(VisualizeGraph(graph));
+    auto queue = Queue(m_device->GetVulkanDevice(), m_device->GetGraphicsQueue());
+    ExecuteGraph(graph, *m_device, queue);
+
+    const VulkanTexture& texture = m_device->GetImpl(graph.textureNodes.at(tex.index).texture);
+    EXPECT_THAT(texture.image, IsValidVkHandle());
+    EXPECT_THAT(texture.imageView, IsValidVkHandle());
+    const auto tdi = graph.Get<VulkanGraph::TextureDataNode>(texDataInput.index).data;
+    const auto tdo = graph.Get<VulkanGraph::TextureDataNode>(texDataOutput.index).data;
+    EXPECT_THAT(tdo, Eq(tdi));
 }
 
 TEST_F(VulkanGraphTest, ExecutingGraphWithSimpleDispatch)
 {
     VulkanGraph graph;
     const auto kernel = CompileKernel(SimpleKernel, "kernel");
-    auto dispatchNode1 = graph.AddDispatchNode(kernel);
-    auto tex = graph.AddTextureNode(CreateDummyTexture("tex"), dispatchNode1);
-    auto copy = graph.AddCopyNode(tex);
-    auto texData = graph.AddTextureDataNode("texData", {}, copy);
+    auto tex = graph.AddTextureNode(CreateDummyTexture("tex"));
+    graph.AddDispatchNode(kernel, {}, {tex});
+    auto texData = graph.AddTextureDataNode("texData", {});
+    graph.AddReadNode(tex, texData);
 
     auto renderer = m_device->CreateRenderer({});
 
-    ExecuteGraph(graph, *m_device, m_device->GetImpl(*renderer));
-    std::array<float, 4> outputValues;
+    spdlog::info(VisualizeGraph(graph));
+    auto queue = Queue(m_device->GetVulkanDevice(), m_device->GetGraphicsQueue());
+    ExecuteGraph(graph, *m_device, queue);
+
+    std::array<float, 4> outputValues{};
     SafeMemCpy(outputValues, graph.textureDataNodes.at(texData.index).data.pixels);
     EXPECT_THAT(outputValues, Each(Eq(42.0f))) << VisualizeGraph(graph);
 }

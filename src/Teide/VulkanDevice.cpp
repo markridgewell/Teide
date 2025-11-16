@@ -14,6 +14,7 @@
 #include "VulkanSurface.h"
 #include "VulkanTexture.h"
 
+#include "Teide/Format.h"
 #include "Teide/ShaderData.h"
 #include "Teide/TextureData.h"
 #include "vkex/vkex.hpp"
@@ -21,6 +22,7 @@
 #include <SDL.h>
 #include <SDL_vulkan.h>
 #include <spdlog/spdlog.h>
+#include <vulkan/vulkan_enums.hpp>
 
 #include <algorithm>
 #include <cstdlib>
@@ -564,7 +566,7 @@ VulkanDevice::~VulkanDevice()
     m_device->waitIdle();
 }
 
-VulkanBuffer VulkanDevice::CreateBufferUninitialized(
+VulkanBufferData VulkanDevice::CreateBufferUninitialized(
     vk::DeviceSize size, vk::BufferUsageFlags usage, vma::AllocationCreateFlags allocationFlags, vma::MemoryUsage memoryUsage)
 {
     return Teide::CreateBufferUninitialized(size, usage, allocationFlags, memoryUsage, m_device.get(), m_allocator.get());
@@ -577,9 +579,9 @@ VulkanDevice::CreateBufferWithData(BytesView data, BufferUsage usage, ResourceLi
 
     if (lifetime == ResourceLifetime::Transient)
     {
-        VulkanBuffer ret = CreateBufferUninitialized(
+        auto ret = VulkanBuffer{CreateBufferUninitialized(
             data.size(), usageFlags | vk::BufferUsageFlagBits::eTransferDst,
-            vma::AllocationCreateFlagBits::eHostAccessSequentialWrite);
+            vma::AllocationCreateFlagBits::eHostAccessSequentialWrite)};
         SetBufferData(ret, data);
         return ret;
     }
@@ -591,7 +593,7 @@ VulkanDevice::CreateBufferWithData(BytesView data, BufferUsage usage, ResourceLi
     SetBufferData(*stagingBuffer, data);
 
     // Create device-local buffer
-    VulkanBuffer ret = CreateBufferUninitialized(data.size(), usageFlags | vk::BufferUsageFlagBits::eTransferDst);
+    auto ret = VulkanBuffer{CreateBufferUninitialized(data.size(), usageFlags | vk::BufferUsageFlagBits::eTransferDst)};
     CopyBuffer(cmdBuffer, stagingBuffer->buffer.get(), ret.buffer.get(), data.size());
 
     // Add pipeline barrier to make the buffer usable in shader
@@ -728,8 +730,7 @@ SurfacePtr VulkanDevice::CreateSurface(vk::UniqueSurfaceKHR surface, SDL_Window*
     TEIDE_ASSERT(m_physicalDevice.queueFamilies.presentFamily.has_value());
 
     return std::make_unique<VulkanSurface>(
-        window, std::move(surface), m_device.get(), m_physicalDevice, m_surfaceCommandPool.get(), m_allocator.get(),
-        m_graphicsQueue, multisampled);
+        window, std::move(surface), m_device.get(), m_physicalDevice, m_allocator.get(), m_graphicsQueue, multisampled);
 }
 
 BufferPtr VulkanDevice::CreateBuffer(const BufferData& data, const char* name, CommandBuffer& cmdBuffer)
@@ -831,6 +832,14 @@ Texture VulkanDevice::CreateTexture(const TextureData& data, const char* name)
     return task.get();
 }
 
+Texture VulkanDevice::AllocateTexture(const TextureProperties& props, const SamplerState& samplerState)
+{
+    return m_textures.Insert({
+        .sampler = CreateSampler(samplerState),
+        .properties = props,
+    });
+}
+
 Texture VulkanDevice::CreateTexture(const TextureData& data, const char* name, CommandBuffer& cmdBuffer)
 {
     vk::ImageUsageFlags usage = vk::ImageUsageFlagBits::eSampled;
@@ -845,6 +854,14 @@ Texture VulkanDevice::CreateTexture(const TextureData& data, const char* name, C
     {
         // Need to transfer pixels between mip levels in order to generate mipmaps
         usage |= vk::ImageUsageFlagBits::eTransferSrc | vk::ImageUsageFlagBits::eTransferDst;
+    }
+
+    if (HasDepthOrStencilComponent(data.format))
+    {
+        // According to the Vulkan spec, depth/stencil textures must be created with the depth/stencil attachment bit,
+        // even if they are not intended to be used as attachments.
+        // https://registry.khronos.org/vulkan/specs/latest/html/vkspec.html#VUID-VkImageMemoryBarrier-oldLayout-01210
+        usage |= vk::ImageUsageFlagBits::eDepthStencilAttachment;
     }
 
     VulkanTexture texture;
@@ -864,9 +881,9 @@ Texture VulkanDevice::CreateTexture(const TextureData& data, const char* name, C
         const auto imageExtent = vk::Extent3D{.width = data.size.x, .height = data.size.y, .depth = 1};
 
         // Create staging buffer
-        auto stagingBuffer = CreateBufferUninitialized(
+        auto stagingBuffer = VulkanBuffer{CreateBufferUninitialized(
             data.pixels.size(), vk::BufferUsageFlagBits::eTransferSrc,
-            vma::AllocationCreateFlagBits::eHostAccessSequentialWrite);
+            vma::AllocationCreateFlagBits::eHostAccessSequentialWrite)};
         SetBufferData(stagingBuffer, data.pixels);
 
         // Copy staging buffer to image
@@ -1016,7 +1033,7 @@ vk::UniqueDescriptorSet VulkanDevice::CreateUniqueDescriptorSet(
     return descriptorSet;
 }
 
-void VulkanDevice::WriteDescriptorSet(vk::DescriptorSet descriptorSet, const Buffer* uniformBuffer, std::span<const Texture> textures)
+bool VulkanDevice::WriteDescriptorSet(vk::DescriptorSet descriptorSet, const Buffer* uniformBuffer, std::span<const Texture> textures)
 {
     const auto numUniformBuffers = uniformBuffer ? 1 : 0;
 
@@ -1052,6 +1069,11 @@ void VulkanDevice::WriteDescriptorSet(vk::DescriptorSet descriptorSet, const Buf
     {
         const VulkanTexture& textureImpl = GetImpl(texture);
 
+        if (!textureImpl.imageView)
+        {
+            return false;
+        }
+
         imageInfos.push_back({
             .sampler = textureImpl.sampler.get(),
             .imageView = textureImpl.imageView.get(),
@@ -1071,6 +1093,7 @@ void VulkanDevice::WriteDescriptorSet(vk::DescriptorSet descriptorSet, const Buf
     }
 
     m_device->updateDescriptorSets(descriptorWrites, {});
+    return true;
 }
 
 VulkanParameterBlockLayoutPtr VulkanDevice::CreateParameterBlockLayout(const ParameterBlockDesc& desc, int set)
@@ -1157,7 +1180,6 @@ ParameterBlock VulkanDevice::CreateParameterBlock(
     const auto& layout = GetImpl(*data.layout);
     const bool isPushConstant = layout.HasPushConstants();
     const auto setLayout = layout.setLayout.get();
-    const auto descriptorSetName = DebugFormat("{}DescriptorSet", name);
 
     VulkanParameterBlock ret{layout};
     ret.textures = data.parameters.textures;
@@ -1169,8 +1191,17 @@ ParameterBlock VulkanDevice::CreateParameterBlock(
                 CreateBufferWithData(data.parameters.uniformData, BufferUsage::Uniform, data.lifetime, cmdBuffer));
             SetDebugName(ret.uniformBuffer->buffer, "{}UniformBuffer", name);
         }
-        ret.descriptorSet = CreateUniqueDescriptorSet(
-            descriptorPool, setLayout, ret.uniformBuffer.get(), data.parameters.textures, descriptorSetName.c_str());
+
+        const vk::DescriptorSetAllocateInfo allocInfo = {
+            .descriptorPool = descriptorPool,
+            .descriptorSetCount = 1,
+            .pSetLayouts = &setLayout,
+        };
+
+        ret.descriptorSet = std::move(m_device->allocateDescriptorSetsUnique(allocInfo).front());
+        SetDebugName(ret.descriptorSet, "{}DescriptorSet", name);
+
+        ret.written = WriteDescriptorSet(ret.descriptorSet.get(), ret.uniformBuffer.get(), ret.textures);
     }
 
     if (isPushConstant)
@@ -1179,6 +1210,15 @@ ParameterBlock VulkanDevice::CreateParameterBlock(
     }
 
     return m_parameterBlocks.Insert(std::move(ret));
+}
+
+void VulkanDevice::InitParameterBlock(VulkanParameterBlock& pblock)
+{
+    if (pblock.descriptorSet && !pblock.written)
+    {
+        pblock.written = WriteDescriptorSet(pblock.descriptorSet.get(), pblock.uniformBuffer.get(), pblock.textures);
+        TEIDE_ASSERT(pblock.written);
+    }
 }
 
 TransientParameterBlock
