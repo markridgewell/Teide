@@ -309,8 +309,8 @@ TEST_F(VulkanGraphTest, ExecutingGraphWithCopyNode)
     const auto texDataInput = graph.AddTextureDataNode("input", OnePixelWhiteTexture);
     const auto tex = graph.AddTextureNode(CreateDummyTexture("tex"));
     const auto texDataOutput = graph.AddTextureDataNode("output", {});
-    graph.AddCopyNode(texDataInput, tex);
-    graph.AddCopyNode(tex, texDataOutput);
+    graph.AddWriteNode(texDataInput, tex);
+    graph.AddReadNode(tex, texDataOutput);
 
     auto renderer = m_device->CreateRenderer({});
 

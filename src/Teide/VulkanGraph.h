@@ -130,24 +130,6 @@ struct VulkanGraph
         return r;
     }
 
-    // [[deprecated]]
-    void AddCopyNode(ResourceNodeRef source, ResourceNodeRef target)
-    {
-        using enum ResourceType;
-        if (source.type == TextureData && target.type == Texture)
-        {
-            AddWriteNode(source, target);
-        }
-        else if (source.type == Texture && target.type == TextureData)
-        {
-            AddReadNode(source, target);
-        }
-        else
-        {
-            assert(false);
-        }
-    }
-
     auto AddRenderNode(RenderList renderList, std::optional<ResourceNodeRef> colorTarget, std::optional<ResourceNodeRef> depthStencilTarget)
     {
         renderNodes.emplace_back(std::move(renderList), colorTarget, depthStencilTarget);
