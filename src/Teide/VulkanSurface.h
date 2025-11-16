@@ -32,7 +32,7 @@ class VulkanSurface : public Surface
 public:
     VulkanSurface(
         SDL_Window* window, vk::UniqueSurfaceKHR surface, vk::Device device, const PhysicalDevice& physicalDevice,
-        vk::CommandPool commandPool, vma::Allocator allocator, vk::Queue queue, bool multisampled);
+        vma::Allocator allocator, vk::Queue queue, bool multisampled);
 
     Geo::Size2i GetExtent() const override { return m_surfaceExtent; }
     Format GetColorFormat() const override { return m_framebufferLayout.colorFormat.value(); }
@@ -57,7 +57,6 @@ private:
 
     vk::Device m_device;
     const PhysicalDevice& m_physicalDevice;
-    vk::CommandPool m_commandPool;
     vma::Allocator m_allocator;
     vk::Queue m_queue;
 

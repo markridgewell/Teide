@@ -3,6 +3,8 @@
 
 #include "Teide/BasicTypes.h"
 #include "Teide/Renderer.h"
+#include "Teide/VulkanBuffer.h"
+#include "Teide/VulkanTexture.h"
 
 #include <string>
 #include <vector>
@@ -10,6 +12,7 @@
 namespace Teide
 {
 class VulkanDevice;
+class Queue;
 
 enum class ResourceType : uint8
 {
@@ -20,7 +23,8 @@ std::string to_string(ResourceType type);
 
 enum class CommandType : uint8
 {
-    Copy,
+    Write,
+    Read,
     Render,
 };
 std::string to_string(CommandType type);
@@ -43,66 +47,152 @@ struct VulkanGraph
         bool operator==(const CommandNodeRef&) const = default;
     };
 
-    static auto CopyRef(usize i) -> CommandNodeRef { return {.type = CommandType::Copy, .index = i}; }
+    static auto WriteRef(usize i) -> CommandNodeRef { return {.type = CommandType::Write, .index = i}; }
+    static auto ReadRef(usize i) -> CommandNodeRef { return {.type = CommandType::Read, .index = i}; }
     static auto RenderRef(usize i) -> CommandNodeRef { return {.type = CommandType::Render, .index = i}; }
     static auto TextureRef(usize i) -> ResourceNodeRef { return {.type = ResourceType::Texture, .index = i}; }
     static auto TextureDataRef(usize i) -> ResourceNodeRef { return {.type = ResourceType::TextureData, .index = i}; }
 
-    struct CopyNode
+    struct WriteNode
     {
+        static constexpr auto NodeType = CommandType::Write;
+
         ResourceNodeRef source;
+        ResourceNodeRef target;
+        VulkanBufferData stagingBuffer;
+    };
+
+    struct ReadNode
+    {
+        static constexpr auto NodeType = CommandType::Read;
+
+        ResourceNodeRef source;
+        ResourceNodeRef target;
+        VulkanBufferData stagingBuffer;
     };
 
     struct RenderNode
     {
+        static constexpr auto NodeType = CommandType::Render;
+
         RenderList renderList;
+        std::optional<ResourceNodeRef> colourTarget;
+        std::optional<ResourceNodeRef> depthStencilTarget;
         std::vector<ResourceNodeRef> dependencies;
     };
 
     struct TextureNode
     {
+        static constexpr auto NodeType = ResourceType::Texture;
+
         Texture texture;
         CommandNodeRef source;
+        TextureState state;
+
+        std::string_view GetName() const { return texture.GetName(); }
     };
 
     struct TextureDataNode
     {
+        static constexpr auto NodeType = ResourceType::TextureData;
+
         std::string name;
         TextureData data;
         std::optional<CommandNodeRef> source;
+
+        std::string_view GetName() const { return name; }
     };
 
-    std::vector<CopyNode> copyNodes;
+    std::vector<WriteNode> writeNodes;
+    std::vector<ReadNode> readNodes;
     std::vector<RenderNode> renderNodes;
     std::vector<TextureNode> textureNodes;
     std::vector<TextureDataNode> textureDataNodes;
 
-    auto AddCopyNode(ResourceNodeRef source)
+    static constexpr auto NodeLists = std::tuple{
+        &VulkanGraph::writeNodes,   &VulkanGraph::readNodes,        &VulkanGraph::renderNodes,
+        &VulkanGraph::textureNodes, &VulkanGraph::textureDataNodes,
+    };
+
+    auto AddWriteNode(ResourceNodeRef source, ResourceNodeRef target)
     {
-        copyNodes.emplace_back(source);
-        return CopyRef(copyNodes.size() - 1);
+        writeNodes.emplace_back(source, target);
+        const auto r = WriteRef(writeNodes.size() - 1);
+        SetSource(target, r);
+        return r;
     }
 
-    auto AddRenderNode(RenderList renderList)
+    auto AddReadNode(ResourceNodeRef source, ResourceNodeRef target)
     {
-        renderNodes.emplace_back(std::move(renderList));
-        return RenderRef(renderNodes.size() - 1);
+        readNodes.emplace_back(source, target);
+        const auto r = ReadRef(readNodes.size() - 1);
+        SetSource(target, r);
+        return r;
     }
 
-    auto AddTextureNode(Texture texture, CommandNodeRef source)
+    auto AddRenderNode(RenderList renderList, std::optional<ResourceNodeRef> colorTarget, std::optional<ResourceNodeRef> depthStencilTarget)
     {
-        textureNodes.emplace_back(std::move(texture), source);
+        renderNodes.emplace_back(std::move(renderList), colorTarget, depthStencilTarget);
+        const auto r = RenderRef(renderNodes.size() - 1);
+        if (colorTarget)
+        {
+            SetSource(*colorTarget, r);
+        }
+        if (depthStencilTarget)
+        {
+            SetSource(*depthStencilTarget, r);
+        }
+        return r;
+    }
+
+    auto AddTextureNode(Texture texture)
+    {
+        textureNodes.emplace_back(std::move(texture));
         return TextureRef(textureNodes.size() - 1);
     }
 
-    auto AddTextureDataNode(std::string name, TextureData texture, std::optional<CommandNodeRef> source = {})
+    auto AddTextureDataNode(std::string name, TextureData texture)
     {
-        textureDataNodes.emplace_back(std::move(name), std::move(texture), source);
+        textureDataNodes.emplace_back(std::move(name), std::move(texture));
         return TextureDataRef(textureDataNodes.size() - 1);
+    }
+
+    template <class T>
+    T& Get(usize index)
+    {
+        using List = std::vector<T>;
+        using MemPtrType = List VulkanGraph::*;
+        constexpr auto MemPtr = std::get<MemPtrType>(NodeLists);
+        auto& list = this->*MemPtr;
+        TEIDE_ASSERT(index < list.size());
+        return list[index];
+    }
+
+    template <class T>
+    T* GetIf(CommandNodeRef ref)
+    {
+        return (ref.type == T::NodeType) ? &Get<T>(ref.index) : nullptr;
+    }
+
+    template <class T>
+    T* GetIf(ResourceNodeRef ref)
+    {
+        return (ref.type == T::NodeType) ? &Get<T>(ref.index) : nullptr;
+    }
+
+private:
+    void SetSource(ResourceNodeRef ref, CommandNodeRef source)
+    {
+        switch (ref.type)
+        {
+            case ResourceType::Texture: Get<TextureNode>(ref.index).source = source; break;
+            case ResourceType::TextureData: Get<TextureDataNode>(ref.index).source = source; break;
+        }
     }
 };
 
 void BuildGraph(VulkanGraph& graph, VulkanDevice& device);
 std::string VisualizeGraph(VulkanGraph& graph);
+void ExecuteGraph(VulkanGraph& graph, VulkanDevice& device, Queue& queue);
 
 } // namespace Teide

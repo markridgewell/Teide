@@ -27,6 +27,7 @@ struct VulkanTexture
 
     void TransitionToShaderInput(TextureState& state, vk::CommandBuffer cmdBuffer) const;
     void TransitionToTransferSrc(TextureState& state, vk::CommandBuffer cmdBuffer) const;
+    void TransitionToTransferDst(TextureState& state, vk::CommandBuffer cmdBuffer) const;
     void TransitionToRenderTarget(TextureState& state, vk::CommandBuffer cmdBuffer) const;
     void TransitionToColorTarget(TextureState& state, vk::CommandBuffer cmdBuffer) const;
     void TransitionToDepthStencilTarget(TextureState& state, vk::CommandBuffer cmdBuffer) const;

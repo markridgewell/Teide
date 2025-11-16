@@ -97,4 +97,10 @@ private:
     FrameArray<FrameResources, MaxFramesInFlight> m_frameResources;
 };
 
+template <>
+struct VulkanImpl<Renderer>
+{
+    using type = VulkanRenderer;
+};
+
 } // namespace Teide
