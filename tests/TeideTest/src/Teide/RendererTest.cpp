@@ -460,28 +460,4 @@ TEST_F(RendererTest, RenderMultipleFramesWithMultiplePassesWithViewParameters)
     EXPECT_THAT(outputData.pixels, BytesEq("78 78 78 ff 78 78 78 ff 78 78 78 ff 78 78 78 ff"));
 }
 
-TEST_F(RendererTest, DispatchSimple)
-{
-    /*
-    const auto kernelData = CompileKernel(ViewTextureShader);
-    const auto kernel = m_device.CreateKernel(kernelData, "TestKernel");
-
-    const DispatchInfo dispatch = {
-        .kernel = kernel;
-        .size = {2, 2},
-        .outputFormats = {{
-            { "result", Format::Float },
-        }},
-    };
-    const auto result = m_renderer.Dispatch(dispatch);
-    ASSERT_THAT(result.outputs.size(), Eq(1u));
-    const Texture texture = result.outputs[0];
-    const TextureData outputData = m_renderer->CopyTextureData(texture).get();
-
-    EXPECT_THAT(outputData, MatchesOutput(dispatch, 0));
-    EXPECT_THAT(outputData.pixels, BytesEq("00 00 28 42 00 00 28 42 00 00 28 42 00 00 28 42"));
-    "));
-    */
-}
-
 } // namespace
