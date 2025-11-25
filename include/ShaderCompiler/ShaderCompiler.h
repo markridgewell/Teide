@@ -37,7 +37,6 @@ struct KernelSourceData
 {
     ShaderLanguage language = ShaderLanguage::Glsl;
     Teide::ShaderEnvironmentData environment;
-    Teide::ParameterBlockDesc paramsPblock;
     ShaderStageDefinition kernelShader;
 };
 

@@ -3,16 +3,19 @@
 
 #include "Teide/Assert.h"
 #include "Teide/Definitions.h"
+#include "Teide/ShaderData.h"
 
 #include <fmt/format.h>
 #include <fmt/ostream.h>
 #include <glslang/Public/ShaderLang.h>
 #include <glslang/SPIRV/GlslangToSpv.h>
+#include <spdlog/spdlog.h>
 
 #include <array>
 #include <memory>
 #include <numeric>
 #include <optional>
+#include <ranges>
 #include <span>
 
 using namespace Teide;
@@ -205,7 +208,6 @@ std::vector<ParameterBlockDesc*> GetPblockLayouts(KernelData& data)
     return {
         &data.environment.scenePblock,
         &data.environment.viewPblock,
-        &data.paramsPblock,
     };
 }
 
@@ -368,34 +370,27 @@ void BuildBindings(std::string& source, const ParameterBlockDesc& pblock)
     BuildResourceBindings<Set>(source, pblock);
 }
 
+bool IsUserParam(const ShaderVariable& param)
+{
+    return !param.name.starts_with("gl_");
+}
+
 void BuildVaryings(std::string& source, ShaderStageData& data, const ShaderStageDefinition& sourceStage)
 {
     auto out = std::back_inserter(source);
 
-    for (usize i = 0; i < sourceStage.inputs.size(); i++)
+    for (const auto& v : std::views::filter(sourceStage.inputs, IsUserParam))
     {
-        const auto& input = sourceStage.inputs[i];
-
-        if (input.name.starts_with("gl_"))
-        {
-            continue;
-        }
-
-        data.inputs.push_back(input);
-        fmt::format_to(out, "layout(location = {}) in {} {};\n", i, input.type, input.name);
+        const auto slot = data.inputs.size();
+        data.inputs.push_back(v);
+        fmt::format_to(out, "layout(location = {}) in {} {};\n", slot, v.type, v.name);
     }
 
-    for (usize i = 0; i < sourceStage.outputs.size(); i++)
+    for (const auto& v : std::views::filter(sourceStage.outputs, IsUserParam))
     {
-        const auto& output = sourceStage.outputs[i];
-
-        if (output.name.starts_with("gl_"))
-        {
-            continue;
-        }
-
-        data.outputs.push_back(output);
-        fmt::format_to(out, "layout(location = {}) out {} {};\n", i, output.type, output.name);
+        const auto slot = data.outputs.size();
+        data.outputs.push_back(v);
+        fmt::format_to(out, "layout(location = {}) out {} {};\n", slot, v.type, v.name);
     }
 
     source += '\n';
@@ -420,32 +415,40 @@ void BuildKernelVaryings(std::string& source, ShaderStageData& data, const Shade
     source += '\n';
 }
 
-void BuildKernelEntrypoint(std::string& source, const ShaderStageDefinition& sourceStage)
+void BuildKernelEntrypoint(std::string& source, KernelData& data, const ShaderStageDefinition& sourceStage)
 {
-    for (usize i = 0; i < sourceStage.outputs.size(); i++)
-    {
-        const auto& output = sourceStage.outputs[i];
+    auto out = std::back_inserter(source);
 
+    usize slot = 1; // start at 1 because slot 0 is reserved for uniform buffer
+    constexpr int paramsSet = 2;
+    for (const auto& output : sourceStage.outputs)
+    {
         // TODO: derive glslFormat and storageType from output.type and storage method (buffer/image2D etc)
         using namespace std::literals;
         const auto glslFormat = "r32f"sv;
         const auto storageType = "image2D"sv;
-        fmt::format_to(
-            std::back_inserter(source), "layout({}, binding = {}) uniform {} _{}_image_;\n", //
-            glslFormat, i, storageType, output.name);
+        std::format_to(
+            out, "layout(set = {}, binding = {}, {}) uniform {} _{}_image_;\n", paramsSet, slot++, //
+            glslFormat, storageType, output.name);
     }
 
-    source += "void main() {\n";
-    source += "    _notreallymain_();\n";
+    std::format_to(out, "void main() {{\n");
+    std::format_to(out, "    _notreallymain_();\n");
+
     for (const auto& output : sourceStage.outputs)
     {
+        TEIDE_ASSERT(!IsResourceType(output.type.baseType));
         // TODO: handle buffers and non-2D images
         // TODO: handle vec2 and vec4 output types
-        fmt::format_to(
-            std::back_inserter(source), "    imageStore(_{}_image_, ivec2(gl_GlobalInvocationID.xy), vec4({}));\n", //
-            output.name, output.name);
+        const auto resourceName = std::format("_{}_image_", output.name);
+        std::format_to(
+            out, "    imageStore({}, ivec2(gl_GlobalInvocationID.xy), vec4({}));\n", //
+            resourceName, output.name);
+
+        data.paramsPblock.parameters.emplace_back(resourceName, ShaderVariableType::BaseType::RWTexture2D);
     }
-    source += "}\n";
+
+    std::format_to(out, "}}\n");
 }
 
 std::atomic<int> s_numInstances;
@@ -514,7 +517,6 @@ KernelData ShaderCompiler::Compile(const KernelSourceData& sourceData) const
 {
     KernelData data;
     data.environment = sourceData.environment;
-    data.paramsPblock = sourceData.paramsPblock;
 
     std::string computeShader;
     computeShader = "layout(local_size_x = 1, local_size_y = 1) in;\n";
@@ -522,15 +524,15 @@ KernelData ShaderCompiler::Compile(const KernelSourceData& sourceData) const
 
     BuildBindings<0>(computeShader, sourceData.environment.scenePblock);
     BuildBindings<1>(computeShader, sourceData.environment.viewPblock);
-    BuildBindings<2>(computeShader, sourceData.paramsPblock);
 
     BuildKernelVaryings(computeShader, data.computeShader, sourceData.kernelShader);
     computeShader += sourceData.kernelShader.source;
     computeShader += "#undef main\n";
-    BuildKernelEntrypoint(computeShader, sourceData.kernelShader);
+    BuildKernelEntrypoint(computeShader, data, sourceData.kernelShader);
 
     const auto language = GetEShSource(sourceData.language);
 
+    spdlog::debug("compute shader generated source:\n{}", computeShader);
     auto program = glslang::TProgram();
     std::array sources = {CompileStage(computeShader, EShLangCompute, language)};
     BuildShader(program, sources);

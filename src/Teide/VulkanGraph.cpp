@@ -131,6 +131,7 @@ std::string VisualizeGraph(VulkanGraph& graph)
             fmt::format_to(out, "    {} -> {}\n", graph.GetNodeName(dep), name);
         }
     });
+    ret += '}';
     return ret;
 }
 

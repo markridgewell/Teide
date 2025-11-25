@@ -1,6 +1,7 @@
 
 #include "Teide/ShaderData.h"
 
+#include "Teide/Assert.h"
 #include "Teide/Definitions.h"
 
 #include <ostream>
@@ -29,6 +30,7 @@ namespace
             case Matrix4: return "mat4";
             case Texture2D: return "sampler2D";
             case Texture2DShadow: return "sampler2DShadow";
+            case RWTexture2D: return "image2D";
         }
         Unreachable();
     }
@@ -40,9 +42,10 @@ namespace
         bindings.uniformsSize = offset + size * std::max(1u, var.type.arraySize);
     }
 
-    void AddResourceBinding(ParameterBlockLayoutData& bindings, const ShaderVariable& var [[maybe_unused]])
+    void AddResourceBinding(ParameterBlockLayoutData& bindings, const ShaderVariable& var)
     {
-        bindings.textureCount++;
+        TEIDE_ASSERT(var.type.arraySize <= 1, "Resource arrays not supported yet!");
+        bindings.resourceDescs.push_back(var.type.baseType);
     }
 
 } // namespace
@@ -70,7 +73,8 @@ ParameterBlockLayoutData BuildParameterBlockLayout(const ParameterBlockDesc& pbl
             case Matrix4: AddUniformBinding(bindings, parameter, sizeof(float) * 4 * 4, sizeof(float) * 4); break;
 
             case Texture2D:
-            case Texture2DShadow: AddResourceBinding(bindings, parameter); break;
+            case Texture2DShadow:
+            case RWTexture2D: AddResourceBinding(bindings, parameter); break;
         }
     }
 
@@ -94,7 +98,8 @@ bool IsResourceType(ShaderVariableType::BaseType type)
         case Matrix4: return false;
 
         case Texture2D:
-        case Texture2DShadow: return true;
+        case Texture2DShadow:
+        case RWTexture2D: return true;
     }
     Unreachable();
 }

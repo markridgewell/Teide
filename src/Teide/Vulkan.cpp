@@ -837,6 +837,18 @@ vk::VertexInputRate ToVulkan(VertexClass vc)
     return map.at(vc);
 }
 
+vk::DescriptorType ToVulkan(ShaderVariableType::BaseType type)
+{
+    using Type = ShaderVariableType::BaseType;
+    static constexpr StaticMap<ShaderVariableType::BaseType, vk::DescriptorType, 3> map = {
+        {Type::Texture2D, vk::DescriptorType::eCombinedImageSampler},
+        {Type::Texture2DShadow, vk::DescriptorType::eCombinedImageSampler},
+        {Type::RWTexture2D, vk::DescriptorType::eStorageImage},
+    };
+
+    return map.at(type);
+}
+
 Format FromVulkan(vk::Format format)
 {
     return VulkanFormats.inverse_at(format);

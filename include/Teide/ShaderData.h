@@ -49,6 +49,7 @@ struct ShaderVariableType
         // Resource types
         Texture2D,
         Texture2DShadow,
+        RWTexture2D,
     };
 
     ShaderVariableType(BaseType baseType, uint32 arraySize = 0) : // cppcheck-suppress noExplicitConstructor
@@ -135,7 +136,7 @@ struct ParameterBlockLayoutData
 {
     uint32 uniformsSize = 0;
     std::vector<UniformDesc> uniformDescs;
-    uint32 textureCount = 0;
+    std::vector<ShaderVariableType::BaseType> resourceDescs;
     bool isPushConstant = false;
     ShaderStageFlags uniformsStages = {};
 };

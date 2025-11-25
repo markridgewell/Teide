@@ -118,6 +118,5 @@ TEST(ShaderCompilerTest, CompileSimpleKernel)
     EXPECT_THAT(result.environment.scenePblock.uniformsStages, Eq(Teide::ShaderStageFlags::None));
     EXPECT_THAT(result.environment.viewPblock.parameters, Eq(TestKernel.environment.viewPblock.parameters));
     EXPECT_THAT(result.environment.viewPblock.uniformsStages, Eq(Teide::ShaderStageFlags::None));
-    EXPECT_THAT(result.paramsPblock.parameters, Eq(TestKernel.paramsPblock.parameters));
     EXPECT_THAT(result.paramsPblock.uniformsStages, Eq(Teide::ShaderStageFlags::None));
 }

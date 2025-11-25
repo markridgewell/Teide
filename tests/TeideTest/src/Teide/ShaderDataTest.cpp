@@ -168,7 +168,7 @@ TEST(ShaderDataTest, UniformOffsetTexture2D)
     const auto result = BuildParameterBlockLayout(input, 0);
     EXPECT_THAT(result.uniformsSize, Eq(8u));
     EXPECT_THAT(result.uniformDescs, ElementsAre(UniformDesc{"pad0", Type::Float, 0u}, UniformDesc{"pad1", Type::Float, 4u}));
-    EXPECT_THAT(result.textureCount, Eq(1));
+    EXPECT_THAT(result.resourceDescs.size(), Eq(1u));
 }
 
 TEST(ShaderDataTest, UniformOffsetMatrix4Array)

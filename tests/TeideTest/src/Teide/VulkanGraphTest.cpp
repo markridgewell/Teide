@@ -308,8 +308,8 @@ constexpr auto CopyCpuToGpuDot = R"--(strict digraph {
     tex
     texData
     node [shape=box, margin=0.5]
-    copy1 -> tex
-    texData -> copy1
+    write1 -> tex
+    texData -> write1
 })--";
 
 TEST_F(VulkanGraphTest, VisualizingGraphWithWriteNode)
@@ -330,8 +330,8 @@ constexpr auto CopyGpuToCpuDot = R"--(strict digraph {
     tex
     texData
     node [shape=box, margin=0.5]
-    copy1 -> texData
-    tex -> copy1
+    read1 -> texData
+    tex -> read1
     render1 -> tex
 })--";
 
