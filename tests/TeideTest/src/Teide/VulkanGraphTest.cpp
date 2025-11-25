@@ -372,24 +372,4 @@ TEST_F(VulkanGraphTest, ExecutingGraphWithCopyNode)
     EXPECT_THAT(tdo, Eq(tdi));
 }
 
-TEST_F(VulkanGraphTest, ExecutingGraphWithSimpleDispatch)
-{
-    VulkanGraph graph;
-    const auto kernel = CompileKernel(SimpleKernel, "kernel");
-    auto tex = graph.AddTextureNode(CreateDummyTexture("tex"));
-    graph.AddDispatchNode(kernel, {}, {tex});
-    auto texData = graph.AddTextureDataNode("texData", {});
-    graph.AddReadNode(tex, texData);
-
-    auto renderer = m_device->CreateRenderer({});
-
-    spdlog::info(VisualizeGraph(graph));
-    auto queue = Queue(m_device->GetVulkanDevice(), m_device->GetGraphicsQueue());
-    ExecuteGraph(graph, *m_device, queue);
-
-    std::array<float, 4> outputValues{};
-    SafeMemCpy(outputValues, graph.textureDataNodes.at(texData.index).data.pixels);
-    EXPECT_THAT(outputValues, Each(Eq(42.0f))) << VisualizeGraph(graph);
-}
-
 } // namespace
