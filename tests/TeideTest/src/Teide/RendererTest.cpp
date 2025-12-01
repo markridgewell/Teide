@@ -35,6 +35,7 @@ public:
 
 protected:
     ShaderData CompileShader(const ShaderSourceData& data) { return m_shaderCompiler.Compile(data); }
+    KernelData CompileKernel(const KernelSourceData& data) { return m_shaderCompiler.Compile(data); }
 
     RenderObject CreateFullscreenTri(const Teide::RenderTargetInfo& renderTarget)
     {
@@ -132,6 +133,12 @@ MATCHER_P(MatchesResolvedDepthTarget, renderTarget, "")
         == 1
         && arg.sampleCount
         == 1;
+}
+
+MATCHER_P2(MatchesOutput, dispatchInfo, index, "")
+{
+    (void)result_listener;
+    return arg.size == dispatchInfo.size && arg.format == dispatchInfo.output.at(index).format;
 }
 
 auto BytesEq(std::string_view bytesStr)

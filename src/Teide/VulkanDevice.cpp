@@ -273,6 +273,25 @@ namespace
         return device.createPipelineLayoutUnique(createInfo, s_allocator);
     }
 
+    vk::UniquePipelineLayout CreateComputePipelineLayout(vk::Device device, const VulkanKernel& kernel)
+    {
+        std::vector<vk::DescriptorSetLayout> setLayouts = {
+            kernel.scenePblockLayout->setLayout.get(),
+            kernel.viewPblockLayout->setLayout.get(),
+            kernel.paramsPblockLayout->setLayout.get(),
+        };
+
+        vkex::PipelineLayoutCreateInfo createInfo = {
+            .setLayouts = setLayouts,
+        };
+        if (const auto pushConstantRange = kernel.paramsPblockLayout->pushConstantRange)
+        {
+            createInfo.pushConstantRanges = *pushConstantRange;
+        }
+
+        return device.createPipelineLayoutUnique(createInfo, s_allocator);
+    }
+
     vk::PipelineColorBlendAttachmentState MakeBlendState(const std::optional<BlendState>& state, ColorMask colorMask)
     {
         vk::PipelineColorBlendAttachmentState ret;
@@ -433,6 +452,24 @@ namespace
         return std::move(result.value);
     }
 
+    vk::UniquePipeline CreateComputePipeline(const VulkanKernel& kernel, vk::Device device)
+    {
+        const vk::ComputePipelineCreateInfo createInfo = {
+            .stage = {
+                .stage = vk::ShaderStageFlagBits::eCompute,
+                .module = kernel.computeShader.get(),
+                .pName = "main",
+            },
+            .layout = kernel.pipelineLayout.get(),
+        };
+        auto result = device.createComputePipelineUnique(nullptr, createInfo, s_allocator);
+        if (result.result != vk::Result::eSuccess)
+        {
+            throw VulkanError("Couldn't create compute pipeline");
+        }
+        return std::move(result.value);
+    }
+
 } // namespace
 
 //---------------------------------------------------------------------------------------------------------------------
@@ -481,6 +518,7 @@ VulkanDevice::VulkanDevice(
         CreateCommandPool(m_physicalDevice.queueFamilies.graphicsFamily, m_device.get(), "SurfaceCommandPool")},
     m_allocator{CreateAllocator(m_loader, m_instance.get(), m_device.get(), m_physicalDevice.physicalDevice)},
     m_textures{"texture"},
+    m_kernels{"kernel"},
     m_parameterBlocks{"parameter block"},
     m_scheduler(m_settings.numThreads, m_device.get(), m_graphicsQueue, m_physicalDevice.queueFamilies.graphicsFamily)
 {
@@ -753,6 +791,36 @@ ShaderPtr VulkanDevice::CreateShader(const ShaderData& data, const char* name)
     }
 
     return std::make_shared<const VulkanShader>(std::move(shader));
+}
+
+Kernel VulkanDevice::CreateKernel(const KernelData& data, const char* name)
+{
+    spdlog::debug("Creating kernel '{}'", name);
+    const vk::ShaderModuleCreateInfo shaderCreateInfo = {
+        .codeSize = data.computeShader.spirv.size() * sizeof(uint32_t),
+        .pCode = data.computeShader.spirv.data(),
+    };
+
+    VulkanKernel kernel = {
+        .computeShader = m_device->createShaderModuleUnique(shaderCreateInfo, s_allocator),
+        .inputs = data.computeShader.inputs,
+        .outputs = data.computeShader.outputs,
+        .scenePblockLayout = CreateParameterBlockLayout(data.environment.scenePblock, 0),
+        .viewPblockLayout = CreateParameterBlockLayout(data.environment.viewPblock, 1),
+        .paramsPblockLayout = CreateParameterBlockLayout(data.paramsPblock, 2),
+    };
+
+    kernel.pipelineLayout = CreateComputePipelineLayout(m_device.get(), kernel);
+    kernel.pipeline = CreateComputePipeline(kernel, m_device.get());
+
+    if (name)
+    {
+        SetDebugName(kernel.computeShader, "{}", name);
+        SetDebugName(kernel.pipelineLayout, "{}:PipelineLayout", name);
+        SetDebugName(kernel.pipeline, "{}:Pipeline", name);
+    }
+
+    return m_kernels.Insert(std::move(kernel));
 }
 
 Texture VulkanDevice::CreateTexture(const TextureData& data, const char* name)

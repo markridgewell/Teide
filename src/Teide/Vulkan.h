@@ -6,6 +6,7 @@
 #include "GeoLib/Vector.h"
 #include "Teide/Definitions.h"
 #include "Teide/PipelineData.h"
+#include "Teide/ShaderData.h"
 #include "Teide/TextureData.h"
 
 #include <fmt/format.h>
@@ -207,6 +208,7 @@ vk::CullModeFlags ToVulkan(CullMode);
 vk::ColorComponentFlags ToVulkan(ColorMask);
 vk::PrimitiveTopology ToVulkan(PrimitiveTopology);
 vk::VertexInputRate ToVulkan(VertexClass);
+vk::DescriptorType ToVulkan(ShaderVariableType::BaseType);
 
 Format FromVulkan(vk::Format format);
 

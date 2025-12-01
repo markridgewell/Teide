@@ -1,11 +1,11 @@
 
 #include "Teide/VulkanGraph.h"
 
+#include "Teide/Definitions.h"
 #include "Teide/Vulkan.h"
 #include "Teide/VulkanDevice.h"
 
 #include <fmt/core.h>
-#include <stdexec/__detail/__sync_wait.hpp>
 #include <vulkan/vulkan_enums.hpp>
 #include <vulkan/vulkan_handles.hpp>
 
@@ -38,6 +38,30 @@ namespace
     }
 } // namespace
 
+std::string_view VulkanGraph::GetNodeName(ResourceNodeRef ref)
+{
+    switch (ref.type)
+    {
+        case ResourceType::Texture: return textureNodes.at(ref.index).texture.GetName();
+        case ResourceType::TextureData: return textureDataNodes.at(ref.index).name;
+    }
+    Unreachable();
+}
+
+std::optional<std::string_view> VulkanGraph::FindNodeWithSource(CommandNodeRef source)
+{
+    if (const auto it = std::ranges::find(textureNodes, source, &TextureNode::source); it != textureNodes.end())
+    {
+        return it->texture.GetName();
+    }
+
+    if (const auto it = std::ranges::find(textureDataNodes, source, &TextureDataNode::source); it != textureDataNodes.end())
+    {
+        return it->name;
+    }
+
+    return std::nullopt;
+}
 
 std::string to_string(ResourceType type)
 {
@@ -55,6 +79,7 @@ std::string to_string(CommandType type)
         case CommandType::Write: return "Write";
         case CommandType::Read: return "Read";
         case CommandType::Render: return "Render";
+        case CommandType::Dispatch: return "Dispatch";
     }
     return "";
 }
@@ -91,54 +116,21 @@ std::string VisualizeGraph(VulkanGraph& graph)
     }
     fmt::format_to(out, "    node [shape=box, margin=0.5]\n");
 
-    for (auto i = VulkanGraph::RenderRef(0); i.index < graph.renderNodes.size(); i.index++)
-    {
-        const auto& node = graph.renderNodes[i.index];
-
-        if (const auto it = std::ranges::find(graph.textureNodes, i, &VulkanGraph::TextureNode::source);
-            it != graph.textureNodes.end())
+    graph.ForEachCommandNode([&](VulkanGraph::CommandNodeRef ref, std::string_view name, const auto& dependencies) {
+        if (const auto resourceName = graph.FindNodeWithSource(ref))
         {
-            fmt::format_to(out, "    {} -> {}\n", node.renderList.name, it->texture.GetName());
+            fmt::format_to(out, "    {} -> {}\n", name, *resourceName);
         }
         else
         {
-            fmt::format_to(out, "    {}\n", node.renderList.name);
+            fmt::format_to(out, "    {}\n", name);
         }
 
-        for (const auto& dep : node.dependencies)
+        for (const auto& dep : dependencies)
         {
-            switch (dep.type)
-            {
-                case ResourceType::Texture:
-                    fmt::format_to(
-                        out, "    {} -> {}\n", graph.textureNodes.at(dep.index).texture.GetName(), node.renderList.name);
-                    break;
-                case ResourceType::TextureData:
-                    fmt::format_to(out, "    {} -> {}\n", graph.textureDataNodes.at(dep.index).name, node.renderList.name);
-                    break;
-            }
+            fmt::format_to(out, "    {} -> {}\n", graph.GetNodeName(dep), name);
         }
-    }
-
-    int copyIndex = 0;
-    for (const auto& node : graph.writeNodes)
-    {
-        std::string nodeName = fmt::format("copy{}", ++copyIndex);
-
-        const auto& src = graph.Get<VulkanGraph::TextureDataNode>(node.source.index);
-        const auto& tgt = graph.Get<VulkanGraph::TextureNode>(node.target.index);
-        fmt::format_to(out, "    {} -> {}\n", nodeName, tgt.texture.GetName());
-        fmt::format_to(out, "    {} -> {}\n", src.name, nodeName);
-    }
-    for (const auto& node : graph.readNodes)
-    {
-        std::string nodeName = fmt::format("copy{}", ++copyIndex);
-
-        const auto& src = graph.Get<VulkanGraph::TextureNode>(node.source.index);
-        const auto& tgt = graph.Get<VulkanGraph::TextureDataNode>(node.target.index);
-        fmt::format_to(out, "    {} -> {}\n", nodeName, tgt.name);
-        fmt::format_to(out, "    {} -> {}\n", src.texture.GetName(), nodeName);
-    }
+    });
     ret += '}';
     return ret;
 }

@@ -125,6 +125,12 @@ public:
             m_first{!(m_iterators.first == m_sentinels.first)}
         {}
 
+        explicit Iterator(std::pair<View1, View2>& views) :
+            m_iterators{std::ranges::begin(views.first), std::ranges::begin(views.second)}, //
+            m_sentinels{std::ranges::end(views.first), std::ranges::end(views.second)},
+            m_first{!(m_iterators.first == m_sentinels.first)}
+        {}
+
         reference operator*() const
         {
             if (m_first)
@@ -172,6 +178,8 @@ public:
 
     auto begin() const { return Iterator(m_views); }
     auto end() const { return Sentinel(); }
+    auto begin() { return Iterator(m_views); }
+    auto end() { return Sentinel(); }
     auto size() const { return m_size; }
 
 private:
@@ -235,9 +243,16 @@ private:
     const std::optional<T>* m_value;
 };
 
-auto MakeRefView(const std::ranges::range auto& range)
+template <std::ranges::range R>
+decltype(auto) MakeRefView(const R& range)
 {
     return std::ranges::ref_view(range);
+}
+
+template <std::ranges::borrowed_range R>
+auto MakeRefView(R&& range)
+{
+    return std::forward<R>(range);
 }
 
 template <typename T>
@@ -264,9 +279,9 @@ auto JoinViews(const Views&... ranges)
 
 template <typename... Ranges>
     requires((SizedViewable<Ranges>) && ...)
-auto Join(const Ranges&... ranges)
+auto Join(Ranges&&... ranges)
 {
-    return JoinViews(MakeRefView(ranges)...);
+    return JoinViews(MakeRefView(std::forward<Ranges>(ranges))...);
 }
 
 } // namespace vkex
