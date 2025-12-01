@@ -427,28 +427,28 @@ void BuildKernelEntrypoint(std::string& source, KernelData& data, const ShaderSt
         using namespace std::literals;
         const auto glslFormat = "r32f"sv;
         const auto storageType = "image2D"sv;
-        std::format_to(
+        fmt::format_to(
             out, "layout(set = {}, binding = {}, {}) uniform {} _{}_image_;\n", paramsSet, slot++, //
             glslFormat, storageType, output.name);
     }
 
-    std::format_to(out, "void main() {{\n");
-    std::format_to(out, "    _notreallymain_();\n");
+    fmt::format_to(out, "void main() {{\n");
+    fmt::format_to(out, "    _notreallymain_();\n");
 
     for (const auto& output : sourceStage.outputs)
     {
         TEIDE_ASSERT(!IsResourceType(output.type.baseType));
         // TODO: handle buffers and non-2D images
         // TODO: handle vec2 and vec4 output types
-        const auto resourceName = std::format("_{}_image_", output.name);
-        std::format_to(
+        const auto resourceName = fmt::format("_{}_image_", output.name);
+        fmt::format_to(
             out, "    imageStore({}, ivec2(gl_GlobalInvocationID.xy), vec4({}));\n", //
             resourceName, output.name);
 
         data.paramsPblock.parameters.emplace_back(resourceName, ShaderVariableType::BaseType::RWTexture2D);
     }
 
-    std::format_to(out, "}}\n");
+    fmt::format_to(out, "}}\n");
 }
 
 std::atomic<int> s_numInstances;
