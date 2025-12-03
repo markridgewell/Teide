@@ -140,7 +140,7 @@ jobs:
 
     - name: Save render test output
       if: failure() && steps.test.outcome == 'failure'
-      uses: actions/upload-artifact@v6
+      uses: actions/upload-artifact@v5
       with:
         name: RenderTestOutput-${{env.job_name}}
         path: ${{env.RT_OUTPUT_DIR}}
