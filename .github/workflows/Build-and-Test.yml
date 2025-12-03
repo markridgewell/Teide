@@ -92,7 +92,7 @@ jobs:
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v4.2.2
+      uses: actions/checkout@v6.0.1
       with:
         lfs: true
         submodules: false
@@ -146,7 +146,7 @@ jobs:
       # I heard you like caches, so I put some caches in your caches
       id: ccache-restore
       if: env.use_ccache
-      uses: actions/cache/restore@v4
+      uses: actions/cache/restore@v4.3.0
       with:
         path: ${{ env.CCACHE_DIR }}
         key: ${{ steps.ccache.outputs.key }}
@@ -170,7 +170,7 @@ jobs:
 
     - name: Save CMake trace
       if: always() && inputs.profile-cmake
-      uses: actions/upload-artifact@v4.5.0
+      uses: actions/upload-artifact@v5.0.0
       with:
         name: CMakeTrace-${{env.job_name}}
         path: ./CMakeTrace.json
@@ -198,7 +198,7 @@ jobs:
 
     - name: Save ccache dir
       if: env.use_ccache
-      uses: actions/cache/save@v4
+      uses: actions/cache/save@v4.3.0
       with:
         path: ${{ env.CCACHE_DIR }}
         key: ${{ steps.ccache-restore.outputs.cache-primary-key }}
@@ -222,7 +222,7 @@ jobs:
 
     - name: Save render test output
       if: failure() && steps.test.outcome == 'failure'
-      uses: actions/upload-artifact@v4.5.0
+      uses: actions/upload-artifact@v5.0.0
       with:
         name: RenderTestOutput-${{env.job_name}}
         path: ${{env.RT_OUTPUT_DIR}}
@@ -241,14 +241,14 @@ jobs:
 
     - name: Save test log
       if: failure() && steps.test.outcome == 'failure'
-      uses: actions/upload-artifact@v4.5.0
+      uses: actions/upload-artifact@v5.0.0
       with:
         name: TestLog-${{env.job_name}}
         path: build/${{matrix.preset}}/Testing/Temporary/LastTest.log
 
     - name: Upload coverage report
       if: matrix.coverage == 'ON'
-      uses: codecov/codecov-action@v5.1.2
+      uses: codecov/codecov-action@v5.5.1
       with:
         directory: build/${{matrix.preset}}/coverage/output
         fail_ci_if_error: false
@@ -257,7 +257,7 @@ jobs:
 
     - name: Save coverage report
       if: matrix.coverage == 'ON'
-      uses: actions/upload-artifact@v4.5.0
+      uses: actions/upload-artifact@v5.0.0
       with:
         name: CoverageReport-${{env.job_name}}
         path: build/${{matrix.preset}}/coverage/output
@@ -294,7 +294,7 @@ jobs:
       ANY_FAILED: "${{needs.build-and-test.outputs.rendertest-failures}}"
 
     steps:
-    - uses: actions/download-artifact@v4.1.8
+    - uses: actions/download-artifact@v6.0.0
       if: needs.build-and-test.outputs.rendertest-failures
       with:
         path: artifacts

@@ -34,7 +34,7 @@ jobs:
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v4.2.2
+      uses: actions/checkout@v6.0.1
       with:
         lfs: false
 
@@ -46,7 +46,7 @@ jobs:
 
     - name: Cache
       id: cache
-      uses: actions/cache@v4.2.0
+      uses: actions/cache@v4.3.0
       with:
         key: ${{ steps.cache-key.outputs.cache-key }}
         path: './exports'
@@ -103,7 +103,7 @@ jobs:
 
     - name: Save packages as artifact
       if: steps.cache.outputs.cache-hit != 'true'
-      uses: actions/upload-artifact@v4.5.0
+      uses: actions/upload-artifact@v5.0.0
       with:
         name: vcpkg-export-${{ steps.cache-key.outputs.cache-key }}
         path: './exports'

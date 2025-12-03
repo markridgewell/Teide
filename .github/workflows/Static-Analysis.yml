@@ -30,7 +30,7 @@ jobs:
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v4.2.2
+      uses: actions/checkout@v6.0.1
       with:
         fetch-depth: ${{ github.event_name == 'pull_request' && 2 || 0 }}
         submodules: true
@@ -79,7 +79,7 @@ jobs:
 
     - name: Upload SARIF files
       if: always() && steps.get-changes.outputs.changed-files != ''
-      uses: github/codeql-action/upload-sarif@v3
+      uses: github/codeql-action/upload-sarif@v4.31.6
       with:
         sarif_file: sarif
         checkout_path: ${{ github.workspace }}
@@ -94,7 +94,7 @@ jobs:
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v4.2.2
+      uses: actions/checkout@v6.0.1
       with:
         fetch-depth: ${{ github.event_name == 'pull_request' && 2 || 0 }}
         submodules: true
@@ -136,7 +136,7 @@ jobs:
 
     - name: Report issues as PR comments
       if: failure() && github.event_name == 'pull_request'
-      uses: reviewdog/action-suggester@v1.18.0
+      uses: reviewdog/action-suggester@v1.24.0
       with:
         tool_name: clang-tidy
 
@@ -152,11 +152,11 @@ jobs:
 
     - name: Push changes
       if: failure() && inputs.commit-fixes
-      uses: ad-m/github-push-action@v0.8.0
+      uses: ad-m/github-push-action@v1.0.0
 
     - name: Save fixes as build artifact
       if: failure()
-      uses: actions/upload-artifact@v4.5.0
+      uses: actions/upload-artifact@v5.0.0
       with:
         name: clang-tidy-fixes
         path: ${{github.workspace}}/build/${{env.preset}}/clang-tidy-fixes.yaml
