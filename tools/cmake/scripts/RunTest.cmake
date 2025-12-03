@@ -10,7 +10,7 @@ if("$ENV{TEST_COVERAGE}")
         set(RUNNER_COMMAND
             "$ENV{OPENCPPCOVERAGE}" #
             "--export_type=binary:${coverage_dir}/${test_name}.cov" #
-            # "--modules=*.exe" ${sources} #
+            "--modules=*.exe" # ${sources} #
             --cover_children #
             --continue_after_cpp_exception #
             --)
