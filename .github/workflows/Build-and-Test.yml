@@ -32,7 +32,6 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  use_ccache: ${{ inputs.ccache || github.event_name != 'workflow_dispatch' }}
   CCACHE_DEBUGLLEVEL: 1
   CCACHE_DEBUGDIR: ${{ github.workspace }}/ccache_debug
   CCACHE_LOGFILE: ${{ github.workspace }}/ccache.log
@@ -83,6 +82,7 @@ jobs:
 
     env:
       job_name: ${{startsWith(matrix.runner, 'windows') && 'Windows' || 'Linux'}}-${{matrix.buildtype}}-${{matrix.preset}}${{matrix.name-suffix}}
+      use_ccache: ${{ (inputs.ccache || github.event_name != 'workflow_dispatch') && !(matrix.preset == 'msvc2022' && matrix.coverage == 'ON') }}
       CMAKE_BUILD_TYPE: ${{matrix.buildtype}}
       RT_OUTPUT_DIR: build/${{matrix.preset}}/tests/RenderTest/RenderTestOutput
 
@@ -103,13 +103,19 @@ jobs:
       with:
         sanitizer: ${{matrix.sanitizer}}
 
+    - if: matrix.coverage == 'ON' && runner.os == 'Windows'
+      name: Install OpenCppCoverage
+      uses: ./.github/actions/choco-install
+      with:
+        package-name: OpenCppCoverage
+        package-version: 0.9.9.0
+
     - name: Install tools
       uses: ./.github/actions/install-tools
       with:
         extra-packages: >
           ${{ matrix.extra-packages }}
           ${{ env.use_ccache && 'ccache' || '' }}
-          ${{ matrix.coverage == 'ON' && runner.os == 'Windows' && 'OpenCppCoverage' || '' }}
           ${{ runner.os == 'Linux' && 'vulkan-validationlayers' || '' }}
       env:
         GH_TOKEN: ${{ github.token }}
