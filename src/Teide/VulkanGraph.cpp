@@ -181,8 +181,6 @@ namespace
 
         VulkanTexture& texture = device.GetImpl(sourceNode.texture);
 
-        spdlog::info("Copy texture to texture data: {} -> {}", sourceNode.GetName(), targetNode.GetName());
-
         const VulkanTexture& textureImpl = device.GetImpl(sourceNode.texture);
 
         targetNode.data = {
