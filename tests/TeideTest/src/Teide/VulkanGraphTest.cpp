@@ -372,4 +372,32 @@ TEST_F(VulkanGraphTest, ExecutingGraphWithCopyNode)
     EXPECT_THAT(tdo, Eq(tdi));
 }
 
+TEST_F(VulkanGraphTest, DISABLED_ExecutingGraphWithOneRenderNode)
+{
+    VulkanGraph graph;
+    const auto tex1 = graph.AddTextureNode(CreateDummyTexture("tex1"));
+    graph.AddRenderNode({
+        .name = "clearMagenta",
+        .clearState = {
+            .colorValue = Color{1.0f, 0.0f, 1.0f, 1.0f},
+        },
+    }, tex1, std::nullopt);
+    const auto texDataOutput = graph.AddTextureDataNode("output", {});
+    graph.AddReadNode(tex1, texDataOutput);
+    spdlog::info(VisualizeGraph(graph));
+    spdlog::info(MakeDotURL(VisualizeGraph(graph)));
+    auto queue = Queue(m_device->GetVulkanDevice(), m_device->GetGraphicsQueue());
+    ExecuteGraph(graph, *m_device, queue);
+
+    const VulkanTexture& texture = m_device->GetImpl(graph.textureNodes.at(tex1.index).texture);
+    EXPECT_THAT(texture.image, IsValidVkHandle());
+    EXPECT_THAT(texture.imageView, IsValidVkHandle());
+    const auto tdo = graph.Get<VulkanGraph::TextureDataNode>(texDataOutput.index).data;
+    EXPECT_THAT(
+        tdo,
+        Eq(TextureData{
+            .pixels = {},
+        }));
+}
+
 } // namespace

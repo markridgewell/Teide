@@ -134,6 +134,8 @@ public:
 
     VulkanParameterBlockLayoutPtr CreateParameterBlockLayout(const ParameterBlockDesc& desc, int set);
 
+    vk::DescriptorSet GetDescriptorSet(const ParameterBlock& parameterBlock);
+
 private:
     struct RenderPassDesc
     {
