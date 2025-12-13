@@ -24,6 +24,14 @@
 namespace Teide
 {
 
+struct RenderTarget
+{
+    std::optional<Texture> color;
+    std::optional<Texture> depthStencil;
+    std::optional<Texture> colorResolved;
+    std::optional<Texture> depthStencilResolved;
+};
+
 class VulkanRenderer final : public Renderer
 {
 public:
@@ -47,6 +55,10 @@ public:
 
     Task<TextureData> CopyTextureData(Texture texture) override;
 
+    void CreateRenderCommandBuffer(
+        CommandBuffer& commandBuffer, const RenderList& renderList, const RenderTargetInfo& renderTarget,
+        const RenderTarget& rt);
+
 private:
     template <std::invocable<CommandBuffer&> F>
     auto ScheduleGpu(F&& f) -> TaskForCallable<F, CommandBuffer&>
@@ -60,18 +72,21 @@ private:
 
     void RecordRenderListCommands(
         CommandBuffer& commandBuffer, const RenderList& renderList, vk::RenderPass renderPass,
-        const RenderPassDesc& renderPassDesc, const Framebuffer& framebuffer);
-    void RecordRenderObjectCommands(
-        CommandBuffer& commandBufferWrapper, const RenderObject& obj, const RenderPassDesc& renderPassDesc) const;
+        const RenderPassDesc& renderPassDesc, const Framebuffer& framebuffer,
+        const ParameterBlockLayoutPtr& viewPblockLayout);
+    static void RecordRenderObjectCommands(
+        VulkanDevice& device, CommandBuffer& commandBufferWrapper, const RenderObject& obj,
+        const RenderPassDesc& renderPassDesc);
 
     std::optional<SurfaceImage> AddSurfaceToPresent(VulkanSurface& surface);
-
-    vk::DescriptorSet GetDescriptorSet(const ParameterBlock& parameterBlock) const;
 
     struct ThreadResources
     {
         std::optional<DescriptorPool> viewDescriptorPool;
         std::vector<TransientParameterBlock> viewParameters;
+
+        TransientParameterBlock*
+        CreateViewParameterBlock(VulkanDevice& device, const ParameterBlockData& data, const char* name);
     };
 
     struct FrameResources

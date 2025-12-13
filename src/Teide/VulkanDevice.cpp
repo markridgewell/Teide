@@ -1101,6 +1101,13 @@ VulkanParameterBlockLayoutPtr VulkanDevice::CreateParameterBlockLayout(const Par
     return std::make_shared<const VulkanParameterBlockLayout>(BuildParameterBlockLayout(desc, set), m_device.get());
 }
 
+vk::DescriptorSet VulkanDevice::GetDescriptorSet(const ParameterBlock& parameterBlock)
+{
+    auto& parameterBlockImpl = GetImpl(parameterBlock);
+    InitParameterBlock(parameterBlockImpl);
+    return parameterBlockImpl.descriptorSet.get();
+}
+
 vk::RenderPass VulkanDevice::CreateRenderPassLayout(const FramebufferLayout& framebufferLayout)
 {
     return CreateRenderPass(framebufferLayout, {}, {});
