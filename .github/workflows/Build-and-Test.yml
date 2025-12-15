@@ -254,7 +254,7 @@ jobs:
 
     - name: Upload coverage report
       if: matrix.coverage == 'ON'
-      uses: codecov/codecov-action@v5.5.1
+      uses: codecov/codecov-action@v5.5.2
       with:
         directory: build/${{matrix.preset}}/coverage/output
         fail_ci_if_error: false
