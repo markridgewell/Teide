@@ -225,7 +225,7 @@ namespace
         {
             spdlog::info("Render to color texture: {}", colorTargetNode->GetName());
 
-            VulkanTexture& texture = device.GetImpl(colorTargetNode->texture);
+            const VulkanTexture& texture = device.GetImpl(colorTargetNode->texture);
             texture.TransitionToRenderTarget(colorTargetNode->state, cmdBuffer);
         }
     }
