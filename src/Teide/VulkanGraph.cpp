@@ -216,6 +216,20 @@ namespace
             texture.properties.mipLevelCount);
     }
 
+    void ProcessCommandNode(VulkanGraph& graph, VulkanGraph::RenderNode& readNode, VulkanDevice& device, vk::CommandBuffer cmdBuffer)
+    {
+        auto* colorTargetNode
+            = readNode.colourTarget ? &graph.Get<VulkanGraph::TextureNode>(readNode.colourTarget->index) : nullptr;
+
+        if (colorTargetNode)
+        {
+            spdlog::info("Render to color texture: {}", colorTargetNode->GetName());
+
+            VulkanTexture& texture = device.GetImpl(colorTargetNode->texture);
+            texture.TransitionToRenderTarget(colorTargetNode->state, cmdBuffer);
+        }
+    }
+
     auto RecordCommands(VulkanGraph& graph, VulkanDevice& device) -> Commands
     {
         Commands ret;
@@ -243,6 +257,11 @@ namespace
         for (auto& writeNode : graph.writeNodes)
         {
             ProcessCommandNode(graph, writeNode, device, cmdBuffer);
+        }
+
+        for (auto& renderNode : graph.renderNodes)
+        {
+            ProcessCommandNode(graph, renderNode, device, cmdBuffer);
         }
 
         for (auto& readNode : graph.readNodes)
