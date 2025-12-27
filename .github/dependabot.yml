@@ -12,3 +12,10 @@ updates:
       github-actions:
         applies-to: version-updates
 
+  - package-ecosystem: "vcpkg"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    groups:
+      vcpkg:
+        applies-to: version-updates
