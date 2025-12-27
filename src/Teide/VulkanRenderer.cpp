@@ -254,52 +254,26 @@ RenderToTextureResult VulkanRenderer::RenderToTexture(const RenderTargetInfo& re
         return m_device.CreateRenderableTexture(data, textureName.c_str());
     };
 
+
     const auto& fb = renderTarget.framebufferLayout;
     const auto sampleCount = renderTarget.framebufferLayout.sampleCount;
-    const auto color = CreateRenderableTexture(fb.colorFormat, sampleCount, "color");
-    const auto depthStencil = CreateRenderableTexture(fb.depthStencilFormat, sampleCount, "depthStencil");
-    const auto colorResolved = sampleCount > 1 && renderTarget.framebufferLayout.resolveColor
-        ? CreateRenderableTexture(fb.colorFormat, 1, "colorResolved")
-        : std::nullopt;
-    const auto depthStencilResolved = sampleCount > 1 && renderTarget.framebufferLayout.resolveDepthStencil
-        ? CreateRenderableTexture(fb.depthStencilFormat, 1, "depthStencilResolved")
-        : std::nullopt;
+    const RenderTarget rt = {
+        .color = CreateRenderableTexture(fb.colorFormat, sampleCount, "color"),
+        .depthStencil = CreateRenderableTexture(fb.depthStencilFormat, sampleCount, "depthStencil"),
+        .colorResolved = sampleCount > 1 && renderTarget.framebufferLayout.resolveColor
+            ? CreateRenderableTexture(fb.colorFormat, 1, "colorResolved")
+            : std::nullopt,
+        .depthStencilResolved = sampleCount > 1 && renderTarget.framebufferLayout.resolveDepthStencil
+            ? CreateRenderableTexture(fb.depthStencilFormat, 1, "depthStencilResolved")
+            : std::nullopt,
+    };
 
-    ScheduleGpu([this, renderList = std::move(renderList), renderTarget, color, depthStencil, colorResolved,
-                 depthStencilResolved](CommandBuffer& commandBuffer) {
-        std::vector<vk::ImageView> attachments;
-
-        const auto addAttachment = [&](const std::optional<Texture>& texture) {
-            if (texture.has_value())
-            {
-                const auto& textureImpl = m_device.GetImpl(*texture);
-                commandBuffer.AddReference(*texture);
-                TextureState textureState{};
-                textureImpl.TransitionToRenderTarget(textureState, commandBuffer);
-                attachments.push_back(textureImpl.imageView.get());
-            }
-        };
-
-        addAttachment(color);
-        addAttachment(depthStencil);
-        addAttachment(colorResolved);
-        addAttachment(depthStencilResolved);
-
-        const RenderPassDesc renderPassDesc = {
-            .framebufferLayout = renderTarget.framebufferLayout,
-            .renderOverrides = renderList.renderOverrides,
-        };
-
-        const auto renderPass = m_device.CreateRenderPass(
-            renderTarget.framebufferLayout, renderList.clearState, FramebufferUsage::ShaderInput);
-        const auto framebuffer
-            = m_device.CreateFramebuffer(renderPass, renderTarget.framebufferLayout, renderTarget.size, attachments);
-
-        RecordRenderListCommands(commandBuffer, renderList, renderPass, renderPassDesc, framebuffer);
+    ScheduleGpu([this, renderList = std::move(renderList), rt, renderTarget](CommandBuffer& commandBuffer) {
+        CreateRenderCommandBuffer(commandBuffer, renderList, renderTarget, rt);
     });
 
-    const auto& colorRet = colorResolved ? colorResolved : color;
-    const auto& depthRet = depthStencilResolved ? depthStencilResolved : depthStencil;
+    const auto& colorRet = rt.colorResolved ? rt.colorResolved : rt.color;
+    const auto& depthRet = rt.depthStencilResolved ? rt.depthStencilResolved : rt.depthStencil;
     return {
         .colorTexture = renderTarget.framebufferLayout.captureColor ? colorRet : std::nullopt,
         .depthStencilTexture = renderTarget.framebufferLayout.captureDepthStencil ? depthRet : std::nullopt,
@@ -324,7 +298,9 @@ void VulkanRenderer::RenderToSurface(Surface& surface, RenderList renderList)
             const auto renderPass
                 = m_device.CreateRenderPass(framebuffer.layout, renderList.clearState, FramebufferUsage::PresentSrc);
 
-            RecordRenderListCommands(commandBuffer, renderList, renderPass, renderPassDesc, framebuffer);
+            const auto viewPblockLayout = m_shaderEnvironment ? m_shaderEnvironment->GetViewPblockLayout() : nullptr;
+
+            RecordRenderListCommands(commandBuffer, renderList, renderPass, renderPassDesc, framebuffer, viewPblockLayout);
         });
     }
 }
@@ -382,28 +358,46 @@ Task<TextureData> VulkanRenderer::CopyTextureData(Texture texture)
     });
 }
 
-TransientParameterBlock* VulkanRenderer::CreateViewParameterBlock(const ParameterBlockData& data, const char* name)
+void VulkanRenderer::CreateRenderCommandBuffer(
+    CommandBuffer& commandBuffer, const RenderList& renderList, const RenderTargetInfo& renderTarget, const RenderTarget& rt)
 {
-    if (m_shaderEnvironment == nullptr)
-    {
-        return nullptr;
-    }
+    std::vector<vk::ImageView> attachments;
 
-    return m_frameResources.Current().threadResources.LockCurrent(
-        [this, &data, name](ThreadResources& threadResources) -> TransientParameterBlock* {
-            if (!threadResources.viewDescriptorPool.has_value())
-            {
-                return nullptr;
-            }
+    const auto addAttachment = [&](const std::optional<Texture>& texture) {
+        spdlog::debug("texture: {}", texture ? texture->GetName() : "null");
+        if (texture.has_value())
+        {
+            const auto& textureImpl = m_device.GetImpl(*texture);
+            commandBuffer.AddReference(*texture);
+            TextureState textureState{};
+            textureImpl.TransitionToRenderTarget(textureState, commandBuffer);
+            attachments.push_back(textureImpl.imageView.get());
+        }
+    };
 
-            auto p = m_device.CreateTransientParameterBlock(data, name, *threadResources.viewDescriptorPool);
-            return &threadResources.viewParameters.emplace_back(std::move(p));
-        });
+    addAttachment(rt.color);
+    addAttachment(rt.depthStencil);
+    addAttachment(rt.colorResolved);
+    addAttachment(rt.depthStencilResolved);
+
+    const RenderPassDesc renderPassDesc = {
+        .framebufferLayout = renderTarget.framebufferLayout,
+        .renderOverrides = renderList.renderOverrides,
+    };
+
+    const auto renderPass
+        = m_device.CreateRenderPass(renderTarget.framebufferLayout, renderList.clearState, FramebufferUsage::ShaderInput);
+    const auto framebuffer
+        = m_device.CreateFramebuffer(renderPass, renderTarget.framebufferLayout, renderTarget.size, attachments);
+
+    const auto viewPblockLayout = m_shaderEnvironment ? m_shaderEnvironment->GetViewPblockLayout() : nullptr;
+
+    RecordRenderListCommands(commandBuffer, renderList, renderPass, renderPassDesc, framebuffer, viewPblockLayout);
 }
 
 void VulkanRenderer::RecordRenderListCommands(
     CommandBuffer& commandBufferWrapper, const RenderList& renderList, vk::RenderPass renderPass,
-    const RenderPassDesc& renderPassDesc, const Framebuffer& framebuffer)
+    const RenderPassDesc& renderPassDesc, const Framebuffer& framebuffer, const ParameterBlockLayoutPtr& viewPblockLayout)
 {
     const vk::CommandBuffer commandBuffer = commandBufferWrapper;
 
@@ -422,12 +416,16 @@ void VulkanRenderer::RecordRenderListCommands(
     commandBuffer.setScissor(0, scissor);
 
     const ParameterBlockData viewParamsData = {
-        .layout = m_shaderEnvironment ? m_shaderEnvironment->GetViewPblockLayout() : nullptr,
+        .layout = viewPblockLayout,
         .lifetime = ResourceLifetime::Transient,
         .parameters = renderList.viewParameters,
     };
     const auto viewParamsName = fmt::format("{}:View", renderList.name);
-    const auto* viewParameters = CreateViewParameterBlock(viewParamsData, viewParamsName.c_str());
+
+    const auto* viewParameters = m_shaderEnvironment
+        ? m_frameResources.Current().threadResources.LockCurrent(
+              &ThreadResources::CreateViewParameterBlock, m_device, viewParamsData, viewParamsName.c_str())
+        : nullptr;
 
     commandBuffer.beginRenderPass(renderPassBegin, vk::SubpassContents::eInline);
 
@@ -447,7 +445,7 @@ void VulkanRenderer::RecordRenderListCommands(
 
         for (const RenderObject& obj : renderList.objects)
         {
-            RecordRenderObjectCommands(commandBufferWrapper, obj, renderPassDesc);
+            RecordRenderObjectCommands(m_device, commandBufferWrapper, obj, renderPassDesc);
         }
     }
 
@@ -455,23 +453,23 @@ void VulkanRenderer::RecordRenderListCommands(
 }
 
 void VulkanRenderer::RecordRenderObjectCommands(
-    CommandBuffer& commandBufferWrapper, const RenderObject& obj, const RenderPassDesc& renderPassDesc) const
+    VulkanDevice& device, CommandBuffer& commandBufferWrapper, const RenderObject& obj, const RenderPassDesc& renderPassDesc)
 {
     const vk::CommandBuffer commandBuffer = commandBufferWrapper;
-    const auto& pipeline = m_device.GetImpl(*obj.pipeline);
+    const auto& pipeline = device.GetImpl(*obj.pipeline);
 
     commandBufferWrapper.AddReference(obj.mesh);
     commandBufferWrapper.AddReference(obj.materialParameters);
     commandBufferWrapper.AddReference(obj.pipeline);
 
-    if (const auto dset = GetDescriptorSet(obj.materialParameters))
+    if (const auto dset = device.GetDescriptorSet(obj.materialParameters))
     {
         commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipeline.layout, 2, dset, {});
     }
 
     commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, pipeline.GetPipeline(renderPassDesc));
 
-    const auto& meshImpl = m_device.GetImpl(*obj.mesh);
+    const auto& meshImpl = device.GetImpl(*obj.mesh);
     commandBuffer.bindVertexBuffers(0, meshImpl.vertexBuffer->buffer.get(), vk::DeviceSize{0});
 
     if (pipeline.shader->objectPblockLayout && pipeline.shader->objectPblockLayout->pushConstantRange.has_value())
@@ -510,11 +508,16 @@ std::optional<SurfaceImage> VulkanRenderer::AddSurfaceToPresent(VulkanSurface& s
     });
 }
 
-vk::DescriptorSet VulkanRenderer::GetDescriptorSet(const ParameterBlock& parameterBlock) const
+TransientParameterBlock* VulkanRenderer::ThreadResources::CreateViewParameterBlock(
+    VulkanDevice& device, const ParameterBlockData& data, const char* name)
 {
-    auto& parameterBlockImpl = m_device.GetImpl(parameterBlock);
-    m_device.InitParameterBlock(parameterBlockImpl);
-    return parameterBlockImpl.descriptorSet.get();
+    if (!viewDescriptorPool.has_value())
+    {
+        return nullptr;
+    }
+
+    auto p = device.CreateTransientParameterBlock(data, name, *viewDescriptorPool);
+    return &viewParameters.emplace_back(std::move(p));
 }
 
 VulkanRenderer::FrameResources::FrameResources(
