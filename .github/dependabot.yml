@@ -11,6 +11,7 @@ updates:
     groups:
       github-actions:
         applies-to: version-updates
+        dependency-type: production
 
   - package-ecosystem: "vcpkg"
     directory: "/"
@@ -19,3 +20,4 @@ updates:
     groups:
       vcpkg:
         applies-to: version-updates
+        dependency-type: production
