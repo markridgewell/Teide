@@ -972,13 +972,6 @@ class OutputGenerator:
         Extend to generate as desired in your derived class."""
         self.validateFeature('struct', typeName)
 
-        # The mixed-mode <member> tags may contain no-op <comment> tags.
-        # It is convenient to remove them here where all output generators
-        # will benefit.
-        for member in typeinfo.elem.findall('.//member'):
-            for comment in member.findall('comment'):
-                member.remove(comment)
-
     def genGroup(self, groupinfo, groupName, alias):
         """Generate interface for a group of enums (C "enum")
 
