@@ -485,6 +485,12 @@ class VkexOutputGenerator(OutputGenerator):
         for memberElem in typeElem.findall('.//member'):
             nameElem = memberElem.find('name')
             name = nameElem.text
+
+            if memberElem.get('deprecated'):
+                print(name)
+                print('  deprecated')
+                continue
+
             if name in ['sType', 'pNext']:
                 continue
             members[name] = Member(memberElem)

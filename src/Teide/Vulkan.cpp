@@ -359,12 +359,6 @@ vk::UniqueDevice CreateDevice(VulkanLoader& loader, const PhysicalDevice& physic
     const auto availableLayers = physicalDevice.physicalDevice.enumerateDeviceLayerProperties();
     const auto availableExtensions = physicalDevice.physicalDevice.enumerateDeviceExtensionProperties();
 
-    std::vector<const char*> layers;
-    if constexpr (IsDebugBuild)
-    {
-        EnableVulkanLayer(layers, availableLayers, "VK_LAYER_KHRONOS_validation", Required::False);
-    }
-
     std::vector<const char*> extensions = physicalDevice.requiredExtensions;
     EnableVulkanExtension(extensions, availableExtensions, "VK_EXT_descriptor_indexing", Required::True);
     EnableVulkanExtension(extensions, availableExtensions, "VK_KHR_depth_stencil_resolve", Required::True);
@@ -376,8 +370,6 @@ vk::UniqueDevice CreateDevice(VulkanLoader& loader, const PhysicalDevice& physic
         vk::DeviceCreateInfo{
             .queueCreateInfoCount = size32(queueCreateInfos),
             .pQueueCreateInfos = data(queueCreateInfos),
-            .enabledLayerCount = size32(layers),
-            .ppEnabledLayerNames = data(layers),
             .enabledExtensionCount = size32(extensions),
             .ppEnabledExtensionNames = data(extensions),
             .pEnabledFeatures = &deviceFeatures,
