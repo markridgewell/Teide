@@ -78,6 +78,7 @@ struct VulkanGraph
         static constexpr auto NodeType = CommandType::Render;
 
         RenderList renderList;
+        RenderTargetInfo renderTargetInfo;
         std::optional<ResourceNodeRef> colourTarget;
         std::optional<ResourceNodeRef> depthStencilTarget;
         std::vector<ResourceNodeRef> dependencies;
@@ -151,9 +152,11 @@ struct VulkanGraph
         return r;
     }
 
-    auto AddRenderNode(RenderList renderList, std::optional<ResourceNodeRef> colorTarget, std::optional<ResourceNodeRef> depthStencilTarget)
+    auto AddRenderNode(
+        RenderList renderList, RenderTargetInfo renderTargetInfo, std::optional<ResourceNodeRef> colorTarget,
+        std::optional<ResourceNodeRef> depthStencilTarget)
     {
-        renderNodes.emplace_back(std::move(renderList), colorTarget, depthStencilTarget);
+        renderNodes.emplace_back(std::move(renderList), std::move(renderTargetInfo), colorTarget, depthStencilTarget);
         const auto r = RenderRef(renderNodes.size() - 1);
         if (colorTarget)
         {

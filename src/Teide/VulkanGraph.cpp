@@ -4,6 +4,7 @@
 #include "Teide/Definitions.h"
 #include "Teide/Vulkan.h"
 #include "Teide/VulkanDevice.h"
+#include "Teide/VulkanRenderer.h"
 
 #include <fmt/core.h>
 #include <vulkan/vulkan_enums.hpp>
@@ -216,10 +217,12 @@ namespace
             texture.properties.mipLevelCount);
     }
 
-    void ProcessCommandNode(VulkanGraph& graph, VulkanGraph::RenderNode& readNode, VulkanDevice& device, vk::CommandBuffer cmdBuffer)
+    void ProcessCommandNode(VulkanGraph& graph, VulkanGraph::RenderNode& renderNode, VulkanDevice& device, vk::CommandBuffer cmdBuffer)
     {
         auto* colorTargetNode
-            = readNode.colourTarget ? &graph.Get<VulkanGraph::TextureNode>(readNode.colourTarget->index) : nullptr;
+            = renderNode.colourTarget ? &graph.Get<VulkanGraph::TextureNode>(renderNode.colourTarget->index) : nullptr;
+
+        const auto& renderList = renderNode.renderList;
 
         if (colorTargetNode)
         {
@@ -228,6 +231,12 @@ namespace
             const VulkanTexture& texture = device.GetImpl(colorTargetNode->texture);
             texture.TransitionToRenderTarget(colorTargetNode->state, cmdBuffer);
         }
+
+        const RenderTarget rt = {
+            .color = colorTargetNode ? std::optional(colorTargetNode->texture) : std::nullopt,
+            .depthStencil = std::nullopt,
+        };
+        VulkanRenderer::CreateRenderCommandBuffer(device, cmdBuffer, renderList, renderNode.renderTargetInfo, rt);
     }
 
     auto RecordCommands(VulkanGraph& graph, VulkanDevice& device) -> Commands
@@ -239,7 +248,8 @@ namespace
         {
             VulkanTexture& texture = device.GetImpl(node.texture);
             using enum vk::ImageUsageFlagBits;
-            node.state = device.CreateTextureImpl(texture, eTransferSrc | eTransferDst | eSampled);
+            // TODO: Determine minimal usage flags based on actual usage
+            node.state = device.CreateTextureImpl(texture, eTransferSrc | eTransferDst | eSampled | eColorAttachment);
         }
 
         // Record command buffers

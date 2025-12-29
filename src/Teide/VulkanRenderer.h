@@ -55,9 +55,10 @@ public:
 
     Task<TextureData> CopyTextureData(Texture texture) override;
 
-    void CreateRenderCommandBuffer(
-        CommandBuffer& commandBuffer, const RenderList& renderList, const RenderTargetInfo& renderTarget,
-        const RenderTarget& rt);
+    static void CreateRenderCommandBuffer(
+        VulkanDevice& device, vk::CommandBuffer commandBuffer, const RenderList& renderList,
+        const RenderTargetInfo& renderTarget, const RenderTarget& rt, vk::DescriptorSet sceneParameters = {},
+        vk::DescriptorSet viewParameters = {});
 
 private:
     template <std::invocable<CommandBuffer&> F>
@@ -67,16 +68,15 @@ private:
     }
 
     const TransientParameterBlock& GetSceneParameterBlock() const { return m_frameResources.Current().sceneParameters; }
+    auto CreateViewParameters(const RenderList& renderList) -> vk::DescriptorSet;
 
-    TransientParameterBlock* CreateViewParameterBlock(const ParameterBlockData& data, const char* name);
+    static void RecordRenderListCommands(
+        VulkanDevice& device, vk::CommandBuffer commandBuffer, const RenderList& renderList, vk::RenderPass renderPass,
+        const RenderPassDesc& renderPassDesc, const Framebuffer& framebuffer, vk::DescriptorSet sceneParameters,
+        vk::DescriptorSet viewParameters);
 
-    void RecordRenderListCommands(
-        CommandBuffer& commandBuffer, const RenderList& renderList, vk::RenderPass renderPass,
-        const RenderPassDesc& renderPassDesc, const Framebuffer& framebuffer,
-        const ParameterBlockLayoutPtr& viewPblockLayout);
     static void RecordRenderObjectCommands(
-        VulkanDevice& device, CommandBuffer& commandBufferWrapper, const RenderObject& obj,
-        const RenderPassDesc& renderPassDesc);
+        VulkanDevice& device, vk::CommandBuffer commandBuffer, const RenderObject& obj, const RenderPassDesc& renderPassDesc);
 
     std::optional<SurfaceImage> AddSurfaceToPresent(VulkanSurface& surface);
 

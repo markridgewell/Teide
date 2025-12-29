@@ -17,6 +17,7 @@
 
 #include <fmt/chrono.h>
 #include <spdlog/spdlog.h>
+#include <vulkan/vulkan_handles.hpp>
 
 #include <algorithm>
 #include <array>
@@ -269,7 +270,11 @@ RenderToTextureResult VulkanRenderer::RenderToTexture(const RenderTargetInfo& re
     };
 
     ScheduleGpu([this, renderList = std::move(renderList), rt, renderTarget](CommandBuffer& commandBuffer) {
-        CreateRenderCommandBuffer(commandBuffer, renderList, renderTarget, rt);
+        const auto viewParameters = CreateViewParameters(renderList);
+
+        const auto sceneParameters = GetSceneParameterBlock().descriptorSet;
+
+        CreateRenderCommandBuffer(m_device, commandBuffer, renderList, renderTarget, rt, sceneParameters, viewParameters);
     });
 
     const auto& colorRet = rt.colorResolved ? rt.colorResolved : rt.color;
@@ -300,7 +305,24 @@ void VulkanRenderer::RenderToSurface(Surface& surface, RenderList renderList)
 
             const auto viewPblockLayout = m_shaderEnvironment ? m_shaderEnvironment->GetViewPblockLayout() : nullptr;
 
-            RecordRenderListCommands(commandBuffer, renderList, renderPass, renderPassDesc, framebuffer, viewPblockLayout);
+            const ParameterBlockData viewParamsData = {
+                .layout = viewPblockLayout,
+                .lifetime = ResourceLifetime::Transient,
+                .parameters = renderList.viewParameters,
+            };
+            const auto viewParamsName = fmt::format("{}:View", renderList.name);
+            const auto viewParameters = m_shaderEnvironment
+                ? m_frameResources.Current()
+                      .threadResources
+                      .LockCurrent(
+                          &ThreadResources::CreateViewParameterBlock, m_device, viewParamsData, viewParamsName.c_str())
+                      ->descriptorSet
+                : vk::DescriptorSet{};
+
+            const auto sceneParameters = GetSceneParameterBlock().descriptorSet;
+
+            RecordRenderListCommands(
+                m_device, commandBuffer, renderList, renderPass, renderPassDesc, framebuffer, sceneParameters, viewParameters);
         });
     }
 }
@@ -359,7 +381,8 @@ Task<TextureData> VulkanRenderer::CopyTextureData(Texture texture)
 }
 
 void VulkanRenderer::CreateRenderCommandBuffer(
-    CommandBuffer& commandBuffer, const RenderList& renderList, const RenderTargetInfo& renderTarget, const RenderTarget& rt)
+    VulkanDevice& device, vk::CommandBuffer commandBuffer, const RenderList& renderList, const RenderTargetInfo& renderTarget,
+    const RenderTarget& rt, vk::DescriptorSet sceneParameters, vk::DescriptorSet viewParameters)
 {
     std::vector<vk::ImageView> attachments;
 
@@ -367,8 +390,7 @@ void VulkanRenderer::CreateRenderCommandBuffer(
         spdlog::debug("texture: {}", texture ? texture->GetName() : "null");
         if (texture.has_value())
         {
-            const auto& textureImpl = m_device.GetImpl(*texture);
-            commandBuffer.AddReference(*texture);
+            const auto& textureImpl = device.GetImpl(*texture);
             TextureState textureState{};
             textureImpl.TransitionToRenderTarget(textureState, commandBuffer);
             attachments.push_back(textureImpl.imageView.get());
@@ -386,21 +408,38 @@ void VulkanRenderer::CreateRenderCommandBuffer(
     };
 
     const auto renderPass
-        = m_device.CreateRenderPass(renderTarget.framebufferLayout, renderList.clearState, FramebufferUsage::ShaderInput);
+        = device.CreateRenderPass(renderTarget.framebufferLayout, renderList.clearState, FramebufferUsage::ShaderInput);
     const auto framebuffer
-        = m_device.CreateFramebuffer(renderPass, renderTarget.framebufferLayout, renderTarget.size, attachments);
+        = device.CreateFramebuffer(renderPass, renderTarget.framebufferLayout, renderTarget.size, attachments);
 
+    RecordRenderListCommands(
+        device, commandBuffer, renderList, renderPass, renderPassDesc, framebuffer, sceneParameters, viewParameters);
+}
+
+auto VulkanRenderer::CreateViewParameters(const RenderList& renderList) -> vk::DescriptorSet
+{
     const auto viewPblockLayout = m_shaderEnvironment ? m_shaderEnvironment->GetViewPblockLayout() : nullptr;
 
-    RecordRenderListCommands(commandBuffer, renderList, renderPass, renderPassDesc, framebuffer, viewPblockLayout);
+    const ParameterBlockData viewParamsData = {
+        .layout = viewPblockLayout,
+        .lifetime = ResourceLifetime::Transient,
+        .parameters = renderList.viewParameters,
+    };
+    const auto viewParamsName = fmt::format("{}:View", renderList.name);
+
+    return m_shaderEnvironment
+        ? m_frameResources.Current()
+              .threadResources
+              .LockCurrent(&ThreadResources::CreateViewParameterBlock, m_device, viewParamsData, viewParamsName.c_str())
+              ->descriptorSet
+        : vk::DescriptorSet{};
 }
 
 void VulkanRenderer::RecordRenderListCommands(
-    CommandBuffer& commandBufferWrapper, const RenderList& renderList, vk::RenderPass renderPass,
-    const RenderPassDesc& renderPassDesc, const Framebuffer& framebuffer, const ParameterBlockLayoutPtr& viewPblockLayout)
+    VulkanDevice& device, vk::CommandBuffer commandBuffer, const RenderList& renderList, vk::RenderPass renderPass,
+    const RenderPassDesc& renderPassDesc, const Framebuffer& framebuffer, vk::DescriptorSet sceneParameters,
+    vk::DescriptorSet viewParameters)
 {
-    const vk::CommandBuffer commandBuffer = commandBufferWrapper;
-
     const vkex::RenderPassBeginInfo renderPassBegin = {
         .renderPass = renderPass,
         .framebuffer = framebuffer.framebuffer,
@@ -415,37 +454,24 @@ void VulkanRenderer::RecordRenderListCommands(
         : vk::Rect2D{.extent = {.width = framebuffer.size.x, .height = framebuffer.size.y}};
     commandBuffer.setScissor(0, scissor);
 
-    const ParameterBlockData viewParamsData = {
-        .layout = viewPblockLayout,
-        .lifetime = ResourceLifetime::Transient,
-        .parameters = renderList.viewParameters,
-    };
-    const auto viewParamsName = fmt::format("{}:View", renderList.name);
-
-    const auto* viewParameters = m_shaderEnvironment
-        ? m_frameResources.Current().threadResources.LockCurrent(
-              &ThreadResources::CreateViewParameterBlock, m_device, viewParamsData, viewParamsName.c_str())
-        : nullptr;
-
     commandBuffer.beginRenderPass(renderPassBegin, vk::SubpassContents::eInline);
 
     if (!renderList.objects.empty())
     {
-        const auto& firstPipeline = m_device.GetImpl(*renderList.objects.front().pipeline);
+        const auto& firstPipeline = device.GetImpl(*renderList.objects.front().pipeline);
 
-        if (const auto set = GetSceneParameterBlock().descriptorSet)
+        if (sceneParameters)
         {
-            commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, firstPipeline.layout, 0, set, {});
+            commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, firstPipeline.layout, 0, sceneParameters, {});
         }
-        if (viewParameters && viewParameters->descriptorSet)
+        if (viewParameters)
         {
-            const auto set = viewParameters->descriptorSet;
-            commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, firstPipeline.layout, 1, set, {});
+            commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, firstPipeline.layout, 1, viewParameters, {});
         }
 
         for (const RenderObject& obj : renderList.objects)
         {
-            RecordRenderObjectCommands(m_device, commandBufferWrapper, obj, renderPassDesc);
+            RecordRenderObjectCommands(device, commandBuffer, obj, renderPassDesc);
         }
     }
 
@@ -453,14 +479,13 @@ void VulkanRenderer::RecordRenderListCommands(
 }
 
 void VulkanRenderer::RecordRenderObjectCommands(
-    VulkanDevice& device, CommandBuffer& commandBufferWrapper, const RenderObject& obj, const RenderPassDesc& renderPassDesc)
+    VulkanDevice& device, vk::CommandBuffer commandBuffer, const RenderObject& obj, const RenderPassDesc& renderPassDesc)
 {
-    const vk::CommandBuffer commandBuffer = commandBufferWrapper;
     const auto& pipeline = device.GetImpl(*obj.pipeline);
 
-    commandBufferWrapper.AddReference(obj.mesh);
-    commandBufferWrapper.AddReference(obj.materialParameters);
-    commandBufferWrapper.AddReference(obj.pipeline);
+    // commandBufferWrapper.AddReference(obj.mesh);
+    // commandBufferWrapper.AddReference(obj.materialParameters);
+    // commandBufferWrapper.AddReference(obj.pipeline);
 
     if (const auto dset = device.GetDescriptorSet(obj.materialParameters))
     {

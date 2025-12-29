@@ -103,9 +103,9 @@ protected:
         const auto texNode1 = graph.AddTextureNode(tex1);
         const auto texNode2 = graph.AddTextureNode(tex2);
         const auto texNode3 = graph.AddTextureNode(tex3);
-        graph.AddRenderNode(renderList1, texNode1, std::nullopt);
-        graph.AddRenderNode(renderList2, texNode2, std::nullopt);
-        graph.AddRenderNode(renderList3, texNode3, std::nullopt);
+        graph.AddRenderNode(renderList1, {}, texNode1, std::nullopt);
+        graph.AddRenderNode(renderList2, {}, texNode2, std::nullopt);
+        graph.AddRenderNode(renderList3, {}, texNode3, std::nullopt);
         return graph;
     }
 
@@ -172,7 +172,7 @@ TEST_F(VulkanGraphTest, BuildingGraphWithOneRenderNodeHasNoEffect)
 {
     VulkanGraph graph;
     const auto tex1 = graph.AddTextureNode(CreateDummyTexture("tex1"));
-    const auto renderNode1 = graph.AddRenderNode({}, tex1, std::nullopt);
+    const auto renderNode1 = graph.AddRenderNode({}, {}, tex1, std::nullopt);
 
     BuildGraph(graph, *m_device);
 
@@ -213,8 +213,8 @@ TEST_F(VulkanGraphTest, BuildingGraphWithTwoIndependentRenderNodesHasNoEffect)
     VulkanGraph graph;
     const auto tex1 = graph.AddTextureNode(CreateDummyTexture("tex1"));
     const auto tex2 = graph.AddTextureNode(CreateDummyTexture("tex2"));
-    auto render1 = graph.AddRenderNode({}, tex1, std::nullopt);
-    auto render2 = graph.AddRenderNode({}, tex2, std::nullopt);
+    auto render1 = graph.AddRenderNode({}, {}, tex1, std::nullopt);
+    auto render2 = graph.AddRenderNode({}, {}, tex2, std::nullopt);
 
     BuildGraph(graph, *m_device);
 
@@ -234,8 +234,8 @@ TEST_F(VulkanGraphTest, BuildingGraphWithTwoDependentRenderNodesAddsConnection)
     VulkanGraph graph;
     const auto texNode1 = graph.AddTextureNode(tex1);
     const auto texNode2 = graph.AddTextureNode(tex2);
-    const auto renderNode1 = graph.AddRenderNode(render1, texNode1, std::nullopt);
-    const auto renderNode2 = graph.AddRenderNode(render2, texNode2, std::nullopt);
+    const auto renderNode1 = graph.AddRenderNode(render1, {}, texNode1, std::nullopt);
+    const auto renderNode2 = graph.AddRenderNode(render2, {}, texNode2, std::nullopt);
 
     BuildGraph(graph, *m_device);
 
@@ -339,7 +339,7 @@ TEST_F(VulkanGraphTest, VisualizingGraphWithReadNode)
 {
     VulkanGraph graph;
     const auto tex = graph.AddTextureNode(CreateDummyTexture("tex"));
-    graph.AddRenderNode({.name = "render1"}, tex, std::nullopt);
+    graph.AddRenderNode({.name = "render1"}, {}, tex, std::nullopt);
 
     const auto texData = graph.AddTextureDataNode("texData", OnePixelWhiteTexture);
     graph.AddReadNode(tex, texData);
@@ -372,7 +372,7 @@ TEST_F(VulkanGraphTest, ExecutingGraphWithCopyNode)
     EXPECT_THAT(tdo, Eq(tdi));
 }
 
-TEST_F(VulkanGraphTest, DISABLED_ExecutingGraphWithOneRenderNode)
+TEST_F(VulkanGraphTest, ExecutingGraphWithOneRenderNode)
 {
     VulkanGraph graph;
     const auto tex1 = graph.AddTextureNode(CreateDummyTexture("tex1"));
@@ -381,23 +381,25 @@ TEST_F(VulkanGraphTest, DISABLED_ExecutingGraphWithOneRenderNode)
         .clearState = {
             .colorValue = Color{1.0f, 0.0f, 1.0f, 1.0f},
         },
-    }, tex1, std::nullopt);
+    }, {}, tex1, std::nullopt);
     const auto texDataOutput = graph.AddTextureDataNode("output", {});
     graph.AddReadNode(tex1, texDataOutput);
     spdlog::info(VisualizeGraph(graph));
     spdlog::info(MakeDotURL(VisualizeGraph(graph)));
     auto queue = Queue(m_device->GetVulkanDevice(), m_device->GetGraphicsQueue());
+
     ExecuteGraph(graph, *m_device, queue);
 
     const VulkanTexture& texture = m_device->GetImpl(graph.textureNodes.at(tex1.index).texture);
     EXPECT_THAT(texture.image, IsValidVkHandle());
     EXPECT_THAT(texture.imageView, IsValidVkHandle());
-    const auto tdo = graph.Get<VulkanGraph::TextureDataNode>(texDataOutput.index).data;
-    EXPECT_THAT(
-        tdo,
-        Eq(TextureData{
-            .pixels = {},
-        }));
+    const auto output = graph.Get<VulkanGraph::TextureDataNode>(texDataOutput.index).data;
+    const auto expected = TextureData{
+        .size = {1, 1},
+        .format = Format::Byte4Norm,
+        .pixels = {std::byte{0xff}, std::byte{0x00}, std::byte{0xff}, std::byte{0xff}},
+    };
+    EXPECT_THAT(output, Eq(expected));
 }
 
 } // namespace
