@@ -246,6 +246,12 @@ struct VulkanGraph
     }
 
     template <class T>
+    T& Get(ResourceNodeRef ref)
+    {
+        return Get<T>(ref.index);
+    }
+
+    template <class T>
     T* GetIf(CommandNodeRef ref)
     {
         return (ref.type == T::NodeType) ? &Get<T>(ref.index) : nullptr;

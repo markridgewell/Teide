@@ -220,32 +220,33 @@ namespace
 
     void ProcessCommandNode(VulkanGraph& graph, VulkanGraph::RenderNode& renderNode, VulkanDevice& device, vk::CommandBuffer cmdBuffer)
     {
-        auto* colorTargetNode
-            = renderNode.colourTarget ? &graph.Get<VulkanGraph::TextureNode>(renderNode.colourTarget->index) : nullptr;
-        auto* depthStencilTargetNode = renderNode.depthStencilTarget
-            ? &graph.Get<VulkanGraph::TextureNode>(renderNode.depthStencilTarget->index)
-            : nullptr;
+        const auto getNode = [&graph](auto ref) { return std::ref(graph.Get<VulkanGraph::TextureNode>(ref)); };
+
+        const auto getTexture = [](auto& ref) { return ref.get().texture; };
+
+        auto colorTargetNode = renderNode.colourTarget.transform(getNode);
+        auto depthStencilTargetNode = renderNode.depthStencilTarget.transform(getNode);
 
         const auto& renderList = renderNode.renderList;
 
         if (colorTargetNode && depthStencilTargetNode)
         {
             spdlog::info(
-                "Render to color texture: {}, depth/stencil texture: {}", colorTargetNode->GetName(),
-                depthStencilTargetNode->GetName());
+                "Render to color texture: {}, depth/stencil texture: {}", colorTargetNode->get().GetName(),
+                depthStencilTargetNode->get().GetName());
         }
         else if (colorTargetNode)
         {
-            spdlog::info("Render to color texture: {}", colorTargetNode->GetName());
+            spdlog::info("Render to color texture: {}", colorTargetNode->get().GetName());
         }
         else if (depthStencilTargetNode)
         {
-            spdlog::info("Render to depth/stencil texture: {}", depthStencilTargetNode->GetName());
+            spdlog::info("Render to depth/stencil texture: {}", depthStencilTargetNode->get().GetName());
         }
 
         const RenderTarget rt = {
-            .color = colorTargetNode ? std::optional(colorTargetNode->texture) : std::nullopt,
-            .depthStencil = depthStencilTargetNode ? std::optional(depthStencilTargetNode->texture) : std::nullopt,
+            .color = colorTargetNode.transform(getTexture),
+            .depthStencil = depthStencilTargetNode.transform(getTexture),
         };
         VulkanRenderer::CreateRenderCommandBuffer(device, cmdBuffer, renderList, renderNode.renderTargetInfo, rt);
     }
