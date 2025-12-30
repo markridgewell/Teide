@@ -26,6 +26,7 @@ td_add_test(
     DEPS Teide
          GTest::gtest
          GTest::gmock
+         spdlog::spdlog
          RenderDoc::RenderDoc
          SDL2::SDL2
          SDL2_image::SDL2_image
