@@ -18,9 +18,6 @@ public:
 
     void AddReference(const Texture& p);
     void AddReference(const BufferPtr& p);
-    void AddReference(const MeshPtr& p);
-    void AddReference(const ParameterBlock& p);
-    void AddReference(const PipelinePtr& p);
 
     void TakeOwnership(vk::UniqueBuffer buffer);
     void TakeOwnership(vma::UniqueAllocation allocation);

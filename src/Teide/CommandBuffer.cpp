@@ -19,21 +19,6 @@ void CommandBuffer::AddReference(const BufferPtr& p)
     m_referencedBuffers.insert(p);
 }
 
-void CommandBuffer::AddReference(const MeshPtr& p)
-{
-    m_referencedMeshes.insert(p);
-}
-
-void CommandBuffer::AddReference(const ParameterBlock& p)
-{
-    m_referencedParameterBlocks.insert(p);
-}
-
-void CommandBuffer::AddReference(const PipelinePtr& p)
-{
-    m_referencedPipelines.insert(p);
-}
-
 void CommandBuffer::TakeOwnership(vk::UniqueBuffer buffer)
 {
     m_ownedBuffers.push_back(std::move(buffer));
