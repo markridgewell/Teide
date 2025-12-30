@@ -79,7 +79,7 @@ struct VulkanGraph
 
         RenderList renderList;
         RenderTargetInfo renderTargetInfo;
-        std::optional<ResourceNodeRef> colourTarget;
+        std::optional<ResourceNodeRef> colorTarget;
         std::optional<ResourceNodeRef> depthStencilTarget;
         std::vector<ResourceNodeRef> dependencies;
     };

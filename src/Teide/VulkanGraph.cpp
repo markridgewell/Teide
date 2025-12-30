@@ -224,7 +224,7 @@ namespace
 
         const auto getTexture = [](auto& ref) { return ref.get().texture; };
 
-        auto colorTargetNode = renderNode.colourTarget.transform(getNode);
+        auto colorTargetNode = renderNode.colorTarget.transform(getNode);
         auto depthStencilTargetNode = renderNode.depthStencilTarget.transform(getNode);
 
         const auto& renderList = renderNode.renderList;
