@@ -58,11 +58,11 @@ public:
     {}
 
 protected:
-    Texture CreateDummyTexture(const char* name)
+    Texture CreateDummyTexture(const char* name, Format format = Format::Byte4Norm)
     {
         return m_device->AllocateTexture({
             .size = {1, 1},
-            .format = Format::Byte4Norm,
+            .format = format,
             .name = name,
         });
     }
@@ -373,7 +373,7 @@ TEST_F(VulkanGraphTest, ExecutingGraphWithCopyNode)
     EXPECT_THAT(tdo, Eq(tdi));
 }
 
-TEST_F(VulkanGraphTest, ExecutingGraphWithOneRenderNode)
+TEST_F(VulkanGraphTest, ExecutingGraphWithRenderNodeWithColorAttachment)
 {
     VulkanGraph graph;
     const auto tex1 = graph.AddTextureNode(CreateDummyTexture("tex1"));
@@ -399,6 +399,36 @@ TEST_F(VulkanGraphTest, ExecutingGraphWithOneRenderNode)
         .size = {1, 1},
         .format = Format::Byte4Norm,
         .pixels = {std::byte{0xff}, std::byte{0x00}, std::byte{0xff}, std::byte{0xff}},
+    };
+    EXPECT_THAT(output, Eq(expected));
+}
+
+TEST_F(VulkanGraphTest, ExecutingGraphWithRenderNodeWithDepthAttachment)
+{
+    VulkanGraph graph;
+    const auto tex1 = graph.AddTextureNode(CreateDummyTexture("tex1", Format::Depth16));
+    graph.AddRenderNode({
+        .name = "clearDepth",
+        .clearState = {
+            .depthValue = 0.5f,
+        },
+    }, std::nullopt, tex1);
+    const auto texDataOutput = graph.AddTextureDataNode("output", {});
+    graph.AddReadNode(tex1, texDataOutput);
+    spdlog::info(VisualizeGraph(graph));
+    spdlog::info(MakeDotURL(VisualizeGraph(graph)));
+    auto queue = Queue(m_device->GetVulkanDevice(), m_device->GetGraphicsQueue());
+
+    ExecuteGraph(graph, *m_device, queue);
+
+    const VulkanTexture& texture = m_device->GetImpl(graph.textureNodes.at(tex1.index).texture);
+    EXPECT_THAT(texture.image, IsValidVkHandle());
+    EXPECT_THAT(texture.imageView, IsValidVkHandle());
+    const auto output = graph.Get<VulkanGraph::TextureDataNode>(texDataOutput.index).data;
+    const auto expected = TextureData{
+        .size = {1, 1},
+        .format = Format::Depth16,
+        .pixels = {std::byte{0x00}, std::byte{0x80}},
     };
     EXPECT_THAT(output, Eq(expected));
 }

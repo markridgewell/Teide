@@ -2,6 +2,7 @@
 #include "Teide/VulkanGraph.h"
 
 #include "Teide/Definitions.h"
+#include "Teide/Format.h"
 #include "Teide/Vulkan.h"
 #include "Teide/VulkanDevice.h"
 #include "Teide/VulkanRenderer.h"
@@ -222,7 +223,7 @@ namespace
         auto* colorTargetNode
             = renderNode.colourTarget ? &graph.Get<VulkanGraph::TextureNode>(renderNode.colourTarget->index) : nullptr;
         auto* depthStencilTargetNode = renderNode.depthStencilTarget
-            ? &graph.Get<VulkanGraph::TextureNode>(renderNode.colourTarget->index)
+            ? &graph.Get<VulkanGraph::TextureNode>(renderNode.depthStencilTarget->index)
             : nullptr;
 
         const auto& renderList = renderNode.renderList;
@@ -244,7 +245,7 @@ namespace
 
         const RenderTarget rt = {
             .color = colorTargetNode ? std::optional(colorTargetNode->texture) : std::nullopt,
-            .depthStencil = std::nullopt,
+            .depthStencil = depthStencilTargetNode ? std::optional(depthStencilTargetNode->texture) : std::nullopt,
         };
         VulkanRenderer::CreateRenderCommandBuffer(device, cmdBuffer, renderList, renderNode.renderTargetInfo, rt);
     }
@@ -259,7 +260,9 @@ namespace
             VulkanTexture& texture = device.GetImpl(node.texture);
             using enum vk::ImageUsageFlagBits;
             // TODO: Determine minimal usage flags based on actual usage
-            node.state = device.CreateTextureImpl(texture, eTransferSrc | eTransferDst | eSampled | eColorAttachment);
+            const auto attachment
+                = HasDepthOrStencilComponent(node.texture.GetFormat()) ? eDepthStencilAttachment : eColorAttachment;
+            node.state = device.CreateTextureImpl(texture, eTransferSrc | eTransferDst | eSampled | attachment);
         }
 
         // Record command buffers

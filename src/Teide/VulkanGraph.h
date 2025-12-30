@@ -168,7 +168,7 @@ struct VulkanGraph
             SetSource(*depthStencilTarget, r);
             const auto& tex = Get<TextureNode>(depthStencilTarget->index);
             renderTargetInfo.size = tex.texture.GetSize();
-            renderTargetInfo.framebufferLayout.colorFormat = tex.texture.GetFormat();
+            renderTargetInfo.framebufferLayout.depthStencilFormat = tex.texture.GetFormat();
         }
 
         renderNodes.emplace_back(std::move(renderList), renderTargetInfo, colorTarget, depthStencilTarget);

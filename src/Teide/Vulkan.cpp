@@ -5,6 +5,7 @@
 
 #include "Teide/Assert.h"
 #include "Teide/Definitions.h"
+#include "Teide/Format.h"
 #include "Teide/Pipeline.h"
 #include "Teide/Renderer.h"
 #include "Teide/TextureData.h"
@@ -526,6 +527,11 @@ vk::UniqueRenderPass
 CreateRenderPass(vk::Device device, const FramebufferLayout& layout, FramebufferUsage usage, const RenderPassInfo& renderPassInfo)
 {
     TEIDE_ASSERT(layout.colorFormat.has_value() || layout.depthStencilFormat.has_value());
+    TEIDE_ASSERT(
+        !layout.colorFormat || !HasDepthOrStencilComponent(*layout.colorFormat), "colorFormat is not a valid color format");
+    TEIDE_ASSERT(
+        !layout.depthStencilFormat || HasDepthOrStencilComponent(*layout.depthStencilFormat),
+        "depthStencilFormat is not a valid depth/stencil format");
 
     const bool multisampling = layout.sampleCount != 1;
     TEIDE_ASSERT(!(multisampling && layout.resolveDepthStencil), "Resolving depth/stencil targets not supported");
