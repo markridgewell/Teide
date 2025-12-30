@@ -24,6 +24,14 @@
 namespace Teide
 {
 
+struct RenderTarget
+{
+    std::optional<Texture> color;
+    std::optional<Texture> depthStencil;
+    std::optional<Texture> colorResolved;
+    std::optional<Texture> depthStencilResolved;
+};
+
 class VulkanRenderer final : public Renderer
 {
 public:
@@ -47,6 +55,11 @@ public:
 
     Task<TextureData> CopyTextureData(Texture texture) override;
 
+    static void CreateRenderCommandBuffer(
+        VulkanDevice& device, vk::CommandBuffer commandBuffer, const RenderList& renderList,
+        const RenderTargetInfo& renderTarget, const RenderTarget& rt, vk::DescriptorSet sceneParameters = {},
+        vk::DescriptorSet viewParameters = {});
+
 private:
     template <std::invocable<CommandBuffer&> F>
     auto ScheduleGpu(F&& f) -> TaskForCallable<F, CommandBuffer&>
@@ -55,23 +68,25 @@ private:
     }
 
     const TransientParameterBlock& GetSceneParameterBlock() const { return m_frameResources.Current().sceneParameters; }
+    auto CreateViewParameters(const RenderList& renderList) -> vk::DescriptorSet;
 
-    TransientParameterBlock* CreateViewParameterBlock(const ParameterBlockData& data, const char* name);
+    static void RecordRenderListCommands(
+        VulkanDevice& device, vk::CommandBuffer commandBuffer, const RenderList& renderList, vk::RenderPass renderPass,
+        const RenderPassDesc& renderPassDesc, const Framebuffer& framebuffer, vk::DescriptorSet sceneParameters,
+        vk::DescriptorSet viewParameters);
 
-    void RecordRenderListCommands(
-        CommandBuffer& commandBuffer, const RenderList& renderList, vk::RenderPass renderPass,
-        const RenderPassDesc& renderPassDesc, const Framebuffer& framebuffer);
-    void RecordRenderObjectCommands(
-        CommandBuffer& commandBufferWrapper, const RenderObject& obj, const RenderPassDesc& renderPassDesc) const;
+    static void RecordRenderObjectCommands(
+        VulkanDevice& device, vk::CommandBuffer commandBuffer, const RenderObject& obj, const RenderPassDesc& renderPassDesc);
 
     std::optional<SurfaceImage> AddSurfaceToPresent(VulkanSurface& surface);
-
-    vk::DescriptorSet GetDescriptorSet(const ParameterBlock& parameterBlock) const;
 
     struct ThreadResources
     {
         std::optional<DescriptorPool> viewDescriptorPool;
         std::vector<TransientParameterBlock> viewParameters;
+
+        TransientParameterBlock*
+        CreateViewParameterBlock(VulkanDevice& device, const ParameterBlockData& data, const char* name);
     };
 
     struct FrameResources

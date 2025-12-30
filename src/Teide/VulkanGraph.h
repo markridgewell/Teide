@@ -78,7 +78,8 @@ struct VulkanGraph
         static constexpr auto NodeType = CommandType::Render;
 
         RenderList renderList;
-        std::optional<ResourceNodeRef> colourTarget;
+        RenderTargetInfo renderTargetInfo;
+        std::optional<ResourceNodeRef> colorTarget;
         std::optional<ResourceNodeRef> depthStencilTarget;
         std::vector<ResourceNodeRef> dependencies;
     };
@@ -153,16 +154,24 @@ struct VulkanGraph
 
     auto AddRenderNode(RenderList renderList, std::optional<ResourceNodeRef> colorTarget, std::optional<ResourceNodeRef> depthStencilTarget)
     {
-        renderNodes.emplace_back(std::move(renderList), colorTarget, depthStencilTarget);
-        const auto r = RenderRef(renderNodes.size() - 1);
+        auto renderTargetInfo = RenderTargetInfo{};
+        const auto r = RenderRef(renderNodes.size());
         if (colorTarget)
         {
             SetSource(*colorTarget, r);
+            const auto& tex = Get<TextureNode>(colorTarget->index);
+            renderTargetInfo.size = tex.texture.GetSize();
+            renderTargetInfo.framebufferLayout.colorFormat = tex.texture.GetFormat();
         }
         if (depthStencilTarget)
         {
             SetSource(*depthStencilTarget, r);
+            const auto& tex = Get<TextureNode>(depthStencilTarget->index);
+            renderTargetInfo.size = tex.texture.GetSize();
+            renderTargetInfo.framebufferLayout.depthStencilFormat = tex.texture.GetFormat();
         }
+
+        renderNodes.emplace_back(std::move(renderList), renderTargetInfo, colorTarget, depthStencilTarget);
         return r;
     }
 
@@ -234,6 +243,12 @@ struct VulkanGraph
         auto& list = this->*MemPtr;
         TEIDE_ASSERT(index < list.size());
         return list[index];
+    }
+
+    template <class T>
+    T& Get(ResourceNodeRef ref)
+    {
+        return Get<T>(ref.index);
     }
 
     template <class T>

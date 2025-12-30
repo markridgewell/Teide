@@ -2,8 +2,10 @@
 #include "Teide/VulkanGraph.h"
 
 #include "Teide/Definitions.h"
+#include "Teide/Format.h"
 #include "Teide/Vulkan.h"
 #include "Teide/VulkanDevice.h"
+#include "Teide/VulkanRenderer.h"
 
 #include <fmt/core.h>
 #include <vulkan/vulkan_enums.hpp>
@@ -181,8 +183,6 @@ namespace
 
         VulkanTexture& texture = device.GetImpl(sourceNode.texture);
 
-        spdlog::info("Copy texture to texture data: {} -> {}", sourceNode.GetName(), targetNode.GetName());
-
         const VulkanTexture& textureImpl = device.GetImpl(sourceNode.texture);
 
         targetNode.data = {
@@ -218,6 +218,39 @@ namespace
             texture.properties.mipLevelCount);
     }
 
+    void ProcessCommandNode(VulkanGraph& graph, VulkanGraph::RenderNode& renderNode, VulkanDevice& device, vk::CommandBuffer cmdBuffer)
+    {
+        const auto getNode = [&graph](auto ref) { return std::ref(graph.Get<VulkanGraph::TextureNode>(ref)); };
+
+        const auto getTexture = [](auto& ref) { return ref.get().texture; };
+
+        auto colorTargetNode = renderNode.colorTarget.transform(getNode);
+        auto depthStencilTargetNode = renderNode.depthStencilTarget.transform(getNode);
+
+        const auto& renderList = renderNode.renderList;
+
+        if (colorTargetNode && depthStencilTargetNode)
+        {
+            spdlog::info(
+                "Render to color texture: {}, depth/stencil texture: {}", colorTargetNode->get().GetName(),
+                depthStencilTargetNode->get().GetName());
+        }
+        else if (colorTargetNode)
+        {
+            spdlog::info("Render to color texture: {}", colorTargetNode->get().GetName());
+        }
+        else if (depthStencilTargetNode)
+        {
+            spdlog::info("Render to depth/stencil texture: {}", depthStencilTargetNode->get().GetName());
+        }
+
+        const RenderTarget rt = {
+            .color = colorTargetNode.transform(getTexture),
+            .depthStencil = depthStencilTargetNode.transform(getTexture),
+        };
+        VulkanRenderer::CreateRenderCommandBuffer(device, cmdBuffer, renderList, renderNode.renderTargetInfo, rt);
+    }
+
     auto RecordCommands(VulkanGraph& graph, VulkanDevice& device) -> Commands
     {
         Commands ret;
@@ -227,7 +260,10 @@ namespace
         {
             VulkanTexture& texture = device.GetImpl(node.texture);
             using enum vk::ImageUsageFlagBits;
-            node.state = device.CreateTextureImpl(texture, eTransferSrc | eTransferDst | eSampled);
+            // TODO: Determine minimal usage flags based on actual usage
+            const auto attachment
+                = HasDepthOrStencilComponent(node.texture.GetFormat()) ? eDepthStencilAttachment : eColorAttachment;
+            node.state = device.CreateTextureImpl(texture, eTransferSrc | eTransferDst | eSampled | attachment);
         }
 
         // Record command buffers
@@ -245,6 +281,11 @@ namespace
         for (auto& writeNode : graph.writeNodes)
         {
             ProcessCommandNode(graph, writeNode, device, cmdBuffer);
+        }
+
+        for (auto& renderNode : graph.renderNodes)
+        {
+            ProcessCommandNode(graph, renderNode, device, cmdBuffer);
         }
 
         for (auto& readNode : graph.readNodes)
