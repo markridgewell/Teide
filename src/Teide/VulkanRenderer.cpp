@@ -296,7 +296,7 @@ void VulkanRenderer::RenderToSurface(Surface& surface, RenderList renderList)
 
         const auto framebuffer = surfaceImage.framebuffer;
 
-        ScheduleGpu([this, renderList = std::move(renderList), framebuffer](CommandBuffer& commandBuffer) {
+        ScheduleGpu([this, renderList = std::move(renderList), framebuffer](CommandBuffer& commandBuffer) mutable {
             const RenderPassDesc renderPassDesc = {
                 .framebufferLayout = framebuffer.layout,
                 .renderOverrides = renderList.renderOverrides,
@@ -325,6 +325,8 @@ void VulkanRenderer::RenderToSurface(Surface& surface, RenderList renderList)
 
             RecordRenderListCommands(
                 m_device, commandBuffer, renderList, renderPass, renderPassDesc, framebuffer, sceneParameters, viewParameters);
+
+            commandBuffer.TakeOwnership(std::move(renderList));
         });
     }
 }
