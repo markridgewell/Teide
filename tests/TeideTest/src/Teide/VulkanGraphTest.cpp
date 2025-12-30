@@ -11,6 +11,7 @@
 #include "Teide/VulkanDevice.h"
 #include "Teide/VulkanRenderer.h"
 
+#include <fmt/base.h>
 #include <gmock/gmock.h>
 
 #include <iterator>
@@ -37,7 +38,7 @@ std::string MakeDotURL(std::string_view dot)
         }
         else if (c != '\n' && c != '\r')
         {
-            std::format_to(out, "%{:02X}", c);
+            fmt::format_to(out, "%{:02X}", c);
         }
     }
 
