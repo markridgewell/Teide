@@ -91,8 +91,8 @@ include(FileLists.cmake)
 td_add_library(
     Teide
     SOURCES "${sources}" "${GENERATED_INCLUDE_DIR}/vkex/vkex.hpp"
-    PUBLIC_DEPS spdlog::spdlog
     PRIVATE_DEPS
+        spdlog::spdlog
         Vulkan::Vulkan
         GPUOpen::VulkanMemoryAllocator
         VulkanMemoryAllocator-Hpp::VulkanMemoryAllocator-Hpp
