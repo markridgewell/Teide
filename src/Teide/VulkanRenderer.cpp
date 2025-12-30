@@ -297,7 +297,7 @@ void VulkanRenderer::RenderToSurface(Surface& surface, RenderList renderList)
         const auto framebuffer = surfaceImage.framebuffer;
 
         ScheduleGpu([this, renderList = std::move(renderList), framebuffer](CommandBuffer& commandBuffer) mutable {
-            const RenderPassDesc renderPassDesc = {
+            const auto renderPassDesc = RenderPassDesc{
                 .framebufferLayout = framebuffer.layout,
                 .renderOverrides = renderList.renderOverrides,
             };
@@ -307,19 +307,7 @@ void VulkanRenderer::RenderToSurface(Surface& surface, RenderList renderList)
 
             const auto viewPblockLayout = m_shaderEnvironment ? m_shaderEnvironment->GetViewPblockLayout() : nullptr;
 
-            const ParameterBlockData viewParamsData = {
-                .layout = viewPblockLayout,
-                .lifetime = ResourceLifetime::Transient,
-                .parameters = renderList.viewParameters,
-            };
-            const auto viewParamsName = fmt::format("{}:View", renderList.name);
-            const auto viewParameters = m_shaderEnvironment
-                ? m_frameResources.Current()
-                      .threadResources
-                      .LockCurrent(
-                          &ThreadResources::CreateViewParameterBlock, m_device, viewParamsData, viewParamsName.c_str())
-                      ->descriptorSet
-                : vk::DescriptorSet{};
+            const auto viewParameters = CreateViewParameters(renderList);
 
             const auto sceneParameters = GetSceneParameterBlock().descriptorSet;
 
