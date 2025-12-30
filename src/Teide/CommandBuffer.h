@@ -5,6 +5,7 @@
 
 #include "Teide/ForwardDeclare.h"
 #include "Teide/ParameterBlock.h"
+#include "Teide/Renderer.h"
 #include "Teide/Texture.h"
 
 namespace Teide
@@ -23,6 +24,7 @@ public:
 
     void TakeOwnership(vk::UniqueBuffer buffer);
     void TakeOwnership(vma::UniqueAllocation allocation);
+    void TakeOwnership(RenderList renderList);
     void Reset();
 
     std::string_view GetDebugName() const;
@@ -55,6 +57,7 @@ private:
     std::unordered_set<PipelinePtr> m_referencedPipelines;
     std::vector<vk::UniqueBuffer> m_ownedBuffers;
     std::vector<vma::UniqueAllocation> m_ownedAllocations;
+    std::vector<RenderList> m_ownedRenderLists;
 
     std::string m_debugName = "Unnamed";
 };

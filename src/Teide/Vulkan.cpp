@@ -629,6 +629,9 @@ CreateRenderPass(vk::Device device, const FramebufferLayout& layout, Framebuffer
 vk::UniqueFramebuffer
 CreateFramebuffer(vk::Device device, vk::RenderPass renderPass, Geo::Size2i size, std::span<const vk::ImageView> imageViews)
 {
+    TEIDE_ASSERT(size.x > 0);
+    TEIDE_ASSERT(size.y > 0);
+
     const vk::FramebufferCreateInfo framebufferCreateInfo = {
         .renderPass = renderPass,
         .attachmentCount = size32(imageViews),

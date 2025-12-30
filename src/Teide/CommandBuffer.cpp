@@ -44,6 +44,11 @@ void CommandBuffer::TakeOwnership(vma::UniqueAllocation allocation)
     m_ownedAllocations.push_back(std::move(allocation));
 }
 
+void CommandBuffer::TakeOwnership(RenderList renderList)
+{
+    m_ownedRenderLists.push_back(std::move(renderList));
+}
+
 void CommandBuffer::Reset()
 {
     m_referencedTextures.clear();

@@ -269,12 +269,14 @@ RenderToTextureResult VulkanRenderer::RenderToTexture(const RenderTargetInfo& re
             : std::nullopt,
     };
 
-    ScheduleGpu([this, renderList = std::move(renderList), rt, renderTarget](CommandBuffer& commandBuffer) {
+    ScheduleGpu([this, renderList = std::move(renderList), rt, renderTarget](CommandBuffer& commandBuffer) mutable {
         const auto viewParameters = CreateViewParameters(renderList);
 
         const auto sceneParameters = GetSceneParameterBlock().descriptorSet;
 
         CreateRenderCommandBuffer(m_device, commandBuffer, renderList, renderTarget, rt, sceneParameters, viewParameters);
+
+        commandBuffer.TakeOwnership(std::move(renderList));
     });
 
     const auto& colorRet = rt.colorResolved ? rt.colorResolved : rt.color;

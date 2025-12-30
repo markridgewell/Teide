@@ -221,15 +221,25 @@ namespace
     {
         auto* colorTargetNode
             = renderNode.colourTarget ? &graph.Get<VulkanGraph::TextureNode>(renderNode.colourTarget->index) : nullptr;
+        auto* depthStencilTargetNode = renderNode.depthStencilTarget
+            ? &graph.Get<VulkanGraph::TextureNode>(renderNode.colourTarget->index)
+            : nullptr;
 
         const auto& renderList = renderNode.renderList;
 
-        if (colorTargetNode)
+        if (colorTargetNode && depthStencilTargetNode)
+        {
+            spdlog::info(
+                "Render to color texture: {}, depth/stencil texture: {}", colorTargetNode->GetName(),
+                depthStencilTargetNode->GetName());
+        }
+        else if (colorTargetNode)
         {
             spdlog::info("Render to color texture: {}", colorTargetNode->GetName());
-
-            const VulkanTexture& texture = device.GetImpl(colorTargetNode->texture);
-            texture.TransitionToRenderTarget(colorTargetNode->state, cmdBuffer);
+        }
+        else if (depthStencilTargetNode)
+        {
+            spdlog::info("Render to depth/stencil texture: {}", depthStencilTargetNode->GetName());
         }
 
         const RenderTarget rt = {
