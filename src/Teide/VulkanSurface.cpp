@@ -184,10 +184,9 @@ namespace
 
 VulkanSurface::VulkanSurface(
     SDL_Window* window, vk::UniqueSurfaceKHR surface, vk::Device device, const PhysicalDevice& physicalDevice,
-    vk::CommandPool commandPool, vma::Allocator allocator, vk::Queue queue, bool multisampled) :
+    vma::Allocator allocator, vk::Queue queue, bool multisampled) :
     m_device{device},
     m_physicalDevice{physicalDevice},
-    m_commandPool{commandPool},
     m_allocator{allocator},
     m_queue{queue},
     m_window{window},

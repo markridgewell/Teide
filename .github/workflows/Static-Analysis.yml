@@ -14,6 +14,10 @@ on:
         default: false
         type: boolean
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 env:
   clang_tidy_version: 19
   pattern: '\.\(c\|cpp\|cc\|cxx\|h\|hpp\)$'
@@ -26,7 +30,7 @@ jobs:
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v4.2.2
+      uses: actions/checkout@v6.0.1
       with:
         fetch-depth: ${{ github.event_name == 'pull_request' && 2 || 0 }}
         submodules: true
@@ -58,8 +62,28 @@ jobs:
 
     - name: Run Cppcheck
       if: steps.get-changes.outputs.changed-files != ''
+      shell: bash
+      env:
+        TEIDE_CPPCHECK_ARGS: --output-format=sarif;--output-file=sarif/cppcheck.sarif
       run: |
-        cmake --build --preset ${{env.preset}} --target Cppcheck
+        mkdir -p sarif
+        if ! cmake --build --preset ${{env.preset}} --target Cppcheck; then
+          # Fix paths by appending file:///
+          jq '.runs.[].results.[].locations.[].physicalLocation.artifactLocation.uri |= "file:///"+.' <sarif/cppcheck.sarif >tmp.sarif && mv tmp.sarif sarif/cppcheck.sarif
+
+          echo
+          echo "Results:"
+          jq --compact-output <sarif/cppcheck.sarif
+          exit 1
+        fi
+
+    - name: Upload SARIF files
+      if: always() && steps.get-changes.outputs.changed-files != ''
+      uses: github/codeql-action/upload-sarif@v4.31.9
+      with:
+        sarif_file: sarif
+        checkout_path: ${{ github.workspace }}
+        category: cppcheck
 
   clang-tidy:
     name: ClangTidy
@@ -70,7 +94,7 @@ jobs:
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v4.2.2
+      uses: actions/checkout@v6.0.1
       with:
         fetch-depth: ${{ github.event_name == 'pull_request' && 2 || 0 }}
         submodules: true
@@ -85,6 +109,8 @@ jobs:
       if: steps.get-changes.outputs.changed-files != ''
       id: packages
       uses: ./.github/actions/install-packages
+      with:
+        fail-on-cache-miss: true
 
     - name: Install tools
       if: steps.get-changes.outputs.changed-files != ''
@@ -110,7 +136,7 @@ jobs:
 
     - name: Report issues as PR comments
       if: failure() && github.event_name == 'pull_request'
-      uses: reviewdog/action-suggester@v1.18.0
+      uses: reviewdog/action-suggester@v1.24.0
       with:
         tool_name: clang-tidy
 
@@ -126,11 +152,11 @@ jobs:
 
     - name: Push changes
       if: failure() && inputs.commit-fixes
-      uses: ad-m/github-push-action@v0.8.0
+      uses: ad-m/github-push-action@v1.0.0
 
     - name: Save fixes as build artifact
       if: failure()
-      uses: actions/upload-artifact@v4.5.0
+      uses: actions/upload-artifact@v6.0.0
       with:
         name: clang-tidy-fixes
         path: ${{github.workspace}}/build/${{env.preset}}/clang-tidy-fixes.yaml

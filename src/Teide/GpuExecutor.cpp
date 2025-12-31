@@ -5,10 +5,8 @@
 
 #include "Teide/Assert.h"
 
-#include <fmt/chrono.h>
 #include <spdlog/spdlog.h>
 
-#include <chrono>
 #include <ranges>
 #include <span>
 #include <sstream>
@@ -37,37 +35,6 @@ GpuExecutor::GpuExecutor(uint32 numThreads, vk::Device device, vk::Queue queue, 
 {
     spdlog::info("Creating GpuExecutor");
     spdlog::debug("this thread: {}", GetThreadName(std::this_thread::get_id()));
-    m_schedulerThread = std::thread([this] {
-        SetCurrentTheadName("GpuExecutor");
-        constexpr auto timeout = std::chrono::milliseconds{2};
-
-        while (!m_schedulerStop)
-        {
-            const auto fences = m_queue.Lock(&Queue::GetInFlightFences);
-
-            if (fences.empty())
-            {
-                // If there are no fences to wait on, sleep for a bit and try again
-                std::this_thread::sleep_for(timeout);
-            }
-            else
-            {
-                // If there are fences, wait on them and see if any are signalled
-                try
-                {
-                    if (m_device.waitForFences(fences, false, Timeout(timeout)) == vk::Result::eSuccess)
-                    {
-                        m_queue.Lock(&Queue::Flush);
-                    }
-                }
-                catch (const vk::DeviceLostError&)
-                {
-                    spdlog::critical("Device lost while waiting for fences");
-                    std::abort();
-                }
-            }
-        }
-    });
 }
 
 GpuExecutor::~GpuExecutor() noexcept
@@ -76,28 +43,11 @@ GpuExecutor::~GpuExecutor() noexcept
     spdlog::debug("main thread: {}", GetThreadName(m_mainThread));
     spdlog::debug("this thread: {}", GetThreadName(std::this_thread::get_id()));
     TEIDE_ASSERT(m_mainThread == std::this_thread::get_id());
-
-    m_schedulerStop = true;
-    m_schedulerThread.join();
-
-    WaitForTasks();
 }
 
 void GpuExecutor::WaitForTasks()
 {
-    const auto fencesRange = m_queue.Lock(&Queue::GetInFlightFences);
-    const std::vector<vk::Fence> fences(fencesRange.begin(), fencesRange.end());
-    // TODO C++23: Replace previous 2 lines with:
-    // const auto fences = m_queue.Lock(&Queue::GetInFlightFences) | std::ranges::to<std::vector>();
-
-    if (!fences.empty())
-    {
-        constexpr auto timeout = std::chrono::seconds{4};
-        if (m_device.waitForFences(fences, true, Timeout(timeout)) == vk::Result::eTimeout)
-        {
-            spdlog::error("Timeout (>{}) while waiting for command buffer execution to complete!", timeout);
-        }
-    }
+    m_queue.WaitForTasks();
 }
 
 void GpuExecutor::NextFrame()
@@ -162,53 +112,12 @@ CommandBuffer& GpuExecutor::GetCommandBuffer()
 
 uint32 GpuExecutor::AddCommandBufferSlot()
 {
-    return m_queue.Lock(&Queue::AddCommandBufferSlot);
-}
-
-void GpuExecutor::SubmitCommandBuffer(uint32 index, vk::CommandBuffer commandBuffer, OnCompleteFunction func)
-{
-    m_queue.Lock(&Queue::Submit, index, commandBuffer, std::move(func));
-}
-
-//---------------------------------------------------------------------------------------------------------------------
-
-std::vector<vk::Fence> GpuExecutor::Queue::GetInFlightFences() const
-{
-    const auto range = m_inFlightSubmits | std::views::transform(&InFlightSubmit::GetFence);
-    return {range.begin(), range.end()};
-}
-
-void GpuExecutor::Queue::Flush()
-{
-    // Iterate the fences to find out which have been signalled
-    for (auto& [fence, callbacks] : m_inFlightSubmits)
-    {
-        if (m_device.waitForFences(fence.get(), false, 0) == vk::Result::eSuccess)
-        {
-            // Found one, call the attached callbacks (if any)
-            for (auto&& callback : std::exchange(callbacks, {}))
-            {
-                callback();
-            }
-
-            // Reuse the fence for later and mark the task as done
-            m_device.resetFences(fence.get());
-            m_unusedSubmitFences.push(std::exchange(fence, {}));
-        }
-    }
-
-    // Remove done tasks
-    std::erase_if(m_inFlightSubmits, [](const auto& entry) { return !entry.fence; });
-}
-
-uint32 GpuExecutor::Queue::AddCommandBufferSlot()
-{
     m_readyCommandBuffers.emplace_back();
     m_completionHandlers.emplace_back();
     return static_cast<uint32>(m_readyCommandBuffers.size() - 1);
 }
 
-void GpuExecutor::Queue::Submit(uint32 index, vk::CommandBuffer commandBuffer, OnCompleteFunction func)
+void GpuExecutor::SubmitCommandBuffer(uint32 index, vk::CommandBuffer commandBuffer, OnCompleteFunction func)
 {
     commandBuffer.end();
     m_readyCommandBuffers.at(index) = commandBuffer;
@@ -222,33 +131,18 @@ void GpuExecutor::Queue::Submit(uint32 index, vk::CommandBuffer commandBuffer, O
 
     if (!commandBuffersToSubmit.empty())
     {
-        auto fence = GetFence();
-        m_numSubmittedCommandBuffers += commandBuffersToSubmit.size();
-
-        const vk::SubmitInfo submitInfo = {
-            .commandBufferCount = size32(commandBuffersToSubmit),
-            .pCommandBuffers = data(commandBuffersToSubmit),
-        };
-        m_queue.submit(submitInfo, fence.get());
-
         std::vector<OnCompleteFunction> callbacks;
         std::ranges::move(
             unsubmittedCompletionHandlers | std::views::filter([](const auto& x) { return x != nullptr; }),
             std::back_inserter(callbacks));
-        m_inFlightSubmits.emplace_back(std::move(fence), std::move(callbacks));
+        m_queue.Submit(commandBuffersToSubmit, [callbacks = std::move(callbacks)]() mutable {
+            for (auto&& callback : std::move(callbacks))
+            {
+                callback();
+            }
+        });
+        m_numSubmittedCommandBuffers += commandBuffersToSubmit.size();
     }
 }
-
-vk::UniqueFence GpuExecutor::Queue::GetFence()
-{
-    if (m_unusedSubmitFences.empty())
-    {
-        return m_device.createFenceUnique({});
-    }
-
-    auto nextFence = std::move(m_unusedSubmitFences.front());
-    m_unusedSubmitFences.pop();
-    return nextFence;
-};
 
 } // namespace Teide

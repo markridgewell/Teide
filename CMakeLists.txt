@@ -87,12 +87,15 @@ if("${VK_XML_PATH}" IS_NEWER_THAN "${GENERATED_INCLUDE_DIR}/vkex/vkex.hpp")
                             "${VK_XML_PATH}" -o "${GENERATED_INCLUDE_DIR}/vkex" COMMAND_ERROR_IS_FATAL ANY)
 endif()
 
+add_compile_options("$<$<C_COMPILER_ID:MSVC>:/utf-8>")
+add_compile_options("$<$<CXX_COMPILER_ID:MSVC>:/utf-8>")
+
 include(FileLists.cmake)
 td_add_library(
     Teide
     SOURCES "${sources}" "${GENERATED_INCLUDE_DIR}/vkex/vkex.hpp"
-    PUBLIC_DEPS spdlog::spdlog
     PRIVATE_DEPS
+        spdlog::spdlog
         Vulkan::Vulkan
         GPUOpen::VulkanMemoryAllocator
         VulkanMemoryAllocator-Hpp::VulkanMemoryAllocator-Hpp
@@ -131,6 +134,7 @@ endif()
 if(TEIDE_BUILD_TESTS)
     find_package(GTest REQUIRED)
     find_package(StackWalker QUIET)
+    find_package(cpptrace CONFIG REQUIRED)
 
     add_subdirectory(tests)
 endif()
@@ -152,5 +156,7 @@ if(TEIDE_CPPCHECK)
 endif()
 
 mark_as_advanced_pattern("[a-z0-9]+_DIR|VCPKG_|FETCHCONTENT_")
+
+file(WRITE ${CMAKE_BINARY_DIR}/.gitignore "*")
 
 dump_targets()

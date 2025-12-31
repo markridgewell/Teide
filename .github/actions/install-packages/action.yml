@@ -6,6 +6,10 @@ inputs:
     description: 'Sanitizer to be used, or OFF to disable'
     required: true
     default: 'OFF'
+  fail-on-cache-miss:
+    description: "Fail the workflow if the package cache can't be found"
+    required: true
+    default: 'false'
 outputs:
   install-dir:
     description: "Directory the packages were installed to"
@@ -29,6 +33,7 @@ runs:
       with:
         key: ${{ steps.get-key.outputs.cache-key }}
         path: './exports'
+        fail-on-cache-miss: ${{ inputs.fail-on-cache-miss }}
 
     - name: Determine install directory
       if: steps.cache.outputs.cache-hit

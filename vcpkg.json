@@ -1,7 +1,7 @@
 {
   "name": "teide",
   "version": "0.0.0",
-  "builtin-baseline": "7e19f3c64cb636ee21f41bfe8558a6dfaae6236f",
+  "builtin-baseline": "84bab45d415d22042bd0b9081aea57f362da3f35",
   "dependencies": [
     "fmt",
     "function2",
@@ -13,6 +13,7 @@
     },
     {
       "name": "sdl2",
+      "default-features": false,
       "features": [
         "vulkan"
       ]
@@ -59,6 +60,7 @@
       "description": "Build tests",
       "dependencies": [
         "gtest",
+        "cpptrace",
         {
           "name": "stackwalker",
           "platform": "windows & !uwp"

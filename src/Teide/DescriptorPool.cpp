@@ -5,6 +5,8 @@
 
 #include "vkex/vkex.hpp"
 
+#include <spdlog/spdlog.h>
+
 namespace Teide
 {
 
@@ -30,6 +32,7 @@ vk::DescriptorSet DescriptorPool::Allocate(const char* name)
     };
 
     auto descriptorSet = m_device.allocateDescriptorSets(allocInfo).front();
+    spdlog::debug("Creating descriptor set '{}'", name);
     SetDebugName(m_device, descriptorSet, name);
 
     m_numAllocatedSets++;

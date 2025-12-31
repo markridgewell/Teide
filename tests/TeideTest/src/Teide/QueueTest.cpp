@@ -1,5 +1,5 @@
 
-#include "Teide/GpuExecutor.h"
+#include "Teide/Queue.h"
 
 #include "TestUtils.h"
 
@@ -19,10 +19,10 @@ using namespace Teide;
 
 namespace
 {
-class GpuExecutorTest : public testing::Test
+class QueueTest : public testing::Test
 {
 public:
-    GpuExecutorTest() : m_instance{CreateInstance(m_loader)}, m_physicalDevice{FindPhysicalDevice(m_instance.get())} {}
+    QueueTest() : m_instance{CreateInstance(m_loader)}, m_physicalDevice{FindPhysicalDevice(m_instance.get())} {}
 
     void SetUp() override
     {
@@ -41,12 +41,8 @@ protected:
     vk::Instance GetInstance() const { return m_instance.get(); }
     vk::PhysicalDevice GetPhysicalDevice() const { return m_physicalDevice.physicalDevice; }
     vk::Device GetDevice() const { return m_device.get(); }
-    vk::Queue GetQueue() const { return m_queue; }
 
-    GpuExecutor CreateGpuExecutor()
-    {
-        return {2, GetDevice(), GetQueue(), m_physicalDevice.queueFamilies.transferFamily};
-    }
+    Queue CreateQueue() { return Queue(GetDevice(), m_queue); }
 
     vk::UniqueCommandBuffer CreateCommandBuffer(const char* debugName = nullptr)
     {
@@ -90,21 +86,24 @@ private:
     vma::UniqueAllocator m_allocator;
 };
 
-
-TEST_F(GpuExecutorTest, OneCommandBuffer)
+template <class T>
+auto One(T& thing) -> std::span<T>
 {
-    auto executor = CreateGpuExecutor();
+    return std::span<T>(&thing, 1);
+}
+
+TEST_F(QueueTest, OneCommandBuffer)
+{
+    auto queue = CreateQueue();
     auto cmdBuffer = CreateCommandBuffer();
     auto buffer = CreateHostVisibleBuffer(12);
 
     cmdBuffer->begin(vk::CommandBufferBeginInfo{});
     cmdBuffer->fillBuffer(buffer.buffer.get(), 0, 12, 0x01010101);
+    cmdBuffer->end();
 
-    const auto slot = executor.AddCommandBufferSlot();
-    const auto future = SubmitCommandBuffer(executor, slot, cmdBuffer.get());
-    ASSERT_THAT(future.valid(), IsTrue());
-    future.wait();
-    EXPECT_THAT(future.wait_for(0s), Eq(std::future_status::ready));
+    auto future = queue.LazySubmit(One(cmdBuffer.get()));
+    EXPECT_NO_THROW(ex::sync_wait(future));
 
     InvalidateAllocation(buffer.allocation);
     const auto result = std::vector(buffer.mappedData.begin(), buffer.mappedData.end());
@@ -112,9 +111,9 @@ TEST_F(GpuExecutorTest, OneCommandBuffer)
     EXPECT_THAT(result, Eq(expected));
 }
 
-TEST_F(GpuExecutorTest, TwoCommandBuffers)
+TEST_F(QueueTest, TwoCommandBuffers)
 {
-    auto executor = CreateGpuExecutor();
+    auto queue = CreateQueue();
     auto cmdBuffer1 = CreateCommandBuffer("cmdBuffer1");
     auto cmdBuffer2 = CreateCommandBuffer("cmdBuffer2");
     auto buffer = CreateHostVisibleBuffer(12);
@@ -137,18 +136,15 @@ TEST_F(GpuExecutorTest, TwoCommandBuffers)
         },
         {} // imageMemoryBarriers
     );
+    cmdBuffer1->end();
     cmdBuffer2->begin(vk::CommandBufferBeginInfo{});
     cmdBuffer2->fillBuffer(buffer.buffer.get(), 4, 8, 0x02020202);
+    cmdBuffer2->end();
 
-    const auto slot1 = executor.AddCommandBufferSlot();
-    const auto slot2 = executor.AddCommandBufferSlot();
-    const auto future1 = SubmitCommandBuffer(executor, slot1, cmdBuffer1.get());
-    const auto future2 = SubmitCommandBuffer(executor, slot2, cmdBuffer2.get());
-    ASSERT_THAT(future1.valid(), IsTrue());
-    ASSERT_THAT(future2.valid(), IsTrue());
-    future2.wait();
-    EXPECT_THAT(future1.wait_for(0s), Eq(std::future_status::ready));
-    EXPECT_THAT(future2.wait_for(0s), Eq(std::future_status::ready));
+    auto future1 = queue.LazySubmit(One(cmdBuffer1.get()));
+    auto future2 = queue.LazySubmit(One(cmdBuffer2.get()));
+    EXPECT_NO_THROW(ex::sync_wait(future1));
+    EXPECT_NO_THROW(ex::sync_wait(future2));
 
     InvalidateAllocation(buffer.allocation);
     const auto result = std::vector(buffer.mappedData.begin(), buffer.mappedData.end());
@@ -156,81 +152,19 @@ TEST_F(GpuExecutorTest, TwoCommandBuffers)
     EXPECT_THAT(result, Eq(expected));
 }
 
-TEST_F(GpuExecutorTest, TwoCommandBuffersOutOfOrder)
+TEST_F(QueueTest, SubmitMultipleCommandBuffers)
 {
-    auto executor = CreateGpuExecutor();
-    auto cmdBuffer1 = CreateCommandBuffer();
-    auto cmdBuffer2 = CreateCommandBuffer();
-    auto buffer = CreateHostVisibleBuffer(12);
-
-    cmdBuffer1->begin(vk::CommandBufferBeginInfo{});
-    cmdBuffer1->fillBuffer(buffer.buffer.get(), 0, 8, 0x01010101);
-    cmdBuffer1->pipelineBarrier(
-        vk::PipelineStageFlagBits::eTransfer, // srcStageMask
-        vk::PipelineStageFlagBits::eTransfer, // dstStageMask
-        {},                                   // dependencyFlags
-        {},                                   // memoryBarriers
-        vk::BufferMemoryBarrier{
-            .srcAccessMask = vk::AccessFlagBits::eTransferWrite,
-            .dstAccessMask = vk::AccessFlagBits::eTransferWrite,
-            .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-            .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-            .buffer = buffer.buffer.get(),
-            .offset = 0,
-            .size = VK_WHOLE_SIZE,
-        },
-        {} // imageMemoryBarriers
-    );
-    cmdBuffer2->begin(vk::CommandBufferBeginInfo{});
-    cmdBuffer2->fillBuffer(buffer.buffer.get(), 4, 8, 0x02020202);
-
-    const auto slot1 = executor.AddCommandBufferSlot();
-    const auto slot2 = executor.AddCommandBufferSlot();
-    const auto future2 = SubmitCommandBuffer(executor, slot2, cmdBuffer2.get()); // submission order switched
-    const auto future1 = SubmitCommandBuffer(executor, slot1, cmdBuffer1.get());
-    ASSERT_THAT(future1.valid(), IsTrue());
-    ASSERT_THAT(future2.valid(), IsTrue());
-    future2.wait();
-    EXPECT_THAT(future1.wait_for(0s), Eq(std::future_status::ready));
-    EXPECT_THAT(future2.wait_for(0s), Eq(std::future_status::ready));
-
-    InvalidateAllocation(buffer.allocation);
-    const auto result = std::vector(buffer.mappedData.begin(), buffer.mappedData.end());
-    const auto expected = HexToBytes("01 01 01 01 02 02 02 02 02 02 02 02");
-    EXPECT_THAT(result, Eq(expected));
-}
-
-TEST_F(GpuExecutorTest, DontWait)
-{
-    auto buffer = CreateHostVisibleBuffer(12);
-    auto cmdBuffer = CreateCommandBuffer();
-    {
-        auto executor = CreateGpuExecutor();
-
-        cmdBuffer->begin(vk::CommandBufferBeginInfo{});
-        cmdBuffer->fillBuffer(buffer.buffer.get(), 0, 12, 0x01010101);
-
-        const auto slot = executor.AddCommandBufferSlot();
-        const auto future = SubmitCommandBuffer(executor, slot, cmdBuffer.get());
-        ASSERT_THAT(future.valid(), IsTrue());
-    }
-}
-
-TEST_F(GpuExecutorTest, SubmitMultipleCommandBuffers)
-{
-    auto executor = CreateGpuExecutor();
+    auto queue = CreateQueue();
     for (int i = 0; i < 10; i++)
     {
         auto cmdBuffer = CreateCommandBuffer();
         auto buffer = CreateHostVisibleBuffer(12);
         cmdBuffer->begin(vk::CommandBufferBeginInfo{});
         cmdBuffer->fillBuffer(buffer.buffer.get(), 0, 12, 0x01010101);
+        cmdBuffer->end();
 
-        const auto slot = executor.AddCommandBufferSlot();
-        const auto future = SubmitCommandBuffer(executor, slot, cmdBuffer.get());
-        ASSERT_THAT(future.valid(), IsTrue());
-        future.wait();
-        EXPECT_THAT(future.wait_for(0s), Eq(std::future_status::ready));
+        auto future = queue.LazySubmit(One(cmdBuffer.get()));
+        EXPECT_NO_THROW(ex::sync_wait(future));
 
         InvalidateAllocation(buffer.allocation);
         const auto result = std::vector(buffer.mappedData.begin(), buffer.mappedData.end());

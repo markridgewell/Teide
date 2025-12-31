@@ -27,10 +27,11 @@ on:
         default: true
         type: boolean
 
-env:
-  VULKAN_SDK: ../vulkan_sdk
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
-  use_ccache: ${{ inputs.ccache || github.event_name == 'pull_request' }}
+env:
   CCACHE_DEBUGLLEVEL: 1
   CCACHE_DEBUGDIR: ${{ github.workspace }}/ccache_debug
   CCACHE_LOGFILE: ${{ github.workspace }}/ccache.log
@@ -91,6 +92,7 @@ jobs:
 
     env:
       job_name: ${{startsWith(matrix.runner, 'windows') && 'Windows' || 'Linux'}}-${{matrix.buildtype}}-${{matrix.toolchain}}${{matrix.name-suffix}}
+      use_ccache: ${{ (inputs.ccache || github.event_name != 'workflow_dispatch') && !(matrix.preset == 'msvc2022' && matrix.coverage == 'ON') }}
       CMAKE_BUILD_TYPE: ${{matrix.buildtype}}
       RT_OUTPUT_DIR: build/${{matrix.preset}}/tests/RenderTest/RenderTestOutput
       CXX: ${{matrix.compiler}}
@@ -101,7 +103,7 @@ jobs:
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v4.2.2
+      uses: actions/checkout@v6.0.1
       with:
         lfs: true
         submodules: false
@@ -112,6 +114,13 @@ jobs:
       with:
         sanitizer: ${{matrix.sanitizer}}
 
+    - if: matrix.coverage == 'ON' && runner.os == 'Windows'
+      name: Install OpenCppCoverage
+      uses: ./.github/actions/choco-install
+      with:
+        package-name: OpenCppCoverage
+        package-version: 0.9.9.0
+
     - name: Install tools
       uses: ./.github/actions/install-tools
       with:
@@ -119,11 +128,12 @@ jobs:
           ${{ matrix.compiler }}
           ${{ env.use_ccache && 'ccache' || '' }}
           ${{ (inputs.coverage && matrix.coverage && runner.os == 'Windows') && 'OpenCppCoverage' || '' }}
+          ${{ runner.os == 'Linux' && 'vulkan-validationlayers' || '' }}
       env:
         GH_TOKEN: ${{ github.token }}
 
     - name: Install Vulkan SDK
-      uses: edvn0/setup-vulkan-sdk@v1.3.0
+      uses: humbletim/setup-vulkan-sdk@v1.2.1
       with:
         vulkan-query-version: 1.3.243.0
         vulkan-components: Vulkan-Headers, Vulkan-Loader
@@ -150,10 +160,11 @@ jobs:
         echo "debug_level  $(ccache -k debug_level)"
         echo "log_file     $(ccache -k log_file)"
 
-    - name: Save/restore ccache dir
+    - name: Restore ccache dir
       # I heard you like caches, so I put some caches in your caches
+      id: ccache-restore
       if: env.use_ccache
-      uses: actions/cache@v4
+      uses: actions/cache/restore@v5.0.1
       with:
         path: ${{ env.CCACHE_DIR }}
         key: ${{ steps.ccache.outputs.key }}
@@ -177,7 +188,7 @@ jobs:
 
     - name: Save CMake trace
       if: always() && inputs.profile-cmake
-      uses: actions/upload-artifact@v4.5.0
+      uses: actions/upload-artifact@v6.0.0
       with:
         name: CMakeTrace-${{env.job_name}}
         path: ./CMakeTrace.json
@@ -203,6 +214,13 @@ jobs:
         cat $CCACHE_LOGFILE
         echo "::endgroup::"
 
+    - name: Save ccache dir
+      if: env.use_ccache
+      uses: actions/cache/save@v5.0.1
+      with:
+        path: ${{ env.CCACHE_DIR }}
+        key: ${{ steps.ccache-restore.outputs.cache-primary-key }}
+
     - name: Dump CMake output logs
       if: failure()
       shell: bash
@@ -218,15 +236,15 @@ jobs:
 
     - name: Test
       id: test
-      env: {GTEST_CATCH_EXCEPTIONS: 0}
       run: ctest --preset ${{matrix.preset}} --build-config ${{matrix.buildtype}} --verbose --output-on-failure --no-tests=error
 
     - name: Save render test output
       if: failure() && steps.test.outcome == 'failure'
-      uses: actions/upload-artifact@v4.5.0
+      uses: actions/upload-artifact@v6.0.0
       with:
         name: RenderTestOutput-${{env.job_name}}
         path: ${{env.RT_OUTPUT_DIR}}
+        if-no-files-found: ignore
 
     - name: Record render test outcome
       id: rendertest
@@ -241,14 +259,14 @@ jobs:
 
     - name: Save test log
       if: failure() && steps.test.outcome == 'failure'
-      uses: actions/upload-artifact@v4.5.0
+      uses: actions/upload-artifact@v6.0.0
       with:
         name: TestLog-${{env.job_name}}
         path: build/${{matrix.preset}}/Testing/Temporary/LastTest.log
 
     - name: Upload coverage report
       if: matrix.coverage == 'ON'
-      uses: codecov/codecov-action@v5.1.2
+      uses: codecov/codecov-action@v5.5.2
       with:
         directory: build/${{matrix.preset}}/coverage/output
         fail_ci_if_error: false
@@ -257,7 +275,7 @@ jobs:
 
     - name: Save coverage report
       if: matrix.coverage == 'ON'
-      uses: actions/upload-artifact@v4.5.0
+      uses: actions/upload-artifact@v6.0.0
       with:
         name: CoverageReport-${{env.job_name}}
         path: build/${{matrix.preset}}/coverage/output
@@ -294,7 +312,7 @@ jobs:
       ANY_FAILED: "${{needs.build-and-test.outputs.rendertest-failures}}"
 
     steps:
-    - uses: actions/download-artifact@v4.1.8
+    - uses: actions/download-artifact@v7.0.0
       if: needs.build-and-test.outputs.rendertest-failures
       with:
         path: artifacts
