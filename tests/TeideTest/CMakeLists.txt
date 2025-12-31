@@ -23,6 +23,7 @@ td_add_test(
     SOURCES "${sources}"
     DEPS GTest::gtest
          GTest::gmock
+         spdlog::spdlog
          VulkanMemoryAllocator-Hpp::VulkanMemoryAllocator-Hpp
          cpptrace::cpptrace
          ${extra_deps}

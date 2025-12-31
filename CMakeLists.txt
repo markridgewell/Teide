@@ -87,12 +87,15 @@ if("${VK_XML_PATH}" IS_NEWER_THAN "${GENERATED_INCLUDE_DIR}/vkex/vkex.hpp")
                             "${VK_XML_PATH}" -o "${GENERATED_INCLUDE_DIR}/vkex" COMMAND_ERROR_IS_FATAL ANY)
 endif()
 
+add_compile_options("$<$<C_COMPILER_ID:MSVC>:/utf-8>")
+add_compile_options("$<$<CXX_COMPILER_ID:MSVC>:/utf-8>")
+
 include(FileLists.cmake)
 td_add_library(
     Teide
     SOURCES "${sources}" "${GENERATED_INCLUDE_DIR}/vkex/vkex.hpp"
-    PUBLIC_DEPS spdlog::spdlog
     PRIVATE_DEPS
+        spdlog::spdlog
         Vulkan::Vulkan
         GPUOpen::VulkanMemoryAllocator
         VulkanMemoryAllocator-Hpp::VulkanMemoryAllocator-Hpp
