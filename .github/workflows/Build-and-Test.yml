@@ -102,6 +102,15 @@ jobs:
       rendertest-successes: ${{steps.rendertest.outputs.success == 'true'}}
 
     steps:
+    - name: Show job context
+      shell: bash
+      env:
+        MATRIX_CONTEXT: ${{ toJson(matrix) }}
+        INPUTS_CONTEXT: ${{ toJson(inputs) }}
+      run: |
+        echo "matrix: $MATRIX_CONTEXT"
+        echo "inputs: $INPUTS_CONTEXT"
+
     - name: Checkout
       uses: actions/checkout@v6.0.1
       with:
