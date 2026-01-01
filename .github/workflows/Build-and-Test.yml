@@ -44,50 +44,50 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        toolchain: [msvc2022, msvc2022-clang, g++-14, clang++-18]
+        toolchain: [CL, ClangCL, GCC, Clang]
         buildtype: [Debug, Release]
         sanitizer: [OFF]
         include:
 
         # Overrides
-        - toolchain: msvc2022
+        - toolchain: CL
           runner: windows-2022
           preset: msvc2022
           coverage: true
 
-        - toolchain: msvc2022-clang
+        - toolchain: ClangCL
           runner: windows-2022
           preset: msvc2022-clang
           coverage: false
 
-        - toolchain: g++-14
+        - toolchain: GCC
           runner: ubuntu-24.04
           preset: make
           compiler: g++-14
           coverage: false
 
-        - toolchain: clang++-18
+        - toolchain: Clang
           runner: ubuntu-24.04
           preset: make
           compiler: clang++-18
           coverage: true
 
         # Additional jobs
-        - toolchain: clang++-18
+        - toolchain: Clang
           preset: make
           buildtype: Debug
           runner: ubuntu-24.04
           compiler: clang++-18
           sanitizer: ASAN
-          name-suffix: -asan
+          name-suffix: -ASan
 
         - preset: make
-          toolchain: clang++-18
+          toolchain: Clang
           buildtype: Debug
           runner: ubuntu-24.04
           compiler: clang++-18
           sanitizer: UBSAN
-          name-suffix: -ubsan
+          name-suffix: -UBSan
 
     name: ${{startsWith(matrix.runner, 'windows') && 'Windows' || 'Linux'}}-${{matrix.buildtype}}-${{matrix.toolchain}}${{matrix.name-suffix}}
     runs-on: ${{matrix.runner}}
