@@ -61,22 +61,6 @@
       "inherits": "_linux-common",
       "displayName": "Ninja",
       "generator": "Ninja Multi-Config"
-    },
-    {
-      "name": "g++-14",
-      "inherits": "make",
-      "displayName": "Makefiles with GCC 14",
-      "cacheVariables": {
-        "CMAKE_CXX_COMPILER": "g++-14"
-      }
-    },
-    {
-      "name": "clang++-18",
-      "inherits": "make",
-      "displayName": "Makefiles with Clang 18",
-      "cacheVariables": {
-        "CMAKE_CXX_COMPILER": "clang++-18"
-      }
     }
   ],
   "buildPresets": [
@@ -95,14 +79,6 @@
     {
       "name": "ninja",
       "configurePreset": "ninja"
-    },
-    {
-      "name": "g++-14",
-      "configurePreset": "g++-14"
-    },
-    {
-      "name": "clang++-18",
-      "configurePreset": "clang++-18"
     }
   ],
   "testPresets": [
@@ -121,14 +97,6 @@
     {
       "name": "ninja",
       "configurePreset": "ninja"
-    },
-    {
-      "name": "g++-14",
-      "configurePreset": "g++-14"
-    },
-    {
-      "name": "clang++-18",
-      "configurePreset": "clang++-18"
     }
   ]
 }

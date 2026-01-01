@@ -44,53 +44,76 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        preset: [msvc2022, msvc2022-clang, g++-14, clang++-18]
+        toolchain: [CL, ClangCL, GCC, Clang]
         buildtype: [Debug, Release]
         sanitizer: [OFF]
         include:
+
         # Overrides
-        - coverage: OFF
-        - preset: msvc2022
+        - toolchain: CL
           runner: windows-2022
-          coverage: ${{toJSON(inputs.coverage) != 'false' && 'ON' || 'OFF'}}
-        - preset: msvc2022-clang
+          preset: msvc2022
+          coverage: true
+
+        - toolchain: ClangCL
           runner: windows-2022
-        - preset: g++-14
+          preset: msvc2022-clang
+          coverage: false
+
+        - toolchain: GCC
           runner: ubuntu-24.04
-          extra-packages: g++-14
-        - preset: clang++-18
+          preset: make
+          compiler: g++-14
+          coverage: false
+
+        - toolchain: Clang
           runner: ubuntu-24.04
-          extra-packages: clang++-18
-          coverage: ${{toJSON(inputs.coverage) != 'false' && 'ON' || 'OFF'}}
+          preset: make
+          compiler: clang++-18
+          coverage: true
 
         # Additional jobs
-        - preset: clang++-18
+        - toolchain: Clang
+          preset: make
           buildtype: Debug
           runner: ubuntu-24.04
-          extra-packages: clang++-18
+          compiler: clang++-18
           sanitizer: ASAN
-          name-suffix: -asan
-        - preset: clang++-18
+          name-suffix: -ASan
+
+        - preset: make
+          toolchain: Clang
           buildtype: Debug
           runner: ubuntu-24.04
-          extra-packages: clang++-18
+          compiler: clang++-18
           sanitizer: UBSAN
-          name-suffix: -ubsan
+          name-suffix: -UBSan
 
-    name: ${{startsWith(matrix.runner, 'windows') && 'Windows' || 'Linux'}}-${{matrix.buildtype}}-${{matrix.preset}}${{matrix.name-suffix}}
+    name: ${{startsWith(matrix.runner, 'windows') && 'Windows' || 'Linux'}}-${{matrix.buildtype}}-${{matrix.toolchain}}${{matrix.name-suffix}}
     runs-on: ${{matrix.runner}}
 
     env:
-      job_name: ${{startsWith(matrix.runner, 'windows') && 'Windows' || 'Linux'}}-${{matrix.buildtype}}-${{matrix.preset}}${{matrix.name-suffix}}
-      use_ccache: ${{ (inputs.ccache || github.event_name != 'workflow_dispatch') && !(matrix.preset == 'msvc2022' && matrix.coverage == 'ON') }}
+      job_name: ${{startsWith(matrix.runner, 'windows') && 'Windows' || 'Linux'}}-${{matrix.buildtype}}-${{matrix.toolchain}}${{matrix.name-suffix}}
+      coverage: ${{ matrix.coverage && !(inputs.coverage == 'false') }}
+      use_ccache: ${{ (inputs.ccache || github.event_name != 'workflow_dispatch') && !(matrix.preset == 'msvc2022' && matrix.coverage) }}
       CMAKE_BUILD_TYPE: ${{matrix.buildtype}}
       RT_OUTPUT_DIR: build/${{matrix.preset}}/tests/RenderTest/RenderTestOutput
+      CXX: ${{matrix.compiler}}
 
     outputs:
       rendertest-failures: ${{steps.rendertest.outputs.failure == 'true'}}
       rendertest-successes: ${{steps.rendertest.outputs.success == 'true'}}
 
     steps:
+    - name: Show job context
+      shell: bash
+      env:
+        MATRIX_CONTEXT: ${{ toJson(matrix) }}
+        INPUTS_CONTEXT: ${{ toJson(inputs) }}
+      run: |
+        echo "matrix: $MATRIX_CONTEXT"
+        echo "inputs: $INPUTS_CONTEXT"
+
     - name: Checkout
       uses: actions/checkout@v6.0.1
       with:
@@ -103,19 +126,13 @@ jobs:
       with:
         sanitizer: ${{matrix.sanitizer}}
 
-    - if: matrix.coverage == 'ON' && runner.os == 'Windows'
-      name: Install OpenCppCoverage
-      uses: ./.github/actions/choco-install
-      with:
-        package-name: OpenCppCoverage
-        package-version: 0.9.9.0
-
     - name: Install tools
       uses: ./.github/actions/install-tools
       with:
         extra-packages: >
-          ${{ matrix.extra-packages }}
+          ${{ matrix.compiler }}
           ${{ env.use_ccache && 'ccache' || '' }}
+          ${{ (env.coverage && runner.os == 'Windows') && 'OpenCppCoverage' || '' }}
           ${{ runner.os == 'Linux' && 'vulkan-validationlayers' || '' }}
       env:
         GH_TOKEN: ${{ github.token }}
@@ -167,7 +184,7 @@ jobs:
         -DTEIDE_PRECOMPILED_HEADERS=${{!env.use_ccache}}
         -DTEIDE_UNIT_TEST_SW_RENDER=ON
         -DTEIDE_TEST_WINDOWLESS=${{runner.os == 'Linux'}}
-        -DTEIDE_TEST_COVERAGE=${{matrix.coverage}}
+        -DTEIDE_TEST_COVERAGE=${{env.coverage}}
         -DTEIDE_TEST_VERBOSE=${{runner.debug || inputs.debug}}
         -DTEIDE_SANITIZER=${{matrix.sanitizer}}
         -DCMAKE_CONFIGURATION_TYPES=${{matrix.buildtype}}
@@ -253,7 +270,7 @@ jobs:
         path: build/${{matrix.preset}}/Testing/Temporary/LastTest.log
 
     - name: Upload coverage report
-      if: matrix.coverage == 'ON'
+      if: env.coverage
       uses: codecov/codecov-action@v5.5.2
       with:
         directory: build/${{matrix.preset}}/coverage/output
@@ -262,7 +279,7 @@ jobs:
         token: ${{ secrets.CODECOV_TOKEN }}
 
     - name: Save coverage report
-      if: matrix.coverage == 'ON'
+      if: env.coverage
       uses: actions/upload-artifact@v6.0.0
       with:
         name: CoverageReport-${{env.job_name}}
