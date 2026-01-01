@@ -73,7 +73,8 @@ jobs:
           coverage: true
 
         # Additional jobs
-        - preset: make
+        - toolchain: clang++-18
+          preset: make
           buildtype: Debug
           runner: ubuntu-24.04
           compiler: clang++-18
@@ -81,6 +82,7 @@ jobs:
           name-suffix: -asan
 
         - preset: make
+          toolchain: clang++-18
           buildtype: Debug
           runner: ubuntu-24.04
           compiler: clang++-18
