@@ -124,13 +124,6 @@ jobs:
       with:
         sanitizer: ${{matrix.sanitizer}}
 
-    - if: matrix.coverage == 'ON' && runner.os == 'Windows'
-      name: Install OpenCppCoverage
-      uses: ./.github/actions/choco-install
-      with:
-        package-name: OpenCppCoverage
-        package-version: 0.9.9.0
-
     - name: Install tools
       uses: ./.github/actions/install-tools
       with:
