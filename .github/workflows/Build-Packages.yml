@@ -20,17 +20,21 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        preset: [msvc2022, clang++-18]
         sanitizer: ['OFF']
+
         include:
-        - preset: msvc2022
-          runner: windows-2022
-        - preset: clang++-18
-          runner: ubuntu-latest
-          extra-packages: clang++-18 mono-complete
+        - runner: windows-2022
+          preset: msvc2022
+
+        - runner: ubuntu-latest
+          preset: make
+          compiler: clang++-18
 
     name: ${{startsWith(matrix.runner, 'windows') && 'Windows' || 'Linux'}}
     runs-on: ${{matrix.runner}}
+
+    env:
+      CXX: ${{matrix.compiler}}
 
     steps:
     - name: Checkout
@@ -55,7 +59,9 @@ jobs:
       if: steps.cache.outputs.cache-hit != 'true'
       uses: ./.github/actions/install-tools
       with:
-        extra-packages: ${{matrix.extra-packages}}
+        extra-packages: >
+          ${{ matrix.compiler }}
+          ${{ runner.os == 'Linux' && 'mono-complete' || '' }}
 
     - name: Install NuGet (Linux only)
       if: steps.cache.outputs.cache-hit != 'true' && runner.os == 'Linux'
