@@ -14,6 +14,7 @@
 #include "VulkanSurface.h"
 #include "VulkanTexture.h"
 
+#include "Teide/Format.h"
 #include "Teide/ShaderData.h"
 #include "Teide/TextureData.h"
 #include "vkex/vkex.hpp"
@@ -21,6 +22,7 @@
 #include <SDL.h>
 #include <SDL_vulkan.h>
 #include <spdlog/spdlog.h>
+#include <vulkan/vulkan_enums.hpp>
 
 #include <algorithm>
 #include <cstdlib>
@@ -60,7 +62,7 @@ namespace
         }
         TEIDE_ASSERT(surfaceTmp);
         spdlog::info("Surface created successfully");
-        const auto deleter = vk::ObjectDestroy<vk::Instance, vk::DispatchLoaderDynamic>(
+        const auto deleter = vk::detail::ObjectDestroy<vk::Instance, vk::detail::DispatchLoaderDynamic>(
             instance, s_allocator, VULKAN_HPP_DEFAULT_DISPATCHER);
         return vk::UniqueSurfaceKHR(surfaceTmp, deleter);
     }
@@ -271,6 +273,25 @@ namespace
         return device.createPipelineLayoutUnique(createInfo, s_allocator);
     }
 
+    vk::UniquePipelineLayout CreateComputePipelineLayout(vk::Device device, const VulkanKernel& kernel)
+    {
+        std::vector<vk::DescriptorSetLayout> setLayouts = {
+            kernel.scenePblockLayout->setLayout.get(),
+            kernel.viewPblockLayout->setLayout.get(),
+            kernel.paramsPblockLayout->setLayout.get(),
+        };
+
+        vkex::PipelineLayoutCreateInfo createInfo = {
+            .setLayouts = setLayouts,
+        };
+        if (const auto pushConstantRange = kernel.paramsPblockLayout->pushConstantRange)
+        {
+            createInfo.pushConstantRanges = *pushConstantRange;
+        }
+
+        return device.createPipelineLayoutUnique(createInfo, s_allocator);
+    }
+
     vk::PipelineColorBlendAttachmentState MakeBlendState(const std::optional<BlendState>& state, ColorMask colorMask)
     {
         vk::PipelineColorBlendAttachmentState ret;
@@ -431,6 +452,24 @@ namespace
         return std::move(result.value);
     }
 
+    vk::UniquePipeline CreateComputePipeline(const VulkanKernel& kernel, vk::Device device)
+    {
+        const vk::ComputePipelineCreateInfo createInfo = {
+            .stage = {
+                .stage = vk::ShaderStageFlagBits::eCompute,
+                .module = kernel.computeShader.get(),
+                .pName = "main",
+            },
+            .layout = kernel.pipelineLayout.get(),
+        };
+        auto result = device.createComputePipelineUnique(nullptr, createInfo, s_allocator);
+        if (result.result != vk::Result::eSuccess)
+        {
+            throw VulkanError("Couldn't create compute pipeline");
+        }
+        return std::move(result.value);
+    }
+
 } // namespace
 
 //---------------------------------------------------------------------------------------------------------------------
@@ -479,6 +518,7 @@ VulkanDevice::VulkanDevice(
         CreateCommandPool(m_physicalDevice.queueFamilies.graphicsFamily, m_device.get(), "SurfaceCommandPool")},
     m_allocator{CreateAllocator(m_loader, m_instance.get(), m_device.get(), m_physicalDevice.physicalDevice)},
     m_textures{"texture"},
+    m_kernels{"kernel"},
     m_parameterBlocks{"parameter block"},
     m_scheduler(m_settings.numThreads, m_device.get(), m_graphicsQueue, m_physicalDevice.queueFamilies.graphicsFamily)
 {
@@ -526,7 +566,7 @@ VulkanDevice::~VulkanDevice()
     m_device->waitIdle();
 }
 
-VulkanBuffer VulkanDevice::CreateBufferUninitialized(
+VulkanBufferData VulkanDevice::CreateBufferUninitialized(
     vk::DeviceSize size, vk::BufferUsageFlags usage, vma::AllocationCreateFlags allocationFlags, vma::MemoryUsage memoryUsage)
 {
     return Teide::CreateBufferUninitialized(size, usage, allocationFlags, memoryUsage, m_device.get(), m_allocator.get());
@@ -539,9 +579,9 @@ VulkanDevice::CreateBufferWithData(BytesView data, BufferUsage usage, ResourceLi
 
     if (lifetime == ResourceLifetime::Transient)
     {
-        VulkanBuffer ret = CreateBufferUninitialized(
+        auto ret = VulkanBuffer{CreateBufferUninitialized(
             data.size(), usageFlags | vk::BufferUsageFlagBits::eTransferDst,
-            vma::AllocationCreateFlagBits::eHostAccessSequentialWrite);
+            vma::AllocationCreateFlagBits::eHostAccessSequentialWrite)};
         SetBufferData(ret, data);
         return ret;
     }
@@ -553,7 +593,7 @@ VulkanDevice::CreateBufferWithData(BytesView data, BufferUsage usage, ResourceLi
     SetBufferData(*stagingBuffer, data);
 
     // Create device-local buffer
-    VulkanBuffer ret = CreateBufferUninitialized(data.size(), usageFlags | vk::BufferUsageFlagBits::eTransferDst);
+    auto ret = VulkanBuffer{CreateBufferUninitialized(data.size(), usageFlags | vk::BufferUsageFlagBits::eTransferDst)};
     CopyBuffer(cmdBuffer, stagingBuffer->buffer.get(), ret.buffer.get(), data.size());
 
     // Add pipeline barrier to make the buffer usable in shader
@@ -690,8 +730,7 @@ SurfacePtr VulkanDevice::CreateSurface(vk::UniqueSurfaceKHR surface, SDL_Window*
     TEIDE_ASSERT(m_physicalDevice.queueFamilies.presentFamily.has_value());
 
     return std::make_unique<VulkanSurface>(
-        window, std::move(surface), m_device.get(), m_physicalDevice, m_surfaceCommandPool.get(), m_allocator.get(),
-        m_graphicsQueue, multisampled);
+        window, std::move(surface), m_device.get(), m_physicalDevice, m_allocator.get(), m_graphicsQueue, multisampled);
 }
 
 BufferPtr VulkanDevice::CreateBuffer(const BufferData& data, const char* name, CommandBuffer& cmdBuffer)
@@ -754,6 +793,36 @@ ShaderPtr VulkanDevice::CreateShader(const ShaderData& data, const char* name)
     return std::make_shared<const VulkanShader>(std::move(shader));
 }
 
+Kernel VulkanDevice::CreateKernel(const KernelData& data, const char* name)
+{
+    spdlog::debug("Creating kernel '{}'", name);
+    const vk::ShaderModuleCreateInfo shaderCreateInfo = {
+        .codeSize = data.computeShader.spirv.size() * sizeof(uint32_t),
+        .pCode = data.computeShader.spirv.data(),
+    };
+
+    VulkanKernel kernel = {
+        .computeShader = m_device->createShaderModuleUnique(shaderCreateInfo, s_allocator),
+        .inputs = data.computeShader.inputs,
+        .outputs = data.computeShader.outputs,
+        .scenePblockLayout = CreateParameterBlockLayout(data.environment.scenePblock, 0),
+        .viewPblockLayout = CreateParameterBlockLayout(data.environment.viewPblock, 1),
+        .paramsPblockLayout = CreateParameterBlockLayout(data.paramsPblock, 2),
+    };
+
+    kernel.pipelineLayout = CreateComputePipelineLayout(m_device.get(), kernel);
+    kernel.pipeline = CreateComputePipeline(kernel, m_device.get());
+
+    if (name)
+    {
+        SetDebugName(kernel.computeShader, "{}", name);
+        SetDebugName(kernel.pipelineLayout, "{}:PipelineLayout", name);
+        SetDebugName(kernel.pipeline, "{}:Pipeline", name);
+    }
+
+    return m_kernels.Insert(std::move(kernel));
+}
+
 Texture VulkanDevice::CreateTexture(const TextureData& data, const char* name)
 {
     spdlog::debug("Creating texture '{}' of size {}x{}", name, data.size.x, data.size.y);
@@ -761,6 +830,14 @@ Texture VulkanDevice::CreateTexture(const TextureData& data, const char* name)
         return CreateTexture(data, name, cmdBuffer);
     });
     return task.get();
+}
+
+Texture VulkanDevice::AllocateTexture(const TextureProperties& props, const SamplerState& samplerState)
+{
+    return m_textures.Insert({
+        .sampler = CreateSampler(samplerState),
+        .properties = props,
+    });
 }
 
 Texture VulkanDevice::CreateTexture(const TextureData& data, const char* name, CommandBuffer& cmdBuffer)
@@ -777,6 +854,14 @@ Texture VulkanDevice::CreateTexture(const TextureData& data, const char* name, C
     {
         // Need to transfer pixels between mip levels in order to generate mipmaps
         usage |= vk::ImageUsageFlagBits::eTransferSrc | vk::ImageUsageFlagBits::eTransferDst;
+    }
+
+    if (HasDepthOrStencilComponent(data.format))
+    {
+        // According to the Vulkan spec, depth/stencil textures must be created with the depth/stencil attachment bit,
+        // even if they are not intended to be used as attachments.
+        // https://registry.khronos.org/vulkan/specs/latest/html/vkspec.html#VUID-VkImageMemoryBarrier-oldLayout-01210
+        usage |= vk::ImageUsageFlagBits::eDepthStencilAttachment;
     }
 
     VulkanTexture texture;
@@ -796,9 +881,9 @@ Texture VulkanDevice::CreateTexture(const TextureData& data, const char* name, C
         const auto imageExtent = vk::Extent3D{.width = data.size.x, .height = data.size.y, .depth = 1};
 
         // Create staging buffer
-        auto stagingBuffer = CreateBufferUninitialized(
+        auto stagingBuffer = VulkanBuffer{CreateBufferUninitialized(
             data.pixels.size(), vk::BufferUsageFlagBits::eTransferSrc,
-            vma::AllocationCreateFlagBits::eHostAccessSequentialWrite);
+            vma::AllocationCreateFlagBits::eHostAccessSequentialWrite)};
         SetBufferData(stagingBuffer, data.pixels);
 
         // Copy staging buffer to image
@@ -948,7 +1033,7 @@ vk::UniqueDescriptorSet VulkanDevice::CreateUniqueDescriptorSet(
     return descriptorSet;
 }
 
-void VulkanDevice::WriteDescriptorSet(vk::DescriptorSet descriptorSet, const Buffer* uniformBuffer, std::span<const Texture> textures)
+bool VulkanDevice::WriteDescriptorSet(vk::DescriptorSet descriptorSet, const Buffer* uniformBuffer, std::span<const Texture> textures)
 {
     const auto numUniformBuffers = uniformBuffer ? 1 : 0;
 
@@ -984,6 +1069,11 @@ void VulkanDevice::WriteDescriptorSet(vk::DescriptorSet descriptorSet, const Buf
     {
         const VulkanTexture& textureImpl = GetImpl(texture);
 
+        if (!textureImpl.imageView)
+        {
+            return false;
+        }
+
         imageInfos.push_back({
             .sampler = textureImpl.sampler.get(),
             .imageView = textureImpl.imageView.get(),
@@ -1003,11 +1093,19 @@ void VulkanDevice::WriteDescriptorSet(vk::DescriptorSet descriptorSet, const Buf
     }
 
     m_device->updateDescriptorSets(descriptorWrites, {});
+    return true;
 }
 
 VulkanParameterBlockLayoutPtr VulkanDevice::CreateParameterBlockLayout(const ParameterBlockDesc& desc, int set)
 {
     return std::make_shared<const VulkanParameterBlockLayout>(BuildParameterBlockLayout(desc, set), m_device.get());
+}
+
+vk::DescriptorSet VulkanDevice::GetDescriptorSet(const ParameterBlock& parameterBlock)
+{
+    auto& parameterBlockImpl = GetImpl(parameterBlock);
+    InitParameterBlock(parameterBlockImpl);
+    return parameterBlockImpl.descriptorSet.get();
 }
 
 vk::RenderPass VulkanDevice::CreateRenderPassLayout(const FramebufferLayout& framebufferLayout)
@@ -1089,7 +1187,6 @@ ParameterBlock VulkanDevice::CreateParameterBlock(
     const auto& layout = GetImpl(*data.layout);
     const bool isPushConstant = layout.HasPushConstants();
     const auto setLayout = layout.setLayout.get();
-    const auto descriptorSetName = DebugFormat("{}DescriptorSet", name);
 
     VulkanParameterBlock ret{layout};
     ret.textures = data.parameters.textures;
@@ -1101,8 +1198,17 @@ ParameterBlock VulkanDevice::CreateParameterBlock(
                 CreateBufferWithData(data.parameters.uniformData, BufferUsage::Uniform, data.lifetime, cmdBuffer));
             SetDebugName(ret.uniformBuffer->buffer, "{}UniformBuffer", name);
         }
-        ret.descriptorSet = CreateUniqueDescriptorSet(
-            descriptorPool, setLayout, ret.uniformBuffer.get(), data.parameters.textures, descriptorSetName.c_str());
+
+        const vk::DescriptorSetAllocateInfo allocInfo = {
+            .descriptorPool = descriptorPool,
+            .descriptorSetCount = 1,
+            .pSetLayouts = &setLayout,
+        };
+
+        ret.descriptorSet = std::move(m_device->allocateDescriptorSetsUnique(allocInfo).front());
+        SetDebugName(ret.descriptorSet, "{}DescriptorSet", name);
+
+        ret.written = WriteDescriptorSet(ret.descriptorSet.get(), ret.uniformBuffer.get(), ret.textures);
     }
 
     if (isPushConstant)
@@ -1111,6 +1217,15 @@ ParameterBlock VulkanDevice::CreateParameterBlock(
     }
 
     return m_parameterBlocks.Insert(std::move(ret));
+}
+
+void VulkanDevice::InitParameterBlock(VulkanParameterBlock& pblock)
+{
+    if (pblock.descriptorSet && !pblock.written)
+    {
+        pblock.written = WriteDescriptorSet(pblock.descriptorSet.get(), pblock.uniformBuffer.get(), pblock.textures);
+        TEIDE_ASSERT(pblock.written);
+    }
 }
 
 TransientParameterBlock

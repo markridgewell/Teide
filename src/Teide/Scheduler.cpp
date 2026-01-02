@@ -12,7 +12,7 @@ Scheduler::Scheduler(uint32 numThreads, vk::Device device, vk::Queue queue, uint
 
 void Scheduler::NextFrame()
 {
-    m_gpuExecutor.NextFrame();
+    m_gpuExecutor.Lock(&GpuExecutor::NextFrame);
 }
 
 void Scheduler::WaitForCpu()
@@ -23,7 +23,7 @@ void Scheduler::WaitForCpu()
 void Scheduler::WaitForGpu()
 {
     WaitForCpu();
-    m_gpuExecutor.WaitForTasks();
+    m_gpuExecutor.Lock(&GpuExecutor::WaitForTasks);
 }
 
 } // namespace Teide

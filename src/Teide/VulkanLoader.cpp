@@ -42,7 +42,7 @@ namespace
     std::string GetSoftwareVulkanLibraryName()
     {
         // Attempt to load the system-provided Vulkan loader with the env var set
-        const vk::DynamicLoader loader;
+        const vk::detail::DynamicLoader loader;
         const auto vkGetInstanceProcAddr = loader.getProcAddress<PFN_vkGetInstanceProcAddr>("vkGetInstanceProcAddr");
         const auto vkCreateInstance = PFN_vkCreateInstance(vkGetInstanceProcAddr(nullptr, "vkCreateInstance"));
         VkInstance instance = nullptr;

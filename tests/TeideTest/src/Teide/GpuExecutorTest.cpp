@@ -48,13 +48,17 @@ protected:
         return {2, GetDevice(), GetQueue(), m_physicalDevice.queueFamilies.transferFamily};
     }
 
-    vk::UniqueCommandBuffer CreateCommandBuffer()
+    vk::UniqueCommandBuffer CreateCommandBuffer(const char* debugName = nullptr)
     {
         auto list = m_device->allocateCommandBuffersUnique({.commandPool = m_commandPool.get(), .commandBufferCount = 1});
+        if (debugName)
+        {
+            Teide::SetDebugName(list.front(), debugName);
+        }
         return std::move(list.front());
     }
 
-    VulkanBuffer CreateHostVisibleBuffer(vk::DeviceSize size)
+    VulkanBufferData CreateHostVisibleBuffer(vk::DeviceSize size)
     {
         return CreateBufferUninitialized(
             size, vk::BufferUsageFlagBits::eTransferDst,
@@ -111,12 +115,28 @@ TEST_F(GpuExecutorTest, OneCommandBuffer)
 TEST_F(GpuExecutorTest, TwoCommandBuffers)
 {
     auto executor = CreateGpuExecutor();
-    auto cmdBuffer1 = CreateCommandBuffer();
-    auto cmdBuffer2 = CreateCommandBuffer();
+    auto cmdBuffer1 = CreateCommandBuffer("cmdBuffer1");
+    auto cmdBuffer2 = CreateCommandBuffer("cmdBuffer2");
     auto buffer = CreateHostVisibleBuffer(12);
 
     cmdBuffer1->begin(vk::CommandBufferBeginInfo{});
     cmdBuffer1->fillBuffer(buffer.buffer.get(), 0, 8, 0x01010101);
+    cmdBuffer1->pipelineBarrier(
+        vk::PipelineStageFlagBits::eTransfer, // srcStageMask
+        vk::PipelineStageFlagBits::eTransfer, // dstStageMask
+        {},                                   // dependencyFlags
+        {},                                   // memoryBarriers
+        vk::BufferMemoryBarrier{
+            .srcAccessMask = vk::AccessFlagBits::eTransferWrite,
+            .dstAccessMask = vk::AccessFlagBits::eTransferWrite,
+            .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            .buffer = buffer.buffer.get(),
+            .offset = 0,
+            .size = VK_WHOLE_SIZE,
+        },
+        {} // imageMemoryBarriers
+    );
     cmdBuffer2->begin(vk::CommandBufferBeginInfo{});
     cmdBuffer2->fillBuffer(buffer.buffer.get(), 4, 8, 0x02020202);
 
@@ -145,6 +165,22 @@ TEST_F(GpuExecutorTest, TwoCommandBuffersOutOfOrder)
 
     cmdBuffer1->begin(vk::CommandBufferBeginInfo{});
     cmdBuffer1->fillBuffer(buffer.buffer.get(), 0, 8, 0x01010101);
+    cmdBuffer1->pipelineBarrier(
+        vk::PipelineStageFlagBits::eTransfer, // srcStageMask
+        vk::PipelineStageFlagBits::eTransfer, // dstStageMask
+        {},                                   // dependencyFlags
+        {},                                   // memoryBarriers
+        vk::BufferMemoryBarrier{
+            .srcAccessMask = vk::AccessFlagBits::eTransferWrite,
+            .dstAccessMask = vk::AccessFlagBits::eTransferWrite,
+            .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            .buffer = buffer.buffer.get(),
+            .offset = 0,
+            .size = VK_WHOLE_SIZE,
+        },
+        {} // imageMemoryBarriers
+    );
     cmdBuffer2->begin(vk::CommandBufferBeginInfo{});
     cmdBuffer2->fillBuffer(buffer.buffer.get(), 4, 8, 0x02020202);
 

@@ -11,7 +11,9 @@ set(sources
     src/Teide/FormatTest.cpp
     src/Teide/GpuExecutorTest.cpp
     src/Teide/HashTest.cpp
+    src/Teide/Mocks.h
     src/Teide/ParameterBlockTest.cpp
+    src/Teide/QueueTest.cpp
     src/Teide/RendererTest.cpp
     src/Teide/ResourceMapTest.cpp
     src/Teide/SchedulerTest.cpp

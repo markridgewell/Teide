@@ -11,7 +11,7 @@
 using namespace testing;
 using namespace Teide;
 
-TEST(FormatDeathTest, InvalidFormat)
+TEST(FormatTest, InvalidFormat)
 {
     // NOLINTNEXTLINE(clang-analyzer-optin.core.EnumCastOutOfRange)
     const auto invalidFormat = static_cast<Format>(-1);

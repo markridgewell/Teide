@@ -18,8 +18,8 @@ public:
     const vma::VulkanFunctions& GetAllocatorFunctions() const;
 
 private:
-    vk::DynamicLoader m_loader;
-    vk::DispatchLoaderDynamic& m_dispatch;
+    vk::detail::DynamicLoader m_loader;
+    vk::detail::DispatchLoaderDynamic& m_dispatch;
     vma::VulkanFunctions m_allocatorFunctions;
 };
 

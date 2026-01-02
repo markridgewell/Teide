@@ -89,34 +89,34 @@ const ShaderSourceData ModelShader = {
     },
     .vertexShader = {
         .inputs = {{
-            {"position", Type::Vector3},
-            {"texCoord", Type::Vector2},
-            {"normal", Type::Vector3},
-            {"color", Type::Vector3},
+            {"_position", Type::Vector3},
+            {"_texCoord", Type::Vector2},
+            {"_normal", Type::Vector3},
+            {"_color", Type::Vector3},
         }},
         .outputs = {{
-            {"outTexCoord", Type::Vector2},
-            {"outPosition", Type::Vector3},
-            {"outNormal", Type::Vector3},
-            {"outColor", Type::Vector3},
+            {"texCoord", Type::Vector2},
+            {"position", Type::Vector3},
+            {"normal", Type::Vector3},
+            {"color", Type::Vector3},
             {"gl_Position", Type::Vector3},
         }},
         .source = R"--(
             void main() {
-                outPosition = mul(object.model, vec4(position, 1.0)).xyz;
-                gl_Position = mul(view.viewProj, vec4(outPosition, 1.0));
-                outTexCoord = texCoord;
-                outNormal = mul(object.model, vec4(normal, 0.0)).xyz;
-                outColor = color;
+                position = mul(object.model, vec4(_position, 1.0)).xyz;
+                gl_Position = mul(view.viewProj, vec4(position, 1.0));
+                texCoord = _texCoord;
+                normal = mul(object.model, vec4(_normal, 0.0)).xyz;
+                color = _color;
             }
             )--",
     },
     .pixelShader = {
         .inputs = {{
-            {"inTexCoord", Type::Vector2},
-            {"inPosition", Type::Vector3},
-            {"inNormal", Type::Vector3},
-            {"inColor", Type::Vector3},
+            {"texCoord", Type::Vector2},
+            {"position", Type::Vector3},
+            {"normal", Type::Vector3},
+            {"color", Type::Vector3},
         }},
         .outputs = {{
             {"outColor", Type::Vector4},
@@ -127,7 +127,7 @@ const ShaderSourceData ModelShader = {
             }
 
             void main() {
-                vec4 shadowCoord = mul(scene.shadowMatrix, vec4(inPosition, 1.0));
+                vec4 shadowCoord = mul(scene.shadowMatrix, vec4(position, 1.0));
                 shadowCoord /= shadowCoord.w;
                 shadowCoord.xy = shadowCoord.xy * 0.5 + 0.5;
 
@@ -147,11 +147,11 @@ const ShaderSourceData ModelShader = {
                 }
                 const float lit = shadowFactor / count;
 
-                const vec3 dirLight = clamp(dot(inNormal, -scene.lightDir), 0.0, 1.0) * scene.lightColor;
-                const vec3 ambLight = mix(scene.ambientColorBottom, scene.ambientColorTop, inNormal.z * 0.5 + 0.5);
+                const vec3 dirLight = clamp(dot(normal, -scene.lightDir), 0.0, 1.0) * scene.lightColor;
+                const vec3 ambLight = mix(scene.ambientColorBottom, scene.ambientColorTop, normal.z * 0.5 + 0.5);
                 const vec3 lighting = lit * dirLight + ambLight;
 
-                const vec3 color = lighting * texture(texSampler, inTexCoord).rgb;
+                const vec3 color = lighting * texture(texSampler, texCoord).rgb;
                 outColor = vec4(color, 1.0);
             })--",
     },
@@ -164,22 +164,22 @@ const Teide::VertexLayout VertexLayoutDesc = {
     }},
     .attributes
     = {{
-           .name = "position",
+           .name = "_position",
            .format = Teide::Format::Float3,
            .offset = offsetof(Vertex, position),
        },
        {
-           .name = "texCoord",
+           .name = "_texCoord",
            .format = Teide::Format::Float2,
            .offset = offsetof(Vertex, texCoord),
        },
        {
-           .name = "normal",
+           .name = "_normal",
            .format = Teide::Format::Float3,
            .offset = offsetof(Vertex, normal),
        },
        {
-           .name = "color",
+           .name = "_color",
            .format = Teide::Format::Float3,
            .offset = offsetof(Vertex, color),
        }},
@@ -300,7 +300,7 @@ Teide::Texture RenderTest::CreateNullShadowmapTexture()
 
     const Teide::TextureData textureData = {
         .size = {1, 1},
-        .format = Teide::Format::Float1,
+        .format = Teide::Format::Depth32,
         .mipLevelCount = 1,
         .samplerState = {
             .magFilter = Teide::Filter::Nearest,
@@ -379,18 +379,18 @@ void RenderTest::CompareImageToReference(const Teide::TextureData& image, const 
 
     if (!exists(referenceFile))
     {
-        FAIL() << "Reference image missing";
+        FAIL() << "Reference image missing: " << referenceFile;
     }
 
     const auto [referenceSize, referenceData] = ReadPng(referenceFile);
     if (referenceData.empty())
     {
-        FAIL() << "Reference image could not be loaded";
+        FAIL() << "Reference image could not be loaded: " << referenceFile;
     }
 
     if (image.size != referenceSize || image.pixels != referenceData)
     {
-        FAIL() << "Rendered image does not match reference";
+        FAIL() << "Rendered image does not match reference: " << referenceFile;
     }
 }
 

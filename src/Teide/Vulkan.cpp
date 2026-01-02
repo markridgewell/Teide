@@ -5,6 +5,7 @@
 
 #include "Teide/Assert.h"
 #include "Teide/Definitions.h"
+#include "Teide/Format.h"
 #include "Teide/Pipeline.h"
 #include "Teide/Renderer.h"
 #include "Teide/TextureData.h"
@@ -12,15 +13,18 @@
 
 #include <SDL_vulkan.h>
 #include <spdlog/spdlog.h>
+#include <vulkan/vulkan_enums.hpp>
+
+#include <memory>
 
 namespace Teide
 {
 
 namespace
 {
-    constexpr auto VulkanApiVersion = VK_API_VERSION_1_0;
-    constexpr bool BreakOnVulkanWarning = false;
-    constexpr bool BreakOnVulkanError = true;
+    constexpr auto VulkanApiVersion = VK_API_VERSION_1_1;
+
+    constexpr vk::DebugUtilsMessageSeverityFlagsEXT BreakOnVulkanMessage = vk::DebugUtilsMessageSeverityFlagBitsEXT::eError;
 
     const vk::Optional<const vk::AllocationCallbacks> s_allocator = nullptr;
 
@@ -88,7 +92,7 @@ namespace
         {Format::Stencil8, vk::Format::eS8Uint},
     };
 
-    bool IsUnwantedMessage(const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData)
+    bool IsUnwantedMessage(const vk::DebugUtilsMessengerCallbackDataEXT* pCallbackData)
     {
         // Filter unwanted messages
         constexpr int32 UnwantedMessages[] = {
@@ -97,19 +101,24 @@ namespace
             -2111305990, // UNASSIGNED-BestPractices-vkCreateInstance-specialuse-extension-debugging
             -671457468,  // UNASSIGNED-khronos-validation-createinstance-status-message
             -1993852625, // UNASSIGNED-BestPractices-NonSuccess-Result
+            1734198062,  // BestPractices-specialuse-extension
         };
         return contains(UnwantedMessages, pCallbackData->messageIdNumber);
     }
 
-    std::string_view GetLogPrefix(vk::DebugUtilsMessageTypeFlagBitsEXT type)
+    std::string GetLogPrefix(vk::DebugUtilsMessageTypeFlagsEXT type)
     {
         using enum vk::DebugUtilsMessageTypeFlagBitsEXT;
-        switch (type)
+        std::string ret;
+        if (type & eValidation)
         {
-            case eValidation: return "[validation] ";
-            case ePerformance: return "[performance] ";
-            default: return "";
+            ret += "[validation] ";
         }
+        if (type & ePerformance)
+        {
+            ret += "[performance] ";
+        }
+        return ret;
     }
 
     spdlog::level::level_enum GetLogLevel(vk::DebugUtilsMessageSeverityFlagBitsEXT severity)
@@ -126,30 +135,21 @@ namespace
     }
 
     VKAPI_ATTR VkBool32 VKAPI_CALL DebugCallback(
-        VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, [[maybe_unused]] VkDebugUtilsMessageTypeFlagsEXT messageType,
-        const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, [[maybe_unused]] void* pUserData)
+        vk::DebugUtilsMessageSeverityFlagBitsEXT messageSeverity, vk::DebugUtilsMessageTypeFlagsEXT type,
+        const vk::DebugUtilsMessengerCallbackDataEXT* pCallbackData, void* /*pUserData*/)
     {
-        using MessageType = vk::DebugUtilsMessageTypeFlagBitsEXT;
         using MessageSeverity = vk::DebugUtilsMessageSeverityFlagBitsEXT;
 
         // Don't hide unwanted messages, just force them to only be visible at highest verbosity level
-        const auto severity = IsUnwantedMessage(pCallbackData) ? MessageSeverity::eVerbose
-                                                               : static_cast<MessageSeverity>(messageSeverity);
-        const auto type = static_cast<MessageType>(messageType);
+        const auto severity = IsUnwantedMessage(pCallbackData) ? MessageSeverity::eVerbose : messageSeverity;
         const auto prefix = GetLogPrefix(type);
         const auto logLevel = GetLogLevel(severity);
 
         spdlog::log(logLevel, "{}{}", prefix, pCallbackData->pMessage);
 
-        if constexpr (BreakOnVulkanWarning)
+        if (severity & BreakOnVulkanMessage)
         {
-            // Vulkan warning triggered a debug break
-            TEIDE_ASSERT(severity != MessageSeverity::eWarning, "{}", pCallbackData->pMessage);
-        }
-        if constexpr (BreakOnVulkanError)
-        {
-            // Vulkan error triggered a debug break
-            TEIDE_ASSERT(severity != MessageSeverity::eError, "{}", pCallbackData->pMessage);
+            TEIDE_BREAK("{}", pCallbackData->pMessage);
         }
         return VK_FALSE;
     }
@@ -360,21 +360,17 @@ vk::UniqueDevice CreateDevice(VulkanLoader& loader, const PhysicalDevice& physic
     const auto availableLayers = physicalDevice.physicalDevice.enumerateDeviceLayerProperties();
     const auto availableExtensions = physicalDevice.physicalDevice.enumerateDeviceExtensionProperties();
 
-    std::vector<const char*> layers;
-    if constexpr (IsDebugBuild)
-    {
-        EnableVulkanLayer(layers, availableLayers, "VK_LAYER_KHRONOS_validation", Required::False);
-    }
-
     std::vector<const char*> extensions = physicalDevice.requiredExtensions;
     EnableVulkanExtension(extensions, availableExtensions, "VK_EXT_descriptor_indexing", Required::True);
+    EnableVulkanExtension(extensions, availableExtensions, "VK_KHR_depth_stencil_resolve", Required::True);
+    EnableVulkanExtension(
+        extensions, availableExtensions, "VK_KHR_create_renderpass2",
+        Required::True); // required by "VK_KHR_depth_stencil_resolve"
 
     const vk::StructureChain createInfo = {
         vk::DeviceCreateInfo{
             .queueCreateInfoCount = size32(queueCreateInfos),
             .pQueueCreateInfos = data(queueCreateInfos),
-            .enabledLayerCount = size32(layers),
-            .ppEnabledLayerNames = data(layers),
             .enabledExtensionCount = size32(extensions),
             .ppEnabledExtensionNames = data(extensions),
             .pEnabledFeatures = &deviceFeatures,
@@ -531,6 +527,11 @@ vk::UniqueRenderPass
 CreateRenderPass(vk::Device device, const FramebufferLayout& layout, FramebufferUsage usage, const RenderPassInfo& renderPassInfo)
 {
     TEIDE_ASSERT(layout.colorFormat.has_value() || layout.depthStencilFormat.has_value());
+    TEIDE_ASSERT(
+        !layout.colorFormat || !HasDepthOrStencilComponent(*layout.colorFormat), "colorFormat is not a valid color format");
+    TEIDE_ASSERT(
+        !layout.depthStencilFormat || HasDepthOrStencilComponent(*layout.depthStencilFormat),
+        "depthStencilFormat is not a valid depth/stencil format");
 
     const bool multisampling = layout.sampleCount != 1;
     TEIDE_ASSERT(!(multisampling && layout.resolveDepthStencil), "Resolving depth/stencil targets not supported");
@@ -634,6 +635,9 @@ CreateRenderPass(vk::Device device, const FramebufferLayout& layout, Framebuffer
 vk::UniqueFramebuffer
 CreateFramebuffer(vk::Device device, vk::RenderPass renderPass, Geo::Size2i size, std::span<const vk::ImageView> imageViews)
 {
+    TEIDE_ASSERT(size.x > 0);
+    TEIDE_ASSERT(size.y > 0);
+
     const vk::FramebufferCreateInfo framebufferCreateInfo = {
         .renderPass = renderPass,
         .attachmentCount = size32(imageViews),
@@ -832,6 +836,18 @@ vk::VertexInputRate ToVulkan(VertexClass vc)
     };
 
     return map.at(vc);
+}
+
+vk::DescriptorType ToVulkan(ShaderVariableType::BaseType type)
+{
+    using Type = ShaderVariableType::BaseType;
+    static constexpr StaticMap<ShaderVariableType::BaseType, vk::DescriptorType, 3> map = {
+        {Type::Texture2D, vk::DescriptorType::eCombinedImageSampler},
+        {Type::Texture2DShadow, vk::DescriptorType::eCombinedImageSampler},
+        {Type::RWTexture2D, vk::DescriptorType::eStorageImage},
+    };
+
+    return map.at(type);
 }
 
 Format FromVulkan(vk::Format format)

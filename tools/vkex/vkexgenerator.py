@@ -485,6 +485,12 @@ class VkexOutputGenerator(OutputGenerator):
         for memberElem in typeElem.findall('.//member'):
             nameElem = memberElem.find('name')
             name = nameElem.text
+
+            if memberElem.get('deprecated'):
+                print(name)
+                print('  deprecated')
+                continue
+
             if name in ['sType', 'pNext']:
                 continue
             members[name] = Member(memberElem)
@@ -511,9 +517,12 @@ class VkexOutputGenerator(OutputGenerator):
 
         # Member declarations
         for member in members.values():
-            #body += '// ' + self.makeCParamDecl(member.elem, 0) + ';\n'
             if member.lengthOf:
                 continue
+            comment = member.elem.find('comment')
+            if comment != None:
+                body += '    /// ' + comment.text + '\n'
+                member.elem.remove(comment)
             prefix = noneStr(member.elem.text).strip()
             body += '    '
             for elem in member.elem:

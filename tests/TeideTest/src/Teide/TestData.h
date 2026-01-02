@@ -128,6 +128,20 @@ inline const ShaderSourceData ViewTextureShader = {
     },
 };
 
+const KernelSourceData SimpleKernel = {
+    .language = ShaderLanguage::Glsl,
+    .kernelShader = {
+        .outputs = {{
+            {"result", Type::Float},
+        }},
+        .source = R"--(
+            void main() {
+                result = 42.0f;
+            }
+        )--",
+    },
+};
+
 inline const Teide::TextureData OnePixelWhiteTexture = {
     .size = {1, 1},
     .format = Teide::Format::Byte4Norm,

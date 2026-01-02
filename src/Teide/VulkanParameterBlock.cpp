@@ -4,6 +4,8 @@
 #include "VulkanConfig.h"
 
 #include "Teide/Buffer.h"
+#include "Teide/ShaderData.h"
+#include "Teide/Vulkan.h"
 #include "vkex/vkex.hpp"
 
 #include <ranges>
@@ -55,12 +57,12 @@ VulkanParameterBlockLayout::VulkanParameterBlockLayout(const ParameterBlockLayou
         }
     }
 
-    const auto textureBindings = std::views::transform(std::views::iota(0u, data.textureCount), [](uint32 i) {
+    auto textureBindings = std::views::transform(data.resourceDescs, [i = 0u](ShaderVariableType::BaseType type) mutable {
         return vk::DescriptorSetLayoutBinding{
-            .binding = i + 1,
-            .descriptorType = vk::DescriptorType::eCombinedImageSampler,
+            .binding = ++i,
+            .descriptorType = ToVulkan(type),
             .descriptorCount = 1,
-            .stageFlags = vk::ShaderStageFlagBits::eAllGraphics,
+            .stageFlags = vk::ShaderStageFlagBits::eAll,
         };
     });
 

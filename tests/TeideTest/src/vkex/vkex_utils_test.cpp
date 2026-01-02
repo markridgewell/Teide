@@ -80,6 +80,8 @@ TEST(VkexUtilsTest, ArrayReset)
 
 TEST(VkexUtilsTest, JoinTwoVectors)
 {
+    static_assert(std::ranges::range<std::vector<int>>);
+
     const auto a = std::vector<int>{1, 2, 3};
     const auto b = std::vector<int>{4, 5};
     const auto ab = Join(a, b);

@@ -6,10 +6,17 @@ inputs:
     description: 'Sanitizer to be used, or OFF to disable'
     required: true
     default: 'OFF'
+  fail-on-cache-miss:
+    description: "Fail the workflow if the package cache can't be found"
+    required: true
+    default: 'false'
 outputs:
   install-dir:
     description: "Directory the packages were installed to"
     value: ${{ steps.get-dir.outputs.dir }}
+  success:
+    description: "True if the installion of packages was successful"
+    value: ${{ steps.get-status.outputs.success }}
 
 runs:
   using: composite
@@ -20,21 +27,28 @@ runs:
       with:
         sanitizer: ${{ inputs.sanitizer }}
 
-    - name: Determine install directory
-      id: get-dir
-      shell: bash
-      run: |
-        echo "dir=${{github.workspace}}/exports/installed/${{ steps.get-key.outputs.triplet }}" >> $GITHUB_OUTPUT
-
     - name: Restore packages from cache
       id: cache
       uses: actions/cache/restore@v3
       with:
         key: ${{ steps.get-key.outputs.cache-key }}
         path: './exports'
-        fail-on-cache-miss: true
+        fail-on-cache-miss: ${{ inputs.fail-on-cache-miss }}
 
     - name: Cache libc++
       uses: ./.github/actions/cache-libc++
       with:
         sanitizer: ${{ inputs.sanitizer }}
+
+    - name: Determine install directory
+      if: steps.cache.outputs.cache-hit
+      id: get-dir
+      shell: bash
+      run: |
+        echo "dir=${{ github.workspace }}/exports/installed/${{ steps.get-key.outputs.triplet }}" >> $GITHUB_OUTPUT
+
+    - name: Determine success status
+      id: get-status
+      shell: bash
+      run: |
+        echo success=${{ steps.cache.outputs.cache-hit }} >> $GITHUB_OUTPUT

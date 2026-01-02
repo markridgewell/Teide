@@ -30,7 +30,7 @@ struct VulkanImpl<Buffer>
     using type = VulkanBuffer;
 };
 
-VulkanBuffer CreateBufferUninitialized(
+VulkanBufferData CreateBufferUninitialized(
     vk::DeviceSize size, vk::BufferUsageFlags usage, vma::AllocationCreateFlags allocationFlags,
     vma::MemoryUsage memoryUsage, vk::Device device, vma::Allocator& allocator);
 

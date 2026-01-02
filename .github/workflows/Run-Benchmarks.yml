@@ -21,7 +21,7 @@ jobs:
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v4.2.2
+      uses: actions/checkout@v6.0.1
       with:
         fetch-depth: 0
         submodules: false
@@ -30,10 +30,10 @@ jobs:
       id: packages
       uses: ./.github/actions/install-packages
 
-    - name: Install dependencies
-      uses: ./.github/actions/install-dependencies
+    - name: Install tools
+      uses: ./.github/actions/install-tools
       with:
-        extra-packages: ninja-build g++-14
+        extra-packages: g++-14
 
     - name: Install google benchmark tools
       run: |
@@ -75,7 +75,7 @@ jobs:
         bash .github/scripts/update-comment.sh ${{github.ref_name}} github-actions comment.md
 
     - name: Save output
-      uses: actions/upload-artifact@v4.5.0
+      uses: actions/upload-artifact@v6.0.0
       with:
         name: BenchmarkResults
         path: benchmark_results
