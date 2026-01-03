@@ -46,7 +46,8 @@ jobs:
 
         - runner: ubuntu-latest
           preset: make
-          compiler: clang++-18
+          c-compiler: clang-18
+          cpp-compiler: clang++-18
           sanitizer: MSAN
 
     name: ${{startsWith(matrix.runner, 'windows') && 'Windows' || 'Linux'}}${{matrix.sanitizer != 'OFF' && matrix.sanitizer || ''}}
