@@ -26,8 +26,7 @@ if(LLVM_VERSION STREQUAL "")
             "  Command: ${compiler} --version\n"
             "  Output:  ${VERSION_OUTPUT}\n"
             "  CMAKE_CXX_COMPILER:  ${CMAKE_CXX_COMPILER}\n"
-            "  CXX:  $ENV{CXX}"
-    )
+            "  CXX:  $ENV{CXX}")
 endif()
 message("Version: ${LLVM_VERSION}")
 set(PREFIX "${CMAKE_BINARY_DIR}/libcxx")
