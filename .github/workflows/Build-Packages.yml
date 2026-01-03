@@ -25,6 +25,7 @@ env:
   USERNAME: markridgewell
   FEED_URL: https://nuget.pkg.github.com/markridgewell/index.json
   VCPKG_BINARY_SOURCES: "clear;nuget,https://nuget.pkg.github.com/markridgewell/index.json,readwrite"
+  VCPKG_FEATURE_FLAGS: dependencygraph
 
 jobs:
   unified:
