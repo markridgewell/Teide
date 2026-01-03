@@ -131,11 +131,6 @@ jobs:
         lfs: true
         submodules: false
 
-    - name: Install dependencies
-      uses: ./.github/actions/install-dependencies
-      with:
-        extra-packages: ${{matrix.extra-packages}}
-
     - name: Install packages
       id: packages
       uses: ./.github/actions/install-packages
