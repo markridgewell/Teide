@@ -20,6 +20,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        preset: ['msvc2022', 'make']
         sanitizer: ['OFF']
 
         include:
