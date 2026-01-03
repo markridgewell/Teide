@@ -9,7 +9,10 @@ execute_process(COMMAND "${CMAKE_CXX_COMPILER}" --version OUTPUT_VARIABLE VERSIO
 string(REGEX MATCH "version ([0-9.]+)" VERSION_STR "${VERSION_OUTPUT}")
 string(REPLACE "version " "" LLVM_VERSION "${VERSION_STR}")
 if(LLVM_VERSION STREQUAL "")
-    message(FATAL_ERROR "LLVM version could not be determined.\n  Command: ${CMAKE_CXX_COMPILER} --version\n  Output:  ${VERSION_OUTPUT}")
+    message(
+        FATAL_ERROR
+            "LLVM version could not be determined.\n  Command: ${CMAKE_CXX_COMPILER} --version\n  Output:  ${VERSION_OUTPUT}"
+    )
 endif()
 message("Version: ${LLVM_VERSION}")
 set(PREFIX "${CMAKE_BINARY_DIR}/libcxx")
