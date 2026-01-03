@@ -24,6 +24,4 @@ runs:
         echo "::endgroup::"
         echo
 
-        if ${{inputs.extra-packages != ''}}; then
-          bash .github/scripts/install-tools.sh ${{ inputs.extra-packages }}
-        fi
+        bash .github/scripts/install-tools.sh ${{ inputs.extra-packages }}

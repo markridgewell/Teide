@@ -6,6 +6,15 @@ on:
     - cron:  '20 5,17 * * *'
   pull_request:
   workflow_dispatch:
+    inputs:
+      ignore-cache:
+        description: 'Always build regardless of cache'
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  packages: write
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -13,13 +22,17 @@ concurrency:
 
 env:
   VULKAN_SDK: ./VULKAN_SDK
-  VCPKG_BINARY_SOURCES: 'clear;nuget,GitHub,readwrite;nugettimeout,600'
+  USERNAME: markridgewell
+  FEED_URL: https://nuget.pkg.github.com/markridgewell/index.json
+  VCPKG_BINARY_SOURCES: "clear;nuget,https://nuget.pkg.github.com/markridgewell/index.json,readwrite"
+  VCPKG_FEATURE_FLAGS: dependencygraph
 
 jobs:
   unified:
     strategy:
       fail-fast: false
       matrix:
+        preset: ['msvc2022', 'make']
         sanitizer: ['OFF']
 
         include:
@@ -28,13 +41,15 @@ jobs:
 
         - runner: ubuntu-latest
           preset: make
-          compiler: clang++-18
+          c-compiler: clang-18
+          cpp-compiler: clang++-18
 
     name: ${{startsWith(matrix.runner, 'windows') && 'Windows' || 'Linux'}}
     runs-on: ${{matrix.runner}}
 
     env:
-      CXX: ${{matrix.compiler}}
+      CC: ${{matrix.c-compiler}}
+      CXX: ${{matrix.cpp-compiler}}
 
     steps:
     - name: Checkout
@@ -56,39 +71,40 @@ jobs:
         path: './exports'
 
     - name: Install tools
-      if: steps.cache.outputs.cache-hit != 'true'
+      if: steps.cache.outputs.cache-hit != 'true' || inputs.ignore-cache
       uses: ./.github/actions/install-tools
       with:
         extra-packages: >
-          ${{ matrix.compiler }}
+          ${{ matrix.c-compiler }}
+          ${{ matrix.cpp-compiler }}
           ${{ runner.os == 'Linux' && 'mono-complete' || '' }}
 
     - name: Install NuGet (Linux only)
-      if: steps.cache.outputs.cache-hit != 'true' && runner.os == 'Linux'
+      if: (steps.cache.outputs.cache-hit != 'true' || inputs.ignore-cache) && runner.os == 'Linux'
       shell: 'bash'
       run: |
         bin=$HOME/nuget_bin
         mkdir $bin
         wget -O $bin/nuget.exe https://dist.nuget.org/win-x86-commandline/latest/nuget.exe
-        echo "mono $bin/nuget.exe $@" > $bin/nuget
+        echo "mono $bin/nuget.exe \$@" > $bin/nuget
         chmod +x $bin/nuget
         echo "$bin" >> $GITHUB_PATH
 
     - name: 'Setup NuGet credentials'
-      if: steps.cache.outputs.cache-hit != 'true'
+      if: steps.cache.outputs.cache-hit != 'true' || inputs.ignore-cache
       shell: 'bash'
       run: |
         nuget sources add \
-          -source "https://nuget.pkg.github.com/markridgewell/index.json" \
+          -source "${{ env.FEED_URL }}" \
           -storepasswordincleartext \
-          -name "GitHub" \
-          -username markridgewell \
-          -password "${{secrets.GITHUB_TOKEN}}"
-        nuget setapikey "${{secrets.GITHUB_TOKEN}}" \
-          -source "https://nuget.pkg.github.com/markridgewell/index.json"
+          -name GitHubPackages \
+          -userName "${{ env.USERNAME }}" \
+          -password "${{ secrets.GITHUB_TOKEN }}"
+        nuget setapikey "${{ secrets.GITHUB_TOKEN }}" \
+          -source "${{ env.FEED_URL }}"
 
     - name: Configure CMake
-      if: steps.cache.outputs.cache-hit != 'true'
+      if: steps.cache.outputs.cache-hit != 'true' || inputs.ignore-cache
       run: >
         cmake --preset ${{matrix.preset}}
         -DTEIDE_SANITIZER=${{matrix.sanitizer}}
@@ -99,7 +115,7 @@ jobs:
       run: bash .github/scripts/dump-vcpkg-logs.sh ${{matrix.preset}}
 
     - name: Export packages
-      if: steps.cache.outputs.cache-hit != 'true'
+      if: steps.cache.outputs.cache-hit != 'true' || inputs.ignore-cache
       run: |
         vcpkg/vcpkg export --raw --output=exports --output-dir=. --x-install-root=build/${{matrix.preset}}/vcpkg_installed
         echo ""
@@ -108,7 +124,7 @@ jobs:
         echo "::endgroup::"
 
     - name: Save packages as artifact
-      if: steps.cache.outputs.cache-hit != 'true'
+      if: steps.cache.outputs.cache-hit != 'true' || inputs.ignore-cache
       uses: actions/upload-artifact@v6.0.0
       with:
         name: vcpkg-export-${{ steps.cache-key.outputs.cache-key }}

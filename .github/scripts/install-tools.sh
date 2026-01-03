@@ -1,5 +1,10 @@
 #!/bin/bash
 
+if [[ $# -eq 0 ]]; then
+  echo "No packages selected to install"
+  exit 0
+fi
+
 max_len=0
 for i in $@; do
   len=${#i}
@@ -10,10 +15,6 @@ function panic() {
   echo "::error::$*" >&2
   exit 1
 }
-
-if [[ $# -eq 0 ]]; then
-  panic "No packages selected to install"
-fi
 
 if [[ ${RUNNER_OS} != Linux && ${RUNNER_OS} != Windows ]]; then
   panic "RUNNER_OS not specified, must be one of Linux or Windows"
