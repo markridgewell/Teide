@@ -8,7 +8,10 @@ set(compiler ${CMAKE_CXX_COMPILER})
 if(compiler STREQUAL "")
     set(compiler $ENV{CXX})
     if(compiler STREQUAL "")
-        message(FATAL_ERROR "Compiler could not be determined. Specify compiler using CMAKE_CXX_COMPILER variable or CXX environment variable.")
+        message(
+            FATAL_ERROR
+                "Compiler could not be determined. Specify compiler using CMAKE_CXX_COMPILER variable or CXX environment variable."
+        )
     endif()
 endif()
 
@@ -19,8 +22,7 @@ string(REPLACE "version " "" LLVM_VERSION "${VERSION_STR}")
 if(LLVM_VERSION STREQUAL "")
     message(
         FATAL_ERROR
-            "LLVM version could not be determined.\n  Command: ${compiler} --version\n  Output:  ${VERSION_OUTPUT}"
-    )
+            "LLVM version could not be determined.\n  Command: ${compiler} --version\n  Output:  ${VERSION_OUTPUT}")
 endif()
 message("Version: ${LLVM_VERSION}")
 set(PREFIX "${CMAKE_BINARY_DIR}/libcxx")
