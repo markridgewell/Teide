@@ -13,13 +13,18 @@ on:
         default: false
         type: boolean
 
+permissions:
+  packages: write
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 env:
   VULKAN_SDK: ./VULKAN_SDK
-  VCPKG_BINARY_SOURCES: 'clear;nuget,GitHub,readwrite;nugettimeout,600'
+  USERNAME: markridgewell
+  FEED_URL: https://nuget.pkg.github.com/markridgewell/index.json
+  VCPKG_BINARY_SOURCES: "clear;nuget,https://nuget.pkg.github.com/markridgewell/index.json,readwrite"
 
 jobs:
   unified:
@@ -80,7 +85,7 @@ jobs:
         bin=$HOME/nuget_bin
         mkdir $bin
         wget -O $bin/nuget.exe https://dist.nuget.org/win-x86-commandline/latest/nuget.exe
-        echo "mono $bin/nuget.exe $@" > $bin/nuget
+        echo "mono $bin/nuget.exe \$@" > $bin/nuget
         chmod +x $bin/nuget
         echo "$bin" >> $GITHUB_PATH
 
@@ -89,13 +94,13 @@ jobs:
       shell: 'bash'
       run: |
         nuget sources add \
-          -source "https://nuget.pkg.github.com/markridgewell/index.json" \
+          -source "${{ env.FEED_URL }}" \
           -storepasswordincleartext \
-          -name "GitHub" \
-          -username markridgewell \
-          -password "${{secrets.GITHUB_TOKEN}}"
-        nuget setapikey "${{secrets.GITHUB_TOKEN}}" \
-          -source "https://nuget.pkg.github.com/markridgewell/index.json"
+          -name GitHubPackages \
+          -userName "${{ env.USERNAME }}" \
+          -password "${{ secrets.GITHUB_TOKEN }}"
+        nuget setapikey "${{ secrets.GITHUB_TOKEN }}" \
+          -source "${{ env.FEED_URL }}"
 
     - name: Configure CMake
       if: steps.cache.outputs.cache-hit != 'true' || inputs.ignore-cache
