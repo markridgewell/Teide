@@ -4,9 +4,9 @@ include(CMakePrintHelpers)
 
 message("Finding custom build of libc++...")
 
-set(compiler ${CMAKE_CXX_COMPILER})
+set(compiler "${CMAKE_CXX_COMPILER}")
 if(compiler STREQUAL "")
-    set(compiler $ENV{CXX})
+    set(compiler "$ENV{CXX}")
     if(compiler STREQUAL "")
         message(
             FATAL_ERROR
@@ -22,7 +22,12 @@ string(REPLACE "version " "" LLVM_VERSION "${VERSION_STR}")
 if(LLVM_VERSION STREQUAL "")
     message(
         FATAL_ERROR
-            "LLVM version could not be determined.\n  Command: ${compiler} --version\n  Output:  ${VERSION_OUTPUT}")
+            "LLVM version could not be determined.\n"
+            "  Command: ${compiler} --version\n"
+            "  Output:  ${VERSION_OUTPUT}\n"
+            "  CMAKE_CXX_COMPILER:  ${CMAKE_CXX_COMPILER}\n"
+            "  CXX:  $ENV{CXX}"
+    )
 endif()
 message("Version: ${LLVM_VERSION}")
 set(PREFIX "${CMAKE_BINARY_DIR}/libcxx")
