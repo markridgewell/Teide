@@ -4,14 +4,22 @@ include(CMakePrintHelpers)
 
 message("Finding custom build of libc++...")
 
+set(compiler ${CMAKE_CXX_COMPILER})
+if(compiler STREQUAL "")
+    set(compiler $ENV{CXX})
+    if(compiler STREQUAL "")
+        message(FATAL_ERROR "Compiler could not be determined. Specify compiler using CMAKE_CXX_COMPILER variable or CXX environment variable.")
+    endif()
+endif()
+
 # Determine LLVM version by running clang++ --version
-execute_process(COMMAND "${CMAKE_CXX_COMPILER}" --version OUTPUT_VARIABLE VERSION_OUTPUT)
+execute_process(COMMAND "${compiler}" --version OUTPUT_VARIABLE VERSION_OUTPUT)
 string(REGEX MATCH "version ([0-9.]+)" VERSION_STR "${VERSION_OUTPUT}")
 string(REPLACE "version " "" LLVM_VERSION "${VERSION_STR}")
 if(LLVM_VERSION STREQUAL "")
     message(
         FATAL_ERROR
-            "LLVM version could not be determined.\n  Command: ${CMAKE_CXX_COMPILER} --version\n  Output:  ${VERSION_OUTPUT}"
+            "LLVM version could not be determined.\n  Command: ${compiler} --version\n  Output:  ${VERSION_OUTPUT}"
     )
 endif()
 message("Version: ${LLVM_VERSION}")
