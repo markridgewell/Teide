@@ -35,13 +35,15 @@ jobs:
 
         - runner: ubuntu-latest
           preset: make
-          compiler: clang++-18
+          c-compiler: clang-18
+          cpp-compiler: clang++-18
 
     name: ${{startsWith(matrix.runner, 'windows') && 'Windows' || 'Linux'}}
     runs-on: ${{matrix.runner}}
 
     env:
-      CXX: ${{matrix.compiler}}
+      CC: ${{matrix.c-compiler}}
+      CXX: ${{matrix.cpp-compiler}}
 
     steps:
     - name: Checkout
@@ -67,7 +69,8 @@ jobs:
       uses: ./.github/actions/install-tools
       with:
         extra-packages: >
-          ${{ matrix.compiler }}
+          ${{ matrix.c-compiler }}
+          ${{ matrix.cpp-compiler }}
           ${{ runner.os == 'Linux' && 'mono-complete' || '' }}
 
     - name: Install NuGet (Linux only)
