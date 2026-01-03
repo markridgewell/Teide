@@ -1,9 +1,5 @@
 function(setup_sanitizer sanitizer)
     if(sanitizer STREQUAL "MSAN")
-        if(NOT CMAKE_CXX_COMPILER MATCHES "clang")
-            message(SEND_ERROR "Memory Sanitizer requires Clang. Detected compiler: ${CMAKE_CXX_COMPILER}")
-        endif()
-
         find_package(customlibcxx REQUIRED)
 
         set(ENV{LIBCXX_INCLUDE_DIR} "${LIBCXX_DIR}/include")
