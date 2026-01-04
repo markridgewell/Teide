@@ -12,9 +12,7 @@ if(CMAKE_HOST_SYSTEM_NAME STREQUAL "Linux")
     set(CMAKE_CROSSCOMPILING
         OFF
         CACHE BOOL "")
-    message("Disabling crosscompiling")
 endif()
-message("CMAKE_CROSSCOMPILING: ${CMAKE_CROSSCOMPILING}")
 
 set(LIBCXX_INCLUDE_DIR $ENV{LIBCXX_INCLUDE_DIR})
 set(LIBCXX_LIB_DIR $ENV{LIBCXX_LIB_DIR})
@@ -26,7 +24,10 @@ set(EXTRA_CXX_FLAGS
 )
 
 string(APPEND CMAKE_C_FLAGS " -fsanitize=memory -fsanitize-memory-track-origins -ggdb -fno-omit-frame-pointer")
-string(APPEND CMAKE_CXX_FLAGS
-       " -fsanitize=memory -fsanitize-memory-track-origins -ggdb -fno-omit-frame-pointer ${EXTRA_CXX_FLAGS}")
+string(
+    APPEND
+    CMAKE_CXX_FLAGS
+    " -fsanitize=memory -fsanitize-memory-track-origins -ggdb -fno-omit-frame-pointer -D_LIBCPP_ENABLE_EXPERIMENTAL ${EXTRA_CXX_FLAGS}"
+)
 string(APPEND CMAKE_LINKER_FLAGS
        " -fsanitize=memory -fsanitize-memory-track-origins -ggdb -fno-omit-frame-pointer ${EXTRA_CXX_FLAGS}")
