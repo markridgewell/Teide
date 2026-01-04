@@ -110,7 +110,7 @@ jobs:
           -source "${{ env.FEED_URL }}"
 
     - name: Cache libc++
-      if: steps.cache.outputs.cache-hit != 'true'
+      if: steps.cache.outputs.cache-hit != 'true' || inputs.ignore-cache
       uses: ./.github/actions/cache-libc++
       with:
         sanitizer: ${{ matrix.sanitizer }}
