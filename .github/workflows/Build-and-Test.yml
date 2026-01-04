@@ -194,7 +194,6 @@ jobs:
         -DTEIDE_CCACHE=${{env.use_ccache}}
         -DTEIDE_PRECOMPILED_HEADERS=${{!env.use_ccache}}
         -DTEIDE_UNIT_TEST_SW_RENDER=ON
-        -DTEIDE_TEST_VERBOSE=ON
         -DTEIDE_TEST_WINDOWLESS=${{runner.os == 'Linux'}}
         -DTEIDE_TEST_COVERAGE=${{env.coverage}}
         -DTEIDE_TEST_VERBOSE=${{runner.debug || inputs.debug}}
