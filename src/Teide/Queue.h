@@ -14,14 +14,6 @@
 #include <vector>
 
 
-#if _LIBCPP_STD_VER < 20
-#    error _LIBCPP_STD_VER < 20
-#endif
-#if defined(_LIBCPP_HAS_NO_EXPERIMENTAL_STOP_TOKEN)
-#    error defined(_LIBCPP_HAS_NO_EXPERIMENTAL_STOP_TOKEN)
-#endif
-
-
 namespace Teide
 {
 
