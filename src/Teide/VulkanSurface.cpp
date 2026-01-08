@@ -46,10 +46,10 @@ namespace
 
     Geo::Size2i ChooseSwapExtent(const vk::SurfaceCapabilitiesKHR& capabilities, Geo::Size2i windowSize)
     {
-        if (capabilities.currentExtent.width != std::numeric_limits<uint32_t>::max())
-        {
-            return {capabilities.currentExtent.width, capabilities.currentExtent.height};
-        }
+        // if (capabilities.currentExtent.width != std::numeric_limits<uint32_t>::max())
+        // {
+        //     return {capabilities.currentExtent.width, capabilities.currentExtent.height};
+        // }
 
         return Geo::Size2i{
             std::clamp(windowSize.x, capabilities.minImageExtent.width, capabilities.maxImageExtent.width),
