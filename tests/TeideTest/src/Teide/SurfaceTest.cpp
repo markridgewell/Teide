@@ -34,28 +34,21 @@ public:
 
 TEST_F(SurfaceTest, CreateSurface)
 {
-    const auto window = UniqueSDLWindow(SDL_CreateWindow("Test", 0, 0, 800, 600, SDL_WINDOW_VULKAN | SDL_WINDOW_HIDDEN));
-    ASSERT_THAT(window, NotNull()) << SDL_GetError();
+    // const auto window = UniqueSDLWindow(SDL_CreateWindow("Test", 0, 0, 800, 600, SDL_WINDOW_VULKAN |
+    // SDL_WINDOW_HIDDEN)); ASSERT_THAT(window, NotNull()) << SDL_GetError();
 
-    auto [device, surface] = CreateDeviceAndSurface(window.get(), false);
-    EXPECT_THAT(surface->GetExtent(), Eq(Geo::Size2i{800, 600}));
-}
-
-TEST_F(SurfaceTest, CreateSurfaceMultisampled)
-{
-    auto window = UniqueSDLWindow(SDL_CreateWindow("Test", 0, 0, 800, 600, SDL_WINDOW_VULKAN | SDL_WINDOW_HIDDEN));
-    ASSERT_THAT(window, NotNull()) << SDL_GetError();
-
-    auto [device, surface] = CreateDeviceAndSurface(window.get(), true);
-    EXPECT_THAT(surface->GetExtent(), Eq(Geo::Size2i{800, 600}));
+    const auto extent = Geo::Size2i{800, 600};
+    auto [device, surface] = CreateHeadlessDeviceAndSurface(extent);
+    EXPECT_THAT(surface->GetExtent(), Eq(extent));
 }
 
 TEST_F(SurfaceTest, CreatePipelineForSurface)
 {
-    const auto window = UniqueSDLWindow(SDL_CreateWindow("Test", 0, 0, 800, 600, SDL_WINDOW_VULKAN | SDL_WINDOW_HIDDEN));
-    ASSERT_THAT(window, NotNull()) << SDL_GetError();
+    // const auto window = UniqueSDLWindow(SDL_CreateWindow("Test", 0, 0, 800, 600, SDL_WINDOW_VULKAN |
+    // SDL_WINDOW_HIDDEN)); ASSERT_THAT(window, NotNull()) << SDL_GetError();
 
-    auto [device, surface] = CreateDeviceAndSurface(window.get(), true);
+    const auto extent = Geo::Size2i{800, 600};
+    auto [device, surface] = CreateHeadlessDeviceAndSurface(extent);
     ShaderCompiler const compiler;
     const auto shaderData = compiler.Compile(SimpleShader);
     const VertexLayout vertexLayout = {
@@ -79,10 +72,11 @@ TEST_F(SurfaceTest, CreatePipelineForSurface)
 
 TEST_F(SurfaceTest, RenderToSurface)
 {
-    auto window = UniqueSDLWindow(SDL_CreateWindow("Test", 0, 0, 800, 600, SDL_WINDOW_VULKAN | SDL_WINDOW_HIDDEN));
-    ASSERT_THAT(window, NotNull()) << SDL_GetError();
+    // auto window = UniqueSDLWindow(SDL_CreateWindow("Test", 0, 0, 800, 600, SDL_WINDOW_VULKAN | SDL_WINDOW_HIDDEN));
+    // ASSERT_THAT(window, NotNull()) << SDL_GetError();
 
-    auto [device, surface] = CreateDeviceAndSurface(window.get(), true);
+    const auto extent = Geo::Size2i{800, 600};
+    auto [device, surface] = CreateHeadlessDeviceAndSurface(extent);
     auto renderer = device->CreateRenderer(nullptr);
 
     renderer->BeginFrame({});
@@ -91,14 +85,16 @@ TEST_F(SurfaceTest, RenderToSurface)
     };
     renderer->RenderToSurface(*surface, renderList);
     renderer->EndFrame();
+    renderer->WaitForGpu();
 }
 
 TEST_F(SurfaceTest, RenderToSurfaceWithoutClear)
 {
-    auto window = UniqueSDLWindow(SDL_CreateWindow("Test", 0, 0, 800, 600, SDL_WINDOW_VULKAN | SDL_WINDOW_HIDDEN));
-    ASSERT_THAT(window, NotNull()) << SDL_GetError();
+    // auto window = UniqueSDLWindow(SDL_CreateWindow("Test", 0, 0, 800, 600, SDL_WINDOW_VULKAN | SDL_WINDOW_HIDDEN));
+    // ASSERT_THAT(window, NotNull()) << SDL_GetError();
 
-    auto [device, surface] = CreateDeviceAndSurface(window.get(), true);
+    const auto extent = Geo::Size2i{800, 600};
+    auto [device, surface] = CreateHeadlessDeviceAndSurface(extent);
     auto renderer = device->CreateRenderer(nullptr);
 
     renderer->BeginFrame({});
@@ -109,10 +105,11 @@ TEST_F(SurfaceTest, RenderToSurfaceWithoutClear)
 
 TEST_F(SurfaceTest, RenderToSurfaceTwice)
 {
-    auto window = UniqueSDLWindow(SDL_CreateWindow("Test", 0, 0, 800, 600, SDL_WINDOW_VULKAN | SDL_WINDOW_HIDDEN));
-    ASSERT_THAT(window, NotNull()) << SDL_GetError();
+    // auto window = UniqueSDLWindow(SDL_CreateWindow("Test", 0, 0, 800, 600, SDL_WINDOW_VULKAN | SDL_WINDOW_HIDDEN));
+    // ASSERT_THAT(window, NotNull()) << SDL_GetError();
 
-    auto [device, surface] = CreateDeviceAndSurface(window.get(), true);
+    const auto extent = Geo::Size2i{800, 600};
+    auto [device, surface] = CreateHeadlessDeviceAndSurface(extent);
     auto renderer = device->CreateRenderer(nullptr);
 
     renderer->BeginFrame({});

@@ -4,7 +4,6 @@
 #include "GeoLib/Vector.h"
 #include "Teide/Pipeline.h"
 
-#include <SDL_vulkan.h>
 #include <spdlog/spdlog.h>
 
 #include <algorithm>
@@ -45,25 +44,16 @@ namespace
         return vk::PresentModeKHR::eFifo;
     }
 
-    Geo::Size2i ChooseSwapExtent(const vk::SurfaceCapabilitiesKHR& capabilities, SDL_Window* window)
+    Geo::Size2i ChooseSwapExtent(const vk::SurfaceCapabilitiesKHR& capabilities, Geo::Size2i windowSize)
     {
         if (capabilities.currentExtent.width != std::numeric_limits<uint32_t>::max())
         {
             return {capabilities.currentExtent.width, capabilities.currentExtent.height};
         }
 
-
-        int width = 0;
-        int height = 0;
-        SDL_Vulkan_GetDrawableSize(window, &width, &height);
-
-        const Geo::Size2i windowExtent = {static_cast<uint32_t>(width), static_cast<uint32_t>(height)};
-
-        const Geo::Size2i actualExtent
-            = {std::clamp(windowExtent.x, capabilities.minImageExtent.width, capabilities.maxImageExtent.width),
-               std::clamp(windowExtent.y, capabilities.minImageExtent.height, capabilities.maxImageExtent.height)};
-
-        return actualExtent;
+        return Geo::Size2i{
+            std::clamp(windowSize.x, capabilities.minImageExtent.width, capabilities.maxImageExtent.width),
+            std::clamp(windowSize.y, capabilities.minImageExtent.height, capabilities.maxImageExtent.height)};
     }
 
     vk::UniqueSwapchainKHR CreateSwapchain(
@@ -183,14 +173,14 @@ namespace
 } // namespace
 
 VulkanSurface::VulkanSurface(
-    SDL_Window* window, vk::UniqueSurfaceKHR surface, vk::Device device, const PhysicalDevice& physicalDevice,
+    Geo::Size2i extent, vk::UniqueSurfaceKHR surface, vk::Device device, const PhysicalDevice& physicalDevice,
     vma::Allocator allocator, vk::Queue queue, bool multisampled) :
     m_device{device},
     m_physicalDevice{physicalDevice},
     m_allocator{allocator},
     m_queue{queue},
-    m_window{window},
-    m_surface{std::move(surface)}
+    m_surface{std::move(surface)},
+    m_surfaceExtent{extent}
 {
     std::ranges::generate(m_imageAvailable, [=] { return device.createSemaphoreUnique({}, s_allocator); });
 
@@ -365,7 +355,7 @@ void VulkanSurface::CreateSwapchainAndImages()
         .resolveColor = m_msaaSampleCount > 1,
     };
 
-    m_surfaceExtent = ChooseSwapExtent(surfaceCapabilities, m_window);
+    m_surfaceExtent = ChooseSwapExtent(surfaceCapabilities, m_surfaceExtent);
     m_swapchain = CreateSwapchain(
         m_physicalDevice.physicalDevice, m_physicalDevice.queueFamilyIndices, m_surface.get(), surfaceFormat,
         m_surfaceExtent, m_device, m_swapchain.get());

@@ -109,7 +109,7 @@ public:
     VulkanBuffer CreateBufferWithData(BytesView data, BufferUsage usage, ResourceLifetime lifetime, CommandBuffer& cmdBuffer);
     void SetBufferData(VulkanBuffer& buffer, BytesView data);
 
-    SurfacePtr CreateSurface(vk::UniqueSurfaceKHR surface, SDL_Window* window, bool multisampled);
+    SurfacePtr CreateSurface(vk::UniqueSurfaceKHR surface, Geo::Size2i size, bool multisampled);
     BufferPtr CreateBuffer(const BufferData& data, const char* name, CommandBuffer& cmdBuffer);
     VulkanBuffer CreateTransientBuffer(const BufferData& data, const char* name);
     Texture AllocateTexture(const TextureProperties& props, const SamplerState& samplerState = {});

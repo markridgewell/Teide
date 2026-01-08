@@ -47,5 +47,6 @@ struct DeviceAndSurface
 
 DeviceAndSurface CreateDeviceAndSurface(SDL_Window* window, bool multisampled = false, const GraphicsSettings& settings = {});
 DevicePtr CreateHeadlessDevice(const GraphicsSettings& settings = {});
+DeviceAndSurface CreateHeadlessDeviceAndSurface(Geo::Size2i windowSize, const GraphicsSettings& settings = {});
 
 } // namespace Teide
