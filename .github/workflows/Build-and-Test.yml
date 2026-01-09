@@ -89,6 +89,14 @@ jobs:
           sanitizer: UBSAN
           name-suffix: -UBSan
 
+        - preset: make
+          toolchain: Clang
+          buildtype: Debug
+          runner: ubuntu-24.04
+          compiler: clang++-18
+          sanitizer: MSAN
+          name-suffix: -MSan
+
     name: ${{startsWith(matrix.runner, 'windows') && 'Windows' || 'Linux'}}-${{matrix.buildtype}}-${{matrix.toolchain}}${{matrix.name-suffix}}
     runs-on: ${{matrix.runner}}
 
@@ -98,6 +106,9 @@ jobs:
       use_ccache: ${{ (inputs.ccache || github.event_name != 'workflow_dispatch') && !(matrix.preset == 'msvc2022' && matrix.coverage) }}
       CMAKE_BUILD_TYPE: ${{matrix.buildtype}}
       RT_OUTPUT_DIR: build/${{matrix.preset}}/tests/RenderTest/RenderTestOutput
+      LIBCXX_DIR: ${{github.workspace}}/build/${{matrix.preset}}/libcxx
+      LIBCXX_INCLUDE_DIR: ${{github.workspace}}/build/${{matrix.preset}}/libcxx/include
+      LIBCXX_LIB_DIR: ${{github.workspace}}/build/${{matrix.preset}}/libcxx/lib
       CXX: ${{matrix.compiler}}
 
     outputs:
@@ -230,7 +241,7 @@ jobs:
       if: failure()
       shell: bash
       run: |
-        paths="external/vcpkg build/${{matrix.preset}}"
+        paths="vcpkg build/${{matrix.preset}}"
         for file in $(find $paths -name '*.log'); do
             if [ -s $file ]; then
                 echo "::group::$file"
