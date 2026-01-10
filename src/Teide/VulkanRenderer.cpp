@@ -222,6 +222,7 @@ void VulkanRenderer::WaitForCpu()
 void VulkanRenderer::WaitForGpu()
 {
     m_device.GetScheduler().WaitForGpu();
+    m_device.GetVulkanDevice().waitIdle();
 }
 
 RenderToTextureResult VulkanRenderer::RenderToTexture(const RenderTargetInfo& renderTarget, RenderList renderList)

@@ -20,6 +20,7 @@
 #include "vkex/vkex.hpp"
 
 #include <SDL.h>
+#include <SDL2/SDL_video.h>
 #include <SDL_vulkan.h>
 #include <spdlog/spdlog.h>
 #include <vulkan/vulkan_enums.hpp>
@@ -482,13 +483,18 @@ DeviceAndSurface CreateDeviceAndSurface(SDL_Window* window, bool multisampled, c
     VulkanLoader loader;
     vk::UniqueInstance instance = CreateInstance(loader, window);
 
+    int width = 0;
+    int height = 0;
+    SDL_Vulkan_GetDrawableSize(window, &width, &height);
+    const Geo::Size2i windowExtent = {static_cast<uint32_t>(width), static_cast<uint32_t>(height)};
+
     vk::UniqueSurfaceKHR vksurface = CreateVulkanSurface(window, instance.get());
 
     auto physicalDevice = FindPhysicalDevice(instance.get(), vksurface.get());
 
     auto device
         = std::make_unique<VulkanDevice>(std::move(loader), std::move(instance), std::move(physicalDevice), settings);
-    auto surface = device->CreateSurface(std::move(vksurface), window, multisampled);
+    auto surface = device->CreateSurface(std::move(vksurface), windowExtent, multisampled);
 
     return {.device = std::move(device), .surface = std::move(surface)};
 }
@@ -502,6 +508,24 @@ DevicePtr CreateHeadlessDevice(const GraphicsSettings& settings)
     auto physicalDevice = FindPhysicalDevice(instance.get(), {});
 
     return std::make_unique<VulkanDevice>(std::move(loader), std::move(instance), std::move(physicalDevice), settings);
+}
+
+DeviceAndSurface CreateHeadlessDeviceAndSurface(Geo::Size2i windowSize, const GraphicsSettings& settings)
+{
+    spdlog::info("Creating graphics device and surface");
+    VulkanLoader loader;
+    vk::UniqueInstance instance = CreateInstance(loader);
+
+    vk::UniqueSurfaceKHR vksurface = // CreateVulkanSurface(window, instance.get());
+        instance->createHeadlessSurfaceEXTUnique({}, s_allocator);
+
+    auto physicalDevice = FindPhysicalDevice(instance.get(), vksurface.get());
+
+    auto device
+        = std::make_unique<VulkanDevice>(std::move(loader), std::move(instance), std::move(physicalDevice), settings);
+    auto surface = device->CreateSurface(std::move(vksurface), windowSize, false);
+
+    return {.device = std::move(device), .surface = std::move(surface)};
 }
 
 VulkanDevice::VulkanDevice(
@@ -706,7 +730,12 @@ void VulkanDevice::SetBufferData(VulkanBuffer& buffer, BytesView data)
 
 SurfacePtr VulkanDevice::CreateSurface(SDL_Window* window, bool multisampled)
 {
-    return CreateSurface(CreateVulkanSurface(window, m_instance.get()), window, multisampled);
+    int width = 0;
+    int height = 0;
+    SDL_Vulkan_GetDrawableSize(window, &width, &height);
+    const Geo::Size2i windowExtent = {static_cast<uint32_t>(width), static_cast<uint32_t>(height)};
+
+    return CreateSurface(CreateVulkanSurface(window, m_instance.get()), windowExtent, multisampled);
 }
 
 RendererPtr VulkanDevice::CreateRenderer(ShaderEnvironmentPtr shaderEnvironment)
@@ -723,14 +752,14 @@ BufferPtr VulkanDevice::CreateBuffer(const BufferData& data, const char* name)
     return task.get();
 }
 
-SurfacePtr VulkanDevice::CreateSurface(vk::UniqueSurfaceKHR surface, SDL_Window* window, bool multisampled)
+SurfacePtr VulkanDevice::CreateSurface(vk::UniqueSurfaceKHR surface, Geo::Size2i size, bool multisampled)
 {
     spdlog::info("Creating a new surface for a window");
 
     TEIDE_ASSERT(m_physicalDevice.queueFamilies.presentFamily.has_value());
 
     return std::make_unique<VulkanSurface>(
-        window, std::move(surface), m_device.get(), m_physicalDevice, m_allocator.get(), m_graphicsQueue, multisampled);
+        size, std::move(surface), m_device.get(), m_physicalDevice, m_allocator.get(), m_graphicsQueue, multisampled);
 }
 
 BufferPtr VulkanDevice::CreateBuffer(const BufferData& data, const char* name, CommandBuffer& cmdBuffer)

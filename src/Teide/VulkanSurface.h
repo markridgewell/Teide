@@ -10,8 +10,6 @@
 #include <optional>
 #include <vector>
 
-struct SDL_Window;
-
 namespace Teide
 {
 
@@ -31,7 +29,7 @@ class VulkanSurface : public Surface
 {
 public:
     VulkanSurface(
-        SDL_Window* window, vk::UniqueSurfaceKHR surface, vk::Device device, const PhysicalDevice& physicalDevice,
+        Geo::Size2i extent, vk::UniqueSurfaceKHR surface, vk::Device device, const PhysicalDevice& physicalDevice,
         vma::Allocator allocator, vk::Queue queue, bool multisampled);
 
     Geo::Size2i GetExtent() const override { return m_surfaceExtent; }
@@ -60,7 +58,6 @@ private:
     vma::Allocator m_allocator;
     vk::Queue m_queue;
 
-    SDL_Window* m_window;
     vk::UniqueSurfaceKHR m_surface;
     Geo::Size2i m_surfaceExtent;
     vk::UniqueSwapchainKHR m_swapchain;
