@@ -90,6 +90,7 @@ bool AssertThrow(std::string_view msg, std::string_view expression, Teide::Sourc
     if (curTest)
     {
         std::cout << "Current test: " << curTest->name() << "\n";
+        GTEST_NONFATAL_FAILURE_("Assert failed while executing test");
     }
     std::cout << "Stack trace:\n";
     trace.print(std::cout, true);
