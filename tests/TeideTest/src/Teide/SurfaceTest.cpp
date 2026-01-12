@@ -129,7 +129,7 @@ TYPED_TEST(SurfaceTest, RenderToSurfaceWithoutClear)
     renderer->EndFrame();
 }
 
-TYPED_TEST(SurfaceTest, RenderToSurfaceTwice_DISABLED)
+TYPED_TEST(SurfaceTest, DISABLED_RenderToSurfaceTwice)
 {
     auto& surface = this->GetSurface();
     auto& device = this->GetDevice();
