@@ -293,6 +293,8 @@ vk::UniqueInstance CreateInstance(VulkanLoader& loader, SDL_Window* window)
 
     const auto availableLayers = vk::enumerateInstanceLayerProperties();
     const auto availableExtensions = vk::enumerateInstanceExtensionProperties();
+    EnableVulkanExtension(extensions, availableExtensions, "VK_KHR_surface", Required::False);
+    EnableVulkanExtension(extensions, availableExtensions, "VK_EXT_headless_surface", Required::False);
 
     std::vector<const char*> layers;
 
@@ -301,8 +303,6 @@ vk::UniqueInstance CreateInstance(VulkanLoader& loader, SDL_Window* window)
     {
         EnableVulkanLayer(layers, availableLayers, "VK_LAYER_KHRONOS_validation", Required::False);
         EnableVulkanExtension(extensions, availableExtensions, "VK_EXT_debug_utils", Required::False);
-        EnableVulkanExtension(extensions, availableExtensions, "VK_KHR_surface", Required::False);
-        EnableVulkanExtension(extensions, availableExtensions, "VK_EXT_headless_surface", Required::False);
 
         const std::array enabledFeatures = {
             vk::ValidationFeatureEnableEXT::eSynchronizationValidation,
