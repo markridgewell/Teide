@@ -3,7 +3,7 @@
 --language=c++
 --std=c++23
 --enable=all
---disable=unusedFunction,functionStatic
+--disable=unusedFunction
 --platform=native
 --library=googletest
 --library=sdl
