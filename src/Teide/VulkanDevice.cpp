@@ -728,16 +728,6 @@ void VulkanDevice::SetBufferData(VulkanBuffer& buffer, BytesView data)
     m_allocator->unmapMemory(allocation);
 }
 
-SurfacePtr VulkanDevice::CreateSurface(SDL_Window* window, bool multisampled)
-{
-    int width = 0;
-    int height = 0;
-    SDL_Vulkan_GetDrawableSize(window, &width, &height);
-    const Geo::Size2i windowExtent = {static_cast<uint32_t>(width), static_cast<uint32_t>(height)};
-
-    return CreateSurface(CreateVulkanSurface(window, m_instance.get()), windowExtent, multisampled);
-}
-
 RendererPtr VulkanDevice::CreateRenderer(ShaderEnvironmentPtr shaderEnvironment)
 {
     return std::make_unique<VulkanRenderer>(*this, m_physicalDevice.queueFamilies, std::move(shaderEnvironment));
