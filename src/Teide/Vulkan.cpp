@@ -293,6 +293,8 @@ vk::UniqueInstance CreateInstance(VulkanLoader& loader, SDL_Window* window)
 
     const auto availableLayers = vk::enumerateInstanceLayerProperties();
     const auto availableExtensions = vk::enumerateInstanceExtensionProperties();
+    EnableVulkanExtension(extensions, availableExtensions, "VK_KHR_surface", Required::False);
+    EnableVulkanExtension(extensions, availableExtensions, "VK_EXT_headless_surface", Required::False);
 
     std::vector<const char*> layers;
 

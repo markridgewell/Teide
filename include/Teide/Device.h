@@ -24,7 +24,6 @@ struct GraphicsSettings
 class Device : AbstractBase
 {
 public:
-    virtual SurfacePtr CreateSurface(SDL_Window* window, bool multisampled) = 0;
     virtual RendererPtr CreateRenderer(ShaderEnvironmentPtr shaderEnvironment) = 0;
 
     virtual BufferPtr CreateBuffer(const BufferData& data, const char* name) = 0;
@@ -47,5 +46,6 @@ struct DeviceAndSurface
 
 DeviceAndSurface CreateDeviceAndSurface(SDL_Window* window, bool multisampled = false, const GraphicsSettings& settings = {});
 DevicePtr CreateHeadlessDevice(const GraphicsSettings& settings = {});
+DeviceAndSurface CreateHeadlessDeviceAndSurface(Geo::Size2i windowSize, const GraphicsSettings& settings = {});
 
 } // namespace Teide
