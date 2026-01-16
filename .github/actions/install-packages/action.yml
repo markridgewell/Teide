@@ -25,7 +25,7 @@ runs:
       id: get-key
       uses: ./.github/actions/get-packages-cache-key
       with:
-        sanitizer: ${{ matrix.sanitizer }}
+        sanitizer: ${{ inputs.sanitizer }}
 
     - name: Restore packages from cache
       id: cache
@@ -34,6 +34,11 @@ runs:
         key: ${{ steps.get-key.outputs.cache-key }}
         path: './exports'
         fail-on-cache-miss: ${{ inputs.fail-on-cache-miss }}
+
+    - name: Cache libc++
+      uses: ./.github/actions/cache-libc++
+      with:
+        sanitizer: ${{ inputs.sanitizer }}
 
     - name: Determine install directory
       if: steps.cache.outputs.cache-hit
