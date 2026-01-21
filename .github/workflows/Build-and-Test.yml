@@ -169,7 +169,7 @@ jobs:
       # I heard you like caches, so I put some caches in your caches
       id: ccache-restore
       if: env.use_ccache
-      uses: actions/cache/restore@v5.0.1
+      uses: actions/cache/restore@v5.0.2
       with:
         path: ${{ env.CCACHE_DIR }}
         key: ${{ steps.ccache.outputs.key }}
@@ -221,7 +221,7 @@ jobs:
 
     - name: Save ccache dir
       if: env.use_ccache
-      uses: actions/cache/save@v5.0.1
+      uses: actions/cache/save@v5.0.2
       with:
         path: ${{ env.CCACHE_DIR }}
         key: ${{ steps.ccache-restore.outputs.cache-primary-key }}
