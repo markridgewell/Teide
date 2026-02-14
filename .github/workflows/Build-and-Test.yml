@@ -242,8 +242,9 @@ jobs:
 
     - name: Test
       id: test
+      shell: bash
       run: ctest --preset ${{matrix.preset}} --build-config ${{matrix.buildtype}} --no-tests=error --show-only=json-v1 \
-          | jq -r '.tests[].command|join(" ")' | sh
+          | jq -r '.tests[].command|join(" ")' | bash
 
     - name: Save render test output
       if: failure() && steps.test.outcome == 'failure'
