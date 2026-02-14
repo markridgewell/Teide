@@ -201,8 +201,6 @@ jobs:
 
     - name: Build
       shell: bash
-      env:
-        LIBRARY_PATH: ${{steps.packages.outputs.install-dir}}/lib
       run: |
         mkdir -p ${{ env.CCACHE_DIR }}
         ccache --zero-stats
