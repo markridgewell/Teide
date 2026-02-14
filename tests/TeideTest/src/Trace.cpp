@@ -89,7 +89,7 @@ std::optional<Pipe> Run(std::span<char* const> command)
     const pid_t pid = fork();
     if (pid == -1)
     {
-        std::println(std::cerr, "fork() failed");
+        std::println(stderr, "fork() failed");
         return std::nullopt;
     }
 
@@ -101,7 +101,7 @@ std::optional<Pipe> Run(std::span<char* const> command)
         pipe.Close();
 
         execv(command[0], command.data());
-        std::println(std::cerr, "execv() failed");
+        std::println(stderr, "execv() failed");
         _exit(1);
     }
 
@@ -131,8 +131,7 @@ void DoSignalSafeTrace(std::span<const cpptrace::frame_ptr> buffer)
 void SignalHandler(int signo [[maybe_unused]], siginfo_t* info [[maybe_unused]], void* context [[maybe_unused]])
 {
     // Print basic message
-    const char* message = "SIGSEGV occurred:\n";
-    write(STDERR_FILENO, message, strlen(message));
+    std::println(stderr, "SIGSEGV occurred:");
     // Generate trace
     constexpr std::size_t N = 100;
     auto buffer = std::array<cpptrace::frame_ptr, N>{};
@@ -160,7 +159,7 @@ void SignalHandler(int signo [[maybe_unused]], siginfo_t* info [[maybe_unused]],
         {
             if (res != 0)
             {
-                std::println(std::cerr, "Unable to resolve callstack. Return code {} while reading from the pipe", res);
+                std::println(stderr, "Unable to resolve callstack. Return code {} while reading from the pipe", res);
             }
             break;
         }
