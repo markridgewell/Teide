@@ -46,8 +46,16 @@ struct Pipe
     ~Pipe() noexcept { CloseHandles(); }
 
     void Close() { *this = Pipe{}; }
+
     void ReadFromStdin() const { dup2(readEnd, STDIN_FILENO); }
-    void Write(void* data, std::size_t size) const { write(writeEnd, data, size); }
+
+    void Write(void* data, std::size_t size) const
+    {
+        if (write(writeEnd, data, size) == -1)
+        {
+            std::println(stderr, "error writing to pipe");
+        };
+    }
 
 private:
     explicit Pipe() = default;
@@ -125,7 +133,7 @@ void DoSignalSafeTrace(std::span<const cpptrace::frame_ptr> buffer)
     }
 
     // Resolve to safe_object_frames and write those to the pipe
-    for (cpptrace::frame_ptr ptr : buffer)
+    for (const cpptrace::frame_ptr ptr : buffer)
     {
         auto frame = cpptrace::safe_object_frame{};
         cpptrace::get_safe_object_frame(ptr, &frame);
@@ -140,7 +148,7 @@ void SignalHandler(int signo [[maybe_unused]], siginfo_t* info [[maybe_unused]],
     // Generate trace
     constexpr std::size_t N = 100;
     auto buffer = std::array<cpptrace::frame_ptr, N>{};
-    std::size_t count = cpptrace::safe_generate_raw_trace(buffer.data(), N, 1);
+    const std::size_t count = cpptrace::safe_generate_raw_trace(buffer.data(), N, 1);
 
     DoSignalSafeTrace(std::span(buffer).subspan(0, count));
 
