@@ -15,7 +15,6 @@
 #    include <csignal>
 #    include <cstring>
 #    include <filesystem>
-#    include <iostream>
 #    include <optional>
 #    include <print>
 #    include <span>
@@ -23,7 +22,15 @@
 namespace
 {
 char* s_execPath = nullptr;
-constexpr const char* s_resolveTraceEnv = "_CPPTRACE_RESOLVE_TRACE_";
+char s_resolveTraceArg[] = "--z-cpptrace_resolve_trace_";
+
+void SafePrintln(int fd, std::string_view message)
+{
+    ssize_t ret [[maybe_unused]] = 0;
+    ret = write(fd, message.data(), message.size());
+    char newline = '\n';
+    ret = write(fd, &newline, 1);
+}
 
 struct Pipe
 {
@@ -53,7 +60,7 @@ struct Pipe
     {
         if (write(writeEnd, data, size) == -1)
         {
-            std::println(stderr, "error writing to pipe");
+            SafePrintln(STDERR_FILENO, "error writing to pipe");
         };
     }
 
@@ -95,14 +102,14 @@ std::optional<Pipe> Run(std::span<char* const> command)
     auto input_pipe = std::array<int, 2>{};
     if (pipe(input_pipe.data()) == -1)
     {
-        std::println("pipe() failed");
+        SafePrintln(STDERR_FILENO, "pipe() failed");
         return std::nullopt;
     }
 
     const pid_t pid = fork();
     if (pid == -1)
     {
-        std::println(stderr, "fork() failed");
+        SafePrintln(STDERR_FILENO, "fork() failed");
         return std::nullopt;
     }
 
@@ -114,7 +121,7 @@ std::optional<Pipe> Run(std::span<char* const> command)
         pipe.Close();
 
         execv(command[0], command.data());
-        std::println(stderr, "execv() failed");
+        SafePrintln(STDERR_FILENO, "execv() failed");
         _exit(1);
     }
 
@@ -124,8 +131,7 @@ std::optional<Pipe> Run(std::span<char* const> command)
 
 void DoSignalSafeTrace(std::span<const cpptrace::frame_ptr> buffer)
 {
-    setenv(s_resolveTraceEnv, "1", 0); // NOLINT(concurrency-mt-unsafe)
-    char* const command[] = {s_execPath, nullptr};
+    char* const command[] = {s_execPath, &s_resolveTraceArg[0], nullptr};
     const auto pipe = Run(command);
     if (!pipe)
     {
@@ -144,7 +150,8 @@ void DoSignalSafeTrace(std::span<const cpptrace::frame_ptr> buffer)
 void SignalHandler(int signo [[maybe_unused]], siginfo_t* info [[maybe_unused]], void* context [[maybe_unused]])
 {
     // Print basic message
-    std::println(stderr, "SIGSEGV occurred:");
+    SafePrintln(STDERR_FILENO, "SIGSEGV occurred:");
+
     // Generate trace
     constexpr std::size_t N = 100;
     auto buffer = std::array<cpptrace::frame_ptr, N>{};
@@ -156,7 +163,7 @@ void SignalHandler(int signo [[maybe_unused]], siginfo_t* info [[maybe_unused]],
     _exit(1);
 }
 
-[[noreturn]] void ResolveTrace()
+void ResolveTrace()
 {
     auto trace = cpptrace::object_trace{};
     while (true)
@@ -191,18 +198,19 @@ void SignalHandler(int signo [[maybe_unused]], siginfo_t* info [[maybe_unused]],
                 return f;
             });
     formatter.print(trace.resolve());
-    _exit(0);
 }
 
 } // namespace
 
-void InitCpptrace(int argc [[maybe_unused]], char** argv)
+bool InitCpptrace(int argc, char** argv)
 {
-    s_execPath = *argv;
+    const auto args = std::span(argv, argc);
+    s_execPath = args[0];
 
-    if (getenv(s_resolveTraceEnv)) // NOLINT(concurrency-mt-unsafe)
+    if (argc == 2 && args[1] == std::string_view(&s_resolveTraceArg[0]))
     {
         ResolveTrace();
+        return true;
     }
 
     // This is done for any dynamic-loading shenanigans
@@ -219,6 +227,8 @@ void InitCpptrace(int argc [[maybe_unused]], char** argv)
     {
         perror("sigaction");
     }
+
+    return false;
 }
 
 #endif

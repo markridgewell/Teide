@@ -322,7 +322,10 @@ int main(int argc, char** argv)
 int main(int argc, char** argv)
 {
 #    ifdef __linux__
-    InitCpptrace(argc, argv);
+    if (InitCpptrace(argc, argv))
+    {
+        return 0;
+    }
 #    endif
 
     return Run(argc, argv);
