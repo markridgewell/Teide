@@ -243,7 +243,7 @@ jobs:
     - name: Test
       id: test
       shell: bash
-      run: python tools/run_test.py build/${{matrix.preset}}
+      run: python tools/run_tests.py build/${{matrix.preset}}
 
     - name: Save render test output
       if: failure() && steps.test.outcome == 'failure'

@@ -20,9 +20,10 @@ for test in tests:
     test_cmd = test['command']
     print(subprocess.list2cmdline(test_cmd))
     retcode = subprocess.run(test_cmd)
-    if retcode != 1:
+    if retcode != 0:
         failure = True
     print()
 
 if failure:
     exit(1)
+
