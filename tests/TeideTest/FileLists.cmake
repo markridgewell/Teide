@@ -26,4 +26,6 @@ set(sources
     src/Teide/TextureTest.cpp
     src/Teide/VulkanGraphTest.cpp
     src/Teide/VulkanTest.cpp
+    src/Trace.cpp
+    src/Trace.h
     src/vkex/vkex_utils_test.cpp)
