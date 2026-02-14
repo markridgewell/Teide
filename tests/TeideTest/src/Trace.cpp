@@ -1,22 +1,24 @@
 
 #include "Trace.h"
 
-#include <cpptrace/basic.hpp>
-#include <cpptrace/cpptrace.hpp>
-#include <cpptrace/formatting.hpp>
-#include <cpptrace/utils.hpp>
-#include <spdlog/spdlog.h>
-#include <sys/wait.h>
-#include <unistd.h>
+#ifdef __linux__
 
-#include <array>
-#include <csignal>
-#include <cstring>
-#include <filesystem>
-#include <iostream>
-#include <optional>
-#include <print>
-#include <span>
+#    include <cpptrace/basic.hpp>
+#    include <cpptrace/cpptrace.hpp>
+#    include <cpptrace/formatting.hpp>
+#    include <cpptrace/utils.hpp>
+#    include <spdlog/spdlog.h>
+#    include <sys/wait.h>
+#    include <unistd.h>
+
+#    include <array>
+#    include <csignal>
+#    include <cstring>
+#    include <filesystem>
+#    include <iostream>
+#    include <optional>
+#    include <print>
+#    include <span>
 
 namespace
 {
@@ -206,3 +208,5 @@ void InitCpptrace(int argc [[maybe_unused]], char** argv)
         perror("sigaction");
     }
 }
+
+#endif
