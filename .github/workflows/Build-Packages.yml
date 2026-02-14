@@ -77,7 +77,7 @@ jobs:
         extra-packages: >
           ${{ matrix.c-compiler }}
           ${{ matrix.cpp-compiler }}
-          ${{ runner.os == 'Linux' && 'mono-complete' || '' }}
+          ${{ runner.os == 'Linux' && 'mono-complete libunwind-dev' || '' }}
 
     - name: Install NuGet (Linux only)
       if: (steps.cache.outputs.cache-hit != 'true' || inputs.ignore-cache) && runner.os == 'Linux'
