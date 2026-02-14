@@ -11,6 +11,7 @@
 
 #include <exception>
 #include <ranges>
+#include <source_location>
 
 #if __linux__
 #    include <sys/ioctl.h>
@@ -44,10 +45,15 @@ std::optional<std::size_t> GetNumConsoleColumns()
     return std::nullopt;
 }
 
-bool AssertThrow(std::string_view msg, std::string_view expression, Teide::SourceLocation location)
+bool AssertThrow(std::string_view msg, std::string_view expression, std::source_location location)
 {
     struct AssertException
     {};
+
+    const auto* file = location.file_name();
+    const auto* function = location.function_name();
+    auto line = location.line();
+    auto column = location.column();
 
     const auto trace = cpptrace::generate_trace();
     for (const auto& frame : trace | std::views::drop(1))
@@ -63,19 +69,27 @@ bool AssertThrow(std::string_view msg, std::string_view expression, Teide::Sourc
         {
             continue;
         }
-        location = Teide::SourceLocation(frame.line.value_or(0), 0, frame.filename.c_str(), frame.symbol.c_str());
+
+        file = frame.filename.c_str();
+        function = frame.symbol.c_str();
+        line = frame.line.value_or(0);
+        column = frame.column.value_or(0);
         break;
     }
 
-    std::cout << location.file_name();
-    if (location.line() > 0)
+    std::cout << file;
+    if (line > 0)
     {
-        std::cout << '(' << location.line() << ')';
+        std::cout << ':' << line;
+        if (column > 0)
+        {
+            std::cout << ':' << column;
+        }
     }
     std::cout << ": ";
-    if (std::strlen(location.function_name()) > 0)
+    if (std::strlen(function))
     {
-        std::cout << location.function_name() << ": ";
+        std::cout << function << ": ";
     }
     if (expression.empty())
     {
