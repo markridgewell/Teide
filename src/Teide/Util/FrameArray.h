@@ -15,7 +15,7 @@ public:
     {
         for (usize i = 0; i < N; i++)
         {
-            new (m_storage + i * sizeof(T)) T(args...);
+            new (m_storage + i * sizeof(T)) T(args..., i);
         }
     }
 

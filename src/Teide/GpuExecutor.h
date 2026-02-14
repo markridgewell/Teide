@@ -55,7 +55,7 @@ private:
 
     struct FrameResources
     {
-        explicit FrameResources(uint32 numThreads, vk::Device device, uint32_t queueFamilyIndex);
+        explicit FrameResources(uint32 numThreads, vk::Device device, uint32 queueFamilyIndex, uint32 index);
 
         ThreadMap<ThreadResources> threadResources;
     };

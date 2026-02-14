@@ -91,7 +91,9 @@ private:
 
     struct FrameResources
     {
-        explicit FrameResources(VulkanDevice& device, DescriptorPool& sceneDescriptorPool, const ShaderEnvironmentPtr& shaderEnvironment);
+        explicit FrameResources(
+            VulkanDevice& device, DescriptorPool& sceneDescriptorPool, const ShaderEnvironmentPtr& shaderEnvironment,
+            uint32 index);
 
         vk::UniqueSemaphore renderFinished;
         vk::UniqueFence inFlightFence;

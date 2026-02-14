@@ -114,7 +114,7 @@ namespace
             };
 
             imageViews[i] = device.createImageViewUnique(createInfo, s_allocator);
-            SetDebugName(imageViews[i], "SwapchainImageView[{}]", i);
+            SetDebugName(imageViews[i], "SwapchainImageView{}", i);
         }
 
         return imageViews;
@@ -164,7 +164,7 @@ namespace
             };
 
             framebuffers[i] = device.createFramebufferUnique(createInfo, s_allocator);
-            SetDebugName(framebuffers[i], "SwapchainFramebuffer[{}]", i);
+            SetDebugName(framebuffers[i], "SwapchainFramebuffer{}", i);
         }
 
         return framebuffers;
