@@ -85,7 +85,12 @@ std::optional<Pipe> Run(std::span<char* const> command)
 {
     // Setup pipe and spawn child
     auto input_pipe = std::array<int, 2>{};
-    pipe(input_pipe.data());
+    if (pipe(input_pipe.data()) == -1)
+    {
+        std::println("pipe() failed");
+        return std::nullopt;
+    }
+
     const pid_t pid = fork();
     if (pid == -1)
     {
