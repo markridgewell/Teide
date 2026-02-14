@@ -26,4 +26,3 @@ for test in tests:
 
 if failure:
     exit(1)
-
