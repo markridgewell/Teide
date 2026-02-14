@@ -1,4 +1,6 @@
 
+#include "Trace.h"
+
 #include "Teide/Assert.h"
 #include "Teide/TestUtils.h"
 
@@ -319,6 +321,10 @@ int main(int argc, char** argv)
 #else
 int main(int argc, char** argv)
 {
+#    ifdef __linux__
+    InitCpptrace(argc, argv);
+#    endif
+
     return Run(argc, argv);
 }
 #endif
