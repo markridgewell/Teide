@@ -9,6 +9,7 @@
 #    define NOMINMAX
 #    include <windows.h>
 #    pragma comment(lib, "user32.lib")
+#    include <filesystem>
 #endif
 
 namespace Teide
