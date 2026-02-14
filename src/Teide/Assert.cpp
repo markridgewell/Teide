@@ -1,25 +1,22 @@
 
 #include "Teide/Assert.h"
 
-#include <algorithm>
 #include <cstdlib>
-#include <filesystem>
-#include <ranges>
 #include <stack>
-#include <string>
 
 #ifdef _WIN32
 #    define WIN32_LEAN_AND_MEAN
 #    define NOMINMAX
 #    include <windows.h>
 #    pragma comment(lib, "user32.lib")
+#    include <filesystem>
 #endif
 
 namespace Teide
 {
 namespace
 {
-    bool DefaultAssertHandler(std::string_view msg, std::string_view expression, SourceLocation location)
+    bool DefaultAssertHandler(std::string_view msg, std::string_view expression, std::source_location location)
     {
 #ifdef _WIN32
         if (IsDebuggerAttached())
