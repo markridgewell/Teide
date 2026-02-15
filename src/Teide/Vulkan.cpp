@@ -225,7 +225,10 @@ namespace
 
 void RegisterDebugName(uint64 handle, const char* debugName)
 {
-    s_debugNames[handle] = debugName;
+    if (debugName)
+    {
+        s_debugNames[handle] = debugName;
+    }
 }
 
 const char* GetRegisteredDebugName(uint64 handle)
