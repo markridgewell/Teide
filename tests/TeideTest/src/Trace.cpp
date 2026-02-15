@@ -24,13 +24,6 @@ namespace
 char* s_execPath = nullptr;
 char s_resolveTraceArg[] = "--z-cpptrace_resolve_trace_";
 
-void SafePrintln(int fd, std::string_view message)
-{
-    char newline = '\n';
-    static_cast<void>(write(fd, message.data(), message.size()));
-    static_cast<void>(write(fd, &newline, 1));
-}
-
 struct Pipe
 {
     explicit Pipe(int pid, std::span<const int, 2> pipe) : pid{pid}, writeEnd{pipe[1]}, readEnd{pipe[0]} {}
@@ -59,7 +52,7 @@ struct Pipe
     {
         if (write(writeEnd, data, size) == -1)
         {
-            SafePrintln(STDERR_FILENO, "error writing to pipe");
+            _exit(5);
         };
     }
 
@@ -101,15 +94,13 @@ std::optional<Pipe> Run(std::span<char* const> command)
     auto input_pipe = std::array<int, 2>{};
     if (pipe(input_pipe.data()) == -1)
     {
-        SafePrintln(STDERR_FILENO, "pipe() failed");
-        return std::nullopt;
+        _exit(2);
     }
 
     const pid_t pid = fork();
     if (pid == -1)
     {
-        SafePrintln(STDERR_FILENO, "fork() failed");
-        return std::nullopt;
+        _exit(3);
     }
 
     auto pipe = Pipe(pid, input_pipe);
@@ -120,8 +111,7 @@ std::optional<Pipe> Run(std::span<char* const> command)
         pipe.Close();
 
         execv(command[0], command.data());
-        SafePrintln(STDERR_FILENO, "execv() failed");
-        _exit(1);
+        _exit(4);
     }
 
     // parent
@@ -148,9 +138,6 @@ void DoSignalSafeTrace(std::span<const cpptrace::frame_ptr> buffer)
 
 void SignalHandler(int signo [[maybe_unused]], siginfo_t* info [[maybe_unused]], void* context [[maybe_unused]])
 {
-    // Print basic message
-    SafePrintln(STDERR_FILENO, "SIGSEGV occurred:");
-
     // Generate trace
     constexpr std::size_t N = 100;
     auto buffer = std::array<cpptrace::frame_ptr, N>{};
@@ -164,6 +151,8 @@ void SignalHandler(int signo [[maybe_unused]], siginfo_t* info [[maybe_unused]],
 
 void ResolveTrace()
 {
+    std::println("SIGSEGV occurred:");
+
     auto trace = cpptrace::object_trace{};
     while (true)
     {
