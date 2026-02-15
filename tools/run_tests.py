@@ -15,7 +15,7 @@ cmd = ['ctest', '--test-dir', test_dir, '--build-config', 'Debug', '--no-tests=e
 output = subprocess.check_output(cmd, encoding='utf-8')
 tests = json.loads(output)['tests']
 
-exit_code = 0
+num_failures = 0
 
 test_env = os.environ.copy()
 test_env["GTEST_COLOR"] = "1"
@@ -27,10 +27,11 @@ for test in tests:
     print(subprocess.list2cmdline(test_cmd), flush=True)
     retcode = subprocess.run(test_cmd, env=test_env).returncode
     if retcode != 0:
-        exit_code = 1
+        num_failures = num_failures + 1
         print(f'Test {test_name} failed with exit code {retcode}')
     else:
         print(f'Test {test_name} passed')
     print()
 
-exit(exit_code)
+print(f'Failed tests: {num_failures}')
+exit(num_failures)
