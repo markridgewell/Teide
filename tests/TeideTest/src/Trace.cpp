@@ -29,7 +29,8 @@ void SafePrintln(int fd, std::string_view message)
     ssize_t ret [[maybe_unused]] = 0;
     ret = write(fd, message.data(), message.size());
     char newline = '\n';
-    ret = write(fd, &newline, 1);
+    const ssize_t ret1 [[maybe_unused]] = write(fd, message.data(), message.size());
+    const ssize_t ret2 [[maybe_unused]] = write(fd, &newline, 1);
 }
 
 struct Pipe

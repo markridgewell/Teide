@@ -56,7 +56,7 @@ print()
 for test_name in sequence:
     test = find_test(test_name)
     test_cmd = test['command']
-    print(f'Running test {test_name}')
+    print(f'Running test {test_name}', flush=True)
     # print(subprocess.list2cmdline(test_cmd), flush=True)
     retcode = subprocess.run(test_cmd, env=test_env).returncode
     if retcode != 0:
