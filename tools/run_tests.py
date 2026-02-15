@@ -4,6 +4,7 @@ import sys
 import subprocess
 import json
 import os
+import pprint
 
 if len(sys.argv) != 2:
     print(f'usage: {sys.argv[0]} <test-dir>')
@@ -13,7 +14,9 @@ test_dir = sys.argv[1]
 
 cmd = ['ctest', '--test-dir', test_dir, '--build-config', 'Debug', '--no-tests=error', '--show-only=json-v1']
 output = subprocess.check_output(cmd, encoding='utf-8')
-tests = json.loads(output)['tests']
+data = json.loads(output)
+pprint.pprint(data)
+tests = data['tests']
 
 num_failures = 0
 
