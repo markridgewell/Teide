@@ -82,6 +82,7 @@ std::string to_string(CommandType type)
         case CommandType::Read: return "Read";
         case CommandType::Render: return "Render";
         case CommandType::Dispatch: return "Dispatch";
+        case CommandType::Present: return "Present";
     }
     return "";
 }
