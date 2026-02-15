@@ -8,6 +8,9 @@
 #    define RENDERDOC_FOUND 0
 #endif
 
+namespace Teide
+{
+
 class RenderDoc
 {
 public:
@@ -20,3 +23,5 @@ private:
     RENDERDOC_API_1_1_2* rdoc_api = nullptr;
 #endif
 };
+
+} // namespace Teide

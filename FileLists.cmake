@@ -31,6 +31,7 @@ set(sources
     include/Teide/Task.h
     include/Teide/Texture.h
     include/Teide/TextureData.h
+    include/Teide/Util/RenderDocHooks.h
     include/Teide/Visitable.h
     src/GeoLib.natvis
     src/ShaderCompiler/ShaderCompiler.cpp
@@ -52,6 +53,7 @@ set(sources
     src/Teide/ShaderData.cpp
     src/Teide/TextureData.cpp
     src/Teide/Util/FrameArray.h
+    src/Teide/Util/RenderDocHooks.cpp
     src/Teide/Util/ResourceMap.h
     src/Teide/Util/SafeMemCpy.h
     src/Teide/Util/StaticMap.h
