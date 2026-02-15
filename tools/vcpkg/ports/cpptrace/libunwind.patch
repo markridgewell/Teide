@@ -1,0 +1,13 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 78e0af0..f314400 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -484,7 +484,7 @@ if(CPPTRACE_UNWIND_WITH_LIBUNWIND)
+         set(libunwind_FOUND TRUE)
+       endif()
+       if(NOT libunwind_FOUND)
+-        # message(FATAL_ERROR "Unable to locate libunwind")
++        message(FATAL_ERROR "Unable to locate libunwind")
+         # Try to link with it if it's where it should be
+         # This path can be entered if libunwind was installed via the system package manager, sometimes. I probably messed
+         # up the find_library above.
