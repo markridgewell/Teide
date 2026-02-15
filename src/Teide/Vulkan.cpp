@@ -13,9 +13,11 @@
 
 #include <SDL_vulkan.h>
 #include <spdlog/spdlog.h>
+#include <vkex/vkex.hpp>
 #include <vulkan/vulkan_enums.hpp>
 
 #include <memory>
+#include <unordered_map>
 
 namespace Teide
 {
@@ -149,7 +151,7 @@ namespace
 
         if (severity & BreakOnVulkanMessage)
         {
-            TEIDE_BREAK("{}", pCallbackData->pMessage);
+            TEIDE_BREAK("Validation errors occurred, see log for details");
         }
         return VK_FALSE;
     }
@@ -216,7 +218,24 @@ namespace
     {
         return opt.has_value() ? &opt.value() : nullptr;
     }
+
+    std::unordered_map<uint64, std::string> s_debugNames;
 } // namespace
+
+
+void RegisterDebugName(uint64 handle, const char* debugName)
+{
+    if (debugName)
+    {
+        s_debugNames[handle] = debugName;
+    }
+}
+
+const char* GetRegisteredDebugName(uint64 handle)
+{
+    const auto it = s_debugNames.find(handle);
+    return it != s_debugNames.end() ? it->second.c_str() : nullptr;
+}
 
 vk::DebugUtilsMessengerCreateInfoEXT GetDebugCreateInfo()
 {

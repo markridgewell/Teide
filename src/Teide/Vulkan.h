@@ -117,6 +117,9 @@ void TransitionImageLayout(
 
 vk::UniqueCommandPool CreateCommandPool(uint32_t queueFamilyIndex, vk::Device device, const char* debugName = "");
 
+void RegisterDebugName(uint64 handle, const char* debugName);
+const char* GetRegisteredDebugName(uint64 handle);
+
 template <class Handle>
 void SetDebugName(vk::Device device [[maybe_unused]], Handle handle [[maybe_unused]], const char* debugName [[maybe_unused]])
 {
@@ -126,10 +129,11 @@ void SetDebugName(vk::Device device [[maybe_unused]], Handle handle [[maybe_unus
         {
             device.setDebugUtilsObjectNameEXT({
                 .objectType = handle.objectType,
-                .objectHandle = std::bit_cast<uint64_t>(handle),
+                .objectHandle = std::bit_cast<uint64>(handle),
                 .pObjectName = debugName,
             });
         }
+        RegisterDebugName(std::bit_cast<uint64>(handle), debugName);
     }
 }
 
@@ -152,6 +156,15 @@ void SetDebugName(
         const auto string = fmt::vformat(format, fmt::make_format_args(std::forward<FormatArgs>(fmtArgs)...));
         SetDebugName(handle, string.c_str());
     }
+}
+
+template <std::ranges::range R>
+void GenerateDebugNames(R& handles, const char* nameBase)
+{
+    std::ranges::for_each(handles, [nameBase, index = 0](auto& elem) mutable {
+        SetDebugName(elem, "{}{}", nameBase, index);
+        index++;
+    });
 }
 
 template <class... Args>
@@ -237,3 +250,34 @@ inline std::string_view GetExtensionName(const vk::ExtensionProperties& obj)
 }
 
 } // namespace Teide
+
+template <class T>
+    requires vk::isVulkanHandleType<T>::value
+struct fmt::formatter<T> : formatter<std::string>
+{
+    auto format(const T& handle, format_context& ctx) const -> format_context::iterator
+    {
+        const auto handleValue = std::bit_cast<Teide::uint64>(handle);
+        std::string result = fmt::format("0x{:08x}", handleValue);
+        if (const char* debugName = Teide::GetRegisteredDebugName(handleValue))
+        {
+            fmt::format_to(std::back_inserter(result), "[{}]", debugName);
+        }
+        return fmt::formatter<std::string>::format(result, ctx);
+    }
+};
+
+template <class Type, class Dispatch>
+struct fmt::formatter<vk::UniqueHandle<Type, Dispatch>> : formatter<std::string>
+{
+    auto format(const vk::UniqueHandle<Type, Dispatch>& handle, format_context& ctx) const -> format_context::iterator
+    {
+        const auto handleValue = std::bit_cast<Teide::uint64>(handle.get());
+        std::string result = fmt::format("0x{:08x}", handleValue);
+        if (const char* debugName = Teide::GetRegisteredDebugName(handleValue))
+        {
+            fmt::format_to(std::back_inserter(result), "[{}]", debugName);
+        }
+        return fmt::formatter<std::string>::format(result, ctx);
+    }
+};

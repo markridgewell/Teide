@@ -539,13 +539,14 @@ TransientParameterBlock* VulkanRenderer::ThreadResources::CreateViewParameterBlo
 }
 
 VulkanRenderer::FrameResources::FrameResources(
-    VulkanDevice& device, DescriptorPool& sceneDescriptorPool, const ShaderEnvironmentPtr& shaderEnvironment) :
+    VulkanDevice& device, DescriptorPool& sceneDescriptorPool, const ShaderEnvironmentPtr& shaderEnvironment, uint32 index) :
     threadResources(device.GetScheduler().GetThreadCount())
 {
     const auto vkdevice = device.GetVulkanDevice();
 
     renderFinished = vkdevice.createSemaphoreUnique({}, s_allocator);
     inFlightFence = vkdevice.createFenceUnique({.flags = vk::FenceCreateFlagBits::eSignaled}, s_allocator);
+    SetDebugName(inFlightFence, "InFlightFence{}", index);
 
     if (shaderEnvironment)
     {

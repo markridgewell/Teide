@@ -13,9 +13,9 @@ public:
     template <class... Args>
     explicit FrameArray(Args&&... args) // NOLINT(cppcoreguidelines-pro-type-member-init, cppcoreguidelines-missing-std-forward)
     {
-        for (usize i = 0; i < N; i++)
+        for (uint32 i = 0; i < N; i++)
         {
-            new (m_storage + i * sizeof(T)) T(args...);
+            new (m_storage + i * sizeof(T)) T(args..., i);
         }
     }
 
