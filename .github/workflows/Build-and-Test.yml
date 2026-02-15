@@ -243,7 +243,8 @@ jobs:
     - name: Test
       id: test
       shell: bash
-      run: python tools/run_tests.py build/${{matrix.preset}}
+      run: ctest --preset ${{matrix.preset}} --build-config ${{matrix.buildtype}} --verbose --output-on-failure --no-tests=error
+      # run: python tools/run_tests.py build/${{matrix.preset}}
 
     - name: Save render test output
       if: failure() && steps.test.outcome == 'failure'
