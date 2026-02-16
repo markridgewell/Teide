@@ -244,12 +244,22 @@ struct VulkanGraph
         }
     };
 
+    void ForEachPresentNode(auto f)
+    {
+        for (auto i = VulkanGraph::PresentRef(0); i.index < presentNodes.size(); i.index++)
+        {
+            const auto& node = presentNodes[i.index];
+            f(i, fmt::format("present{}", i.index + 1), std::span(&node.source, 1));
+        }
+    }
+
     void ForEachCommandNode(auto f)
     {
         ForEachWriteNode(f);
         ForEachReadNode(f);
         ForEachRenderNode(f);
         ForEachDispatchNode(f);
+        ForEachPresentNode(f);
     }
 
     template <class T>
