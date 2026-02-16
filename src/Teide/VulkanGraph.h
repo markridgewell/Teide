@@ -3,6 +3,7 @@
 
 #include "Teide/BasicTypes.h"
 #include "Teide/Renderer.h"
+#include "Teide/Surface.h"
 #include "Teide/VulkanBuffer.h"
 #include "Teide/VulkanTexture.h"
 
@@ -27,6 +28,7 @@ enum class CommandType : uint8
     Read,
     Render,
     Dispatch,
+    Present,
 };
 std::string to_string(CommandType type);
 
@@ -52,6 +54,7 @@ struct VulkanGraph
     static auto ReadRef(usize i) -> CommandNodeRef { return {.type = CommandType::Read, .index = i}; }
     static auto RenderRef(usize i) -> CommandNodeRef { return {.type = CommandType::Render, .index = i}; }
     static auto DispatchRef(usize i) -> CommandNodeRef { return {.type = CommandType::Dispatch, .index = i}; }
+    static auto PresentRef(usize i) -> CommandNodeRef { return {.type = CommandType::Present, .index = i}; }
     static auto TextureRef(usize i) -> ResourceNodeRef { return {.type = ResourceType::Texture, .index = i}; }
     static auto TextureDataRef(usize i) -> ResourceNodeRef { return {.type = ResourceType::TextureData, .index = i}; }
 
@@ -91,6 +94,13 @@ struct VulkanGraph
         std::vector<ResourceNodeRef> outputs;
     };
 
+    struct PresentNode
+    {
+        static constexpr auto NodeType = CommandType::Present;
+
+        ResourceNodeRef source;
+    };
+
     struct TextureNode
     {
         static constexpr auto NodeType = ResourceType::Texture;
@@ -117,6 +127,8 @@ struct VulkanGraph
     std::vector<ReadNode> readNodes;
     std::vector<RenderNode> renderNodes;
     std::vector<DispatchNode> dispatchNodes;
+    std::vector<PresentNode> presentNodes;
+
     std::vector<TextureNode> textureNodes;
     std::vector<TextureDataNode> textureDataNodes;
 
@@ -150,6 +162,12 @@ struct VulkanGraph
             SetSource(output, r);
         }
         return r;
+    }
+
+    auto AddPresentNode(ResourceNodeRef source)
+    {
+        presentNodes.emplace_back(source);
+        return PresentRef(presentNodes.size() - 1);
     }
 
     auto AddRenderNode(RenderList renderList, std::optional<ResourceNodeRef> colorTarget, std::optional<ResourceNodeRef> depthStencilTarget)
@@ -226,12 +244,22 @@ struct VulkanGraph
         }
     };
 
+    void ForEachPresentNode(auto f)
+    {
+        for (auto i = VulkanGraph::PresentRef(0); i.index < presentNodes.size(); i.index++)
+        {
+            const auto& node = presentNodes[i.index];
+            f(i, fmt::format("present{}", i.index + 1), std::span(&node.source, 1));
+        }
+    }
+
     void ForEachCommandNode(auto f)
     {
         ForEachWriteNode(f);
         ForEachReadNode(f);
         ForEachRenderNode(f);
         ForEachDispatchNode(f);
+        ForEachPresentNode(f);
     }
 
     template <class T>
