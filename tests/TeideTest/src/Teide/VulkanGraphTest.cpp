@@ -194,6 +194,19 @@ TEST_F(VulkanGraphTest, BuildingGraphWithOneWriteNodeHasNoEffect)
     ASSERT_THAT(graph.textureNodes, ElementsAre(HasSource(write)));
 }
 
+TEST_F(VulkanGraphTest, BuildingGraphWithOneReadNodeHasNoEffect)
+{
+    VulkanGraph graph;
+    const auto texData = graph.AddTextureDataNode("texData1", OnePixelWhiteTexture);
+    const auto tex = graph.AddTextureNode(CreateDummyTexture("tex1"));
+    const auto read = graph.AddReadNode(tex, texData);
+
+    BuildGraph(graph, *m_device);
+
+    ASSERT_THAT(graph.readNodes, ElementsAre(HasSource(tex)));
+    ASSERT_THAT(graph.textureDataNodes, ElementsAre(HasSource(read)));
+}
+
 TEST_F(VulkanGraphTest, BuildingGraphWithOneDispatchNodeHasNoEffect)
 {
     NiceMock<MockRefCounter> owner;
@@ -255,6 +268,17 @@ TEST_F(VulkanGraphTest, BuildingGraphWithThreeDependentRenderNodesAddsConnection
         ElementsAre(
             HasSource(VulkanGraph::RenderRef(0u)), HasSource(VulkanGraph::RenderRef(1u)),
             HasSource(VulkanGraph::RenderRef(2u))));
+}
+
+TEST_F(VulkanGraphTest, BuildingGraphWithOnePresentNodeHasNoEffect)
+{
+    VulkanGraph graph;
+    const auto tex = graph.AddTextureNode(CreateDummyTexture("tex1"));
+    graph.AddPresentNode(tex);
+
+    BuildGraph(graph, *m_device);
+
+    ASSERT_THAT(graph.presentNodes, ElementsAre(HasSource(tex)));
 }
 
 constexpr auto ThreeRenderPassesDot = R"--(strict digraph {
@@ -350,6 +374,28 @@ TEST_F(VulkanGraphTest, VisualizingGraphWithReadNode)
     ASSERT_THAT(dot, Eq(CopyGpuToCpuDot)) << FormatDot(dot) << "\nGraph: " << MakeDotURL(dot);
 }
 
+constexpr auto PresentDot = R"--(strict digraph {
+    rankdir=LR
+    node [shape=box]
+    tex
+    node [shape=box, margin=0.5]
+    render1 -> tex
+    present1
+    tex -> present1
+})--";
+
+TEST_F(VulkanGraphTest, VisualizingGraphWithPresentNode)
+{
+    VulkanGraph graph;
+    const auto tex = graph.AddTextureNode(CreateDummyTexture("tex"));
+    graph.AddRenderNode({.name = "render1"}, tex, std::nullopt);
+    graph.AddPresentNode(tex);
+
+    const auto dot = VisualizeGraph(graph);
+
+    ASSERT_THAT(dot, Eq(PresentDot)) << FormatDot(dot) << "\nGraph: " << MakeDotURL(dot);
+}
+
 TEST_F(VulkanGraphTest, ExecutingGraphWithCopyNode)
 {
     VulkanGraph graph;
@@ -389,7 +435,10 @@ TEST_F(VulkanGraphTest, ExecutingGraphWithRenderNodeWithColorAttachment)
     spdlog::info(MakeDotURL(VisualizeGraph(graph)));
     auto queue = Queue(m_device->GetVulkanDevice(), m_device->GetGraphicsQueue());
 
+    auto renderer = m_device->CreateRenderer({});
+    renderer->BeginFrame({});
     ExecuteGraph(graph, *m_device, queue);
+    renderer->EndFrame();
 
     const auto output = graph.Get<VulkanGraph::TextureDataNode>(texDataOutput.index).data;
     const auto expected = TextureData{
