@@ -485,7 +485,7 @@ TEST_F(VulkanGraphTest, ExecutingGraphWithRenderNodeWithColorAndDepthAttachments
         .name = "clear",
         .clearState = {
             .colorValue = Color{1.0f, 0.0f, 1.0f, 1.0f},
-            .depthValue = 1.0f,
+            .depthValue = 0.5f,
         },
     }, color, depth);
     const auto colorOutput = graph.AddTextureDataNode("colorOutput", {});

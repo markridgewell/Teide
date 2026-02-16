@@ -141,13 +141,12 @@ TYPED_TEST(SurfaceTest, DISABLED_RenderToSurfaceTwice)
     };
     const auto renderListWithoutClear = RenderList{};
 
-    renderer->BeginFrame({});
-    renderer->RenderToSurface(surface, renderListWithClear);
-    renderer->EndFrame();
-
-    renderer->BeginFrame({});
-    renderer->RenderToSurface(surface, renderListWithoutClear);
-    renderer->EndFrame();
+    for (int i = 0; i < 10; i++)
+    {
+        renderer->BeginFrame({});
+        renderer->RenderToSurface(surface, renderListWithClear);
+        renderer->EndFrame();
+    }
 }
 
 } // namespace
