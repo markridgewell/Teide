@@ -133,7 +133,6 @@ endif()
 
 if(TEIDE_BUILD_TESTS)
     find_package(GTest REQUIRED)
-    find_package(StackWalker QUIET)
     find_package(cpptrace CONFIG REQUIRED)
 
     add_subdirectory(tests)

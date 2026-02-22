@@ -6,6 +6,7 @@
 
 #include <cpptrace/basic.hpp>
 #include <cpptrace/cpptrace.hpp>
+#include <cpptrace/from_current.hpp>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <spdlog/sinks/ostream_sink.h>
@@ -17,11 +18,6 @@
 
 #if __linux__
 #    include <sys/ioctl.h>
-#endif
-
-#if defined(_WIN32) && __has_include("StackWalker.h")
-#    define STACKWALKER_ENABLED
-#    include "StackWalker.h"
 #endif
 
 namespace
@@ -272,62 +268,27 @@ int Run(int argc, char** argv)
 
 } // namespace
 
-#ifdef STACKWALKER_ENABLED
-class MyStackWalker : public StackWalker
-{
-public:
-    MyStackWalker() :
-        StackWalker(
-            StackWalker::RetrieveSymbol | StackWalker::RetrieveLine | StackWalker::SymAll, nullptr,
-            GetCurrentProcessId(), GetCurrentProcess())
-    {}
-
-    virtual void OnOutput(LPCSTR szText)
-    {
-        std::string_view text = szText;
-        if (text.ends_with("\n"))
-        {
-            text.remove_suffix(1);
-        }
-        if (text.ends_with("\r"))
-        {
-            text.remove_suffix(1);
-        }
-        spdlog::info("{}", text);
-    }
-};
-MyStackWalker stackWalker;
-
-LONG WINAPI ExpFilter(EXCEPTION_POINTERS* pExp, DWORD /*dwExpCode*/)
-{
-    spdlog::error("Caught SEH exception. Printing stacktrace...");
-    stackWalker.ShowCallstack(GetCurrentThread(), pExp->ContextRecord);
-    return EXCEPTION_EXECUTE_HANDLER;
-}
-
 int main(int argc, char** argv)
 {
-    spdlog::info("Setting exception handler...");
-    __try
-    {
-        return Run(argc, argv);
-    }
-    __except (ExpFilter(GetExceptionInformation(), GetExceptionCode()))
-    {
-        spdlog::debug("Finished processing SEH exception.");
-        return 1;
-    }
-}
-#else
-int main(int argc, char** argv)
-{
-#    ifdef __linux__
+#ifdef __linux__
     if (InitCpptrace(argc, argv))
     {
         return 0;
     }
-#    endif
-
-    return Run(argc, argv);
-}
 #endif
+
+#ifdef _WIN32
+    CPPTRACE_SEH_TRY
+    {
+        return Run(argc, argv);
+    }
+    CPPTRACE_SEH_EXCEPT(true)
+    {
+        spdlog::error("Unhandled SEH exception thrown");
+        cpptrace::from_current_exception().print();
+        return 1;
+    }
+#else
+    return Run(argc, argv);
+#endif
+}

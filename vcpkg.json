@@ -63,10 +63,6 @@
         {
           "name": "libunwind",
           "platform": "linux"
-        },
-        {
-          "name": "stackwalker",
-          "platform": "windows & !uwp"
         }
       ]
     }
