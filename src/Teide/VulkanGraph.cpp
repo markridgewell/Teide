@@ -305,7 +305,7 @@ void BuildGraph(VulkanGraph& graph, VulkanDevice& device)
 
     for (const auto& node : graph.dispatchNodes)
     {
-        for (const auto dep : node.dependencies)
+        for (const auto dep : node.inputs)
         {
             const auto state = TextureState{
                 .layout = vk::ImageLayout::eShaderReadOnlyOptimal,
@@ -381,7 +381,7 @@ std::string VisualizeGraph(VulkanGraph& graph)
         {
             fmt::format_to(out, "    {} -> {}\n", node.name, graph.GetNodeName(input));
         }
-        for (const auto& dep : node.dependencies)
+        for (const auto& dep : node.inputs)
         {
             fmt::format_to(out, "    {} -> {}\n", graph.GetNodeName(dep), node.name);
         }

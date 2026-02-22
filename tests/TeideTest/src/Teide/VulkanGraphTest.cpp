@@ -51,11 +51,11 @@ std::string FormatDot(const std::string& dot)
     return dot + "\nGraph: " + MakeDotURL(dot);
 }
 
-class VulkanGraphTest : public testing::Test
+class Base : public testing::Test
 {
 public:
-    VulkanGraphTest() :
-        m_device{CreateTestDevice()}, m_emptyParameters{m_device->CreateParameterBlock({}, "EmptyParams")}
+    explicit Base(VulkanDevicePtr device) :
+        m_device{std::move(device)}, m_emptyParameters{m_device->CreateParameterBlock({}, "EmptyParams")}
     {}
 
 protected:
@@ -137,6 +137,12 @@ private:
     ParameterBlock m_emptyParameters;
 };
 
+class VulkanGraphTest : public Base
+{
+public:
+    VulkanGraphTest() : Base(CreateTestDevice()) {}
+};
+
 void PrintDependencies(testing::MatchResultListener& os, std::span<const VulkanGraph::ResourceNodeRef> dependencies)
 {
     os << '(';
@@ -158,6 +164,13 @@ MATCHER(HasNoDependencies, "")
     *result_listener << "where dependencies are: ";
     PrintDependencies(*result_listener, arg.dependencies);
     return arg.dependencies.empty();
+}
+
+MATCHER(HasNoInputs, "")
+{
+    *result_listener << "where inputs are: ";
+    PrintDependencies(*result_listener, arg.inputs);
+    return arg.inputs.empty();
 }
 
 MATCHER_P(HasDependency, dep, "")
@@ -240,8 +253,7 @@ TEST_F(VulkanGraphTest, BuildingGraphWithOneDispatchNodeHasNoEffect)
 
     BuildGraph(graph, *m_device);
 
-    ASSERT_THAT(graph.dispatchNodes, ElementsAre(HasNoDependencies()));
-    EXPECT_THAT(graph.dispatchNodes[0].index, Eq(0));
+    ASSERT_THAT(graph.dispatchNodes, ElementsAre(HasNoInputs()));
     ASSERT_THAT(graph.textureNodes, ElementsAre(HasSource(dispatchNode1)));
 }
 
@@ -570,6 +582,42 @@ TEST_F(VulkanGraphTest, ExecutingGraphWithRenderNodeWithColorAndDepthAttachments
         .pixels = {std::byte{0x00}, std::byte{0x80}},
     };
     EXPECT_THAT(depthData, Eq(depthExpected));
+}
+
+class VulkanGraphSurfaceTest : public Base
+{
+public:
+    static constexpr auto SurfaceSize = Geo::Size2i{800, 600};
+
+    VulkanGraphSurfaceTest() : VulkanGraphSurfaceTest(CreateTestDeviceAndSurface(SurfaceSize)) {}
+
+    explicit VulkanGraphSurfaceTest(VulkanDeviceAndSurface ds) :
+        Base(std::move(ds.device)), m_surface{std::move(ds.surface)}
+    {}
+
+protected:
+    SurfacePtr m_surface; // NOLINT(cppcoreguidelines-non-private-member-variables-in-classes)
+};
+
+TEST_F(VulkanGraphSurfaceTest, ExecutingGraphWithPresentNode)
+{
+    VulkanGraph graph;
+    const auto tex1 = graph.AddTextureNode(CreateDummyTexture("tex1"));
+    graph.AddRenderNode({
+        .name = "clearMagenta",
+        .clearState = {
+            .colorValue = Color{1.0f, 0.0f, 1.0f, 1.0f},
+        },
+    }, tex1, std::nullopt);
+    graph.AddPresentNode(tex1);
+    spdlog::info(VisualizeGraph(graph));
+    spdlog::info(MakeDotURL(VisualizeGraph(graph)));
+    auto queue = Queue(m_device->GetVulkanDevice(), m_device->GetGraphicsQueue());
+
+    auto renderer = m_device->CreateRenderer({});
+    renderer->BeginFrame({});
+    ExecuteGraph(std::move(graph), *m_device, queue);
+    renderer->EndFrame();
 }
 
 } // namespace
