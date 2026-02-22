@@ -1,8 +1,6 @@
 
 #pragma once
 
-#include "RenderDocHooks.h"
-
 #include "GeoLib/Matrix.h"
 #include "GeoLib/Vector.h"
 #include "ShaderCompiler/ShaderCompiler.h"
@@ -10,6 +8,7 @@
 #include "Teide/Device.h"
 #include "Teide/Mesh.h"
 #include "Teide/Renderer.h"
+#include "Teide/Util/RenderDocHooks.h"
 
 #include <gtest/gtest.h>
 
@@ -76,7 +75,7 @@ private:
     static std::filesystem::path s_referenceDir;
     static std::filesystem::path s_outputDir;
 
-    RenderDoc m_renderDoc;
+    Teide::RenderDoc m_renderDoc;
     Teide::DevicePtr m_device;
     Teide::ShaderEnvironmentPtr m_shaderEnv;
     Teide::RendererPtr m_renderer;

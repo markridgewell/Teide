@@ -1,7 +1,9 @@
 
-#include "RenderDocHooks.h"
+#include "Teide/Util/RenderDocHooks.h"
 
 #include "Teide/Assert.h"
+
+#include <spdlog/spdlog.h>
 
 
 #if defined(_WIN32)
@@ -11,6 +13,9 @@
 #    include <dlfcn.h>
 #endif
 
+
+namespace Teide
+{
 
 #if RENDERDOC_FOUND
 RenderDoc::RenderDoc()
@@ -26,12 +31,14 @@ RenderDoc::RenderDoc()
         TEIDE_ASSERT(ret == 1);
     }
 #    elif defined(__linux__)
+    spdlog::debug("Attempting to load renderdoc...");
     if (void* mod = dlopen("librenderdoc.so", RTLD_NOW | RTLD_NOLOAD))
     {
-        pRENDERDOC_GetAPI RENDERDOC_GetAPI = reinterpret_cast<pRENDERDOC_GetAPI>(dlsym(mod, "RENDERDOC_GetAPI"));
+        auto RENDERDOC_GetAPI = reinterpret_cast<pRENDERDOC_GetAPI>(dlsym(mod, "RENDERDOC_GetAPI"));
         [[maybe_unused]] const int ret
             = RENDERDOC_GetAPI(eRENDERDOC_API_Version_1_1_2, reinterpret_cast<void**>(&rdoc_api));
         TEIDE_ASSERT(ret == 1);
+        spdlog::debug("Success!");
     }
 #    endif
     // NOLINTEND(cppcoreguidelines-pro-type-reinterpret-cast)
@@ -59,3 +66,5 @@ void RenderDoc::EndFrameCapture()
     }
 #endif
 }
+
+} // namespace Teide
