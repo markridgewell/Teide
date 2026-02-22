@@ -7,10 +7,7 @@
 #include <string_view>
 
 #ifndef _WIN32
-extern "C" {
-extern int raise(int) __THROW;
-constexpr int SIGTRAP = 5;
-}
+#    include <csignal>
 #endif
 
 namespace Teide
@@ -47,7 +44,7 @@ namespace Internal
 #    ifdef _WIN32
 #        define TEIDE_BREAK_IMPL() (::Teide::IsDebuggerAttached() ? (__debugbreak(), 1) : (std::abort(), 0))
 #    else
-#        define TEIDE_BREAK_IMPL() raise(SIGTRAP)
+#        define TEIDE_BREAK_IMPL() std::raise(SIGTRAP)
 #    endif
 
 // Break program execution with message
