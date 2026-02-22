@@ -682,34 +682,57 @@ TextureState VulkanDevice::CreateTextureImpl(VulkanTexture& texture)
         .initialLayout = initialState.layout,
     };
 
-    const vma::AllocationCreateInfo allocInfo = {
-        .usage = vma::MemoryUsage::eAuto,
-    };
-    auto [image, allocation] = m_allocator->createImageUnique(imageInfo, allocInfo);
+    {
+        const vma::AllocationCreateInfo allocInfo = {
+            .usage = vma::MemoryUsage::eAuto,
+        };
+        auto [image, allocation] = m_allocator->createImageUnique(imageInfo, allocInfo);
 
-    // Create image view
-    const vk::ImageViewCreateInfo viewInfo = {
-        .image = image.get(),
-        .viewType = vk::ImageViewType::e2D,
-        .format = imageInfo.format,
-        .subresourceRange = {
-            .aspectMask =  GetImageAspect(props.format),
-            .baseMipLevel = 0,
-            .levelCount = props.mipLevelCount,
-            .baseArrayLayer = 0,
-            .layerCount = 1,
-        },
-    };
-    auto imageView = m_device->createImageViewUnique(viewInfo, s_allocator);
+        texture.image = vk::UniqueImage(image.release(), m_device.get());
+        texture.allocation = std::move(allocation);
+    }
 
-    texture.image = vk::UniqueImage(image.release(), m_device.get());
-    texture.allocation = std::move(allocation);
-    texture.imageView = std::move(imageView);
+    // Create image view if needed (determined by usage)
+    using enum vk::ImageUsageFlagBits;
+    if (texture.usage
+        & (eSampled
+           | eStorage
+           | eColorAttachment
+           | eDepthStencilAttachment
+           | eTransientAttachment
+           | eInputAttachment
+           | eFragmentShadingRateAttachmentKHR
+           | eFragmentDensityMapEXT
+           | eVideoDecodeDstKHR
+           | eVideoDecodeDpbKHR
+           | eVideoEncodeSrcKHR
+           | eVideoEncodeDpbKHR
+           | eSampleWeightQCOM
+           | eSampleBlockMatchQCOM))
+    {
+        const vk::ImageViewCreateInfo viewInfo = {
+            .image = texture.image.get(),
+            .viewType = vk::ImageViewType::e2D,
+            .format = imageInfo.format,
+            .subresourceRange = {
+                .aspectMask =  GetImageAspect(props.format),
+                .baseMipLevel = 0,
+                .levelCount = props.mipLevelCount,
+                .baseArrayLayer = 0,
+                .layerCount = 1,
+            },
+        };
+
+        texture.imageView = m_device->createImageViewUnique(viewInfo, s_allocator);
+    }
 
     if (!props.name.empty())
     {
         SetDebugName(texture.image, "{}", props.name);
-        SetDebugName(texture.imageView, "{}:View", props.name);
+        if (texture.imageView)
+        {
+            SetDebugName(texture.imageView, "{}:View", props.name);
+        }
         SetDebugName(texture.sampler, "{}:Sampler", props.name);
     }
 
