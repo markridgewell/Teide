@@ -1,3 +1,25 @@
+function(setup_sanitizer sanitizer)
+    if(sanitizer STREQUAL "MSAN")
+        find_package(customlibcxx REQUIRED)
+
+        set(ENV{LIBCXX_INCLUDE_DIR} "${LIBCXX_DIR}/include")
+        set(ENV{LIBCXX_LIB_DIR} "${LIBCXX_DIR}/lib")
+        message("Setting env var LIBCXX_INCLUDE_DIR to $ENV{LIBCXX_INCLUDE_DIR}")
+        message("Setting env var LIBCXX_LIB_DIR to $ENV{LIBCXX_LIB_DIR}")
+
+        set(msan_toolchain "${CMAKE_CURRENT_SOURCE_DIR}/tools/vcpkg/toolchains/clang-msan.cmake")
+        if(TEIDE_USE_VCPKG)
+            set(VCPKG_CHAINLOAD_TOOLCHAIN_FILE
+                "${msan_toolchain}"
+                PARENT_SCOPE)
+        else()
+            set(CMAKE_TOOLCHAIN_FILE
+                "${msan_toolchain}"
+                PARENT_SCOPE)
+        endif()
+    endif()
+endfunction()
+
 function(target_enable_sanitizer target sanitizer)
     if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
         if(sanitizer STREQUAL "ASAN")
@@ -7,6 +29,9 @@ function(target_enable_sanitizer target sanitizer)
             set(checks undefined,float-divide-by-zero,implicit-conversion,nullability)
             target_compile_options(${target} PRIVATE -g -fsanitize=${checks} -fno-sanitize-recover=${checks})
             target_link_options(${target} PRIVATE -fsanitize=${checks} -fno-sanitize-recover=${checks})
+            # elseif(sanitizer STREQUAL "MSAN") target_compile_options(${target} PRIVATE -fsanitize=memory
+            # -fsanitize-memory-track-origins -ggdb -fno-omit-frame-pointer) target_link_options( ${target} PRIVATE
+            # -fsanitize=memory -fsanitize-memory-track-origins -fno-omit-frame-pointer)
         endif()
     endif()
 endfunction()
