@@ -100,7 +100,7 @@ public:
         return std::dynamic_pointer_cast<const typename VulkanImpl<std::remove_const_t<T>>::type>(ptr);
     }
 
-    TextureState CreateTextureImpl(VulkanTexture& texture, vk::ImageUsageFlags usage);
+    TextureState CreateTextureImpl(VulkanTexture& texture);
 
     VulkanBufferData CreateBufferUninitialized(
         vk::DeviceSize size, vk::BufferUsageFlags usage, vma::AllocationCreateFlags allocationFlags = {},

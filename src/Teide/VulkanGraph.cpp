@@ -260,11 +260,8 @@ namespace
         for (VulkanGraph::TextureNode& node : graph.textureNodes)
         {
             VulkanTexture& texture = device.GetImpl(node.texture);
-            using enum vk::ImageUsageFlagBits;
-            // TODO: Determine minimal usage flags based on actual usage
-            const auto attachment
-                = HasDepthOrStencilComponent(node.texture.GetFormat()) ? eDepthStencilAttachment : eColorAttachment;
-            node.state = device.CreateTextureImpl(texture, eTransferSrc | eTransferDst | eSampled | attachment);
+            texture.usage = node.usage;
+            node.state = device.CreateTextureImpl(texture);
         }
 
         // Record command buffers

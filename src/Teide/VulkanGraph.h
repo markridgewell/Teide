@@ -107,6 +107,7 @@ struct VulkanGraph
 
         Texture texture;
         CommandNodeRef source;
+        vk::ImageUsageFlags usage;
         TextureState state;
 
         std::string_view GetName() const { return texture.GetName(); }
@@ -139,6 +140,7 @@ struct VulkanGraph
 
     auto AddWriteNode(ResourceNodeRef source, ResourceNodeRef target)
     {
+        AddUsage(target, vk::ImageUsageFlagBits::eTransferDst);
         writeNodes.emplace_back(source, target);
         const auto r = WriteRef(writeNodes.size() - 1);
         SetSource(target, r);
@@ -147,6 +149,7 @@ struct VulkanGraph
 
     auto AddReadNode(ResourceNodeRef source, ResourceNodeRef target)
     {
+        AddUsage(source, vk::ImageUsageFlagBits::eTransferSrc);
         readNodes.emplace_back(source, target);
         const auto r = ReadRef(readNodes.size() - 1);
         SetSource(target, r);
@@ -157,8 +160,14 @@ struct VulkanGraph
     {
         const auto& node = dispatchNodes.emplace_back(std::move(kernel), std::move(inputs), std::move(outputs));
         const auto r = DispatchRef(dispatchNodes.size() - 1);
+
+        for (const auto input : node.inputs)
+        {
+            AddUsage(input, vk::ImageUsageFlagBits::eSampled);
+        }
         for (const auto output : node.outputs)
         {
+            AddUsage(output, vk::ImageUsageFlagBits::eStorage);
             SetSource(output, r);
         }
         return r;
@@ -174,15 +183,19 @@ struct VulkanGraph
     {
         auto renderTargetInfo = RenderTargetInfo{};
         const auto r = RenderRef(renderNodes.size());
+
         if (colorTarget)
         {
+            AddUsage(*colorTarget, vk::ImageUsageFlagBits::eColorAttachment);
             SetSource(*colorTarget, r);
             const auto& tex = Get<TextureNode>(colorTarget->index);
             renderTargetInfo.size = tex.texture.GetSize();
             renderTargetInfo.framebufferLayout.colorFormat = tex.texture.GetFormat();
         }
+
         if (depthStencilTarget)
         {
+            AddUsage(*depthStencilTarget, vk::ImageUsageFlagBits::eDepthStencilAttachment);
             SetSource(*depthStencilTarget, r);
             const auto& tex = Get<TextureNode>(depthStencilTarget->index);
             renderTargetInfo.size = tex.texture.GetSize();
@@ -292,6 +305,14 @@ struct VulkanGraph
     }
 
 private:
+    void AddUsage(ResourceNodeRef ref, vk::ImageUsageFlags usage)
+    {
+        if (auto* texture = GetIf<TextureNode>(ref))
+        {
+            texture->usage |= usage;
+        }
+    }
+
     void SetSource(ResourceNodeRef ref, CommandNodeRef source)
     {
         switch (ref.type)

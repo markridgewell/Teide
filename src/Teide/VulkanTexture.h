@@ -21,6 +21,7 @@ struct VulkanTexture
     vma::UniqueAllocation allocation;
     vk::UniqueImageView imageView;
     vk::UniqueSampler sampler;
+    vk::ImageUsageFlags usage = {};
     TextureProperties properties;
 
     void GenerateMipmaps(TextureState& state, vk::CommandBuffer cmdBuffer);

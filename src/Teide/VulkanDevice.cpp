@@ -655,10 +655,10 @@ vk::UniqueSampler VulkanDevice::CreateSampler(const SamplerState& ss)
     return m_device->createSamplerUnique(samplerInfo, s_allocator);
 }
 
-TextureState VulkanDevice::CreateTextureImpl(VulkanTexture& texture, vk::ImageUsageFlags usage)
+TextureState VulkanDevice::CreateTextureImpl(VulkanTexture& texture)
 {
     // For now, all textures will be created with TransferSrc so they can be copied from
-    usage |= vk::ImageUsageFlagBits::eTransferSrc;
+    texture.usage |= vk::ImageUsageFlagBits::eTransferSrc;
 
     const auto& props = texture.properties;
 
@@ -677,7 +677,7 @@ TextureState VulkanDevice::CreateTextureImpl(VulkanTexture& texture, vk::ImageUs
         .arrayLayers = 1,
         .samples = vk::SampleCountFlagBits{props.sampleCount},
         .tiling = vk::ImageTiling::eOptimal,
-        .usage = usage,
+        .usage = texture.usage,
         .sharingMode = vk::SharingMode::eExclusive,
         .initialLayout = initialState.layout,
     };
@@ -884,6 +884,7 @@ Texture VulkanDevice::CreateTexture(const TextureData& data, const char* name, C
     }
 
     VulkanTexture texture;
+    texture.usage = usage;
     texture.properties = {
         .size = data.size,
         .format = data.format,
@@ -893,7 +894,7 @@ Texture VulkanDevice::CreateTexture(const TextureData& data, const char* name, C
     };
     texture.sampler = CreateSampler(data.samplerState);
 
-    auto state = CreateTextureImpl(texture, usage);
+    auto state = CreateTextureImpl(texture);
 
     if (!data.pixels.empty())
     {
@@ -951,9 +952,8 @@ Texture VulkanDevice::CreateRenderableTexture(const TextureData& data, const cha
     const auto renderUsage
         = isColorTarget ? vk::ImageUsageFlagBits::eColorAttachment : vk::ImageUsageFlagBits::eDepthStencilAttachment;
 
-    const vk::ImageUsageFlags usage = renderUsage | vk::ImageUsageFlagBits::eSampled;
-
     VulkanTexture texture;
+    texture.usage = renderUsage | vk::ImageUsageFlagBits::eSampled;
     texture.properties = {
         .size = data.size,
         .format = data.format,
@@ -963,7 +963,7 @@ Texture VulkanDevice::CreateRenderableTexture(const TextureData& data, const cha
     };
     texture.sampler = CreateSampler(data.samplerState);
 
-    auto state = CreateTextureImpl(texture, usage);
+    auto state = CreateTextureImpl(texture);
 
     if (isColorTarget)
     {
