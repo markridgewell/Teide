@@ -161,7 +161,7 @@ struct VulkanGraph
         const auto& node = dispatchNodes.emplace_back(std::move(kernel), std::move(inputs), std::move(outputs));
         const auto r = DispatchRef(dispatchNodes.size() - 1);
 
-        for (const auto input : node.inputs)
+        for (const auto input : node.dependencies)
         {
             AddUsage(input, vk::ImageUsageFlagBits::eSampled);
         }

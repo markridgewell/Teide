@@ -208,7 +208,7 @@ bool InitCpptrace(int argc, char** argv)
     cpptrace::get_safe_object_frame(buffer[0], &frame);
 
     // Setup signal handler
-    struct sigaction action = {{nullptr}};
+    struct sigaction action = {};
     action.sa_flags = 0;
     action.sa_sigaction = &SignalHandler;
     if (sigaction(SIGSEGV, &action, nullptr) == -1)
