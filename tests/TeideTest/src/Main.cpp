@@ -6,6 +6,7 @@
 
 #include <cpptrace/basic.hpp>
 #include <cpptrace/cpptrace.hpp>
+#include <cpptrace/from_current.hpp>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <spdlog/sinks/ostream_sink.h>
@@ -19,10 +20,10 @@
 #    include <sys/ioctl.h>
 #endif
 
-#if defined(_WIN32) && __has_include("StackWalker.h")
-#    define STACKWALKER_ENABLED
-#    include "StackWalker.h"
-#endif
+// #if defined(_WIN32) && __has_include("StackWalker.h")
+// #    define STACKWALKER_ENABLED
+// #    include "StackWalker.h"
+// #endif
 
 namespace
 {
@@ -328,6 +329,19 @@ int main(int argc, char** argv)
     }
 #    endif
 
+#    ifdef _WIN32
+    CPPTRACE_SEH_TRY
+    {
+        return Run(argc, argv);
+    }
+    CPPTRACE_SEH_EXCEPT(true)
+    {
+        spdlog::error("Unhandled SEH exception thrown");
+        cpptrace::from_current_exception().print();
+        return 1;
+    }
+#    else
     return Run(argc, argv);
+#    endif
 }
 #endif
