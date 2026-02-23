@@ -58,7 +58,7 @@ public:
     static void CreateRenderCommandBuffer(
         VulkanDevice& device, vk::CommandBuffer commandBuffer, const RenderList& renderList,
         const RenderTargetInfo& renderTarget, const RenderTarget& rt, vk::DescriptorSet sceneParameters = {},
-        vk::DescriptorSet viewParameters = {});
+        vk::DescriptorSet viewParameters = {}, FramebufferUsage usage = FramebufferUsage::Attachment);
 
 private:
     template <std::invocable<CommandBuffer&> F>

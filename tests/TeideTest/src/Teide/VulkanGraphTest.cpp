@@ -413,7 +413,7 @@ TEST_F(VulkanGraphTest, ExecutingGraphWithCopyNode)
 
     const VulkanTexture& texture = m_device->GetImpl(graph.textureNodes.at(tex.index).texture);
     EXPECT_THAT(texture.image, IsValidVkHandle());
-    EXPECT_THAT(texture.imageView, IsValidVkHandle());
+    EXPECT_THAT(texture.imageView, Not(IsValidVkHandle()));
     EXPECT_THAT(texture.usage, Eq(vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eTransferSrc));
     const auto tdi = graph.Get<VulkanGraph::TextureDataNode>(texDataInput.index).data;
     const auto tdo = graph.Get<VulkanGraph::TextureDataNode>(texDataOutput.index).data;

@@ -275,7 +275,9 @@ RenderToTextureResult VulkanRenderer::RenderToTexture(const RenderTargetInfo& re
 
         const auto sceneParameters = GetSceneParameterBlock().descriptorSet;
 
-        CreateRenderCommandBuffer(m_device, commandBuffer, renderList, renderTarget, rt, sceneParameters, viewParameters);
+        CreateRenderCommandBuffer(
+            m_device, commandBuffer, renderList, renderTarget, rt, sceneParameters, viewParameters,
+            FramebufferUsage::ShaderInput);
 
         commandBuffer.TakeOwnership(std::move(renderList));
     });
@@ -375,7 +377,7 @@ Task<TextureData> VulkanRenderer::CopyTextureData(Texture texture)
 
 void VulkanRenderer::CreateRenderCommandBuffer(
     VulkanDevice& device, vk::CommandBuffer commandBuffer, const RenderList& renderList, const RenderTargetInfo& renderTarget,
-    const RenderTarget& rt, vk::DescriptorSet sceneParameters, vk::DescriptorSet viewParameters)
+    const RenderTarget& rt, vk::DescriptorSet sceneParameters, vk::DescriptorSet viewParameters, FramebufferUsage usage)
 {
     std::vector<vk::ImageView> attachments;
 
@@ -400,8 +402,7 @@ void VulkanRenderer::CreateRenderCommandBuffer(
         .renderOverrides = renderList.renderOverrides,
     };
 
-    const auto renderPass
-        = device.CreateRenderPass(renderTarget.framebufferLayout, renderList.clearState, FramebufferUsage::ShaderInput);
+    const auto renderPass = device.CreateRenderPass(renderTarget.framebufferLayout, renderList.clearState, usage);
     const auto framebuffer
         = device.CreateFramebuffer(renderPass, renderTarget.framebufferLayout, renderTarget.size, attachments);
 
