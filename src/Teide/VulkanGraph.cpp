@@ -8,11 +8,14 @@
 #include "Teide/VulkanRenderer.h"
 
 #include <fmt/core.h>
+#include <fmt/format.h>
+#include <vkex/vkex.hpp>
 #include <vulkan/vulkan_enums.hpp>
 #include <vulkan/vulkan_handles.hpp>
 
 #include <algorithm>
 #include <functional>
+#include <ranges>
 
 namespace Teide
 {
@@ -40,6 +43,34 @@ namespace
     }
 } // namespace
 
+void VulkanGraph::TextureNode::AddStateChange(uint32 nodeIndex, TextureState expectedState, TextureState ensuredState)
+{
+    stateChanges.insert(
+        std::ranges::lower_bound(stateChanges, nodeIndex, std::less(), &StateChange::nodeIndex),
+        {nodeIndex, expectedState, ensuredState});
+}
+
+auto VulkanGraph::TextureNode::GetStateTransition(uint32 nodeIndex) const -> std::optional<TextureStateTransition>
+{
+    const auto it
+        = std::ranges::lower_bound(stateChanges, nodeIndex, std::less(), &VulkanGraph::TextureNode::StateChange::nodeIndex);
+    if (it != stateChanges.end())
+    {
+        const auto oldState = it == stateChanges.begin() ? TextureState{} : (it - 1)->ensuredState;
+        const auto newState = it->expectedState;
+        return TextureStateTransition{.from = oldState, .to = newState};
+    }
+    return std::nullopt;
+}
+
+void VulkanGraph::AddStateChange(ResourceNodeRef ref, uint32 nodeIndex, TextureState expectedState, TextureState ensuredState)
+{
+    if (auto* node = GetIf<TextureNode>(ref))
+    {
+        node->AddStateChange(nodeIndex, expectedState, ensuredState);
+    }
+}
+
 std::string_view VulkanGraph::GetNodeName(ResourceNodeRef ref)
 {
     switch (ref.type)
@@ -48,21 +79,6 @@ std::string_view VulkanGraph::GetNodeName(ResourceNodeRef ref)
         case ResourceType::TextureData: return textureDataNodes.at(ref.index).name;
     }
     Unreachable();
-}
-
-std::optional<std::string_view> VulkanGraph::FindNodeWithSource(CommandNodeRef source)
-{
-    if (const auto it = std::ranges::find(textureNodes, source, &TextureNode::source); it != textureNodes.end())
-    {
-        return it->texture.GetName();
-    }
-
-    if (const auto it = std::ranges::find(textureDataNodes, source, &TextureDataNode::source); it != textureDataNodes.end())
-    {
-        return it->name;
-    }
-
-    return std::nullopt;
 }
 
 std::string to_string(ResourceType type)
@@ -87,10 +103,27 @@ std::string to_string(CommandType type)
     return "";
 }
 
-
 void BuildGraph(VulkanGraph& graph, VulkanDevice& device)
 {
-    for (VulkanGraph::RenderNode& node : graph.renderNodes)
+    for (auto& node : graph.writeNodes)
+    {
+        const auto state = TextureState{
+            .layout = vk::ImageLayout::eTransferDstOptimal,
+            .lastPipelineStageUsage = vk::PipelineStageFlagBits::eTransfer,
+        };
+        graph.AddStateChange(node.target, node.index, state, state);
+    }
+
+    for (auto& node : graph.readNodes)
+    {
+        const auto state = TextureState{
+            .layout = vk::ImageLayout::eTransferSrcOptimal,
+            .lastPipelineStageUsage = vk::PipelineStageFlagBits::eTransfer,
+        };
+        graph.AddStateChange(node.source, node.index, state, state);
+    }
+
+    for (auto& node : graph.renderNodes)
     {
         AddTextureDependencies(node, node.renderList.viewParameters.textures, graph);
 
@@ -100,6 +133,66 @@ void BuildGraph(VulkanGraph& graph, VulkanDevice& device)
             const auto& matParams = device.GetImpl(obj.materialParameters);
             AddTextureDependencies(node, matParams.textures, graph);
         }
+
+        for (const auto dep : node.dependencies)
+        {
+            const auto state = TextureState{
+                .layout = vk::ImageLayout::eShaderReadOnlyOptimal,
+                .lastPipelineStageUsage = vk::PipelineStageFlagBits::eFragmentShader,
+            };
+            graph.AddStateChange(dep, node.index, state, state);
+        }
+
+        if (node.colorTarget)
+        {
+            graph.AddStateChange(
+                *node.colorTarget, node.index, {},
+                {
+                    .layout = vk::ImageLayout::eColorAttachmentOptimal,
+                    .lastPipelineStageUsage = vk::PipelineStageFlagBits::eColorAttachmentOutput,
+                });
+        }
+
+        if (node.depthStencilTarget)
+        {
+            graph.AddStateChange(
+                *node.depthStencilTarget, node.index, {},
+                {
+                    .layout = vk::ImageLayout::eDepthStencilAttachmentOptimal,
+                    .lastPipelineStageUsage
+                    = vk::PipelineStageFlagBits::eEarlyFragmentTests | vk::PipelineStageFlagBits::eLateFragmentTests,
+                });
+        }
+    }
+
+    for (auto& node : graph.dispatchNodes)
+    {
+        for (const auto dep : node.dependencies)
+        {
+            const auto state = TextureState{
+                .layout = vk::ImageLayout::eShaderReadOnlyOptimal,
+                .lastPipelineStageUsage = vk::PipelineStageFlagBits::eComputeShader,
+            };
+            graph.AddStateChange(dep, node.index, state, state);
+        }
+
+        for (const auto dep : node.outputs)
+        {
+            const auto state = TextureState{
+                .layout = vk::ImageLayout::eGeneral,
+                .lastPipelineStageUsage = vk::PipelineStageFlagBits::eComputeShader,
+            };
+            graph.AddStateChange(dep, node.index, state, state);
+        }
+    }
+
+    for (auto& node : graph.presentNodes)
+    {
+        const auto state = TextureState{
+            .layout = vk::ImageLayout::ePresentSrcKHR,
+            .lastPipelineStageUsage = vk::PipelineStageFlagBits::eTopOfPipe,
+        };
+        graph.AddStateChange(node.source, node.index, state, state);
     }
 }
 
@@ -119,21 +212,49 @@ std::string VisualizeGraph(VulkanGraph& graph)
     }
     fmt::format_to(out, "    node [shape=box, margin=0.5]\n");
 
-    graph.ForEachCommandNode([&](VulkanGraph::CommandNodeRef ref, std::string_view name, const auto& dependencies) {
-        if (const auto resourceName = graph.FindNodeWithSource(ref))
+    for (const auto& node : graph.writeNodes)
+    {
+        fmt::format_to(out, "    {} -> {}\n", node.name, graph.GetNodeName(node.target));
+        fmt::format_to(out, "    {} -> {}\n", graph.GetNodeName(node.source), node.name);
+    }
+    for (const auto& node : graph.readNodes)
+    {
+        fmt::format_to(out, "    {} -> {}\n", node.name, graph.GetNodeName(node.target));
+        fmt::format_to(out, "    {} -> {}\n", graph.GetNodeName(node.source), node.name);
+    }
+    for (const auto& node : graph.renderNodes)
+    {
+        const auto& name = node.renderList.name;
+        if (node.colorTarget)
         {
-            fmt::format_to(out, "    {} -> {}\n", name, *resourceName);
+            fmt::format_to(out, "    {} -> {}\n", name, graph.GetNodeName(*node.colorTarget));
         }
-        else
+        if (node.depthStencilTarget)
         {
-            fmt::format_to(out, "    {}\n", name);
+            fmt::format_to(out, "    {} -> {}\n", name, graph.GetNodeName(*node.depthStencilTarget));
         }
-
-        for (const auto& dep : dependencies)
+        for (const auto& dep : node.dependencies)
         {
             fmt::format_to(out, "    {} -> {}\n", graph.GetNodeName(dep), name);
         }
-    });
+    }
+    for (const auto& node : graph.dispatchNodes)
+    {
+        for (const auto& input : node.outputs)
+        {
+            fmt::format_to(out, "    {} -> {}\n", node.name, graph.GetNodeName(input));
+        }
+        for (const auto& dep : node.dependencies)
+        {
+            fmt::format_to(out, "    {} -> {}\n", graph.GetNodeName(dep), node.name);
+        }
+    }
+    for (const auto& node : graph.presentNodes)
+    {
+        // fmt::format_to(out, "    {}\n", node.name);
+        fmt::format_to(out, "    {} -> {}\n", graph.GetNodeName(node.source), node.name);
+    }
+
     ret += '}';
     return ret;
 }
@@ -142,7 +263,6 @@ struct Commands
 {
     vk::UniqueCommandPool pool;
     std::vector<vk::CommandBuffer> cmdBuffers;
-    std::vector<std::function<void()>> completionFuncs;
 };
 
 namespace
@@ -151,6 +271,13 @@ namespace
     {
         const auto& sourceNode = graph.Get<VulkanGraph::TextureDataNode>(writeNode.source.index);
         auto& targetNode = graph.Get<VulkanGraph::TextureNode>(writeNode.target.index);
+
+        VulkanTexture& texture = device.GetImpl(targetNode.texture);
+
+        if (auto transition = targetNode.GetStateTransition(writeNode.index))
+        {
+            texture.Transition(cmdBuffer, *transition);
+        }
 
         spdlog::info("Copy texture data to texture: {} -> {}", sourceNode.GetName(), targetNode.GetName());
         spdlog::info("Size: {}", sourceNode.data.pixels.size());
@@ -163,34 +290,32 @@ namespace
         const auto& data = writeNode.stagingBuffer.mappedData;
         std::ranges::copy(sourceNode.data.pixels, data.data());
 
-        VulkanTexture& texture = device.GetImpl(targetNode.texture);
-
         // Copy staging buffer to image
-        texture.TransitionToTransferDst(targetNode.state, cmdBuffer);
         const auto imageExtent
             = vk::Extent3D{.width = sourceNode.data.size.x, .height = sourceNode.data.size.y, .depth = 1};
         CopyBufferToImage(
             cmdBuffer, writeNode.stagingBuffer.buffer.get(), texture.image.get(), sourceNode.data.format, imageExtent);
     }
 
-    void ProcessCommandNode(
-        VulkanGraph& graph, VulkanGraph::ReadNode& readNode, VulkanDevice& device, vk::CommandBuffer cmdBuffer,
-        std::vector<std::function<void()>>& completionFuncs)
+    void ProcessCommandNode(VulkanGraph& graph, VulkanGraph::ReadNode& readNode, VulkanDevice& device, vk::CommandBuffer cmdBuffer)
     {
         auto& sourceNode = graph.Get<VulkanGraph::TextureNode>(readNode.source.index);
         auto& targetNode = graph.Get<VulkanGraph::TextureDataNode>(readNode.target.index);
 
         spdlog::info("Copy texture to texture data: {} -> {}", sourceNode.GetName(), targetNode.GetName());
 
-        VulkanTexture& texture = device.GetImpl(sourceNode.texture);
+        const VulkanTexture& texture = device.GetImpl(sourceNode.texture);
 
-        const VulkanTexture& textureImpl = device.GetImpl(sourceNode.texture);
+        if (const auto transition = sourceNode.GetStateTransition(readNode.index))
+        {
+            texture.Transition(cmdBuffer, *transition);
+        }
 
         targetNode.data = {
-            .size = textureImpl.properties.size,
-            .format = textureImpl.properties.format,
-            .mipLevelCount = textureImpl.properties.mipLevelCount,
-            .sampleCount = textureImpl.properties.sampleCount,
+            .size = texture.properties.size,
+            .format = texture.properties.format,
+            .mipLevelCount = texture.properties.mipLevelCount,
+            .sampleCount = texture.properties.sampleCount,
         };
 
         const auto bufferSize = GetByteSize(targetNode.data);
@@ -200,15 +325,7 @@ namespace
             vma::AllocationCreateFlagBits::eMapped | vma::AllocationCreateFlagBits::eHostAccessRandom);
         std::ranges::fill(readNode.stagingBuffer.mappedData, std::byte{0xef});
 
-        completionFuncs.emplace_back([&readNode, &targetNode] {
-            const auto& data = readNode.stagingBuffer.mappedData;
-
-            targetNode.data.pixels.resize(data.size());
-            std::ranges::copy(data, targetNode.data.pixels.data());
-        });
-
         // Copy image to staging buffer
-        texture.TransitionToTransferSrc(sourceNode.state, cmdBuffer);
         const vk::Extent3D extent = {
             .width = texture.properties.size.x,
             .height = texture.properties.size.y,
@@ -221,36 +338,58 @@ namespace
 
     void ProcessCommandNode(VulkanGraph& graph, VulkanGraph::RenderNode& renderNode, VulkanDevice& device, vk::CommandBuffer cmdBuffer)
     {
-        const auto getNode = [&graph](auto ref) { return std::ref(graph.Get<VulkanGraph::TextureNode>(ref)); };
-
-        const auto getTexture = [](auto& ref) { return ref.get().texture; };
-
-        auto colorTargetNode = renderNode.colorTarget.transform(getNode);
-        auto depthStencilTargetNode = renderNode.depthStencilTarget.transform(getNode);
-
         const auto& renderList = renderNode.renderList;
 
-        if (colorTargetNode && depthStencilTargetNode)
+        if (renderNode.colorTarget && renderNode.depthStencilTarget)
         {
             spdlog::info(
-                "Render to color texture: {}, depth/stencil texture: {}", colorTargetNode->get().GetName(),
-                depthStencilTargetNode->get().GetName());
+                "Render to color texture: {}, depth/stencil texture: {}", graph.GetNodeName(*renderNode.colorTarget),
+                graph.GetNodeName(*renderNode.depthStencilTarget));
         }
-        else if (colorTargetNode)
+        else if (renderNode.colorTarget)
         {
-            spdlog::info("Render to color texture: {}", colorTargetNode->get().GetName());
+            spdlog::info("Render to color texture: {}", graph.GetNodeName(*renderNode.colorTarget));
         }
-        else if (depthStencilTargetNode)
+        else if (renderNode.depthStencilTarget)
         {
-            spdlog::info("Render to depth/stencil texture: {}", depthStencilTargetNode->get().GetName());
+            spdlog::info("Render to depth/stencil texture: {}", graph.GetNodeName(*renderNode.depthStencilTarget));
         }
 
-        const RenderTarget rt = {
-            .color = colorTargetNode.transform(getTexture),
-            .depthStencil = depthStencilTargetNode.transform(getTexture),
+        // Transition image dependencies
+        for (const auto dep : renderNode.dependencies)
+        {
+            if (const auto* depNode = graph.GetIf<VulkanGraph::TextureNode>(dep))
+            {
+                if (auto transition = depNode->GetStateTransition(renderNode.index))
+                {
+                    device.GetImpl(depNode->texture).Transition(cmdBuffer, *transition);
+                }
+            }
+        }
+
+        const auto attachments
+            = vkex::Join(renderNode.colorTarget, renderNode.depthStencilTarget)
+            | std::views::transform([&graph, &device](auto ref) {
+                  return device.GetImpl(graph.Get<VulkanGraph::TextureNode>(ref).texture).imageView.get();
+              })
+            | std::ranges::to<std::vector<vk::ImageView>>();
+
+        const auto& renderTarget = renderNode.renderTargetInfo;
+        const RenderPassDesc renderPassDesc = {
+            .framebufferLayout = renderTarget.framebufferLayout,
+            .renderOverrides = renderList.renderOverrides,
         };
-        VulkanRenderer::CreateRenderCommandBuffer(device, cmdBuffer, renderList, renderNode.renderTargetInfo, rt);
+
+        const auto renderPass = device.CreateRenderPass(renderTarget.framebufferLayout, renderList.clearState);
+        const auto framebuffer
+            = device.CreateFramebuffer(renderPass, renderTarget.framebufferLayout, renderTarget.size, attachments);
+
+        VulkanRenderer::RecordRenderListCommands(device, cmdBuffer, renderList, renderPass, renderPassDesc, framebuffer);
     }
+
+    template <class T>
+    void ProcessCommandNode(VulkanGraph&, T&, VulkanDevice&, vk::CommandBuffer)
+    {}
 
     auto RecordCommands(VulkanGraph& graph, VulkanDevice& device) -> Commands
     {
@@ -261,7 +400,7 @@ namespace
         {
             VulkanTexture& texture = device.GetImpl(node.texture);
             texture.usage = node.usage;
-            node.state = device.CreateTextureImpl(texture);
+            device.CreateTextureImpl(texture);
         }
 
         // Record command buffers
@@ -271,27 +410,15 @@ namespace
             .queueFamilyIndex = device.GetQueueFamilies().graphicsFamily,
         });
 
-        ret.cmdBuffers = vkdevice.allocateCommandBuffers({.commandPool = ret.pool.get(), .commandBufferCount = 1});
-        auto cmdBuffer = ret.cmdBuffers.front();
+        ret.cmdBuffers = vkdevice.allocateCommandBuffers(
+            {.commandPool = ret.pool.get(), .commandBufferCount = graph.commandNodeCount});
 
-        cmdBuffer.begin({.flags = {vk::CommandBufferUsageFlagBits::eOneTimeSubmit}});
-
-        for (auto& writeNode : graph.writeNodes)
-        {
-            ProcessCommandNode(graph, writeNode, device, cmdBuffer);
-        }
-
-        for (auto& renderNode : graph.renderNodes)
-        {
-            ProcessCommandNode(graph, renderNode, device, cmdBuffer);
-        }
-
-        for (auto& readNode : graph.readNodes)
-        {
-            ProcessCommandNode(graph, readNode, device, cmdBuffer, ret.completionFuncs);
-        }
-
-        cmdBuffer.end();
+        graph.ForEachCommandNode([&](auto& node) {
+            auto& cmdBuffer = ret.cmdBuffers[node.index];
+            cmdBuffer.begin({.flags = {vk::CommandBufferUsageFlagBits::eOneTimeSubmit}});
+            ProcessCommandNode(graph, node, device, cmdBuffer);
+            cmdBuffer.end();
+        });
 
         return ret;
     }
@@ -299,12 +426,20 @@ namespace
 
 void ExecuteGraph(VulkanGraph& graph, VulkanDevice& device, Queue& queue)
 {
+    BuildGraph(graph, device);
+
     auto commands = RecordCommands(graph, device);
+
     ex::sync_wait(queue.LazySubmit(commands.cmdBuffers));
 
-    for (const auto& callback : commands.completionFuncs)
+    for (auto& readNode : graph.readNodes)
     {
-        callback();
+        auto& targetNode = graph.Get<VulkanGraph::TextureDataNode>(readNode.target.index);
+
+        const auto& data = readNode.stagingBuffer.mappedData;
+
+        targetNode.data.pixels.resize(data.size());
+        std::ranges::copy(data, targetNode.data.pixels.data());
     }
 }
 

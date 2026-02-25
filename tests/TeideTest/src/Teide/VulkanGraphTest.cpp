@@ -74,6 +74,38 @@ protected:
         return m_device->CreateKernel(m_shaderCompiler.Compile(data), name);
     }
 
+    VulkanGraph CreateRenderPassWithColorAndDepth()
+    {
+        const Texture color = CreateDummyTexture("color");
+        const Texture depth = CreateDummyTexture("depth");
+
+        const ParameterBlockDesc pblockDesc = {.parameters = {{"param", ShaderVariableType::BaseType::Texture2D}}};
+        const auto pblockLayout = m_device->CreateParameterBlockLayout(pblockDesc, 2);
+        const ParameterBlockData pblock = {.layout = pblockLayout, .parameters = {.textures = {color}}};
+        const auto materialParameters = m_device->CreateParameterBlock(pblock, "matParams");
+
+        const RenderList renderList1 = {.name = "render1"};
+        const RenderList renderList2 = {
+            .name = "render2",
+            .objects = {{
+                .materialParameters = m_emptyParameters,
+                .objectParameters = {.textures = {color}},
+            }},
+        };
+        const RenderList renderList3 = {
+            .name = "render3",
+            .objects = {{
+                .materialParameters = materialParameters,
+            }},
+        };
+
+        VulkanGraph graph;
+        const auto colorNode = graph.AddTextureNode(color);
+        const auto depthNode = graph.AddTextureNode(depth);
+        graph.AddRenderNode(renderList1, colorNode, depthNode);
+        return graph;
+    }
+
     VulkanGraph CreateThreeRenderPasses()
     {
         const Texture tex1 = CreateDummyTexture("tex1");
@@ -178,6 +210,7 @@ TEST_F(VulkanGraphTest, BuildingGraphWithOneRenderNodeHasNoEffect)
     BuildGraph(graph, *m_device);
 
     ASSERT_THAT(graph.renderNodes, ElementsAre(HasNoDependencies()));
+    EXPECT_THAT(graph.renderNodes[0].index, Eq(0));
     ASSERT_THAT(graph.textureNodes, ElementsAre(HasSource(renderNode1)));
 }
 
@@ -191,6 +224,7 @@ TEST_F(VulkanGraphTest, BuildingGraphWithOneWriteNodeHasNoEffect)
     BuildGraph(graph, *m_device);
 
     ASSERT_THAT(graph.writeNodes, ElementsAre(HasSource(texData)));
+    EXPECT_THAT(graph.writeNodes[0].index, Eq(0));
     ASSERT_THAT(graph.textureNodes, ElementsAre(HasSource(write)));
 }
 
@@ -204,6 +238,7 @@ TEST_F(VulkanGraphTest, BuildingGraphWithOneReadNodeHasNoEffect)
     BuildGraph(graph, *m_device);
 
     ASSERT_THAT(graph.readNodes, ElementsAre(HasSource(tex)));
+    EXPECT_THAT(graph.readNodes[0].index, Eq(0));
     ASSERT_THAT(graph.textureDataNodes, ElementsAre(HasSource(read)));
 }
 
@@ -219,6 +254,7 @@ TEST_F(VulkanGraphTest, BuildingGraphWithOneDispatchNodeHasNoEffect)
     BuildGraph(graph, *m_device);
 
     ASSERT_THAT(graph.dispatchNodes, ElementsAre(HasNoDependencies()));
+    EXPECT_THAT(graph.dispatchNodes[0].index, Eq(0));
     ASSERT_THAT(graph.textureNodes, ElementsAre(HasSource(dispatchNode1)));
 }
 
@@ -233,6 +269,8 @@ TEST_F(VulkanGraphTest, BuildingGraphWithTwoIndependentRenderNodesHasNoEffect)
     BuildGraph(graph, *m_device);
 
     ASSERT_THAT(graph.renderNodes, ElementsAre(HasNoDependencies(), HasNoDependencies()));
+    EXPECT_THAT(graph.renderNodes[0].index, Eq(0));
+    EXPECT_THAT(graph.renderNodes[1].index, Eq(1));
     ASSERT_THAT(graph.textureNodes, ElementsAre(HasSource(render1), HasSource(render2)));
 }
 
@@ -254,6 +292,8 @@ TEST_F(VulkanGraphTest, BuildingGraphWithTwoDependentRenderNodesAddsConnection)
     BuildGraph(graph, *m_device);
 
     ASSERT_THAT(graph.renderNodes, ElementsAre(HasNoDependencies(), HasDependency(texNode1)));
+    EXPECT_THAT(graph.renderNodes[0].index, Eq(0));
+    EXPECT_THAT(graph.renderNodes[1].index, Eq(1));
     ASSERT_THAT(graph.textureNodes, ElementsAre(HasSource(renderNode1), HasSource(renderNode2)));
 }
 
@@ -268,6 +308,9 @@ TEST_F(VulkanGraphTest, BuildingGraphWithThreeDependentRenderNodesAddsConnection
         ElementsAre(
             HasSource(VulkanGraph::RenderRef(0u)), HasSource(VulkanGraph::RenderRef(1u)),
             HasSource(VulkanGraph::RenderRef(2u))));
+    EXPECT_THAT(graph.renderNodes[0].index, Eq(0));
+    EXPECT_THAT(graph.renderNodes[1].index, Eq(1));
+    EXPECT_THAT(graph.renderNodes[2].index, Eq(2));
 }
 
 TEST_F(VulkanGraphTest, BuildingGraphWithOnePresentNodeHasNoEffect)
@@ -279,6 +322,26 @@ TEST_F(VulkanGraphTest, BuildingGraphWithOnePresentNodeHasNoEffect)
     BuildGraph(graph, *m_device);
 
     ASSERT_THAT(graph.presentNodes, ElementsAre(HasSource(tex)));
+}
+
+constexpr auto OneRenderPassDot = R"--(strict digraph {
+    rankdir=LR
+    node [shape=box]
+    color
+    depth
+    node [shape=box, margin=0.5]
+    render1 -> color
+    render1 -> depth
+})--";
+
+TEST_F(VulkanGraphTest, VisualizingGraphWithRenderPassWithColorAndDepth)
+{
+    auto graph = CreateRenderPassWithColorAndDepth();
+    BuildGraph(graph, *m_device);
+
+    const auto dot = VisualizeGraph(graph);
+
+    ASSERT_THAT(dot, Eq(OneRenderPassDot)) << FormatDot(dot);
 }
 
 constexpr auto ThreeRenderPassesDot = R"--(strict digraph {
@@ -380,7 +443,6 @@ constexpr auto PresentDot = R"--(strict digraph {
     tex
     node [shape=box, margin=0.5]
     render1 -> tex
-    present1
     tex -> present1
 })--";
 

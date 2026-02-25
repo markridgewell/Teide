@@ -662,7 +662,7 @@ TextureState VulkanDevice::CreateTextureImpl(VulkanTexture& texture)
 
     const auto& props = texture.properties;
 
-    auto initialState = TextureState{
+    const auto initialState = TextureState{
         .layout = vk::ImageLayout::eUndefined,
         .lastPipelineStageUsage = vk::PipelineStageFlagBits::eTopOfPipe,
     };
