@@ -105,7 +105,7 @@ std::string to_string(CommandType type)
 
 void BuildGraph(VulkanGraph& graph, VulkanDevice& device)
 {
-    for (auto& node : graph.writeNodes)
+    for (const auto& node : graph.writeNodes)
     {
         const auto state = TextureState{
             .layout = vk::ImageLayout::eTransferDstOptimal,
@@ -114,7 +114,7 @@ void BuildGraph(VulkanGraph& graph, VulkanDevice& device)
         graph.AddStateChange(node.target, node.index, state, state);
     }
 
-    for (auto& node : graph.readNodes)
+    for (const auto& node : graph.readNodes)
     {
         const auto state = TextureState{
             .layout = vk::ImageLayout::eTransferSrcOptimal,

@@ -21,9 +21,15 @@ class Synchronized
 {
 public:
     Synchronized() = default;
+    ~Synchronized() = default;
 
-    Synchronized(const T& object) : m_object{object} {}
-    Synchronized(T&& object) : m_object{std::move(object)} {}
+    Synchronized(const Synchronized&) = delete;
+    Synchronized(Synchronized&&) = delete;
+    Synchronized& operator=(const Synchronized&) = delete;
+    Synchronized& operator=(Synchronized&&) = delete;
+
+    explicit Synchronized(const T& object) : m_object{object} {}
+    explicit Synchronized(T&& object) : m_object{std::move(object)} {}
 
     template <class... Args>
     explicit Synchronized(Args&&... args) : m_object{std::forward<Args>(args)...}

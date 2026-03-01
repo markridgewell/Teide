@@ -85,25 +85,12 @@ protected:
         const ParameterBlockData pblock = {.layout = pblockLayout, .parameters = {.textures = {color}}};
         const auto materialParameters = m_device->CreateParameterBlock(pblock, "matParams");
 
-        const RenderList renderList1 = {.name = "render1"};
-        const RenderList renderList2 = {
-            .name = "render2",
-            .objects = {{
-                .materialParameters = m_emptyParameters,
-                .objectParameters = {.textures = {color}},
-            }},
-        };
-        const RenderList renderList3 = {
-            .name = "render3",
-            .objects = {{
-                .materialParameters = materialParameters,
-            }},
-        };
+        const RenderList renderList = {.name = "render1"};
 
         VulkanGraph graph;
         const auto colorNode = graph.AddTextureNode(color);
         const auto depthNode = graph.AddTextureNode(depth);
-        graph.AddRenderNode(renderList1, colorNode, depthNode);
+        graph.AddRenderNode(renderList, colorNode, depthNode);
         return graph;
     }
 
