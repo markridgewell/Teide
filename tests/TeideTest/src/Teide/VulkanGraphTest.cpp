@@ -13,6 +13,7 @@
 
 #include <fmt/base.h>
 #include <gmock/gmock.h>
+#include <stdexec/execution.hpp>
 
 #include <iterator>
 #include <optional>
@@ -231,15 +232,14 @@ TEST_F(VulkanGraphTest, BuildingGraphWithOneWriteNodeHasNoEffect)
 TEST_F(VulkanGraphTest, BuildingGraphWithOneReadNodeHasNoEffect)
 {
     VulkanGraph graph;
-    const auto texData = graph.AddTextureDataNode("texData1", OnePixelWhiteTexture);
     const auto tex = graph.AddTextureNode(CreateDummyTexture("tex1"));
-    const auto read = graph.AddReadNode(tex, texData);
+    graph.AddReadNode(tex);
 
     BuildGraph(graph, *m_device);
 
     ASSERT_THAT(graph.readNodes, ElementsAre(HasSource(tex)));
     EXPECT_THAT(graph.readNodes[0].index, Eq(0));
-    ASSERT_THAT(graph.textureDataNodes, ElementsAre(HasSource(read)));
+    ASSERT_THAT(graph.textureDataNodes, ElementsAre());
 }
 
 TEST_F(VulkanGraphTest, BuildingGraphWithOneDispatchNodeHasNoEffect)
@@ -416,9 +416,7 @@ constexpr auto CopyGpuToCpuDot = R"--(strict digraph {
     rankdir=LR
     node [shape=box]
     tex
-    texData
     node [shape=box, margin=0.5]
-    read1 -> texData
     tex -> read1
     render1 -> tex
 })--";
@@ -429,8 +427,7 @@ TEST_F(VulkanGraphTest, VisualizingGraphWithReadNode)
     const auto tex = graph.AddTextureNode(CreateDummyTexture("tex"));
     graph.AddRenderNode({.name = "render1"}, tex, std::nullopt);
 
-    const auto texData = graph.AddTextureDataNode("texData", OnePixelWhiteTexture);
-    graph.AddReadNode(tex, texData);
+    graph.AddReadNode(tex);
 
     const auto dot = VisualizeGraph(graph);
 
@@ -461,11 +458,10 @@ TEST_F(VulkanGraphTest, VisualizingGraphWithPresentNode)
 TEST_F(VulkanGraphTest, ExecutingGraphWithCopyNode)
 {
     VulkanGraph graph;
-    const auto texDataInput = graph.AddTextureDataNode("input", OnePixelWhiteTexture);
+    const auto texDataInput = graph.AddTextureDataNode("input", CheckerboardTexture);
     const auto tex = graph.AddTextureNode(CreateDummyTexture("tex"));
-    const auto texDataOutput = graph.AddTextureDataNode("output", {});
     graph.AddWriteNode(texDataInput, tex);
-    graph.AddReadNode(tex, texDataOutput);
+    const auto sndr = graph.AddReadNode(tex);
 
     auto renderer = m_device->CreateRenderer({});
 
@@ -477,9 +473,9 @@ TEST_F(VulkanGraphTest, ExecutingGraphWithCopyNode)
     EXPECT_THAT(texture.image, IsValidVkHandle());
     EXPECT_THAT(texture.imageView, Not(IsValidVkHandle()));
     EXPECT_THAT(texture.usage, Eq(vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eTransferSrc));
-    const auto tdi = graph.Get<VulkanGraph::TextureDataNode>(texDataInput.index).data;
-    const auto tdo = graph.Get<VulkanGraph::TextureDataNode>(texDataOutput.index).data;
-    EXPECT_THAT(tdo, Eq(tdi));
+
+    const auto [outputData] = stdexec::sync_wait(sndr).value();
+    EXPECT_THAT(outputData, Eq(CheckerboardTexture));
 }
 
 TEST_F(VulkanGraphTest, ExecutingGraphWithRenderNodeWithColorAttachment)
@@ -492,8 +488,7 @@ TEST_F(VulkanGraphTest, ExecutingGraphWithRenderNodeWithColorAttachment)
             .colorValue = Color{1.0f, 0.0f, 1.0f, 1.0f},
         },
     }, tex1, std::nullopt);
-    const auto texDataOutput = graph.AddTextureDataNode("output", {});
-    graph.AddReadNode(tex1, texDataOutput);
+    const auto sndr = graph.AddReadNode(tex1);
     spdlog::info(VisualizeGraph(graph));
     spdlog::info(MakeDotURL(VisualizeGraph(graph)));
     auto queue = Queue(m_device->GetVulkanDevice(), m_device->GetGraphicsQueue());
@@ -503,12 +498,13 @@ TEST_F(VulkanGraphTest, ExecutingGraphWithRenderNodeWithColorAttachment)
     ExecuteGraph(graph, *m_device, queue);
     renderer->EndFrame();
 
-    const auto output = graph.Get<VulkanGraph::TextureDataNode>(texDataOutput.index).data;
     const auto expected = TextureData{
         .size = {1, 1},
         .format = Format::Byte4Norm,
         .pixels = {std::byte{0xff}, std::byte{0x00}, std::byte{0xff}, std::byte{0xff}},
     };
+
+    const auto [output] = stdexec::sync_wait(sndr).value();
     EXPECT_THAT(output, Eq(expected));
 }
 
@@ -522,20 +518,20 @@ TEST_F(VulkanGraphTest, ExecutingGraphWithRenderNodeWithDepthAttachment)
             .depthValue = 0.5f,
         },
     }, std::nullopt, tex1);
-    const auto texDataOutput = graph.AddTextureDataNode("output", {});
-    graph.AddReadNode(tex1, texDataOutput);
+    const auto sndr = graph.AddReadNode(tex1);
     spdlog::info(VisualizeGraph(graph));
     spdlog::info(MakeDotURL(VisualizeGraph(graph)));
     auto queue = Queue(m_device->GetVulkanDevice(), m_device->GetGraphicsQueue());
 
     ExecuteGraph(graph, *m_device, queue);
 
-    const auto output = graph.Get<VulkanGraph::TextureDataNode>(texDataOutput.index).data;
     const auto expected = TextureData{
         .size = {1, 1},
         .format = Format::Depth16,
         .pixels = {std::byte{0x00}, std::byte{0x80}},
     };
+
+    const auto [output] = stdexec::sync_wait(sndr).value();
     EXPECT_THAT(output, Eq(expected));
 }
 
@@ -551,18 +547,18 @@ TEST_F(VulkanGraphTest, ExecutingGraphWithRenderNodeWithColorAndDepthAttachments
             .depthValue = 0.5f,
         },
     }, color, depth);
-    const auto colorOutput = graph.AddTextureDataNode("colorOutput", {});
-    graph.AddReadNode(color, colorOutput);
-    const auto depthOutput = graph.AddTextureDataNode("depthOutput", {});
-    graph.AddReadNode(depth, depthOutput);
+    const auto colorSndr = graph.AddReadNode(color);
+    const auto depthSndr = graph.AddReadNode(depth);
+
     spdlog::info(VisualizeGraph(graph));
     spdlog::info(MakeDotURL(VisualizeGraph(graph)));
     auto queue = Queue(m_device->GetVulkanDevice(), m_device->GetGraphicsQueue());
 
     ExecuteGraph(graph, *m_device, queue);
 
-    const auto colorData = graph.Get<VulkanGraph::TextureDataNode>(colorOutput).data;
-    const auto depthData = graph.Get<VulkanGraph::TextureDataNode>(depthOutput).data;
+    const auto [colorData] = stdexec::sync_wait(colorSndr).value();
+    const auto [depthData] = stdexec::sync_wait(depthSndr).value();
+
     const auto colorExpected = TextureData{
         .size = {1, 1},
         .format = Format::Byte4Srgb,

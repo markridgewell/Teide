@@ -3,6 +3,7 @@
 
 #include "Teide/Definitions.h"
 #include "Teide/Format.h"
+#include "Teide/Util/ThreadUtils.h"
 #include "Teide/Vulkan.h"
 #include "Teide/VulkanDevice.h"
 #include "Teide/VulkanRenderer.h"
@@ -52,8 +53,7 @@ void VulkanGraph::TextureNode::AddStateChange(uint32 nodeIndex, TextureState exp
 
 auto VulkanGraph::TextureNode::GetStateTransition(uint32 nodeIndex) const -> std::optional<TextureStateTransition>
 {
-    const auto it
-        = std::ranges::lower_bound(stateChanges, nodeIndex, std::less(), &VulkanGraph::TextureNode::StateChange::nodeIndex);
+    const auto it = std::ranges::lower_bound(stateChanges, nodeIndex, std::less(), &StateChange::nodeIndex);
     if (it != stateChanges.end())
     {
         const auto oldState = it == stateChanges.begin() ? TextureState{} : (it - 1)->ensuredState;
@@ -219,7 +219,6 @@ std::string VisualizeGraph(VulkanGraph& graph)
     }
     for (const auto& node : graph.readNodes)
     {
-        fmt::format_to(out, "    {} -> {}\n", node.name, graph.GetNodeName(node.target));
         fmt::format_to(out, "    {} -> {}\n", graph.GetNodeName(node.source), node.name);
     }
     for (const auto& node : graph.renderNodes)
@@ -300,9 +299,14 @@ namespace
     void ProcessCommandNode(VulkanGraph& graph, VulkanGraph::ReadNode& readNode, VulkanDevice& device, vk::CommandBuffer cmdBuffer)
     {
         auto& sourceNode = graph.Get<VulkanGraph::TextureNode>(readNode.source.index);
-        auto& targetNode = graph.Get<VulkanGraph::TextureDataNode>(readNode.target.index);
 
-        spdlog::info("Copy texture to texture data: {} -> {}", sourceNode.GetName(), targetNode.GetName());
+        spdlog::info("Copy texture to texture data: {}", sourceNode.GetName());
+
+        const auto completion = readNode.completion.lock();
+        if (completion == nullptr)
+        {
+            return;
+        }
 
         const VulkanTexture& texture = device.GetImpl(sourceNode.texture);
 
@@ -311,14 +315,14 @@ namespace
             texture.Transition(cmdBuffer, *transition);
         }
 
-        targetNode.data = {
+        const auto data = TextureData{
             .size = texture.properties.size,
             .format = texture.properties.format,
             .mipLevelCount = texture.properties.mipLevelCount,
             .sampleCount = texture.properties.sampleCount,
         };
 
-        const auto bufferSize = GetByteSize(targetNode.data);
+        const auto bufferSize = GetByteSize(data);
         spdlog::info("Size: {}", bufferSize);
         readNode.stagingBuffer = device.CreateBufferUninitialized(
             bufferSize, vk::BufferUsageFlagBits::eTransferDst,
@@ -395,6 +399,18 @@ namespace
     {
         Commands ret;
 
+        // Set correct texture properties for write node targets
+        for (const auto& writeNode : graph.writeNodes)
+        {
+            auto& targetNode = graph.Get<VulkanGraph::TextureNode>(writeNode.target);
+            auto& targetProps = device.GetImpl(targetNode.texture).properties;
+            const auto& sourceData = graph.Get<VulkanGraph::TextureDataNode>(writeNode.source).data;
+            targetProps.size = sourceData.size;
+            targetProps.format = sourceData.format;
+            targetProps.mipLevelCount = sourceData.mipLevelCount;
+            targetProps.sampleCount = sourceData.sampleCount;
+        }
+
         // Create transient textures
         for (VulkanGraph::TextureNode& node : graph.textureNodes)
         {
@@ -430,16 +446,28 @@ void ExecuteGraph(VulkanGraph& graph, VulkanDevice& device, Queue& queue)
 
     auto commands = RecordCommands(graph, device);
 
-    ex::sync_wait(queue.LazySubmit(commands.cmdBuffers));
+    const auto snd = queue.LazySubmit(commands.cmdBuffers);
+    ex::sync_wait(snd);
 
     for (auto& readNode : graph.readNodes)
     {
-        auto& targetNode = graph.Get<VulkanGraph::TextureDataNode>(readNode.target.index);
+        auto& sourceNode = graph.Get<VulkanGraph::TextureNode>(readNode.source.index);
+        const VulkanTexture& texture = device.GetImpl(sourceNode.texture);
 
         const auto& data = readNode.stagingBuffer.mappedData;
 
-        targetNode.data.pixels.resize(data.size());
-        std::ranges::copy(data, targetNode.data.pixels.data());
+        const auto result = TextureData{
+            .size = texture.properties.size,
+            .format = texture.properties.format,
+            .mipLevelCount = texture.properties.mipLevelCount,
+            .sampleCount = texture.properties.sampleCount,
+            .pixels = data | std::ranges::to<std::vector>(),
+        };
+
+        if (const auto comp = readNode.completion.lock())
+        {
+            comp->SetValue(result);
+        }
     }
 }
 

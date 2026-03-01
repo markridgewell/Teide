@@ -22,18 +22,18 @@ class Synchronized
 public:
     Synchronized() = default;
 
-    explicit Synchronized(const T& object) : m_object{object} {}
-    explicit Synchronized(T&& object) : m_object{std::move(object)} {}
+    Synchronized(const T& object) : m_object{object} {}
+    Synchronized(T&& object) : m_object{std::move(object)} {}
 
     template <class... Args>
     explicit Synchronized(Args&&... args) : m_object{std::forward<Args>(args)...}
     {}
 
     template <class F, class... Args>
-    decltype(auto) Lock(const F& callable, Args&&... args)
+    decltype(auto) Lock(F&& callable, Args&&... args)
     {
         const auto lock = std::scoped_lock(m_mutex);
-        return std::invoke(callable, m_object, std::forward<Args>(args)...);
+        return std::invoke(std::forward<F>(callable), m_object, std::forward<Args>(args)...);
     }
 
 private:
