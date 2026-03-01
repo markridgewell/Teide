@@ -45,12 +45,8 @@ template <class T>
 using CompletionSignaturesFor = stdexec::completion_signatures<stdexec::set_value_t(T), stdexec::set_stopped_t()>;
 
 template <class T>
-struct CompletionState;
-
-template <>
-struct CompletionState<TextureData> : MoveOnly
+struct CompletionState : MoveOnly
 {
-    using T = TextureData;
     using Sigs = CompletionSignaturesFor<T>;
 
     struct AwaitingResult
@@ -205,6 +201,8 @@ struct VulkanGraph
         ResourceNodeRef source;
         ResourceNodeRef target;
         VulkanBufferData stagingBuffer;
+
+        void Process(VulkanGraph& graph, VulkanDevice& device, vk::CommandBuffer cmdBuffer);
     };
 
     struct ReadNode : CommandNode
@@ -215,6 +213,8 @@ struct VulkanGraph
         ResourceNodeRef source;
         VulkanBufferData stagingBuffer;
         std::weak_ptr<CompletionState<TextureData>> completion;
+
+        void Process(VulkanGraph& graph, VulkanDevice& device, vk::CommandBuffer cmdBuffer);
     };
 
     struct RenderNode : CommandNode
@@ -226,6 +226,8 @@ struct VulkanGraph
         std::optional<ResourceNodeRef> colorTarget;
         std::optional<ResourceNodeRef> depthStencilTarget;
         std::vector<ResourceNodeRef> dependencies;
+
+        void Process(VulkanGraph& graph, VulkanDevice& device, vk::CommandBuffer cmdBuffer);
     };
 
     struct DispatchNode : CommandNode
@@ -234,6 +236,8 @@ struct VulkanGraph
         Kernel kernel;
         std::vector<ResourceNodeRef> dependencies;
         std::vector<ResourceNodeRef> outputs;
+
+        void Process(VulkanGraph& graph, VulkanDevice& device, vk::CommandBuffer cmdBuffer);
     };
 
     struct PresentNode : CommandNode
@@ -242,6 +246,8 @@ struct VulkanGraph
 
         std::string name;
         ResourceNodeRef source;
+
+        void Process(VulkanGraph& graph, VulkanDevice& device, vk::CommandBuffer cmdBuffer);
     };
 
     struct TextureNode

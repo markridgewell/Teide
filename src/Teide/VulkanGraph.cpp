@@ -44,6 +44,144 @@ namespace
     }
 } // namespace
 
+void VulkanGraph::WriteNode::Process(VulkanGraph& graph, VulkanDevice& device, vk::CommandBuffer cmdBuffer)
+{
+    const auto& sourceNode = graph.Get<VulkanGraph::TextureDataNode>(source.index);
+    auto& targetNode = graph.Get<VulkanGraph::TextureNode>(target.index);
+
+    VulkanTexture& texture = device.GetImpl(targetNode.texture);
+
+    if (auto transition = targetNode.GetStateTransition(index))
+    {
+        texture.Transition(cmdBuffer, *transition);
+    }
+
+    spdlog::info("Copy texture data to texture: {} -> {}", sourceNode.GetName(), targetNode.GetName());
+    spdlog::info("Size: {}", sourceNode.data.pixels.size());
+    const auto bufferSize = GetByteSize(sourceNode.data);
+    stagingBuffer = device.CreateBufferUninitialized(
+        bufferSize, vk::BufferUsageFlagBits::eTransferSrc,
+        vma::AllocationCreateFlagBits::eMapped | vma::AllocationCreateFlagBits::eHostAccessSequentialWrite);
+    std::ranges::fill(stagingBuffer.mappedData, std::byte{0xab});
+
+    const auto& data = stagingBuffer.mappedData;
+    std::ranges::copy(sourceNode.data.pixels, data.data());
+
+    // Copy staging buffer to image
+    const auto imageExtent = vk::Extent3D{.width = sourceNode.data.size.x, .height = sourceNode.data.size.y, .depth = 1};
+    CopyBufferToImage(cmdBuffer, stagingBuffer.buffer.get(), texture.image.get(), sourceNode.data.format, imageExtent);
+}
+
+void VulkanGraph::ReadNode::Process(VulkanGraph& graph, VulkanDevice& device, vk::CommandBuffer cmdBuffer)
+{
+    if (completion.expired())
+    {
+        // If the weak pointer to the completion state has expired, that means the sender was destroyed, so there's no need to do any work for this node since the result will be lost anyway.
+        return;
+    }
+
+    auto& sourceNode = graph.Get<VulkanGraph::TextureNode>(source.index);
+
+    spdlog::info("Copy texture to texture data: {}", sourceNode.GetName());
+
+    const VulkanTexture& texture = device.GetImpl(sourceNode.texture);
+
+    if (const auto transition = sourceNode.GetStateTransition(index))
+    {
+        texture.Transition(cmdBuffer, *transition);
+    }
+
+    const auto data = TextureData{
+        .size = texture.properties.size,
+        .format = texture.properties.format,
+        .mipLevelCount = texture.properties.mipLevelCount,
+        .sampleCount = texture.properties.sampleCount,
+    };
+
+    const auto bufferSize = GetByteSize(data);
+    spdlog::info("Size: {}", bufferSize);
+    stagingBuffer = device.CreateBufferUninitialized(
+        bufferSize, vk::BufferUsageFlagBits::eTransferDst,
+        vma::AllocationCreateFlagBits::eMapped | vma::AllocationCreateFlagBits::eHostAccessRandom);
+    std::ranges::fill(stagingBuffer.mappedData, std::byte{0xef});
+
+    // Copy image to staging buffer
+    const vk::Extent3D extent = {
+        .width = texture.properties.size.x,
+        .height = texture.properties.size.y,
+        .depth = 1,
+    };
+    CopyImageToBuffer(
+        cmdBuffer, texture.image.get(), stagingBuffer.buffer.get(), texture.properties.format, extent,
+        texture.properties.mipLevelCount);
+}
+
+void VulkanGraph::RenderNode::Process(VulkanGraph& graph, VulkanDevice& device, vk::CommandBuffer cmdBuffer)
+{
+    if (colorTarget && depthStencilTarget)
+    {
+        spdlog::info(
+            "Render to color texture: {}, depth/stencil texture: {}", graph.GetNodeName(*colorTarget),
+            graph.GetNodeName(*depthStencilTarget));
+    }
+    else if (colorTarget)
+    {
+        spdlog::info("Render to color texture: {}", graph.GetNodeName(*colorTarget));
+    }
+    else if (depthStencilTarget)
+    {
+        spdlog::info("Render to depth/stencil texture: {}", graph.GetNodeName(*depthStencilTarget));
+    }
+
+    // Transition image dependencies
+    for (const auto dep : dependencies)
+    {
+        if (const auto* depNode = graph.GetIf<VulkanGraph::TextureNode>(dep))
+        {
+            if (auto transition = depNode->GetStateTransition(index))
+            {
+                device.GetImpl(depNode->texture).Transition(cmdBuffer, *transition);
+            }
+        }
+    }
+
+    const auto attachments = vkex::Join(colorTarget, depthStencilTarget)
+        | std::views::transform([&graph, &device](auto ref) {
+                                 return device.GetImpl(graph.Get<VulkanGraph::TextureNode>(ref).texture).imageView.get();
+                             })
+        | std::ranges::to<std::vector<vk::ImageView>>();
+
+    const auto& renderTarget = renderTargetInfo;
+    const RenderPassDesc renderPassDesc = {
+        .framebufferLayout = renderTarget.framebufferLayout,
+        .renderOverrides = renderList.renderOverrides,
+    };
+
+    const auto renderPass = device.CreateRenderPass(renderTarget.framebufferLayout, renderList.clearState);
+    const auto framebuffer
+        = device.CreateFramebuffer(renderPass, renderTarget.framebufferLayout, renderTarget.size, attachments);
+
+    VulkanRenderer::RecordRenderListCommands(device, cmdBuffer, renderList, renderPass, renderPassDesc, framebuffer);
+}
+
+void VulkanGraph::DispatchNode::Process(VulkanGraph& graph, VulkanDevice& device, vk::CommandBuffer cmdBuffer)
+{
+    // TODO
+    static_cast<void>(this);
+    static_cast<void>(graph);
+    static_cast<void>(device);
+    static_cast<void>(cmdBuffer);
+}
+
+void VulkanGraph::PresentNode::Process(VulkanGraph& graph, VulkanDevice& device, vk::CommandBuffer cmdBuffer)
+{
+    // TODO
+    static_cast<void>(this);
+    static_cast<void>(graph);
+    static_cast<void>(device);
+    static_cast<void>(cmdBuffer);
+}
+
 void VulkanGraph::TextureNode::AddStateChange(uint32 nodeIndex, TextureState expectedState, TextureState ensuredState)
 {
     stateChanges.insert(
@@ -165,7 +303,7 @@ void BuildGraph(VulkanGraph& graph, VulkanDevice& device)
         }
     }
 
-    for (auto& node : graph.dispatchNodes)
+    for (const auto& node : graph.dispatchNodes)
     {
         for (const auto dep : node.dependencies)
         {
@@ -186,7 +324,7 @@ void BuildGraph(VulkanGraph& graph, VulkanDevice& device)
         }
     }
 
-    for (auto& node : graph.presentNodes)
+    for (const auto& node : graph.presentNodes)
     {
         const auto state = TextureState{
             .layout = vk::ImageLayout::ePresentSrcKHR,
@@ -266,135 +404,6 @@ struct Commands
 
 namespace
 {
-    void ProcessCommandNode(VulkanGraph& graph, VulkanGraph::WriteNode& writeNode, VulkanDevice& device, vk::CommandBuffer cmdBuffer)
-    {
-        const auto& sourceNode = graph.Get<VulkanGraph::TextureDataNode>(writeNode.source.index);
-        auto& targetNode = graph.Get<VulkanGraph::TextureNode>(writeNode.target.index);
-
-        VulkanTexture& texture = device.GetImpl(targetNode.texture);
-
-        if (auto transition = targetNode.GetStateTransition(writeNode.index))
-        {
-            texture.Transition(cmdBuffer, *transition);
-        }
-
-        spdlog::info("Copy texture data to texture: {} -> {}", sourceNode.GetName(), targetNode.GetName());
-        spdlog::info("Size: {}", sourceNode.data.pixels.size());
-        const auto bufferSize = GetByteSize(sourceNode.data);
-        writeNode.stagingBuffer = device.CreateBufferUninitialized(
-            bufferSize, vk::BufferUsageFlagBits::eTransferSrc,
-            vma::AllocationCreateFlagBits::eMapped | vma::AllocationCreateFlagBits::eHostAccessSequentialWrite);
-        std::ranges::fill(writeNode.stagingBuffer.mappedData, std::byte{0xab});
-
-        const auto& data = writeNode.stagingBuffer.mappedData;
-        std::ranges::copy(sourceNode.data.pixels, data.data());
-
-        // Copy staging buffer to image
-        const auto imageExtent
-            = vk::Extent3D{.width = sourceNode.data.size.x, .height = sourceNode.data.size.y, .depth = 1};
-        CopyBufferToImage(
-            cmdBuffer, writeNode.stagingBuffer.buffer.get(), texture.image.get(), sourceNode.data.format, imageExtent);
-    }
-
-    void ProcessCommandNode(VulkanGraph& graph, VulkanGraph::ReadNode& readNode, VulkanDevice& device, vk::CommandBuffer cmdBuffer)
-    {
-        auto& sourceNode = graph.Get<VulkanGraph::TextureNode>(readNode.source.index);
-
-        spdlog::info("Copy texture to texture data: {}", sourceNode.GetName());
-
-        const auto completion = readNode.completion.lock();
-        if (completion == nullptr)
-        {
-            return;
-        }
-
-        const VulkanTexture& texture = device.GetImpl(sourceNode.texture);
-
-        if (const auto transition = sourceNode.GetStateTransition(readNode.index))
-        {
-            texture.Transition(cmdBuffer, *transition);
-        }
-
-        const auto data = TextureData{
-            .size = texture.properties.size,
-            .format = texture.properties.format,
-            .mipLevelCount = texture.properties.mipLevelCount,
-            .sampleCount = texture.properties.sampleCount,
-        };
-
-        const auto bufferSize = GetByteSize(data);
-        spdlog::info("Size: {}", bufferSize);
-        readNode.stagingBuffer = device.CreateBufferUninitialized(
-            bufferSize, vk::BufferUsageFlagBits::eTransferDst,
-            vma::AllocationCreateFlagBits::eMapped | vma::AllocationCreateFlagBits::eHostAccessRandom);
-        std::ranges::fill(readNode.stagingBuffer.mappedData, std::byte{0xef});
-
-        // Copy image to staging buffer
-        const vk::Extent3D extent = {
-            .width = texture.properties.size.x,
-            .height = texture.properties.size.y,
-            .depth = 1,
-        };
-        CopyImageToBuffer(
-            cmdBuffer, texture.image.get(), readNode.stagingBuffer.buffer.get(), texture.properties.format, extent,
-            texture.properties.mipLevelCount);
-    }
-
-    void ProcessCommandNode(VulkanGraph& graph, VulkanGraph::RenderNode& renderNode, VulkanDevice& device, vk::CommandBuffer cmdBuffer)
-    {
-        const auto& renderList = renderNode.renderList;
-
-        if (renderNode.colorTarget && renderNode.depthStencilTarget)
-        {
-            spdlog::info(
-                "Render to color texture: {}, depth/stencil texture: {}", graph.GetNodeName(*renderNode.colorTarget),
-                graph.GetNodeName(*renderNode.depthStencilTarget));
-        }
-        else if (renderNode.colorTarget)
-        {
-            spdlog::info("Render to color texture: {}", graph.GetNodeName(*renderNode.colorTarget));
-        }
-        else if (renderNode.depthStencilTarget)
-        {
-            spdlog::info("Render to depth/stencil texture: {}", graph.GetNodeName(*renderNode.depthStencilTarget));
-        }
-
-        // Transition image dependencies
-        for (const auto dep : renderNode.dependencies)
-        {
-            if (const auto* depNode = graph.GetIf<VulkanGraph::TextureNode>(dep))
-            {
-                if (auto transition = depNode->GetStateTransition(renderNode.index))
-                {
-                    device.GetImpl(depNode->texture).Transition(cmdBuffer, *transition);
-                }
-            }
-        }
-
-        const auto attachments
-            = vkex::Join(renderNode.colorTarget, renderNode.depthStencilTarget)
-            | std::views::transform([&graph, &device](auto ref) {
-                  return device.GetImpl(graph.Get<VulkanGraph::TextureNode>(ref).texture).imageView.get();
-              })
-            | std::ranges::to<std::vector<vk::ImageView>>();
-
-        const auto& renderTarget = renderNode.renderTargetInfo;
-        const RenderPassDesc renderPassDesc = {
-            .framebufferLayout = renderTarget.framebufferLayout,
-            .renderOverrides = renderList.renderOverrides,
-        };
-
-        const auto renderPass = device.CreateRenderPass(renderTarget.framebufferLayout, renderList.clearState);
-        const auto framebuffer
-            = device.CreateFramebuffer(renderPass, renderTarget.framebufferLayout, renderTarget.size, attachments);
-
-        VulkanRenderer::RecordRenderListCommands(device, cmdBuffer, renderList, renderPass, renderPassDesc, framebuffer);
-    }
-
-    template <class T>
-    void ProcessCommandNode(VulkanGraph&, T&, VulkanDevice&, vk::CommandBuffer)
-    {}
-
     auto RecordCommands(VulkanGraph& graph, VulkanDevice& device) -> Commands
     {
         Commands ret;
@@ -432,7 +441,7 @@ namespace
         graph.ForEachCommandNode([&](auto& node) {
             auto& cmdBuffer = ret.cmdBuffers[node.index];
             cmdBuffer.begin({.flags = {vk::CommandBufferUsageFlagBits::eOneTimeSubmit}});
-            ProcessCommandNode(graph, node, device, cmdBuffer);
+            node.Process(graph, device, cmdBuffer);
             cmdBuffer.end();
         });
 
