@@ -74,7 +74,7 @@ void VulkanGraph::WriteNode::Process(VulkanGraph& graph, VulkanDevice& device, v
 
 void VulkanGraph::ReadNode::Process(VulkanGraph& graph, VulkanDevice& device, vk::CommandBuffer cmdBuffer)
 {
-    if (completion.expired())
+    if (receiver.expired())
     {
         // If the weak pointer to the completion state has expired, that means the sender was destroyed, so there's no need to do any work for this node since the result will be lost anyway.
         return;
@@ -465,18 +465,14 @@ void ExecuteGraph(VulkanGraph& graph, VulkanDevice& device, Queue& queue)
 
         const auto& data = readNode.stagingBuffer.mappedData;
 
-        const auto result = TextureData{
-            .size = texture.properties.size,
-            .format = texture.properties.format,
-            .mipLevelCount = texture.properties.mipLevelCount,
-            .sampleCount = texture.properties.sampleCount,
-            .pixels = data | std::ranges::to<std::vector>(),
-        };
-
-        if (const auto comp = readNode.completion.lock())
-        {
-            comp->SetValue(result);
-        }
+        std::move(readNode.receiver)
+            .set_value({
+                .size = texture.properties.size,
+                .format = texture.properties.format,
+                .mipLevelCount = texture.properties.mipLevelCount,
+                .sampleCount = texture.properties.sampleCount,
+                .pixels = data | std::ranges::to<std::vector>(),
+            });
     }
 }
 

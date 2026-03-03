@@ -5,8 +5,8 @@
 #include "Teide/BasicTypes.h"
 #include "Teide/Renderer.h"
 #include "Teide/Surface.h"
+#include "Teide/Util/ListenSender.h"
 #include "Teide/Util/ThreadUtils.h"
-#include "Teide/Util/TypeHelpers.h"
 #include "Teide/VulkanBuffer.h"
 #include "Teide/VulkanTexture.h"
 
@@ -21,8 +21,6 @@ namespace Teide
 {
 class VulkanDevice;
 class Queue;
-
-namespace ex = stdexec;
 
 enum class ResourceType : uint8
 {
@@ -40,127 +38,6 @@ enum class CommandType : uint8
     Present,
 };
 std::string to_string(CommandType type);
-
-template <class T>
-using CompletionSignaturesFor = stdexec::completion_signatures<stdexec::set_value_t(T), stdexec::set_stopped_t()>;
-
-template <class T>
-struct CompletionState : MoveOnly
-{
-    using Sigs = CompletionSignaturesFor<T>;
-
-    struct AwaitingResult
-    {};
-
-    struct OnResult
-    {
-        std::function<void(T)> setValue;
-        std::function<void()> setStopped;
-    };
-
-    using ResultValue = T;
-
-    struct Canceled
-    {};
-
-    using State = std::variant<AwaitingResult, OnResult, ResultValue, Canceled>;
-
-    auto SetReceiver(ex::receiver_of<Sigs> auto& receiver) -> bool
-    {
-        return state.Lock([&receiver](State& state) {
-            TEIDE_ASSERT(!std::holds_alternative<OnResult>(state));
-
-            if (std::holds_alternative<Canceled>(state))
-            {
-                receiver.set_stopped();
-                return true;
-            }
-
-            if (auto* result = std::get_if<ResultValue>(&state))
-            {
-                receiver.set_value(std::move(*result));
-                return true;
-            }
-
-            if (std::holds_alternative<AwaitingResult>(state))
-            {
-                state = OnResult{
-                    .setValue = [&receiver](T value) { receiver.set_value(std::move(value)); },
-                    .setStopped = [&receiver] { receiver.set_stopped(); },
-                };
-            }
-
-            return false;
-        });
-    }
-
-    void SetValue(T value)
-    {
-        state.Lock([&value](State& state) {
-            TEIDE_ASSERT(!std::holds_alternative<ResultValue>(state));
-
-            if (std::holds_alternative<Canceled>(state))
-            {
-                // nothing to do
-                return;
-            }
-
-            if (auto* onResult = std::get_if<OnResult>(&state))
-            {
-                onResult->setValue(std::move(value));
-            }
-
-            if (std::holds_alternative<AwaitingResult>(state))
-            {
-                state = ResultValue{std::move(value)};
-            }
-        });
-    }
-
-private:
-    Synchronized<State> state;
-};
-
-template <class T, class Receiver>
-class ReadOperation : Immovable
-{
-public:
-    ReadOperation(std::shared_ptr<CompletionState<T>> completion, Receiver&& receiver) :
-        m_completion{std::move(completion)}, m_receiver{std::move(receiver)}
-    {}
-
-    void start() noexcept
-    {
-        if (m_completion->SetReceiver(m_receiver))
-        {
-            m_completion.reset();
-        }
-    }
-
-private:
-    std::shared_ptr<CompletionState<T>> m_completion;
-    Receiver m_receiver;
-};
-
-template <class T>
-class ReadSender
-{
-public:
-    explicit ReadSender(std::shared_ptr<CompletionState<T>> completion) : m_completion{std::move(completion)} {}
-
-    using sender_concept = ex::sender_t;
-
-    using completion_signatures = CompletionSignaturesFor<T>;
-
-    template <ex::receiver R>
-    friend auto tag_invoke(ex::connect_t /*tag*/, const ReadSender& sender, R&& receiver) -> ReadOperation<T, R>
-    {
-        return ReadOperation(std::move(sender.m_completion), std::forward<R>(receiver));
-    }
-
-private:
-    std::shared_ptr<CompletionState<T>> m_completion;
-};
 
 struct VulkanGraph
 {
@@ -211,8 +88,9 @@ struct VulkanGraph
 
         std::string name;
         ResourceNodeRef source;
+        ListenReceiver<TextureData> receiver;
+
         VulkanBufferData stagingBuffer;
-        std::weak_ptr<CompletionState<TextureData>> completion;
 
         void Process(VulkanGraph& graph, VulkanDevice& device, vk::CommandBuffer cmdBuffer);
     };
@@ -311,15 +189,12 @@ struct VulkanGraph
         return r;
     }
 
-    auto AddReadNode(ResourceNodeRef source)
+    auto AddReadNode(ResourceNodeRef source) -> ListenSender<TextureData>
     {
         auto name = fmt::format("read{}", readNodes.size() + 1);
         AddUsage(source, vk::ImageUsageFlagBits::eTransferSrc);
         auto& node = readNodes.emplace_back(NewCommandNode(), std::move(name), source);
-
-        auto completion = std::make_shared<CompletionState<TextureData>>();
-        node.completion = completion;
-        return ReadSender<TextureData>(std::move(completion));
+        return Listen(node.receiver);
     }
 
     auto AddDispatchNode(Kernel kernel, std::vector<ResourceNodeRef> inputs, std::vector<ResourceNodeRef> outputs)
