@@ -1,26 +1,27 @@
 
 #include "Trace.h"
 
-#ifdef __linux__
+#include <cpptrace/basic.hpp>
+#include <cpptrace/cpptrace.hpp>
+#include <cpptrace/formatting.hpp>
+#include <cpptrace/utils.hpp>
+#include <spdlog/spdlog.h>
+#include <sys/wait.h>
+#include <unistd.h>
 
-#    include <cpptrace/basic.hpp>
-#    include <cpptrace/cpptrace.hpp>
-#    include <cpptrace/formatting.hpp>
-#    include <cpptrace/utils.hpp>
-#    include <spdlog/spdlog.h>
-#    include <sys/wait.h>
-#    include <unistd.h>
-
-#    include <array>
-#    include <csignal>
-#    include <cstring>
-#    include <filesystem>
-#    include <optional>
-#    include <print>
-#    include <span>
+#include <array>
+#include <csignal>
+#include <cstring>
+#include <filesystem>
+#include <optional>
+#include <print>
+#include <span>
 
 namespace
 {
+
+#ifdef __linux__
+
 char* s_execPath = nullptr;
 char s_resolveTraceArg[] = "--z-cpptrace_resolve_trace_";
 
@@ -172,6 +173,66 @@ void ResolveTrace()
             break;
         }
     }
+
+    PrintTrace(trace.resolve());
+}
+
+#endif
+
+} // namespace
+
+int main(int argc, char** argv)
+{
+#if defined(__linux__)
+
+    const auto args = std::span(argv, argc);
+    s_execPath = args[0];
+
+    if (argc == 2 && args[1] == std::string_view(&s_resolveTraceArg[0]))
+    {
+        ResolveTrace();
+        return 0;
+    }
+
+    // This is done for any dynamic-loading shenanigans
+    auto buffer = std::array<cpptrace::frame_ptr, 10>{};
+    cpptrace::safe_generate_raw_trace(buffer.data(), buffer.size());
+    cpptrace::safe_object_frame frame = {};
+    cpptrace::get_safe_object_frame(buffer[0], &frame);
+
+    // Setup signal handler
+    struct sigaction action = {};
+    action.sa_flags = 0;
+    action.sa_sigaction = &SignalHandler; // NOLINT(cppcoreguidelines-pro-type-union-access)
+    if (sigaction(SIGSEGV, &action, nullptr) == -1)
+    {
+        perror("sigaction");
+    }
+
+    return TracedMain(argc, argv);
+
+#elif defined(_WIN32)
+
+    CPPTRACE_SEH_TRY
+    {
+        return TracedMain(argc, argv);
+    }
+    CPPTRACE_SEH_EXCEPT(true)
+    {
+        spdlog::error("Unhandled SEH exception thrown");
+        cpptrace::from_current_exception().print();
+        return 1;
+    }
+
+#else
+
+    return TracedMain(argc, argv);
+
+#endif
+}
+
+void PrintTrace(const cpptrace::stacktrace& trace)
+{
     const auto formatter = //
         cpptrace::formatter{}
             .symbols(cpptrace::formatter::symbol_mode::full)
@@ -185,38 +246,6 @@ void ResolveTrace()
                 }
                 return f;
             });
-    formatter.print(trace.resolve());
+
+    formatter.print(trace);
 }
-
-} // namespace
-
-bool InitCpptrace(int argc, char** argv)
-{
-    const auto args = std::span(argv, argc);
-    s_execPath = args[0];
-
-    if (argc == 2 && args[1] == std::string_view(&s_resolveTraceArg[0]))
-    {
-        ResolveTrace();
-        return true;
-    }
-
-    // This is done for any dynamic-loading shenanigans
-    auto buffer = std::array<cpptrace::frame_ptr, 10>{};
-    cpptrace::safe_generate_raw_trace(buffer.data(), buffer.size());
-    cpptrace::safe_object_frame frame = {};
-    cpptrace::get_safe_object_frame(buffer[0], &frame);
-
-    // Setup signal handler
-    struct sigaction action = {{nullptr}};
-    action.sa_flags = 0;
-    action.sa_sigaction = &SignalHandler;
-    if (sigaction(SIGSEGV, &action, nullptr) == -1)
-    {
-        perror("sigaction");
-    }
-
-    return false;
-}
-
-#endif
