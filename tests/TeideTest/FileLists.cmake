@@ -24,6 +24,7 @@ set(sources
     src/Teide/TestUtils.h
     src/Teide/TextureDataTest.cpp
     src/Teide/TextureTest.cpp
+    src/Teide/Util/ListenSenderTest.cpp
     src/Teide/VulkanGraphTest.cpp
     src/Teide/VulkanTest.cpp
     src/Trace.cpp
