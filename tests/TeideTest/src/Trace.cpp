@@ -4,6 +4,7 @@
 #include <cpptrace/basic.hpp>
 #include <cpptrace/cpptrace.hpp>
 #include <cpptrace/formatting.hpp>
+#include <cpptrace/from_current.hpp>
 #include <cpptrace/utils.hpp>
 #include <spdlog/spdlog.h>
 
