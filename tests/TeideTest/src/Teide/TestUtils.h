@@ -201,7 +201,7 @@ inline bool AssertThrow(std::string_view msg, std::string_view expression, std::
 #    define EXPECT_ASSERTION(statement)                                                                                \
         do /*NOLINT*/                                                                                                  \
         {                                                                                                              \
-            ::Teide::PushAssertHandler(&::Teide::detail::AssertThrow);                                                                  \
+            ::Teide::PushAssertHandler(&::Teide::detail::AssertThrow);                                                 \
             EXPECT_THROW(statement, ::Teide::detail::ExpectedAssertException);                                         \
             ::Teide::PopAssertHandler();                                                                               \
         } while (false)
