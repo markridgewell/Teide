@@ -6,8 +6,6 @@
 #include <cpptrace/formatting.hpp>
 #include <cpptrace/utils.hpp>
 #include <spdlog/spdlog.h>
-#include <sys/wait.h>
-#include <unistd.h>
 
 #include <array>
 #include <csignal>
@@ -17,10 +15,11 @@
 #include <print>
 #include <span>
 
+#ifdef __linux__
+#    include <sys/wait.h>
+
 namespace
 {
-
-#ifdef __linux__
 
 char* s_execPath = nullptr;
 char s_resolveTraceArg[] = "--z-cpptrace_resolve_trace_";
@@ -177,9 +176,9 @@ void ResolveTrace()
     PrintTrace(trace.resolve());
 }
 
-#endif
-
 } // namespace
+
+#endif
 
 int main(int argc, char** argv)
 {
