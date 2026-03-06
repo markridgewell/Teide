@@ -471,9 +471,8 @@ TEST_F(VulkanGraphTest, ExecutingGraphWithCopyNodeAndDiscardingResult)
     const auto texDataInput = graph.AddTextureDataNode("input", CheckerboardTexture);
     const auto tex = graph.AddTextureNode(CreateDummyTexture("tex"));
     graph.AddWriteNode(texDataInput, tex);
-    {
-        const auto sndr = graph.AddReadNode(tex);
-    }
+    auto sndr = std::optional(graph.AddReadNode(tex));
+    sndr.reset(); // destroy the sender early
 
     auto renderer = m_device->CreateRenderer({});
 
