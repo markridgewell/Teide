@@ -91,7 +91,7 @@ function install_from_package_manager() {
 function install-ccache() {
   echo "Installing ccache from GitHub..."
   declare -A patterns=(
-    [Linux]='*-linux-x86_64.tar.xz'
+    [Linux]='*-linux-x86_64-glibc.tar.xz'
     [Windows]='*-windows-x86_64.zip'
   )
   install_from_github $1 ccache/ccache ${patterns[${RUNNER_OS}]}
