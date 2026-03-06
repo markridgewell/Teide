@@ -138,6 +138,10 @@ struct VulkanGraph
 
         struct StateChange
         {
+            StateChange(uint32 nodeIndex, TextureState expectedState, TextureState ensuredState) :
+                nodeIndex{nodeIndex}, expectedState{expectedState}, ensuredState{ensuredState}
+            {}
+
             uint32 nodeIndex;
             TextureState expectedState;
             TextureState ensuredState;

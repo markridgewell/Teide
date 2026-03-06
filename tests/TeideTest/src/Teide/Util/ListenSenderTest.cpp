@@ -2,9 +2,8 @@
 #include "Teide/Util/ListenSender.h"
 
 #include "Teide/TestUtils.h"
-#include "Teide/Util/TypeHelpers.h"
-#include "gmock/gmock.h"
 
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 using namespace Teide;
