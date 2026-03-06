@@ -141,7 +141,7 @@ TEST(ListenSenderTest, StoppingTwiceViolatesContract)
     EXPECT_CALL(*mockImpl, set_stopped()).Times(1);
 
     std::move(rcvr).set_stopped();
-    EXPECT_ASSERTION(std::move(rcvr).set_stopped());
+    EXPECT_ASSERTION(std::move(rcvr).set_stopped()); // NOLINT(bugprone-use-after-move,-warnings-as-errors)
     auto op = ex::connect(sndr, mockRcvr);
     op.start();
 }
@@ -155,7 +155,7 @@ TEST(ListenSenderTest, SettingValueTwiceViolatesContract)
     EXPECT_CALL(*mockImpl, set_value(42)).Times(1);
 
     std::move(rcvr).set_value(42);
-    EXPECT_ASSERTION(std::move(rcvr).set_value(42));
+    EXPECT_ASSERTION(std::move(rcvr).set_value(42)); // NOLINT(bugprone-use-after-move,-warnings-as-errors)
     auto op = ex::connect(sndr, mockRcvr);
     op.start();
 }
@@ -169,7 +169,7 @@ TEST(ListenSenderTest, SettingValueAfterCancelingViolatesContract)
     EXPECT_CALL(*mockImpl, set_value(42)).Times(1);
 
     std::move(rcvr).set_value(42);
-    EXPECT_ASSERTION(std::move(rcvr).set_value(42));
+    EXPECT_ASSERTION(std::move(rcvr).set_value(42)); // NOLINT(bugprone-use-after-move,-warnings-as-errors)
     auto op = ex::connect(sndr, mockRcvr);
     op.start();
 }
