@@ -465,6 +465,28 @@ TEST_F(VulkanGraphTest, ExecutingGraphWithCopyNode)
     EXPECT_THAT(outputData, Eq(CheckerboardTexture));
 }
 
+TEST_F(VulkanGraphTest, ExecutingGraphWithCopyNodeAndDiscardingResult)
+{
+    VulkanGraph graph;
+    const auto texDataInput = graph.AddTextureDataNode("input", CheckerboardTexture);
+    const auto tex = graph.AddTextureNode(CreateDummyTexture("tex"));
+    graph.AddWriteNode(texDataInput, tex);
+    {
+        const auto sndr = graph.AddReadNode(tex);
+    }
+
+    auto renderer = m_device->CreateRenderer({});
+
+    spdlog::info(VisualizeGraph(graph));
+    auto queue = Queue(m_device->GetVulkanDevice(), m_device->GetGraphicsQueue());
+    ExecuteGraph(graph, *m_device, queue);
+
+    const VulkanTexture& texture = m_device->GetImpl(graph.textureNodes.at(tex.index).texture);
+    EXPECT_THAT(texture.image, IsValidVkHandle());
+    EXPECT_THAT(texture.imageView, Not(IsValidVkHandle()));
+    EXPECT_THAT(texture.usage, Eq(vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eTransferSrc));
+}
+
 TEST_F(VulkanGraphTest, ExecutingGraphWithRenderNodeWithColorAttachment)
 {
     VulkanGraph graph;
