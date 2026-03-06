@@ -1,13 +1,20 @@
 
 #pragma once
 
+#include "Teide/Assert.h"
 #include "Teide/BasicTypes.h"
 #include "Teide/Renderer.h"
 #include "Teide/Surface.h"
+#include "Teide/Util/ListenSender.h"
+#include "Teide/Util/ThreadUtils.h"
 #include "Teide/VulkanBuffer.h"
 #include "Teide/VulkanTexture.h"
 
+#include <stdexec/execution.hpp>
+#include <vulkan/vulkan.hpp>
+
 #include <string>
+#include <variant>
 #include <vector>
 
 namespace Teide
@@ -58,25 +65,37 @@ struct VulkanGraph
     static auto TextureRef(usize i) -> ResourceNodeRef { return {.type = ResourceType::Texture, .index = i}; }
     static auto TextureDataRef(usize i) -> ResourceNodeRef { return {.type = ResourceType::TextureData, .index = i}; }
 
-    struct WriteNode
+    struct CommandNode
+    {
+        uint32 index;
+    };
+
+    struct WriteNode : CommandNode
     {
         static constexpr auto NodeType = CommandType::Write;
 
+        std::string name;
         ResourceNodeRef source;
         ResourceNodeRef target;
         VulkanBufferData stagingBuffer;
+
+        void Process(VulkanGraph& graph, VulkanDevice& device, vk::CommandBuffer cmdBuffer);
     };
 
-    struct ReadNode
+    struct ReadNode : CommandNode
     {
         static constexpr auto NodeType = CommandType::Read;
 
+        std::string name;
         ResourceNodeRef source;
-        ResourceNodeRef target;
+        ListenReceiver<TextureData> receiver;
+
         VulkanBufferData stagingBuffer;
+
+        void Process(VulkanGraph& graph, VulkanDevice& device, vk::CommandBuffer cmdBuffer);
     };
 
-    struct RenderNode
+    struct RenderNode : CommandNode
     {
         static constexpr auto NodeType = CommandType::Render;
 
@@ -85,20 +104,28 @@ struct VulkanGraph
         std::optional<ResourceNodeRef> colorTarget;
         std::optional<ResourceNodeRef> depthStencilTarget;
         std::vector<ResourceNodeRef> dependencies;
+
+        void Process(VulkanGraph& graph, VulkanDevice& device, vk::CommandBuffer cmdBuffer);
     };
 
-    struct DispatchNode
+    struct DispatchNode : CommandNode
     {
+        std::string name;
         Kernel kernel;
         std::vector<ResourceNodeRef> dependencies;
         std::vector<ResourceNodeRef> outputs;
+
+        void Process(VulkanGraph& graph, VulkanDevice& device, vk::CommandBuffer cmdBuffer);
     };
 
-    struct PresentNode
+    struct PresentNode : CommandNode
     {
         static constexpr auto NodeType = CommandType::Present;
 
+        std::string name;
         ResourceNodeRef source;
+
+        void Process(VulkanGraph& graph, VulkanDevice& device, vk::CommandBuffer cmdBuffer);
     };
 
     struct TextureNode
@@ -107,7 +134,23 @@ struct VulkanGraph
 
         Texture texture;
         CommandNodeRef source;
-        TextureState state;
+        vk::ImageUsageFlags usage;
+
+        struct StateChange
+        {
+            StateChange(uint32 nodeIndex, TextureState expectedState, TextureState ensuredState) :
+                nodeIndex{nodeIndex}, expectedState{expectedState}, ensuredState{ensuredState}
+            {}
+
+            uint32 nodeIndex;
+            TextureState expectedState;
+            TextureState ensuredState;
+        };
+
+        std::vector<StateChange> stateChanges;
+
+        void AddStateChange(uint32 nodeIndex, TextureState expectedState, TextureState ensuredState);
+        auto GetStateTransition(uint32 nodeIndex) const -> std::optional<TextureStateTransition>;
 
         std::string_view GetName() const { return texture.GetName(); }
     };
@@ -128,6 +171,7 @@ struct VulkanGraph
     std::vector<RenderNode> renderNodes;
     std::vector<DispatchNode> dispatchNodes;
     std::vector<PresentNode> presentNodes;
+    uint32 commandNodeCount = 0;
 
     std::vector<TextureNode> textureNodes;
     std::vector<TextureDataNode> textureDataNodes;
@@ -137,28 +181,40 @@ struct VulkanGraph
         &VulkanGraph::textureNodes, &VulkanGraph::textureDataNodes,
     };
 
+    auto NewCommandNode() { return CommandNode{.index = commandNodeCount++}; }
+
     auto AddWriteNode(ResourceNodeRef source, ResourceNodeRef target)
     {
-        writeNodes.emplace_back(source, target);
+        auto name = fmt::format("write{}", writeNodes.size() + 1);
+        AddUsage(target, vk::ImageUsageFlagBits::eTransferDst);
+        writeNodes.emplace_back(NewCommandNode(), std::move(name), source, target);
         const auto r = WriteRef(writeNodes.size() - 1);
         SetSource(target, r);
         return r;
     }
 
-    auto AddReadNode(ResourceNodeRef source, ResourceNodeRef target)
+    auto AddReadNode(ResourceNodeRef source) -> ListenSender<TextureData>
     {
-        readNodes.emplace_back(source, target);
-        const auto r = ReadRef(readNodes.size() - 1);
-        SetSource(target, r);
-        return r;
+        auto name = fmt::format("read{}", readNodes.size() + 1);
+        AddUsage(source, vk::ImageUsageFlagBits::eTransferSrc);
+        auto& node = readNodes.emplace_back(NewCommandNode(), std::move(name), source);
+        return Listen(node.receiver);
     }
 
     auto AddDispatchNode(Kernel kernel, std::vector<ResourceNodeRef> inputs, std::vector<ResourceNodeRef> outputs)
     {
-        const auto& node = dispatchNodes.emplace_back(std::move(kernel), std::move(inputs), std::move(outputs));
+        auto name = fmt::format("dispatch{}", dispatchNodes.size() + 1);
+        const auto& node = dispatchNodes.emplace_back(
+            NewCommandNode(), std::move(name), std::move(kernel), std::move(inputs), std::move(outputs));
         const auto r = DispatchRef(dispatchNodes.size() - 1);
+
+        for (const auto input : node.dependencies)
+        {
+            AddUsage(input, vk::ImageUsageFlagBits::eSampled);
+        }
         for (const auto output : node.outputs)
         {
+            AddUsage(output, vk::ImageUsageFlagBits::eStorage);
             SetSource(output, r);
         }
         return r;
@@ -166,7 +222,8 @@ struct VulkanGraph
 
     auto AddPresentNode(ResourceNodeRef source)
     {
-        presentNodes.emplace_back(source);
+        auto name = fmt::format("present{}", presentNodes.size() + 1);
+        presentNodes.emplace_back(NewCommandNode(), std::move(name), source);
         return PresentRef(presentNodes.size() - 1);
     }
 
@@ -174,22 +231,26 @@ struct VulkanGraph
     {
         auto renderTargetInfo = RenderTargetInfo{};
         const auto r = RenderRef(renderNodes.size());
+
         if (colorTarget)
         {
+            AddUsage(*colorTarget, vk::ImageUsageFlagBits::eColorAttachment);
             SetSource(*colorTarget, r);
             const auto& tex = Get<TextureNode>(colorTarget->index);
             renderTargetInfo.size = tex.texture.GetSize();
             renderTargetInfo.framebufferLayout.colorFormat = tex.texture.GetFormat();
         }
+
         if (depthStencilTarget)
         {
+            AddUsage(*depthStencilTarget, vk::ImageUsageFlagBits::eDepthStencilAttachment);
             SetSource(*depthStencilTarget, r);
             const auto& tex = Get<TextureNode>(depthStencilTarget->index);
             renderTargetInfo.size = tex.texture.GetSize();
             renderTargetInfo.framebufferLayout.depthStencilFormat = tex.texture.GetFormat();
         }
 
-        renderNodes.emplace_back(std::move(renderList), renderTargetInfo, colorTarget, depthStencilTarget);
+        renderNodes.emplace_back(NewCommandNode(), std::move(renderList), renderTargetInfo, colorTarget, depthStencilTarget);
         return r;
     }
 
@@ -205,44 +266,9 @@ struct VulkanGraph
         return TextureDataRef(textureDataNodes.size() - 1);
     }
 
+    void AddStateChange(ResourceNodeRef ref, uint32 nodeIndex, TextureState expectedState, TextureState ensuredState);
+
     std::string_view GetNodeName(ResourceNodeRef ref);
-    std::optional<std::string_view> FindNodeWithSource(CommandNodeRef source);
-
-    void ForEachWriteNode(auto f)
-    {
-        for (auto i = VulkanGraph::WriteRef(0); i.index < writeNodes.size(); i.index++)
-        {
-            const auto& node = writeNodes[i.index];
-            f(i, fmt::format("write{}", i.index + 1), std::span(&node.source, 1));
-        }
-    };
-
-    void ForEachReadNode(auto f)
-    {
-        for (auto i = VulkanGraph::ReadRef(0); i.index < readNodes.size(); i.index++)
-        {
-            const auto& node = readNodes[i.index];
-            f(i, fmt::format("read{}", i.index + 1), std::span(&node.source, 1));
-        }
-    };
-
-    void ForEachRenderNode(auto f)
-    {
-        for (auto i = VulkanGraph::RenderRef(0); i.index < renderNodes.size(); i.index++)
-        {
-            const auto& node = renderNodes[i.index];
-            f(i, node.renderList.name, node.dependencies);
-        }
-    };
-
-    void ForEachDispatchNode(auto f)
-    {
-        for (auto i = VulkanGraph::DispatchRef(0); i.index < dispatchNodes.size(); i.index++)
-        {
-            const auto& node = dispatchNodes[i.index];
-            f(i, fmt::format("dispatch{}", i.index + 1), node.dependencies);
-        }
-    };
 
     void ForEachPresentNode(auto f)
     {
@@ -255,11 +281,26 @@ struct VulkanGraph
 
     void ForEachCommandNode(auto f)
     {
-        ForEachWriteNode(f);
-        ForEachReadNode(f);
-        ForEachRenderNode(f);
-        ForEachDispatchNode(f);
-        ForEachPresentNode(f);
+        for (auto& node : writeNodes)
+        {
+            f(node);
+        }
+        for (auto& node : readNodes)
+        {
+            f(node);
+        }
+        for (auto& node : renderNodes)
+        {
+            f(node);
+        }
+        for (auto& node : dispatchNodes)
+        {
+            f(node);
+        }
+        for (auto& node : presentNodes)
+        {
+            f(node);
+        }
     }
 
     template <class T>
@@ -276,6 +317,14 @@ struct VulkanGraph
     template <class T>
     T& Get(ResourceNodeRef ref)
     {
+        TEIDE_ASSERT(ref.type == T::NodeType);
+        return Get<T>(ref.index);
+    }
+
+    template <class T>
+    T& Get(CommandNodeRef ref)
+    {
+        TEIDE_ASSERT(ref.type == T::NodeType);
         return Get<T>(ref.index);
     }
 
@@ -292,6 +341,14 @@ struct VulkanGraph
     }
 
 private:
+    void AddUsage(ResourceNodeRef ref, vk::ImageUsageFlags usage)
+    {
+        if (auto* texture = GetIf<TextureNode>(ref))
+        {
+            texture->usage |= usage;
+        }
+    }
+
     void SetSource(ResourceNodeRef ref, CommandNodeRef source)
     {
         switch (ref.type)

@@ -52,6 +52,7 @@ set(sources
     src/Teide/ShaderData.cpp
     src/Teide/TextureData.cpp
     src/Teide/Util/FrameArray.h
+    src/Teide/Util/ListenSender.h
     src/Teide/Util/ResourceMap.h
     src/Teide/Util/SafeMemCpy.h
     src/Teide/Util/StaticMap.h

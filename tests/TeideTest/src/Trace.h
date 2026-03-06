@@ -1,8 +1,8 @@
 
 #pragma once
 
-#ifdef __linux__
+#include <cpptrace/forward.hpp>
 
-bool InitCpptrace(int argc, char** argv);
+int TracedMain(int argc, char** argv);
 
-#endif
+void PrintTrace(const cpptrace::stacktrace& trace);

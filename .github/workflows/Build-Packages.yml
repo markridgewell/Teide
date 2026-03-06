@@ -125,7 +125,7 @@ jobs:
 
     - name: Save packages as artifact
       if: steps.cache.outputs.cache-hit != 'true' || inputs.ignore-cache
-      uses: actions/upload-artifact@v6.0.0
+      uses: actions/upload-artifact@v7.0.0
       with:
         name: vcpkg-export-${{ steps.cache-key.outputs.cache-key }}
         path: './exports'

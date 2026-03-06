@@ -55,9 +55,9 @@ public:
 
     Task<TextureData> CopyTextureData(Texture texture) override;
 
-    static void CreateRenderCommandBuffer(
-        VulkanDevice& device, vk::CommandBuffer commandBuffer, const RenderList& renderList,
-        const RenderTargetInfo& renderTarget, const RenderTarget& rt, vk::DescriptorSet sceneParameters = {},
+    static void RecordRenderListCommands(
+        VulkanDevice& device, vk::CommandBuffer commandBuffer, const RenderList& renderList, vk::RenderPass renderPass,
+        const RenderPassDesc& renderPassDesc, const Framebuffer& framebuffer, vk::DescriptorSet sceneParameters = {},
         vk::DescriptorSet viewParameters = {});
 
 private:
@@ -69,11 +69,6 @@ private:
 
     const TransientParameterBlock& GetSceneParameterBlock() const { return m_frameResources.Current().sceneParameters; }
     auto CreateViewParameters(const RenderList& renderList) -> vk::DescriptorSet;
-
-    static void RecordRenderListCommands(
-        VulkanDevice& device, vk::CommandBuffer commandBuffer, const RenderList& renderList, vk::RenderPass renderPass,
-        const RenderPassDesc& renderPassDesc, const Framebuffer& framebuffer, vk::DescriptorSet sceneParameters,
-        vk::DescriptorSet viewParameters);
 
     static void RecordRenderObjectCommands(
         VulkanDevice& device, vk::CommandBuffer commandBuffer, const RenderObject& obj, const RenderPassDesc& renderPassDesc);

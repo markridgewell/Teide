@@ -80,6 +80,7 @@ struct Framebuffer
 
 enum class FramebufferUsage : uint8
 {
+    Attachment,
     ShaderInput,
     PresentSrc
 };
