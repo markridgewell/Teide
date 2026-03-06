@@ -104,7 +104,7 @@ bool AssertThrow(std::string_view msg, std::string_view expression, std::source_
         std::cout << "Current test: " << curTest->name() << "\n";
         GTEST_NONFATAL_FAILURE_("Assert failed while executing test");
     }
-    trace.print(std::cout, true);
+    PrintTrace(trace);
     throw AssertException{};
 }
 
@@ -220,7 +220,9 @@ private:
     int m_testCount = 0;
 };
 
-int Run(int argc, char** argv)
+} // namespace
+
+int TracedMain(int argc, char** argv)
 {
     spdlog::flush_on(spdlog::level::err);
 
@@ -264,31 +266,4 @@ int Run(int argc, char** argv)
     testing::FLAGS_gtest_break_on_failure = Teide::IsDebuggerAttached();
 
     return RUN_ALL_TESTS();
-}
-
-} // namespace
-
-int main(int argc, char** argv)
-{
-#ifdef __linux__
-    if (InitCpptrace(argc, argv))
-    {
-        return 0;
-    }
-#endif
-
-#ifdef _WIN32
-    CPPTRACE_SEH_TRY
-    {
-        return Run(argc, argv);
-    }
-    CPPTRACE_SEH_EXCEPT(true)
-    {
-        spdlog::error("Unhandled SEH exception thrown");
-        cpptrace::from_current_exception().print();
-        return 1;
-    }
-#else
-    return Run(argc, argv);
-#endif
 }
