@@ -100,7 +100,7 @@ public:
         return std::dynamic_pointer_cast<const typename VulkanImpl<std::remove_const_t<T>>::type>(ptr);
     }
 
-    TextureState CreateTextureImpl(VulkanTexture& texture, vk::ImageUsageFlags usage);
+    TextureState CreateTextureImpl(VulkanTexture& texture);
 
     VulkanBufferData CreateBufferUninitialized(
         vk::DeviceSize size, vk::BufferUsageFlags usage, vma::AllocationCreateFlags allocationFlags = {},
@@ -126,8 +126,9 @@ public:
     void UpdateTransientParameterBlock(TransientParameterBlock& pblock, const ParameterBlockData& data);
 
     vk::RenderPass CreateRenderPassLayout(const FramebufferLayout& framebufferLayout);
-    vk::RenderPass
-    CreateRenderPass(const FramebufferLayout& framebufferLayout, const ClearState& clearState, FramebufferUsage usage);
+    vk::RenderPass CreateRenderPass(
+        const FramebufferLayout& framebufferLayout, const ClearState& clearState,
+        FramebufferUsage usage = FramebufferUsage::Attachment);
     Framebuffer CreateFramebuffer(
         vk::RenderPass renderPass, const FramebufferLayout& layout, Geo::Size2i size, std::vector<vk::ImageView> attachments);
 
