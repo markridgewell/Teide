@@ -3,6 +3,7 @@
 
 #include "Teide/Assert.h"
 #include "Teide/TestUtils.h"
+#include "Teide/VulkanConfig.h"
 
 #include <cpptrace/basic.hpp>
 #include <cpptrace/cpptrace.hpp>
@@ -11,7 +12,9 @@
 #include <gtest/gtest.h>
 #include <spdlog/sinks/ostream_sink.h>
 #include <spdlog/spdlog.h>
+#include <vulkan/vulkan_to_string.hpp>
 
+#include <cctype>
 #include <exception>
 #include <ranges>
 #include <source_location>
@@ -220,6 +223,45 @@ private:
     int m_testCount = 0;
 };
 
+std::string GetVendorName(std::uint32_t id)
+{
+    // from PCI-ID database at https://admin.pci-ids.ucw.cz/read/PC?restrict=
+    if (id == 0x1ae0)
+    {
+        return "Google, Inc.";
+    }
+    return to_string(vk::VendorId(id));
+}
+
+std::string GetVersionString(std::uint32_t v)
+{
+    return fmt::format("{}.{}.{}", vk::versionMajor(v), vk::versionMinor(v), vk::versionPatch(v));
+}
+
+void DumpVulkanInfo()
+{
+    spdlog::info("Available devices:");
+    const vk::ApplicationInfo app = {.apiVersion = VK_API_VERSION_1_3};
+    Teide::VulkanLoader loader;
+    auto instance = vk::createInstanceUnique({.pApplicationInfo = &app});
+    loader.LoadInstanceFunctions(*instance);
+
+    for (const auto pd : instance->enumeratePhysicalDevices())
+    {
+        const auto [pdp2, driver] = pd.getProperties2<vk::PhysicalDeviceProperties2, vk::PhysicalDeviceDriverProperties>();
+        const auto& device = pdp2.properties;
+
+        spdlog::info(" - deviceName:    {}", std::string_view(device.deviceName));
+        spdlog::info("   deviceType:    {}", to_string(device.deviceType));
+        spdlog::info("   vendorID:      {}", GetVendorName(device.vendorID));
+        spdlog::info("   driverName:    {}", std::string_view(driver.driverName));
+        spdlog::info("   driverVersion: {}", GetVersionString(device.driverVersion));
+        spdlog::info("   driverID:      {}", to_string(static_cast<vk::DriverId>(driver.driverID)));
+        spdlog::info("   driverInfo:    {}", std::string_view(driver.driverInfo));
+        spdlog::info("");
+    }
+}
+
 } // namespace
 
 int TracedMain(int argc, char** argv)
@@ -243,6 +285,8 @@ int TracedMain(int argc, char** argv)
             spdlog::info("Windowless environment indicated: skipping surface tests");
         }
     }
+
+    DumpVulkanInfo();
 
     testing::InitGoogleTest(&argc, argv);
 
