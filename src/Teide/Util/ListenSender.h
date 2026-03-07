@@ -44,69 +44,63 @@ struct CompletionState : MoveOnly
     template <ex::receiver_of<Sigs> Receiver>
     auto SetReceiver(Receiver& receiver) -> bool
     {
-        return state.Lock([&receiver](State& state) {
-            TEIDE_ASSERT(!std::holds_alternative<OnResult>(state));
+        TEIDE_ASSERT(!std::holds_alternative<OnResult>(state));
 
-            if (std::holds_alternative<Canceled>(state))
-            {
-                std::move(receiver).set_stopped();
-                return true;
-            }
+        if (std::holds_alternative<Canceled>(state))
+        {
+            std::move(receiver).set_stopped();
+            return true;
+        }
 
-            if (auto* result = std::get_if<ResultValue>(&state))
-            {
-                std::move(receiver).set_value(std::move(*result));
-                return true;
-            }
+        if (auto* result = std::get_if<ResultValue>(&state))
+        {
+            std::move(receiver).set_value(std::move(*result));
+            return true;
+        }
 
-            if (std::holds_alternative<AwaitingResult>(state))
-            {
-                state = OnResult{
-                    .setValue = [&receiver](T value) { std::move(receiver).set_value(std::move(value)); },
-                    .setStopped = [&receiver] { std::move(receiver).set_stopped(); },
-                };
-            }
+        if (std::holds_alternative<AwaitingResult>(state))
+        {
+            state = OnResult{
+                .setValue = [&receiver](T value) { std::move(receiver).set_value(std::move(value)); },
+                .setStopped = [&receiver] { std::move(receiver).set_stopped(); },
+            };
+        }
 
-            return false;
-        });
+        return false;
     }
 
     void SetValue(T value)
     {
-        state.Lock([&value](State& state) {
-            TEIDE_ASSERT(!std::holds_alternative<ResultValue>(state) || std::holds_alternative<Canceled>(state));
+        TEIDE_ASSERT(!std::holds_alternative<ResultValue>(state) || std::holds_alternative<Canceled>(state));
 
-            if (auto* onResult = std::get_if<OnResult>(&state))
-            {
-                onResult->setValue(std::move(value));
-            }
+        if (auto* onResult = std::get_if<OnResult>(&state))
+        {
+            onResult->setValue(std::move(value));
+        }
 
-            if (std::holds_alternative<AwaitingResult>(state))
-            {
-                state = ResultValue{std::move(value)};
-            }
-        });
+        if (std::holds_alternative<AwaitingResult>(state))
+        {
+            state = ResultValue{std::move(value)};
+        }
     }
 
     void SetStopped()
     {
-        state.Lock([](State& state) {
-            TEIDE_ASSERT(!std::holds_alternative<ResultValue>(state) || std::holds_alternative<Canceled>(state));
+        TEIDE_ASSERT(!std::holds_alternative<ResultValue>(state) || std::holds_alternative<Canceled>(state));
 
-            if (auto* onResult = std::get_if<OnResult>(&state))
-            {
-                onResult->setStopped();
-            }
+        if (auto* onResult = std::get_if<OnResult>(&state))
+        {
+            onResult->setStopped();
+        }
 
-            if (std::holds_alternative<AwaitingResult>(state))
-            {
-                state = Canceled{};
-            }
-        });
+        if (std::holds_alternative<AwaitingResult>(state))
+        {
+            state = Canceled{};
+        }
     }
 
 private:
-    Synchronized<State> state;
+    State state;
 };
 
 } // namespace Teide::detail
@@ -131,29 +125,32 @@ public:
 
     using completion_signatures = detail::CompletionSignaturesFor<T>;
 
+    using Completion = detail::CompletionState<T>;
+    using CompletionSharedPtr = std::shared_ptr<Synchronized<Completion>>;
+
     template <class Receiver>
     class Operation : Immovable
     {
     public:
-        Operation(std::shared_ptr<detail::CompletionState<T>> completion, Receiver&& receiver) :
+        Operation(CompletionSharedPtr completion, Receiver&& receiver) :
             m_completion{std::move(completion)}, m_receiver{std::move(receiver)}
         {}
 
-        Operation(std::shared_ptr<detail::CompletionState<T>> completion, Receiver& receiver)
+        Operation(CompletionSharedPtr completion, Receiver& receiver)
             requires std::is_lvalue_reference_v<Receiver>
             : m_completion{std::move(completion)}, m_receiver{receiver}
         {}
 
         void start() noexcept
         {
-            if (m_completion->SetReceiver(m_receiver))
+            if (m_completion->Lock(&Completion::template SetReceiver<Receiver>, m_receiver))
             {
                 m_completion.reset();
             }
         }
 
     private:
-        std::shared_ptr<detail::CompletionState<T>> m_completion;
+        CompletionSharedPtr m_completion;
         Receiver m_receiver;
     };
 
@@ -164,10 +161,9 @@ public:
     }
 
 private:
-    explicit ListenSender(std::shared_ptr<detail::CompletionState<T>> completion) : m_completion{std::move(completion)}
-    {}
+    explicit ListenSender(CompletionSharedPtr completion) : m_completion{std::move(completion)} {}
 
-    std::shared_ptr<detail::CompletionState<T>> m_completion;
+    CompletionSharedPtr m_completion;
 
     friend auto Listen<T>(ListenReceiver<T>& receiver) -> ListenSender<T>;
 };
@@ -178,13 +174,16 @@ class ListenReceiver : MoveOnly
 public:
     using receiver_concept = ex::receiver_t;
 
+    using Completion = detail::CompletionState<T>;
+    using CompletionWeakPtr = std::weak_ptr<Synchronized<Completion>>;
+
     void set_value(T&& value) &&
     {
         TEIDE_ASSERT(not m_called);
         m_called = true;
         if (auto comp = m_completion.lock())
         {
-            comp->SetValue(std::move(value));
+            comp->Lock(&Completion::SetValue, std::move(value));
         }
     }
 
@@ -194,14 +193,14 @@ public:
         m_called = true;
         if (auto comp = m_completion.lock())
         {
-            comp->SetStopped();
+            comp->Lock(&Completion::SetStopped);
         }
     }
 
     bool expired() const { return m_completion.expired(); }
 
 private:
-    std::weak_ptr<detail::CompletionState<T>> m_completion;
+    CompletionWeakPtr m_completion;
     bool m_called = false;
 
     friend auto Listen<T>(ListenReceiver<T>& receiver) -> ListenSender<T>;
@@ -215,7 +214,7 @@ auto Listen(ListenReceiver<T>& receiver) -> ListenSender<T>
         return ListenSender<T>(comp);
     }
 
-    auto comp = std::make_shared<detail::CompletionState<T>>();
+    auto comp = std::make_shared<Synchronized<detail::CompletionState<T>>>();
     receiver.m_completion = comp;
 
     return ListenSender<T>(comp);
