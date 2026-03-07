@@ -18,6 +18,7 @@
 
 #ifdef __linux__
 #    include <sys/wait.h>
+#    include <unistd.h>
 
 namespace
 {
