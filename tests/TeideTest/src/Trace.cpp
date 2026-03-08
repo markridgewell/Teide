@@ -210,9 +210,13 @@ int main(int argc, char** argv)
         perror("sigaction");
     }
 
+    cpptrace::register_terminate_handler();
+
     return TracedMain(argc, argv);
 
 #elif defined(_WIN32)
+
+    cpptrace::register_terminate_handler();
 
     CPPTRACE_SEH_TRY
     {
