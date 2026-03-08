@@ -210,15 +210,19 @@ int main(int argc, char** argv)
         perror("sigaction");
     }
 
+    cpptrace::register_terminate_handler();
+
     return TracedMain(argc, argv);
 
 #elif defined(_WIN32)
+
+    cpptrace::register_terminate_handler();
 
     CPPTRACE_SEH_TRY
     {
         return TracedMain(argc, argv);
     }
-    CPPTRACE_SEH_EXCEPT(true)
+    CPPTRACE_SEH_EXCEPT(EXCEPTION_EXECUTE_HANDLER)
     {
         spdlog::error("Unhandled SEH exception thrown");
         cpptrace::from_current_exception().print();
