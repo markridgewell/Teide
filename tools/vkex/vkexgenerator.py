@@ -223,6 +223,12 @@ class VkexOutputGenerator(OutputGenerator):
         write('#include "vkex/vkex_utils.hpp"', file=self.outFile)
         self.newline()
 
+        for i in range(5):
+            write(f'#define VK_BASE_VERSION_1_{i}', file=self.outFile)
+            write(f'#define VK_COMPUTE_VERSION_1_{i}', file=self.outFile)
+            write(f'#define VK_GRAPHICS_VERSION_1_{i}', file=self.outFile)
+        self.newline()
+
         # User-supplied prefix text, if any (list of strings)
         if genOpts.prefixText:
             for s in genOpts.prefixText:
@@ -450,7 +456,8 @@ class VkexOutputGenerator(OutputGenerator):
         # List of structs known to NOT work
         brokenStructs = [
             'VkVideoDecodeH265PictureInfoKHR',
-            'VkCudaModuleCreateInfoNV'
+            'VkCudaModuleCreateInfoNV',
+            'VkSwapchainTimeDomainPropertiesEXT',
         ]
 
         if typeName in brokenStructs:
