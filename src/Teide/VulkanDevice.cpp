@@ -686,7 +686,7 @@ TextureState VulkanDevice::CreateTextureImpl(VulkanTexture& texture)
         const vma::AllocationCreateInfo allocInfo = {
             .usage = vma::MemoryUsage::eAuto,
         };
-        auto [image, allocation] = m_allocator->createImageUnique(imageInfo, allocInfo);
+        auto [allocation, image] = m_allocator->createImageUnique(imageInfo, allocInfo);
 
         texture.image = vk::UniqueImage(image.release(), m_device.get());
         texture.allocation = std::move(allocation);
