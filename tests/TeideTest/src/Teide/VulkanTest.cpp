@@ -10,8 +10,8 @@ using namespace testing;
 
 static const auto availableExtensions = [] {
     std::vector<vk::ExtensionProperties> ret;
-    std::ranges::copy("TestExtension", ret.emplace_back().extensionName.begin());
-    std::ranges::copy("Debug", ret.emplace_back().extensionName.begin());
+    std::ranges::copy("VK_KHR_surface", ret.emplace_back().extensionName.begin());
+    std::ranges::copy("VK_KHR_display", ret.emplace_back().extensionName.begin());
     return ret;
 }();
 
@@ -22,33 +22,38 @@ static const auto availableLayers = [] {
     return ret;
 }();
 
+TEST(VulkanTest, NoExtensionsAdded)
+{
+    auto enabledExtensions = VulkanInstanceExtensions(availableExtensions);
+    EXPECT_THAT(enabledExtensions, IsEmpty());
+}
+
 TEST(VulkanTest, OptionalExtensionFound)
 {
-    auto enabledExtensions = std::vector<const char*>{};
-    EnableVulkanExtension(enabledExtensions, availableExtensions, "TestExtension", Required::False);
-    EXPECT_THAT(enabledExtensions, ElementsAre(StrEq("TestExtension")));
+    auto enabledExtensions = VulkanInstanceExtensions(availableExtensions);
+    enabledExtensions.AddOptional("VK_KHR_surface");
+    EXPECT_THAT(enabledExtensions, ElementsAre(StrEq("VK_KHR_surface")));
 }
 
 TEST(VulkanTest, OptionalExtensionNotFound)
 {
-    auto enabledExtensions = std::vector<const char*>{};
-    EnableVulkanExtension(enabledExtensions, availableExtensions, "NotFound", Required::False);
+    auto enabledExtensions = VulkanInstanceExtensions(availableExtensions);
+    enabledExtensions.AddOptional("VK_EXT_debug_report");
     EXPECT_THAT(enabledExtensions, IsEmpty());
 }
 
 TEST(VulkanTest, RequiredExtensionFound)
 {
-    auto enabledExtensions = std::vector<const char*>{};
-    EnableVulkanExtension(enabledExtensions, availableExtensions, "TestExtension", Required::True);
-    EXPECT_THAT(enabledExtensions, ElementsAre(StrEq("TestExtension")));
+    auto enabledExtensions = VulkanInstanceExtensions(availableExtensions);
+    enabledExtensions.AddRequired("VK_KHR_surface");
+    enabledExtensions.AddRequired("VK_KHR_display");
+    EXPECT_THAT(enabledExtensions, ElementsAre(StrEq("VK_KHR_surface"), StrEq("VK_KHR_display")));
 }
 
 TEST(VulkanTest, RequiredExtensionNotFound)
 {
-    auto enabledExtensions = std::vector<const char*>{};
-    EXPECT_THROW(
-        EnableVulkanExtension(enabledExtensions, availableExtensions, "NotFound", Required::True),
-        vk::ExtensionNotPresentError);
+    auto enabledExtensions = VulkanInstanceExtensions(availableExtensions);
+    EXPECT_THROW(enabledExtensions.AddRequired("VK_EXT_debug_report"), vk::ExtensionNotPresentError);
     EXPECT_THAT(enabledExtensions, IsEmpty());
 }
 

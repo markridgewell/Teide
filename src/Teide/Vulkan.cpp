@@ -15,7 +15,6 @@
 #include <vulkan/vulkan_enums.hpp>
 #include <vulkan/vulkan_extension_inspection.hpp>
 
-#include <stdexcept>
 #include <unordered_map>
 
 namespace Teide
@@ -296,48 +295,35 @@ void EnableVulkanExtension(
     }
 }
 
-class InstanceExtensionName
+auto VulkanExtensionsBase::IsAvailableImpl(std::string_view extensionName) -> bool
 {
-public:
-    template <usize N>
-    consteval InstanceExtensionName(const char (&name)[N]) : // cppcheck-suppress noExplicitConstructor
-        m_name{&name[0]}
+    return contains(m_available, extensionName, GetExtensionName);
+}
+
+void VulkanExtensionsBase::AddRequiredImpl(const char* extensionName)
+{
+    if (IsAvailableImpl(extensionName))
     {
-#if (201907 <= __cpp_constexpr) && (!defined(__GNUC__) || (110400 < GCC_VERSION))
-        if (not vk::isInstanceExtension(std::string(&name[0])))
-        {
-            throw std::runtime_error("Unknown instance extension name");
-        }
-#endif
+        spdlog::info("Enabling Vulkan extension {}", extensionName);
+        m_enabled.push_back(extensionName);
     }
+    else
+    {
+        throw vk::ExtensionNotPresentError(extensionName);
+    }
+}
 
-    constexpr std::string_view Get() const { return m_name; }
-    constexpr operator const char*() const { return m_name; }
-
-private:
-    const char* m_name;
-};
-
-class VulkanInstanceExtensions
+void VulkanExtensionsBase::AddOptionalImpl(const char* extensionName)
 {
-public:
-    auto IsAvailable(InstanceExtensionName extensionName) -> bool;
-
-    void AddSurfaceExtensions(SDL_Window* window);
-    void AddRequired(InstanceExtensionName extensionName);
-    void AddOptional(InstanceExtensionName extensionName);
-
-    friend auto data(const VulkanInstanceExtensions& ve) { return data(ve.m_enabled); }
-    friend auto size(const VulkanInstanceExtensions& ve) { return size(ve.m_enabled); }
-
-private:
-    std::vector<const char*> m_enabled;
-    const std::vector<vk::ExtensionProperties> m_available = vk::enumerateInstanceExtensionProperties();
-};
-
-auto VulkanInstanceExtensions::IsAvailable(InstanceExtensionName extensionName) -> bool
-{
-    return contains(m_available, extensionName.Get(), GetExtensionName);
+    if (IsAvailableImpl(extensionName))
+    {
+        spdlog::info("Enabling Vulkan extension {}", extensionName);
+        m_enabled.push_back(extensionName);
+    }
+    else
+    {
+        spdlog::warn("Vulkan extension {} not enabled!", extensionName);
+    }
 }
 
 void VulkanInstanceExtensions::AddSurfaceExtensions(SDL_Window* window)
@@ -348,34 +334,10 @@ void VulkanInstanceExtensions::AddSurfaceExtensions(SDL_Window* window)
     SDL_Vulkan_GetInstanceExtensions(window, &extensionCount, m_enabled.data());
 }
 
-void VulkanInstanceExtensions::AddRequired(InstanceExtensionName extensionName)
-{
-    if (IsAvailable(extensionName))
-    {
-        spdlog::info("Enabling Vulkan extension {}", extensionName.Get());
-        m_enabled.push_back(extensionName);
-    }
-    else
-    {
-        throw vk::ExtensionNotPresentError(extensionName);
-    }
-}
-
-void VulkanInstanceExtensions::AddOptional(InstanceExtensionName extensionName)
-{
-    if (IsAvailable(extensionName))
-    {
-        spdlog::info("Enabling Vulkan extension {}", extensionName.Get());
-        m_enabled.push_back(extensionName);
-    }
-    else
-    {
-        spdlog::warn("Vulkan extension {} not enabled!", extensionName.Get());
-    }
-}
-
 vk::UniqueInstance CreateInstance(VulkanLoader& loader, SDL_Window* window)
 {
+    using std::data;
+
     VulkanInstanceExtensions extensions;
 
     if (window)
