@@ -137,7 +137,7 @@ public:
         }
         else
         {
-            std::cout << line << '\n';
+            std::cout << line << '\n' << std::flush;
         }
         m_failure = false;
         m_output = {};
