@@ -154,10 +154,10 @@ public:
         Receiver m_receiver;
     };
 
-    template <ex::receiver R>
-    friend auto tag_invoke(ex::connect_t /*tag*/, const ListenSender& sender, R&& receiver) -> Operation<R>
+    template <class Self, ex::receiver R>
+    auto connect(this Self&& self, R&& receiver)
     {
-        return Operation<R>(std::move(sender.m_completion), std::forward<R>(receiver));
+        return Operation<R>(std::forward<Self>(self).m_completion, std::forward<R>(receiver));
     }
 
 private:
