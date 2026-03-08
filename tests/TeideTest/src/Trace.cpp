@@ -222,7 +222,7 @@ int main(int argc, char** argv)
     {
         return TracedMain(argc, argv);
     }
-    CPPTRACE_SEH_EXCEPT(true)
+    CPPTRACE_SEH_EXCEPT(EXCEPTION_EXECUTE_HANDLER)
     {
         spdlog::error("Unhandled SEH exception thrown");
         cpptrace::from_current_exception().print();
