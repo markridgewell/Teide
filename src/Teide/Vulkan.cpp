@@ -293,9 +293,7 @@ void EnableVulkanExtension(
     else
     {
         spdlog::warn("Vulkan extension {} not enabled!", extensionName);
-        return false;
     }
-    return true;
 }
 
 class InstanceExtensionName
