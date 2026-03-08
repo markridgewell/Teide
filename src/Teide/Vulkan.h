@@ -6,7 +6,6 @@
 #include "Teide/PipelineData.h"
 #include "Teide/ShaderData.h"
 #include "Teide/TextureData.h"
-#include "vulkan/vulkan.hpp"
 
 #include <fmt/format.h>
 #include <vulkan-memory-allocator-hpp/vk_mem_alloc.hpp>
