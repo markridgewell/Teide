@@ -6,8 +6,6 @@
 #include "Teide/Assert.h"
 #include "Teide/Definitions.h"
 #include "Teide/Format.h"
-#include "Teide/Pipeline.h"
-#include "Teide/Renderer.h"
 #include "Teide/TextureData.h"
 #include "Teide/Util/StaticMap.h"
 
@@ -15,8 +13,9 @@
 #include <spdlog/spdlog.h>
 #include <vkex/vkex.hpp>
 #include <vulkan/vulkan_enums.hpp>
+#include <vulkan/vulkan_extension_inspection.hpp>
 
-#include <memory>
+#include <stdexcept>
 #include <unordered_map>
 
 namespace Teide
@@ -294,18 +293,96 @@ void EnableVulkanExtension(
     else
     {
         spdlog::warn("Vulkan extension {} not enabled!", extensionName);
+        return false;
+    }
+    return true;
+}
+
+class InstanceExtensionName
+{
+public:
+    template <usize N>
+    consteval InstanceExtensionName(const char (&name)[N]) : // cppcheck-suppress noExplicitConstructor
+        m_name{&name[0]}
+    {
+#if (201907 <= __cpp_constexpr) && (!defined(__GNUC__) || (110400 < GCC_VERSION))
+        if (not vk::isInstanceExtension(std::string(&name[0])))
+        {
+            throw std::runtime_error("Unknown instance extension name");
+        }
+#endif
+    }
+
+    constexpr std::string_view Get() const { return m_name; }
+    constexpr operator const char*() const { return m_name; }
+
+private:
+    const char* m_name;
+};
+
+class VulkanInstanceExtensions
+{
+public:
+    auto IsAvailable(InstanceExtensionName extensionName) -> bool;
+
+    void AddSurfaceExtensions(SDL_Window* window);
+    void AddRequired(InstanceExtensionName extensionName);
+    void AddOptional(InstanceExtensionName extensionName);
+
+    friend auto data(const VulkanInstanceExtensions& ve) { return data(ve.m_enabled); }
+    friend auto size(const VulkanInstanceExtensions& ve) { return size(ve.m_enabled); }
+
+private:
+    std::vector<const char*> m_enabled;
+    const std::vector<vk::ExtensionProperties> m_available = vk::enumerateInstanceExtensionProperties();
+};
+
+auto VulkanInstanceExtensions::IsAvailable(InstanceExtensionName extensionName) -> bool
+{
+    return contains(m_available, extensionName.Get(), GetExtensionName);
+}
+
+void VulkanInstanceExtensions::AddSurfaceExtensions(SDL_Window* window)
+{
+    uint32_t extensionCount = 0;
+    SDL_Vulkan_GetInstanceExtensions(window, &extensionCount, nullptr);
+    m_enabled.resize(extensionCount);
+    SDL_Vulkan_GetInstanceExtensions(window, &extensionCount, m_enabled.data());
+}
+
+void VulkanInstanceExtensions::AddRequired(InstanceExtensionName extensionName)
+{
+    if (IsAvailable(extensionName))
+    {
+        spdlog::info("Enabling Vulkan extension {}", extensionName.Get());
+        m_enabled.push_back(extensionName);
+    }
+    else
+    {
+        throw vk::ExtensionNotPresentError(extensionName);
+    }
+}
+
+void VulkanInstanceExtensions::AddOptional(InstanceExtensionName extensionName)
+{
+    if (IsAvailable(extensionName))
+    {
+        spdlog::info("Enabling Vulkan extension {}", extensionName.Get());
+        m_enabled.push_back(extensionName);
+    }
+    else
+    {
+        spdlog::warn("Vulkan extension {} not enabled!", extensionName.Get());
     }
 }
 
 vk::UniqueInstance CreateInstance(VulkanLoader& loader, SDL_Window* window)
 {
-    std::vector<const char*> extensions;
+    VulkanInstanceExtensions extensions;
+
     if (window)
     {
-        uint32_t extensionCount = 0;
-        SDL_Vulkan_GetInstanceExtensions(window, &extensionCount, nullptr);
-        extensions.resize(extensionCount);
-        SDL_Vulkan_GetInstanceExtensions(window, &extensionCount, extensions.data());
+        extensions.AddSurfaceExtensions(window);
     }
 
     const vk::ApplicationInfo applicationInfo{
@@ -313,9 +390,8 @@ vk::UniqueInstance CreateInstance(VulkanLoader& loader, SDL_Window* window)
     };
 
     const auto availableLayers = vk::enumerateInstanceLayerProperties();
-    const auto availableExtensions = vk::enumerateInstanceExtensionProperties();
-    EnableVulkanExtension(extensions, availableExtensions, "VK_KHR_surface", Required::False);
-    EnableVulkanExtension(extensions, availableExtensions, "VK_EXT_headless_surface", Required::False);
+    extensions.AddOptional("VK_KHR_surface");
+    extensions.AddOptional("VK_EXT_headless_surface");
 
     std::vector<const char*> layers;
 
@@ -323,14 +399,15 @@ vk::UniqueInstance CreateInstance(VulkanLoader& loader, SDL_Window* window)
     if constexpr (IsDebugBuild)
     {
         EnableVulkanLayer(layers, availableLayers, "VK_LAYER_KHRONOS_validation", Required::False);
-        EnableVulkanExtension(extensions, availableExtensions, "VK_EXT_debug_utils", Required::False);
+        extensions.AddOptional("VK_EXT_debug_utils");
+        extensions.AddOptional("VK_EXT_validation_features");
 
         const std::array enabledFeatures = {
             vk::ValidationFeatureEnableEXT::eSynchronizationValidation,
             vk::ValidationFeatureEnableEXT::eBestPractices,
         };
 
-        const vk::StructureChain createInfo = {
+        vk::StructureChain createInfo = {
             vk::InstanceCreateInfo{
                 .pApplicationInfo = &applicationInfo,
                 .enabledLayerCount = size32(layers),
@@ -343,6 +420,11 @@ vk::UniqueInstance CreateInstance(VulkanLoader& loader, SDL_Window* window)
             },
             GetDebugCreateInfo(),
         };
+
+        if (not extensions.IsAvailable("VK_EXT_validation_features"))
+        {
+            createInfo.unlink<vk::ValidationFeaturesEXT>();
+        }
 
         instance = vk::createInstanceUnique(createInfo.get<vk::InstanceCreateInfo>(), s_allocator);
     }
