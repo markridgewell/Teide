@@ -3,10 +3,9 @@
 
 #include "Teide/Assert.h"
 #include "Teide/BasicTypes.h"
+#include "Teide/Kernel.h"
 #include "Teide/Renderer.h"
-#include "Teide/Surface.h"
 #include "Teide/Util/ListenSender.h"
-#include "Teide/Util/ThreadUtils.h"
 #include "Teide/VulkanBuffer.h"
 #include "Teide/VulkanTexture.h"
 
@@ -14,7 +13,6 @@
 #include <vulkan/vulkan.hpp>
 
 #include <string>
-#include <variant>
 #include <vector>
 
 namespace Teide

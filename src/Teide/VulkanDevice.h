@@ -16,14 +16,9 @@
 #include "Teide/Renderer.h"
 #include "Teide/Surface.h"
 #include "Teide/Util/ResourceMap.h"
-#include "Teide/Util/ThreadUtils.h"
 
 #include <vulkan/vulkan_hash.hpp>
 
-#include <compare>
-#include <concepts>
-#include <optional>
-#include <thread>
 #include <type_traits>
 #include <unordered_map>
 

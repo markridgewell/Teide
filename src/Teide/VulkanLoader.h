@@ -1,9 +1,8 @@
 
 #pragma once
 
-#include "VulkanConfig.h"
-
-#include <string>
+#include <vulkan-memory-allocator-hpp/vk_mem_alloc.hpp>
+#include <vulkan/vulkan.hpp>
 
 namespace Teide
 {

@@ -64,7 +64,6 @@ set(sources
     src/Teide/Vulkan.h
     src/Teide/VulkanBuffer.cpp
     src/Teide/VulkanBuffer.h
-    src/Teide/VulkanConfig.h
     src/Teide/VulkanDevice.cpp
     src/Teide/VulkanDevice.h
     src/Teide/VulkanGraph.cpp

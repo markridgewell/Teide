@@ -4,7 +4,7 @@
 #include "Teide/AbstractBase.h"
 #include "Teide/BasicTypes.h"
 
-#include <memory>
+#include <string> // for std::hash
 #include <type_traits>
 
 namespace Teide
@@ -149,7 +149,7 @@ static constexpr bool HasProperties = !std::is_void_v<typename T::PropertiesType
 } // namespace Teide
 
 template <class T>
-    requires std::derived_from<T, Teide::BaseHandle>
+    requires std::is_base_of_v<Teide::BaseHandle, T>
 struct std::hash<T>
 {
     std::size_t operator()(const T& v) const { return std::hash<Teide::uint64>{}(static_cast<Teide::uint64>(v)); }
