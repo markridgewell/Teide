@@ -474,13 +474,11 @@ namespace
 
     void AddDebugExtensions(std::vector<InstanceExtensionName>& extensions)
     {
-        // NOLINTBEGIN(modernize-use-emplace)
         if constexpr (IsDebugBuild)
         {
             extensions.push_back("VK_EXT_debug_utils");
             extensions.push_back("VK_EXT_validation_features");
         }
-        // NOLINTEND(modernize-use-emplace)
     }
 
 } // namespace
@@ -491,8 +489,8 @@ DeviceAndSurface CreateDeviceAndSurface(SDL_Window* window, bool multisampled, c
 {
     TEIDE_ASSERT(window);
 
-    // NOLINTBEGIN(modernize-use-emplace)
-    auto optionalExtensions = std::vector<InstanceExtensionName>{"VK_KHR_surface"};
+    auto optionalExtensions = std::vector<InstanceExtensionName>();
+    optionalExtensions.push_back("VK_KHR_surface");
 
 #if defined(VK_USE_PLATFORM_XLIB_KHR)
     optionalExtensions.push_back("VK_KHR_xlib_surface");
@@ -508,7 +506,6 @@ DeviceAndSurface CreateDeviceAndSurface(SDL_Window* window, bool multisampled, c
 #endif
 
     AddDebugExtensions(optionalExtensions);
-    // NOLINTEND(modernize-use-emplace)
 
     spdlog::info("Creating graphics device and surface");
     VulkanLoader loader;
@@ -534,7 +531,7 @@ DevicePtr CreateHeadlessDevice(const GraphicsSettings& settings)
 {
     spdlog::info("Creating headless graphics device");
 
-    auto optionalExtensions = std::vector<InstanceExtensionName>{};
+    auto optionalExtensions = std::vector<InstanceExtensionName>();
     AddDebugExtensions(optionalExtensions);
 
     VulkanLoader loader;
@@ -548,7 +545,9 @@ DeviceAndSurface CreateHeadlessDeviceAndSurface(Geo::Size2i windowSize, const Gr
 {
     spdlog::info("Creating graphics device and surface");
 
-    auto optionalExtensions = std::vector<InstanceExtensionName>{"VK_KHR_surface", "VK_EXT_headless_surface"};
+    auto optionalExtensions = std::vector<InstanceExtensionName>();
+    optionalExtensions.push_back("VK_KHR_surface");
+    optionalExtensions.push_back("VK_EXT_headless_surface");
     AddDebugExtensions(optionalExtensions);
 
     VulkanLoader loader;
