@@ -99,7 +99,7 @@
     "dangle_parens": false,
     "min_prefix_chars": 4,
     "max_prefix_chars": 10,
-    "max_lines_hwrap": 2,
+    "max_lines_hwrap": 0,
     "line_ending": "auto",
     "command_case": "canonical",
     "keyword_case": "upper",

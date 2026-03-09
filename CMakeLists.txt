@@ -83,8 +83,11 @@ set(GENERATED_INCLUDE_DIR "${CMAKE_BINARY_DIR}/GENERATED/include")
 find_package(Python REQUIRED)
 set(VK_XML_PATH "${Vulkan_INCLUDE_DIR}/../share/vulkan/registry/vk.xml")
 if("${VK_XML_PATH}" IS_NEWER_THAN "${GENERATED_INCLUDE_DIR}/vkex/vkex.hpp")
-    execute_process(COMMAND "${Python_EXECUTABLE}" "${CMAKE_SOURCE_DIR}/tools/vkex/genvkex.py" -registry
-                            "${VK_XML_PATH}" -o "${GENERATED_INCLUDE_DIR}/vkex" COMMAND_ERROR_IS_FATAL ANY)
+    execute_process(
+        COMMAND
+            "${Python_EXECUTABLE}" "${CMAKE_SOURCE_DIR}/tools/vkex/genvkex.py" -registry "${VK_XML_PATH}" -o
+            "${GENERATED_INCLUDE_DIR}/vkex"
+        COMMAND_ERROR_IS_FATAL ANY)
 endif()
 
 add_compile_options("$<$<C_COMPILER_ID:MSVC>:/utf-8>")
