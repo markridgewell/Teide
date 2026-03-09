@@ -345,6 +345,15 @@ vk::UniqueDevice CreateDevice(VulkanLoader& loader, const PhysicalDevice& physic
     const auto availableLayers = physicalDevice.physicalDevice.enumerateDeviceLayerProperties();
     const auto availableExtensions = physicalDevice.physicalDevice.enumerateDeviceExtensionProperties();
 
+#if (201907 <= __cpp_constexpr) && (!defined(__GNUC__) || (110400 < GCC_VERSION))
+    static_assert(vk::isDeviceExtension("VK_EXT_descriptor_indexing"));
+    static_assert(vk::isDeviceExtension("VK_KHR_depth_stencil_resolve"));
+    static_assert(vk::isDeviceExtension("VK_KHR_create_renderpass2"));
+
+    constexpr DeviceExtensionName name = "VK_EXT_descriptor_indexing";
+    static_cast<void>(name);
+#endif
+
     std::vector<DeviceExtensionName> requiredExtensions
         = {"VK_EXT_descriptor_indexing", "VK_KHR_depth_stencil_resolve", "VK_KHR_create_renderpass2"};
     std::vector<DeviceExtensionName> optionalExtensions = {};
