@@ -548,7 +548,7 @@ DeviceAndSurface CreateHeadlessDeviceAndSurface(Geo::Size2i windowSize, const Gr
 {
     spdlog::info("Creating graphics device and surface");
 
-    auto optionalExtensions = std::vector<InstanceExtensionName>{"VK_EXT_headless_surface"};
+    auto optionalExtensions = std::vector<InstanceExtensionName>{"VK_KHR_surface", "VK_EXT_headless_surface"};
     AddDebugExtensions(optionalExtensions);
 
     VulkanLoader loader;
