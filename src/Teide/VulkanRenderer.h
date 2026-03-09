@@ -9,16 +9,12 @@
 #include "VulkanSurface.h"
 
 #include "Teide/BasicTypes.h"
-#include "Teide/BytesView.h"
 #include "Teide/ForwardDeclare.h"
-#include "Teide/Pipeline.h"
 #include "Teide/Surface.h"
 #include "Teide/Util/FrameArray.h"
 #include "Teide/Util/ThreadUtils.h"
 
-#include <array>
-#include <deque>
-#include <mutex>
+#include <optional>
 #include <vector>
 
 namespace Teide

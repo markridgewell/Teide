@@ -2,7 +2,6 @@
 #pragma once
 
 #include "Teide/BasicTypes.h"
-#include "Teide/Definitions.h"
 
 #include <algorithm>
 #include <atomic>

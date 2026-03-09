@@ -90,11 +90,20 @@ endif()
 add_compile_options("$<$<C_COMPILER_ID:MSVC>:/utf-8>")
 add_compile_options("$<$<CXX_COMPILER_ID:MSVC>:/utf-8>")
 
+set(vulkan_configuration_definitions
+    VULKAN_HPP_NO_STRUCT_CONSTRUCTORS=1
+    VULKAN_HPP_DISPATCH_LOADER_DYNAMIC=1
+    VULKAN_HPP_NO_SPACESHIP_OPERATOR=1
+    VMA_STATIC_VULKAN_FUNCTIONS=0
+    $<$<CONFIG:Debug>:VMA_DEBUG_INITIALIZE_ALLOCATIONS=1>
+    $<$<CONFIG:Debug>:VMA_DEBUG_MARGIN=16>
+    $<$<CONFIG:Debug>:VMA_DEBUG_DETECT_CORRUPTION=1>)
+
 include(FileLists.cmake)
 td_add_library(
     Teide
     SOURCES "${sources}" "${GENERATED_INCLUDE_DIR}/vkex/vkex.hpp"
-    PRIVATE_DEPS
+    DEPENDENCIES
         spdlog::spdlog
         Vulkan::Vulkan
         GPUOpen::VulkanMemoryAllocator
@@ -105,17 +114,27 @@ td_add_library(
         function2::function2
         STDEXEC::stdexec
         glslang::SPIRV
-        glslang::glslang)
+        glslang::glslang
+    DEFINITIONS ${vulkan_configuration_definitions})
 target_include_directories(Teide SYSTEM PRIVATE "${GENERATED_INCLUDE_DIR}")
 
 if(TEIDE_PRECOMPILED_HEADERS)
     target_precompile_headers(
         Teide
         PRIVATE
-        src/Teide/VulkanConfig.h
+        <fmt/format.h>
+        <spdlog/spdlog.h>
+        <vulkan/vulkan.hpp>
+        <vulkan-memory-allocator-hpp/vk_mem_alloc.hpp>
+        <vulkan/vulkan_extension_inspection.hpp>
         <algorithm>
+        <bitset>
+        <optional>
         <ranges>
+        <span>
         <string>
+        <string_view>
+        <unordered_map>
         <vector>)
     set_source_files_properties(src/Teide/VmaImpl.cpp PROPERTIES SKIP_PRECOMPILE_HEADERS TRUE)
 endif()

@@ -4,30 +4,27 @@
       "pargs": 1,
       "kwargs": {
         "SOURCES": "*",
-        "PUBLIC_DEPS": "*",
-        "PRIVATE_DEPS": "*"
+        "DEPENDENCIES": "*",
+        "PUBLIC_DEPENDENCIES": "*",
+        "DEFINITIONS": "*",
+        "PUBLIC_DEFINITIONS": "*"
       }
     },
     "td_add_application": {
       "pargs": 1,
       "kwargs": {
         "SOURCES": "*",
-        "DEPS": "*"
-      }
-    },
-    "td_add_console_application": {
-      "pargs": 1,
-      "kwargs": {
-        "SOURCES": "*",
-        "DEPS": "*"
+        "DEPENDENCIES": "*",
+        "DEFINITIONS": "*"
       }
     },
     "td_add_test": {
       "pargs": 1,
       "kwargs": {
         "SOURCES": "*",
-        "DEPS": "*",
-        "TEST_ARGS": "*"
+        "DEPENDENCIES": "*",
+        "TEST_ARGS": "*",
+        "DEFINITIONS": "*"
       }
     },
     "exec": {

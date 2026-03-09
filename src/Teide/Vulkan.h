@@ -1,8 +1,6 @@
 
 #pragma once
 
-#include "VulkanConfig.h"
-
 #include "GeoLib/Vector.h"
 #include "Teide/Definitions.h"
 #include "Teide/PipelineData.h"
@@ -10,11 +8,11 @@
 #include "Teide/TextureData.h"
 
 #include <fmt/format.h>
+#include <vulkan-memory-allocator-hpp/vk_mem_alloc.hpp>
 
 #include <chrono>
 #include <span>
 #include <string_view>
-#include <unordered_set>
 
 struct SDL_Window;
 

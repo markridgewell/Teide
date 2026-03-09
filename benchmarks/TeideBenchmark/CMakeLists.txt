@@ -7,4 +7,4 @@ endif()
 td_add_application(
     TeideBenchmark
     SOURCES "${sources}"
-    DEPS Teide benchmark::benchmark spdlog::spdlog ${extra_deps})
+    DEPENDENCIES Teide benchmark::benchmark spdlog::spdlog ${extra_deps})

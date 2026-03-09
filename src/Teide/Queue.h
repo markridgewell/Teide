@@ -2,10 +2,10 @@
 #pragma once
 
 #include "Teide/Util/TypeHelpers.h"
-#include "Teide/VulkanConfig.h"
 
 #include <function2/function2.hpp>
 #include <stdexec/execution.hpp>
+#include <vulkan/vulkan.hpp>
 
 #include <mutex>
 #include <queue>

@@ -41,7 +41,12 @@ function(_copy_install_files target)
 endfunction()
 
 function(td_add_library target)
-    set(multiValueArgs SOURCES PUBLIC_DEPS PRIVATE_DEPS)
+    set(multiValueArgs
+        SOURCES
+        DEPENDENCIES
+        PUBLIC_DEPENDENCIES
+        DEFINITIONS
+        PUBLIC_DEFINITIONS)
     cmake_parse_arguments(
         "ARG"
         "${options}"
@@ -63,8 +68,12 @@ function(td_add_library target)
     source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${ARG_SOURCES})
     target_link_libraries(
         ${target}
-        PUBLIC ${ARG_PUBLIC_DEPS}
-        PRIVATE ${ARG_PRIVATE_DEPS})
+        PRIVATE ${ARG_DEPENDENCIES}
+        PUBLIC ${ARG_PUBLIC_DEPENDENCIES})
+    target_compile_definitions(
+        ${target}
+        PRIVATE ${ARG_DEFINITIONS}
+        PUBLIC ${ARG_PUBLIC_DEFINITIONS})
     if(TEIDE_TEST_COVERAGE)
         target_enable_coverage(${target})
     endif()
@@ -80,7 +89,7 @@ endfunction()
 
 function(td_add_application target)
     set(local_options WIN32 DPI_AWARE)
-    set(multiValueArgs SOURCES DEPS)
+    set(multiValueArgs SOURCES DEPENDENCIES DEFINITIONS)
     cmake_parse_arguments(
         "ARG"
         "${local_options}"
@@ -99,7 +108,8 @@ function(td_add_application target)
     endif()
     source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${ARG_SOURCES})
     target_include_directories(${target} PRIVATE ${source_dir})
-    target_link_libraries(${target} PRIVATE ${ARG_DEPS})
+    target_link_libraries(${target} PRIVATE ${ARG_DEPENDENCIES})
+    target_compile_definitions(${target} PRIVATE ${ARG_DEFINITIONS})
     if(TEIDE_TEST_COVERAGE)
         target_enable_coverage(${target})
     endif()
@@ -110,7 +120,7 @@ endfunction()
 
 function(td_add_test target)
     set(oneValueArgs TARGET)
-    set(multiValueArgs SOURCES DEPS TEST_ARGS)
+    set(multiValueArgs SOURCES DEPENDENCIES TEST_ARGS DEFINITIONS)
     cmake_parse_arguments(
         "ARG"
         "${options}"
@@ -122,9 +132,10 @@ function(td_add_test target)
 
     add_executable(${target} ${ARG_SOURCES})
     source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${ARG_SOURCES})
-    target_link_libraries(${target} PRIVATE ${ARG_TARGET} ${ARG_DEPS})
+    target_link_libraries(${target} PRIVATE ${ARG_TARGET} ${ARG_DEPENDENCIES})
     target_include_directories(${target} PRIVATE ${source_dir})
     target_include_directories(${target} PRIVATE ${test_dir})
+    target_compile_definitions(${target} PRIVATE ${ARG_DEFINITIONS})
     if(TARGET ${ARG_TARGET})
         target_include_directories(${target} PRIVATE $<TARGET_PROPERTY:${ARG_TARGET},INCLUDE_DIRECTORIES>)
     endif()

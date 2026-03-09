@@ -3,7 +3,6 @@
 
 #include "Teide/Assert.h"
 #include "Teide/TestUtils.h"
-#include "Teide/VulkanConfig.h"
 
 #include <cpptrace/basic.hpp>
 #include <cpptrace/cpptrace.hpp>
