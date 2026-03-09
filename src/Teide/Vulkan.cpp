@@ -1,15 +1,15 @@
 
 #include "Vulkan.h"
 
-#include "VulkanLoader.h"
-
 #include "Teide/Assert.h"
 #include "Teide/Definitions.h"
 #include "Teide/Format.h"
 #include "Teide/TextureData.h"
 #include "Teide/Util/StaticMap.h"
+#include "Teide/VulkanLoader.h"
 
 #include <SDL_vulkan.h>
+#include <fmt/ranges.h>
 #include <spdlog/spdlog.h>
 #include <vkex/vkex.hpp>
 #include <vulkan/vulkan_enums.hpp>
@@ -22,8 +22,6 @@ namespace Teide
 
 namespace
 {
-    constexpr auto VulkanApiVersion = VK_API_VERSION_1_1;
-
     constexpr vk::DebugUtilsMessageSeverityFlagsEXT BreakOnVulkanMessage = vk::DebugUtilsMessageSeverityFlagBitsEXT::eError;
 
     const vk::Optional<const vk::AllocationCallbacks> s_allocator = nullptr;
@@ -154,6 +152,76 @@ namespace
         return VK_FALSE;
     }
 
+    class DeviceExtensionName
+    {
+    public:
+        template <usize N>
+        consteval DeviceExtensionName(const char (&name)[N]) : // cppcheck-suppress noExplicitConstructor
+            m_name{&name[0]}
+        {
+#if (201907 <= __cpp_constexpr) && (!defined(__GNUC__) || (110400 < GCC_VERSION))
+            if (not vk::isDeviceExtension(std::string(&name[0])))
+            {
+                throw std::runtime_error("Unknown device extension name");
+            }
+#endif
+        }
+
+        constexpr std::string_view Get() const { return m_name; }
+        constexpr operator const char*() const { return m_name; }
+
+    private:
+        const char* m_name;
+    };
+
+    inline std::string_view GetExtensionName(const vk::ExtensionProperties& obj)
+    {
+        return obj.extensionName;
+    }
+
+    struct DeviceExtensions
+    {
+        std::vector<const char*> supported;
+        std::vector<const char*> missingRequired;
+        std::vector<const char*> missingOptional;
+    };
+
+    auto GetDeviceExtensions(
+        vk::PhysicalDevice physicalDevice, std::span<const DeviceExtensionName> requiredExtensions,
+        std::span<const DeviceExtensionName> optionalExtensions) -> DeviceExtensions
+    {
+        auto ret = DeviceExtensions{};
+
+        const auto available = physicalDevice.enumerateDeviceExtensionProperties();
+
+        for (const char* extension : requiredExtensions)
+        {
+            if (std::ranges::contains(available, extension, GetExtensionName))
+            {
+                ret.supported.push_back(extension);
+            }
+            else
+            {
+                ret.missingRequired.push_back(extension);
+            }
+        }
+
+        for (const char* extension : optionalExtensions)
+        {
+            if (std::ranges::contains(available, extension, GetExtensionName))
+            {
+                ret.supported.push_back(extension);
+            }
+            else
+            {
+                ret.missingOptional.push_back(extension);
+            }
+        }
+
+        return ret;
+    }
+
+
     struct TransitionAccessMasks
     {
         vk::AccessFlags source;
@@ -257,154 +325,6 @@ PhysicalDevice::PhysicalDevice(vk::PhysicalDevice pd, const QueueFamilies& qf) :
     depthStencilResolveProperties = props.get<vk::PhysicalDeviceDepthStencilResolveProperties>();
 }
 
-void EnableVulkanLayer(
-    std::vector<const char*>& enabledLayers, const std::vector<vk::LayerProperties>& availableLayers,
-    const char* layerName, Required required)
-{
-    if (contains(availableLayers, std::string_view(layerName), GetLayerName))
-    {
-        spdlog::info("Enabling Vulkan layer {}", layerName);
-        enabledLayers.push_back(layerName);
-    }
-    else if (required == Required::True)
-    {
-        throw vk::LayerNotPresentError(layerName);
-    }
-    else
-    {
-        spdlog::warn("Vulkan layer {} not enabled!", layerName);
-    }
-}
-
-void EnableVulkanExtension(
-    std::vector<const char*>& enabledExtensions, const std::vector<vk::ExtensionProperties>& availableExtensions,
-    const char* extensionName, Required required)
-{
-    if (contains(availableExtensions, std::string_view(extensionName), GetExtensionName))
-    {
-        spdlog::info("Enabling Vulkan extension {}", extensionName);
-        enabledExtensions.push_back(extensionName);
-    }
-    else if (required == Required::True)
-    {
-        throw vk::ExtensionNotPresentError(extensionName);
-    }
-    else
-    {
-        spdlog::warn("Vulkan extension {} not enabled!", extensionName);
-    }
-}
-
-auto VulkanExtensionsBase::IsAvailableImpl(std::string_view extensionName) -> bool
-{
-    return contains(m_available, extensionName, GetExtensionName);
-}
-
-void VulkanExtensionsBase::AddRequiredImpl(const char* extensionName)
-{
-    if (IsAvailableImpl(extensionName))
-    {
-        spdlog::info("Enabling Vulkan extension {}", extensionName);
-        m_enabled.push_back(extensionName);
-    }
-    else
-    {
-        throw vk::ExtensionNotPresentError(extensionName);
-    }
-}
-
-void VulkanExtensionsBase::AddOptionalImpl(const char* extensionName)
-{
-    if (IsAvailableImpl(extensionName))
-    {
-        spdlog::info("Enabling Vulkan extension {}", extensionName);
-        m_enabled.push_back(extensionName);
-    }
-    else
-    {
-        spdlog::warn("Vulkan extension {} not enabled!", extensionName);
-    }
-}
-
-void VulkanInstanceExtensions::AddSurfaceExtensions(SDL_Window* window)
-{
-    uint32_t extensionCount = 0;
-    SDL_Vulkan_GetInstanceExtensions(window, &extensionCount, nullptr);
-    m_enabled.resize(extensionCount);
-    SDL_Vulkan_GetInstanceExtensions(window, &extensionCount, m_enabled.data());
-}
-
-vk::UniqueInstance CreateInstance(VulkanLoader& loader, SDL_Window* window)
-{
-    using std::data;
-
-    VulkanInstanceExtensions extensions;
-
-    if (window)
-    {
-        extensions.AddSurfaceExtensions(window);
-    }
-
-    const vk::ApplicationInfo applicationInfo{
-        .apiVersion = VulkanApiVersion,
-    };
-
-    const auto availableLayers = vk::enumerateInstanceLayerProperties();
-    extensions.AddOptional("VK_KHR_surface");
-    extensions.AddOptional("VK_EXT_headless_surface");
-
-    std::vector<const char*> layers;
-
-    vk::UniqueInstance instance;
-    if constexpr (IsDebugBuild)
-    {
-        EnableVulkanLayer(layers, availableLayers, "VK_LAYER_KHRONOS_validation", Required::False);
-        extensions.AddOptional("VK_EXT_debug_utils");
-        extensions.AddOptional("VK_EXT_validation_features");
-
-        const std::array enabledFeatures = {
-            vk::ValidationFeatureEnableEXT::eSynchronizationValidation,
-            vk::ValidationFeatureEnableEXT::eBestPractices,
-        };
-
-        vk::StructureChain createInfo = {
-            vk::InstanceCreateInfo{
-                .pApplicationInfo = &applicationInfo,
-                .enabledLayerCount = size32(layers),
-                .ppEnabledLayerNames = data(layers),
-                .enabledExtensionCount = size32(extensions),
-                .ppEnabledExtensionNames = data(extensions)},
-            vk::ValidationFeaturesEXT{
-                .enabledValidationFeatureCount = size32(enabledFeatures),
-                .pEnabledValidationFeatures = data(enabledFeatures),
-            },
-            GetDebugCreateInfo(),
-        };
-
-        if (not extensions.IsAvailable("VK_EXT_validation_features"))
-        {
-            createInfo.unlink<vk::ValidationFeaturesEXT>();
-        }
-
-        instance = vk::createInstanceUnique(createInfo.get<vk::InstanceCreateInfo>(), s_allocator);
-    }
-    else
-    {
-        const vk::InstanceCreateInfo createInfo = {
-            .pApplicationInfo = &applicationInfo,
-            .enabledLayerCount = size32(layers),
-            .ppEnabledLayerNames = data(layers),
-            .enabledExtensionCount = size32(extensions),
-            .ppEnabledExtensionNames = data(extensions),
-        };
-
-        instance = vk::createInstanceUnique(createInfo, s_allocator);
-    }
-
-    loader.LoadInstanceFunctions(instance.get());
-    return instance;
-}
-
 vk::UniqueDevice CreateDevice(VulkanLoader& loader, const PhysicalDevice& physicalDevice)
 {
     // Make a list of create infos for each unique queue we wish to create
@@ -425,12 +345,20 @@ vk::UniqueDevice CreateDevice(VulkanLoader& loader, const PhysicalDevice& physic
     const auto availableLayers = physicalDevice.physicalDevice.enumerateDeviceLayerProperties();
     const auto availableExtensions = physicalDevice.physicalDevice.enumerateDeviceExtensionProperties();
 
-    std::vector<const char*> extensions = physicalDevice.requiredExtensions;
-    EnableVulkanExtension(extensions, availableExtensions, "VK_EXT_descriptor_indexing", Required::True);
-    EnableVulkanExtension(extensions, availableExtensions, "VK_KHR_depth_stencil_resolve", Required::True);
-    EnableVulkanExtension(
-        extensions, availableExtensions, "VK_KHR_create_renderpass2",
-        Required::True); // required by "VK_KHR_depth_stencil_resolve"
+    std::vector<DeviceExtensionName> requiredExtensions
+        = {"VK_EXT_descriptor_indexing", "VK_KHR_depth_stencil_resolve", "VK_KHR_create_renderpass2"};
+    std::vector<DeviceExtensionName> optionalExtensions = {};
+
+    const auto [extensions, missingReq, missingOpt]
+        = GetDeviceExtensions(physicalDevice.physicalDevice, requiredExtensions, optionalExtensions);
+    if (not missingReq.empty())
+    {
+        throw vk::ExtensionNotPresentError(fmt::format("{}", missingReq));
+    }
+    if (not missingOpt.empty())
+    {
+        spdlog::warn("Device extension(s) not supported: ", fmt::format("{}", missingReq));
+    }
 
     const vk::StructureChain createInfo = {
         vk::DeviceCreateInfo{

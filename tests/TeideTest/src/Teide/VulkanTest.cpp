@@ -1,9 +1,10 @@
 
-#include "Teide/Vulkan.h"
+#include "Teide/VulkanInstance.h"
 
 #include <gmock/gmock.h>
 
-#include <ranges>
+#include <algorithm>
+#include <vector>
 
 using namespace Teide;
 using namespace testing;

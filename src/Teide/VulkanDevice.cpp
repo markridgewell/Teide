@@ -4,6 +4,7 @@
 #include "CommandBuffer.h"
 #include "DescriptorPool.h"
 #include "VulkanBuffer.h"
+#include "VulkanInstance.h"
 #include "VulkanLoader.h"
 #include "VulkanMesh.h"
 #include "VulkanParameterBlock.h"
@@ -27,7 +28,6 @@
 
 #include <algorithm>
 #include <cstdlib>
-#include <filesystem>
 #include <optional>
 #include <ranges>
 #include <string>
@@ -132,10 +132,11 @@ namespace
     {
         // Check that all required extensions are supported
         const auto supportedExtensions = device.physicalDevice.enumerateDeviceExtensionProperties();
-        const bool supportsAllExtensions
-            = std::ranges::all_of(device.requiredExtensions, [&](std::string_view extensionName) {
-                  return std::ranges::count(supportedExtensions, extensionName, GetExtensionName) > 0;
-              });
+        const bool supportsAllExtensions = std::ranges::all_of(device.requiredExtensions, [&](std::string_view extensionName) {
+            return std::ranges::contains(supportedExtensions, extensionName, [](const auto& obj) -> std::string_view {
+                return obj.extensionName;
+            });
+        });
 
         if (!supportsAllExtensions)
         {
@@ -471,6 +472,17 @@ namespace
         return std::move(result.value);
     }
 
+    void AddDebugExtensions(std::vector<InstanceExtensionName>& extensions)
+    {
+        // NOLINTBEGIN(modernize-use-emplace)
+        if constexpr (IsDebugBuild)
+        {
+            extensions.push_back("VK_EXT_debug_utils");
+            extensions.push_back("VK_EXT_validation_features");
+        }
+        // NOLINTEND(modernize-use-emplace)
+    }
+
 } // namespace
 
 //---------------------------------------------------------------------------------------------------------------------
@@ -479,9 +491,28 @@ DeviceAndSurface CreateDeviceAndSurface(SDL_Window* window, bool multisampled, c
 {
     TEIDE_ASSERT(window);
 
+    // NOLINTBEGIN(modernize-use-emplace)
+    auto optionalExtensions = std::vector<InstanceExtensionName>{"VK_KHR_surface"};
+
+#if defined(VK_USE_PLATFORM_XLIB_KHR)
+    optionalExtensions.push_back("VK_KHR_xlib_surface");
+#endif
+#if defined(VK_USE_PLATFORM_XCB_KHR)
+    optionalExtensions.push_back("VK_KHR_xcb_surface");
+#endif
+#if defined(VK_USE_PLATFORM_WAYLAND_KHR)
+    optionalExtensions.push_back("VK_KHR_wayland_surface");
+#endif
+#if defined(VK_USE_PLATFORM_WIN32_KHR)
+    optionalExtensions.push_back("VK_KHR_win32_surface");
+#endif
+
+    AddDebugExtensions(optionalExtensions);
+    // NOLINTEND(modernize-use-emplace)
+
     spdlog::info("Creating graphics device and surface");
     VulkanLoader loader;
-    vk::UniqueInstance instance = CreateInstance(loader, window);
+    vk::UniqueInstance instance = CreateInstance(loader, {.optionalExtensions = optionalExtensions});
 
     int width = 0;
     int height = 0;
@@ -503,8 +534,11 @@ DevicePtr CreateHeadlessDevice(const GraphicsSettings& settings)
 {
     spdlog::info("Creating headless graphics device");
 
+    auto optionalExtensions = std::vector<InstanceExtensionName>{};
+    AddDebugExtensions(optionalExtensions);
+
     VulkanLoader loader;
-    vk::UniqueInstance instance = CreateInstance(loader);
+    vk::UniqueInstance instance = CreateInstance(loader, {.optionalExtensions = optionalExtensions});
     auto physicalDevice = FindPhysicalDevice(instance.get(), {});
 
     return std::make_unique<VulkanDevice>(std::move(loader), std::move(instance), std::move(physicalDevice), settings);
@@ -513,8 +547,12 @@ DevicePtr CreateHeadlessDevice(const GraphicsSettings& settings)
 DeviceAndSurface CreateHeadlessDeviceAndSurface(Geo::Size2i windowSize, const GraphicsSettings& settings)
 {
     spdlog::info("Creating graphics device and surface");
+
+    auto optionalExtensions = std::vector<InstanceExtensionName>{"VK_EXT_headless_surface"};
+    AddDebugExtensions(optionalExtensions);
+
     VulkanLoader loader;
-    vk::UniqueInstance instance = CreateInstance(loader);
+    vk::UniqueInstance instance = CreateInstance(loader, {.optionalExtensions = optionalExtensions});
 
     vk::UniqueSurfaceKHR vksurface = // CreateVulkanSurface(window, instance.get());
         instance->createHeadlessSurfaceEXTUnique({}, s_allocator);

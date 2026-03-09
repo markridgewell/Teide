@@ -1,6 +1,8 @@
 
 #include "TestUtils.h"
 
+#include "Teide/VulkanInstance.h"
+
 #include <charconv>
 #include <ranges>
 
@@ -10,12 +12,22 @@
 #    include <windows.h>
 #endif
 
+constexpr Teide::InstanceExtensionName OptionalExtensions[] = {
+    "VK_EXT_debug_utils",
+    "VK_EXT_validation_features",
+};
+
+vk::UniqueInstance CreateTestVulkanInstance(Teide::VulkanLoader& loader)
+{
+    return Teide::CreateInstance(loader, {.optionalExtensions = OptionalExtensions});
+}
+
 Teide::VulkanDevicePtr CreateTestDevice()
 {
     using namespace Teide;
 
     VulkanLoader loader;
-    vk::UniqueInstance instance = CreateInstance(loader);
+    vk::UniqueInstance instance = CreateTestVulkanInstance(loader);
     auto physicalDevice = FindPhysicalDevice(instance.get());
 
     return std::make_unique<VulkanDevice>(std::move(loader), std::move(instance), std::move(physicalDevice));
