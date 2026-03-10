@@ -94,7 +94,7 @@ jobs:
 
     env:
       job_name: ${{startsWith(matrix.runner, 'windows') && 'Windows' || 'Linux'}}-${{matrix.buildtype}}-${{matrix.toolchain}}${{matrix.name-suffix}}
-      coverage: ${{ matrix.coverage && !(inputs.coverage == 'false') }}
+      coverage: ${{ matrix.coverage && (inputs.coverage == 'true') }}
       use_ccache: ${{ (inputs.ccache || github.event_name != 'workflow_dispatch') && !(matrix.preset == 'msvc2022' && matrix.coverage) }}
       CMAKE_BUILD_TYPE: ${{matrix.buildtype}}
       RT_OUTPUT_DIR: build/${{matrix.preset}}/tests/RenderTest/RenderTestOutput
