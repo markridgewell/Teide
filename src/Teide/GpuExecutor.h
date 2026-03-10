@@ -7,7 +7,6 @@
 #include "Teide/BasicTypes.h"
 #include "Teide/Util/FrameArray.h"
 #include "Teide/Util/ThreadUtils.h"
-#include "Teide/VulkanConfig.h"
 
 #include <function2/function2.hpp>
 

@@ -655,14 +655,14 @@ vk::UniqueSampler VulkanDevice::CreateSampler(const SamplerState& ss)
     return m_device->createSamplerUnique(samplerInfo, s_allocator);
 }
 
-TextureState VulkanDevice::CreateTextureImpl(VulkanTexture& texture, vk::ImageUsageFlags usage)
+TextureState VulkanDevice::CreateTextureImpl(VulkanTexture& texture)
 {
     // For now, all textures will be created with TransferSrc so they can be copied from
-    usage |= vk::ImageUsageFlagBits::eTransferSrc;
+    texture.usage |= vk::ImageUsageFlagBits::eTransferSrc;
 
     const auto& props = texture.properties;
 
-    auto initialState = TextureState{
+    const auto initialState = TextureState{
         .layout = vk::ImageLayout::eUndefined,
         .lastPipelineStageUsage = vk::PipelineStageFlagBits::eTopOfPipe,
     };
@@ -677,39 +677,62 @@ TextureState VulkanDevice::CreateTextureImpl(VulkanTexture& texture, vk::ImageUs
         .arrayLayers = 1,
         .samples = vk::SampleCountFlagBits{props.sampleCount},
         .tiling = vk::ImageTiling::eOptimal,
-        .usage = usage,
+        .usage = texture.usage,
         .sharingMode = vk::SharingMode::eExclusive,
         .initialLayout = initialState.layout,
     };
 
-    const vma::AllocationCreateInfo allocInfo = {
-        .usage = vma::MemoryUsage::eAuto,
-    };
-    auto [image, allocation] = m_allocator->createImageUnique(imageInfo, allocInfo);
+    {
+        const vma::AllocationCreateInfo allocInfo = {
+            .usage = vma::MemoryUsage::eAuto,
+        };
+        auto [allocation, image] = m_allocator->createImageUnique(imageInfo, allocInfo);
 
-    // Create image view
-    const vk::ImageViewCreateInfo viewInfo = {
-        .image = image.get(),
-        .viewType = vk::ImageViewType::e2D,
-        .format = imageInfo.format,
-        .subresourceRange = {
-            .aspectMask =  GetImageAspect(props.format),
-            .baseMipLevel = 0,
-            .levelCount = props.mipLevelCount,
-            .baseArrayLayer = 0,
-            .layerCount = 1,
-        },
-    };
-    auto imageView = m_device->createImageViewUnique(viewInfo, s_allocator);
+        texture.image = vk::UniqueImage(image.release(), m_device.get());
+        texture.allocation = std::move(allocation);
+    }
 
-    texture.image = vk::UniqueImage(image.release(), m_device.get());
-    texture.allocation = std::move(allocation);
-    texture.imageView = std::move(imageView);
+    // Create image view if needed (determined by usage)
+    using enum vk::ImageUsageFlagBits;
+    if (texture.usage
+        & (eSampled
+           | eStorage
+           | eColorAttachment
+           | eDepthStencilAttachment
+           | eTransientAttachment
+           | eInputAttachment
+           | eFragmentShadingRateAttachmentKHR
+           | eFragmentDensityMapEXT
+           | eVideoDecodeDstKHR
+           | eVideoDecodeDpbKHR
+           | eVideoEncodeSrcKHR
+           | eVideoEncodeDpbKHR
+           | eSampleWeightQCOM
+           | eSampleBlockMatchQCOM))
+    {
+        const vk::ImageViewCreateInfo viewInfo = {
+            .image = texture.image.get(),
+            .viewType = vk::ImageViewType::e2D,
+            .format = imageInfo.format,
+            .subresourceRange = {
+                .aspectMask =  GetImageAspect(props.format),
+                .baseMipLevel = 0,
+                .levelCount = props.mipLevelCount,
+                .baseArrayLayer = 0,
+                .layerCount = 1,
+            },
+        };
+
+        texture.imageView = m_device->createImageViewUnique(viewInfo, s_allocator);
+    }
 
     if (!props.name.empty())
     {
         SetDebugName(texture.image, "{}", props.name);
-        SetDebugName(texture.imageView, "{}:View", props.name);
+        if (texture.imageView)
+        {
+            SetDebugName(texture.imageView, "{}:View", props.name);
+        }
         SetDebugName(texture.sampler, "{}:Sampler", props.name);
     }
 
@@ -884,6 +907,7 @@ Texture VulkanDevice::CreateTexture(const TextureData& data, const char* name, C
     }
 
     VulkanTexture texture;
+    texture.usage = usage;
     texture.properties = {
         .size = data.size,
         .format = data.format,
@@ -893,7 +917,7 @@ Texture VulkanDevice::CreateTexture(const TextureData& data, const char* name, C
     };
     texture.sampler = CreateSampler(data.samplerState);
 
-    auto state = CreateTextureImpl(texture, usage);
+    auto state = CreateTextureImpl(texture);
 
     if (!data.pixels.empty())
     {
@@ -951,9 +975,8 @@ Texture VulkanDevice::CreateRenderableTexture(const TextureData& data, const cha
     const auto renderUsage
         = isColorTarget ? vk::ImageUsageFlagBits::eColorAttachment : vk::ImageUsageFlagBits::eDepthStencilAttachment;
 
-    const vk::ImageUsageFlags usage = renderUsage | vk::ImageUsageFlagBits::eSampled;
-
     VulkanTexture texture;
+    texture.usage = renderUsage | vk::ImageUsageFlagBits::eSampled;
     texture.properties = {
         .size = data.size,
         .format = data.format,
@@ -963,7 +986,7 @@ Texture VulkanDevice::CreateRenderableTexture(const TextureData& data, const cha
     };
     texture.sampler = CreateSampler(data.samplerState);
 
-    auto state = CreateTextureImpl(texture, usage);
+    auto state = CreateTextureImpl(texture);
 
     if (isColorTarget)
     {

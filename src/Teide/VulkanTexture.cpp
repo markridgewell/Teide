@@ -118,6 +118,17 @@ void VulkanTexture::TransitionToTransferDst(TextureState& state, vk::CommandBuff
     DoTransition(state, cmdBuffer, vk::ImageLayout::eTransferDstOptimal, vk::PipelineStageFlagBits::eTransfer);
 }
 
+void VulkanTexture::Transition(vk::CommandBuffer cmdBuffer, TextureStateTransition transition) const
+{
+    const auto [oldState, newState] = transition;
+    if (newState != oldState)
+    {
+        TransitionImageLayout(
+            cmdBuffer, image.get(), properties.format, properties.mipLevelCount, oldState.layout, newState.layout,
+            oldState.lastPipelineStageUsage, newState.lastPipelineStageUsage);
+    }
+}
+
 void VulkanTexture::DoTransition(
     TextureState& state, vk::CommandBuffer cmdBuffer, vk::ImageLayout newLayout,
     vk::PipelineStageFlags newPipelineStageFlags) const

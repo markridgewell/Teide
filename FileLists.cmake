@@ -52,6 +52,7 @@ set(sources
     src/Teide/ShaderData.cpp
     src/Teide/TextureData.cpp
     src/Teide/Util/FrameArray.h
+    src/Teide/Util/ListenSender.h
     src/Teide/Util/ResourceMap.h
     src/Teide/Util/SafeMemCpy.h
     src/Teide/Util/StaticMap.h
@@ -63,7 +64,6 @@ set(sources
     src/Teide/Vulkan.h
     src/Teide/VulkanBuffer.cpp
     src/Teide/VulkanBuffer.h
-    src/Teide/VulkanConfig.h
     src/Teide/VulkanDevice.cpp
     src/Teide/VulkanDevice.h
     src/Teide/VulkanGraph.cpp

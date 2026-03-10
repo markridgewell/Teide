@@ -13,29 +13,38 @@ if(TEIDE_UNIT_TEST_SW_RENDER)
     list(APPEND extra_args --sw-render)
 endif()
 
-if(TARGET unofficial::stackwalker::StackWalker)
-    list(APPEND extra_deps unofficial::stackwalker::StackWalker)
-endif()
-
 td_add_test(
     TeideTest
     TARGET Teide
     SOURCES "${sources}"
-    DEPS GTest::gtest
-         GTest::gmock
-         spdlog::spdlog
-         VulkanMemoryAllocator-Hpp::VulkanMemoryAllocator-Hpp
-         cpptrace::cpptrace
-         ${extra_deps}
+    DEPENDENCIES
+        GTest::gtest
+        GTest::gmock
+        spdlog::spdlog
+        VulkanMemoryAllocator-Hpp::VulkanMemoryAllocator-Hpp
+        cpptrace::cpptrace
+        ${extra_deps}
+    DEFINITIONS ${vulkan_configuration_definitions}
     TEST_ARGS ${extra_args})
 
 if(TEIDE_PRECOMPILED_HEADERS)
     target_precompile_headers(
-        Teide
+        TeideTest
         PRIVATE
-        ../../src/Teide/VulkanConfig.h
+        <fmt/format.h>
+        <gmock/gmock.h>
+        <gtest/gtest.h>
+        <spdlog/spdlog.h>
+        <vulkan/vulkan.hpp>
+        <vulkan-memory-allocator-hpp/vk_mem_alloc.hpp>
+        <vulkan/vulkan_extension_inspection.hpp>
         <algorithm>
+        <bitset>
+        <optional>
         <ranges>
+        <span>
         <string>
+        <string_view>
+        <unordered_map>
         <vector>)
 endif()

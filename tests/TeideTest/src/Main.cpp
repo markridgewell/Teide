@@ -6,22 +6,19 @@
 
 #include <cpptrace/basic.hpp>
 #include <cpptrace/cpptrace.hpp>
+#include <cpptrace/from_current.hpp>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <spdlog/sinks/ostream_sink.h>
 #include <spdlog/spdlog.h>
+#include <vulkan/vulkan_to_string.hpp>
 
-#include <exception>
+#include <cctype>
 #include <ranges>
 #include <source_location>
 
 #if __linux__
 #    include <sys/ioctl.h>
-#endif
-
-#if defined(_WIN32) && __has_include("StackWalker.h")
-#    define STACKWALKER_ENABLED
-#    include "StackWalker.h"
 #endif
 
 namespace
@@ -108,7 +105,7 @@ bool AssertThrow(std::string_view msg, std::string_view expression, std::source_
         std::cout << "Current test: " << curTest->name() << "\n";
         GTEST_NONFATAL_FAILURE_("Assert failed while executing test");
     }
-    trace.print(std::cout, true);
+    PrintTrace(trace);
     throw AssertException{};
 }
 
@@ -138,7 +135,7 @@ public:
         }
         else
         {
-            std::cout << line << '\n';
+            std::cout << line << '\n' << std::flush;
         }
         m_failure = false;
         m_output = {};
@@ -224,7 +221,48 @@ private:
     int m_testCount = 0;
 };
 
-int Run(int argc, char** argv)
+std::string GetVendorName(std::uint32_t id)
+{
+    // from PCI-ID database at https://admin.pci-ids.ucw.cz/read/PC?restrict=
+    if (id == 0x1ae0)
+    {
+        return "Google, Inc.";
+    }
+    return to_string(vk::VendorId(id));
+}
+
+std::string GetVersionString(std::uint32_t v)
+{
+    return fmt::format("{}.{}.{}", vk::versionMajor(v), vk::versionMinor(v), vk::versionPatch(v));
+}
+
+void DumpVulkanInfo()
+{
+    spdlog::info("Available devices:");
+    const vk::ApplicationInfo app = {.apiVersion = VK_API_VERSION_1_3};
+    Teide::VulkanLoader loader;
+    auto instance = vk::createInstanceUnique({.pApplicationInfo = &app});
+    loader.LoadInstanceFunctions(*instance);
+
+    for (const auto pd : instance->enumeratePhysicalDevices())
+    {
+        const auto [pdp2, driver] = pd.getProperties2<vk::PhysicalDeviceProperties2, vk::PhysicalDeviceDriverProperties>();
+        const auto& device = pdp2.properties;
+
+        spdlog::info(" - deviceName:    {}", std::string_view(device.deviceName));
+        spdlog::info("   deviceType:    {}", to_string(device.deviceType));
+        spdlog::info("   vendorID:      {}", GetVendorName(device.vendorID));
+        spdlog::info("   driverName:    {}", std::string_view(driver.driverName));
+        spdlog::info("   driverVersion: {}", GetVersionString(device.driverVersion));
+        spdlog::info("   driverID:      {}", to_string(static_cast<vk::DriverId>(driver.driverID)));
+        spdlog::info("   driverInfo:    {}", std::string_view(driver.driverInfo));
+        spdlog::info("");
+    }
+}
+
+} // namespace
+
+int TracedMain(int argc, char** argv)
 {
     spdlog::flush_on(spdlog::level::err);
 
@@ -246,6 +284,8 @@ int Run(int argc, char** argv)
         }
     }
 
+    DumpVulkanInfo();
+
     testing::InitGoogleTest(&argc, argv);
 
     if (spdlog::get_level() > spdlog::level::debug)
@@ -266,68 +306,7 @@ int Run(int argc, char** argv)
     }
 
     testing::FLAGS_gtest_break_on_failure = Teide::IsDebuggerAttached();
+    testing::FLAGS_gtest_catch_exceptions = false; // Don't catch exceptions because cpptrace will do that for us.
 
     return RUN_ALL_TESTS();
 }
-
-} // namespace
-
-#ifdef STACKWALKER_ENABLED
-class MyStackWalker : public StackWalker
-{
-public:
-    MyStackWalker() :
-        StackWalker(
-            StackWalker::RetrieveSymbol | StackWalker::RetrieveLine | StackWalker::SymAll, nullptr,
-            GetCurrentProcessId(), GetCurrentProcess())
-    {}
-
-    virtual void OnOutput(LPCSTR szText)
-    {
-        std::string_view text = szText;
-        if (text.ends_with("\n"))
-        {
-            text.remove_suffix(1);
-        }
-        if (text.ends_with("\r"))
-        {
-            text.remove_suffix(1);
-        }
-        spdlog::info("{}", text);
-    }
-};
-MyStackWalker stackWalker;
-
-LONG WINAPI ExpFilter(EXCEPTION_POINTERS* pExp, DWORD /*dwExpCode*/)
-{
-    spdlog::error("Caught SEH exception. Printing stacktrace...");
-    stackWalker.ShowCallstack(GetCurrentThread(), pExp->ContextRecord);
-    return EXCEPTION_EXECUTE_HANDLER;
-}
-
-int main(int argc, char** argv)
-{
-    spdlog::info("Setting exception handler...");
-    __try
-    {
-        return Run(argc, argv);
-    }
-    __except (ExpFilter(GetExceptionInformation(), GetExceptionCode()))
-    {
-        spdlog::debug("Finished processing SEH exception.");
-        return 1;
-    }
-}
-#else
-int main(int argc, char** argv)
-{
-#    ifdef __linux__
-    if (InitCpptrace(argc, argv))
-    {
-        return 0;
-    }
-#    endif
-
-    return Run(argc, argv);
-}
-#endif

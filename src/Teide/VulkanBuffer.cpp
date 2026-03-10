@@ -14,7 +14,7 @@ VulkanBufferData CreateBufferUninitialized(
     vk::DeviceSize size, vk::BufferUsageFlags usage, vma::AllocationCreateFlags allocationFlags,
     vma::MemoryUsage memoryUsage, vk::Device device, vma::Allocator& allocator)
 {
-    auto [buffer, allocation] = allocator.createBufferUnique(
+    auto [allocation, buffer] = allocator.createBufferUnique(
         vk::BufferCreateInfo{
             .size = size,
             .usage = usage,

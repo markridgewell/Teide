@@ -48,7 +48,9 @@ macro(_enable_ccache_msvc)
         remove_arg(CMAKE_CXX_FLAGS_DEBUG "/Zi")
 
         set(CMAKE_VS_GLOBALS
-            "CLToolExe=${compiler_exe}" "CLToolPath=${CMAKE_BINARY_DIR}" "UseMultiToolTask=true"
+            "CLToolExe=${compiler_exe}"
+            "CLToolPath=${CMAKE_BINARY_DIR}"
+            "UseMultiToolTask=true"
             "DebugInformationFormat=OldStyle"
             PARENT_SCOPE)
     else()

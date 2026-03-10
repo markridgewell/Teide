@@ -197,6 +197,7 @@ namespace
     {
         switch (usage)
         {
+            case FramebufferUsage::Attachment: return vk::ImageLayout::eColorAttachmentOptimal;
             case FramebufferUsage::PresentSrc: return vk::ImageLayout::ePresentSrcKHR;
             case FramebufferUsage::ShaderInput: return vk::ImageLayout::eShaderReadOnlyOptimal;
         }
@@ -207,6 +208,7 @@ namespace
     {
         switch (usage)
         {
+            case FramebufferUsage::Attachment: [[fallthrough]];
             case FramebufferUsage::PresentSrc: return vk::ImageLayout::eDepthStencilAttachmentOptimal;
             case FramebufferUsage::ShaderInput: return vk::ImageLayout::eDepthStencilReadOnlyOptimal;
         }

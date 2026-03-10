@@ -4,30 +4,27 @@
       "pargs": 1,
       "kwargs": {
         "SOURCES": "*",
-        "PUBLIC_DEPS": "*",
-        "PRIVATE_DEPS": "*"
+        "DEPENDENCIES": "*",
+        "PUBLIC_DEPENDENCIES": "*",
+        "DEFINITIONS": "*",
+        "PUBLIC_DEFINITIONS": "*"
       }
     },
     "td_add_application": {
       "pargs": 1,
       "kwargs": {
         "SOURCES": "*",
-        "DEPS": "*"
-      }
-    },
-    "td_add_console_application": {
-      "pargs": 1,
-      "kwargs": {
-        "SOURCES": "*",
-        "DEPS": "*"
+        "DEPENDENCIES": "*",
+        "DEFINITIONS": "*"
       }
     },
     "td_add_test": {
       "pargs": 1,
       "kwargs": {
         "SOURCES": "*",
-        "DEPS": "*",
-        "TEST_ARGS": "*"
+        "DEPENDENCIES": "*",
+        "TEST_ARGS": "*",
+        "DEFINITIONS": "*"
       }
     },
     "exec": {
@@ -102,7 +99,7 @@
     "dangle_parens": false,
     "min_prefix_chars": 4,
     "max_prefix_chars": 10,
-    "max_lines_hwrap": 2,
+    "max_lines_hwrap": 0,
     "line_ending": "auto",
     "command_case": "canonical",
     "keyword_case": "upper",

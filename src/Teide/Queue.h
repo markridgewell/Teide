@@ -2,10 +2,10 @@
 #pragma once
 
 #include "Teide/Util/TypeHelpers.h"
-#include "Teide/VulkanConfig.h"
 
 #include <function2/function2.hpp>
 #include <stdexec/execution.hpp>
+#include <vulkan/vulkan.hpp>
 
 #include <mutex>
 #include <queue>
@@ -51,13 +51,9 @@ public:
 
         explicit SubmitSender(CommandsRef commands, Queue& queue);
 
-        // Hopefully C++26:
-        // auto connect(ex::receiver auto receiver) { return SubmitOperation(m_commands, m_queue, std::move(receiver)); }
-
-        template <ex::receiver R>
-        friend auto tag_invoke(ex::connect_t /*tag*/, const SubmitSender& sender, R&& receiver) -> SubmitOperation<R>
+        auto connect(ex::receiver auto receiver) const
         {
-            return SubmitOperation(sender.m_commands, sender.m_queue, std::forward<R>(receiver));
+            return SubmitOperation(m_commands, m_queue, std::move(receiver));
         }
 
     private:

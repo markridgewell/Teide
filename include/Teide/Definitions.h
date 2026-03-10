@@ -2,14 +2,12 @@
 #pragma once
 
 #include <cstdlib>
-#include <iostream>
-#include <utility>
-
-namespace Teide
-{
 
 #ifndef NDEBUG
 // Debug definitions
+
+namespace Teide
+{
 
 constexpr bool IsDebugBuild = true;
 
@@ -21,8 +19,15 @@ class UnreachableError // intentionally not derived from std::exception
     throw UnreachableError();
 }
 
+} // namespace Teide
+
 #else
 // Release definitions
+
+#    include <utility>
+
+namespace Teide
+{
 
 constexpr bool IsDebugBuild = false;
 
@@ -31,5 +36,6 @@ constexpr bool IsDebugBuild = false;
     std::unreachable();
 }
 
-#endif
 } // namespace Teide
+
+#endif

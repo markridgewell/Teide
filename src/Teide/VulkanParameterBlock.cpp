@@ -1,12 +1,12 @@
 
 #include "VulkanParameterBlock.h"
 
-#include "VulkanConfig.h"
-
 #include "Teide/Buffer.h"
 #include "Teide/ShaderData.h"
 #include "Teide/Vulkan.h"
 #include "vkex/vkex.hpp"
+
+#include <vulkan/vulkan.hpp>
 
 #include <ranges>
 

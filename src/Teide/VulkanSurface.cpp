@@ -260,7 +260,7 @@ vk::Semaphore VulkanSurface::GetNextSemaphore()
 void VulkanSurface::CreateColorBuffer(vk::Format format)
 {
     // Create image
-    auto [image, allocation] = m_allocator.createImageUnique(
+    auto [allocation, image] = m_allocator.createImageUnique(
         vk::ImageCreateInfo{
             .imageType = vk::ImageType::e2D,
             .format = format,
@@ -302,7 +302,7 @@ void VulkanSurface::CreateDepthBuffer()
     const auto format = ToVulkan(m_framebufferLayout.depthStencilFormat.value());
 
     // Create image
-    auto [image, allocation] = m_allocator.createImageUnique(
+    auto [allocation, image] = m_allocator.createImageUnique(
         vk::ImageCreateInfo{
             .imageType = vk::ImageType::e2D,
             .format = format,
