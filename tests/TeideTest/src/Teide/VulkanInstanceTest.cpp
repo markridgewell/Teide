@@ -23,7 +23,7 @@ static const auto availableLayers = [] {
     return ret;
 }();
 
-TEST(VulkanTest, NoExtensionsAdded)
+TEST(VulkanInstanceTest, NoExtensionsAdded)
 {
     const auto [enabled, missingReq, missingOpt] = GetInstanceExtensions({}, availableExtensions);
     EXPECT_THAT(enabled, IsEmpty());
@@ -31,7 +31,7 @@ TEST(VulkanTest, NoExtensionsAdded)
     EXPECT_THAT(missingOpt, IsEmpty());
 }
 
-TEST(VulkanTest, OptionalExtensionFound)
+TEST(VulkanInstanceTest, OptionalExtensionFound)
 {
     auto extensions = std::vector<InstanceExtensionName>();
     extensions.push_back("VK_KHR_surface");
@@ -42,7 +42,7 @@ TEST(VulkanTest, OptionalExtensionFound)
     EXPECT_THAT(missingOpt, IsEmpty());
 }
 
-TEST(VulkanTest, OptionalExtensionNotFound)
+TEST(VulkanInstanceTest, OptionalExtensionNotFound)
 {
     auto extensions = std::vector<InstanceExtensionName>();
     extensions.push_back("VK_EXT_debug_report");
@@ -53,40 +53,40 @@ TEST(VulkanTest, OptionalExtensionNotFound)
     EXPECT_THAT(missingOpt, ElementsAre(StrEq("VK_EXT_debug_report")));
 }
 
-TEST(VulkanTest, RequiredExtensionFound)
+TEST(VulkanInstanceTest, RequiredExtensionFound)
 {
     auto extensions = std::vector<InstanceExtensionName>();
     extensions.push_back("VK_KHR_surface");
     extensions.push_back("VK_KHR_display");
     const auto [enabled, missingReq, missingOpt]
-        = GetInstanceExtensions({.optionalExtensions = extensions}, availableExtensions);
+        = GetInstanceExtensions({.requiredExtensions = extensions}, availableExtensions);
     EXPECT_THAT(enabled, ElementsAre(StrEq("VK_KHR_surface"), StrEq("VK_KHR_display")));
     EXPECT_THAT(missingReq, IsEmpty());
     EXPECT_THAT(missingOpt, IsEmpty());
 }
 
-TEST(VulkanTest, RequiredExtensionNotFound)
+TEST(VulkanInstanceTest, RequiredExtensionNotFound)
 {
     auto extensions = std::vector<InstanceExtensionName>();
     extensions.push_back("VK_KHR_surface");
-    extensions.push_back("VK_KHR_display");
+    extensions.push_back("VK_EXT_debug_report");
     const auto [enabled, missingReq, missingOpt]
-        = GetInstanceExtensions({.optionalExtensions = extensions}, availableExtensions);
-    EXPECT_THAT(enabled, IsEmpty());
+        = GetInstanceExtensions({.requiredExtensions = extensions}, availableExtensions);
+    EXPECT_THAT(enabled, ElementsAre(StrEq("VK_KHR_surface")));
     EXPECT_THAT(missingReq, ElementsAre(StrEq("VK_EXT_debug_report")));
     EXPECT_THAT(missingOpt, IsEmpty());
 }
 
-TEST(VulkanTest, RequiredLayerFound)
+TEST(VulkanInstanceTest, OptionalLayerFound)
 {
     auto enabledLayers = std::vector<const char*>{};
     EnableVulkanLayer(enabledLayers, availableLayers, "Debug");
     EXPECT_THAT(enabledLayers, ElementsAre(StrEq("Debug")));
 }
 
-TEST(VulkanTest, RequiredLayerNotFound)
+TEST(VulkanInstanceTest, OptionalLayerNotFound)
 {
     auto enabledLayers = std::vector<const char*>{};
-    EXPECT_THROW(EnableVulkanLayer(enabledLayers, availableLayers, "SecretLayer"), vk::LayerNotPresentError);
+    EnableVulkanLayer(enabledLayers, availableLayers, "SecretLayer");
     EXPECT_THAT(enabledLayers, IsEmpty());
 }
