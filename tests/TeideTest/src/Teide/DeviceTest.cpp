@@ -176,7 +176,7 @@ TEST_F(DeviceTest, CreatePipeline)
             .framebufferLayout = {
                 .colorFormat = Format::Byte4Srgb,
                 .depthStencilFormat = Format::Depth16,
-                .sampleCount = 2,
+                .sampleCount = 1,
             },
         }},
     };
