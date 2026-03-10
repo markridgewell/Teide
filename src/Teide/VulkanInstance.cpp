@@ -35,7 +35,7 @@ void EnableVulkanLayer(
     }
     else
     {
-        throw vk::LayerNotPresentError(layerName);
+        spdlog::warn("Vulkan layer not supported: {}", layerName);
     }
 }
 
