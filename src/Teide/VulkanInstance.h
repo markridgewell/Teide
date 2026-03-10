@@ -10,19 +10,6 @@ namespace Teide
 
 class VulkanLoader;
 
-enum class Required : bool
-{
-    False = false,
-    True = true
-};
-
-void EnableVulkanLayer(
-    std::vector<const char*>& enabledLayers, const std::vector<vk::LayerProperties>& availableLayers,
-    const char* layerName, Required required);
-void EnableVulkanExtension(
-    std::vector<const char*>& enabledExtensions, const std::vector<vk::ExtensionProperties>& availableExtensions,
-    const char* extensionName, Required required);
-
 class InstanceExtensionName
 {
 public:
@@ -43,51 +30,6 @@ public:
 
 private:
     const char* m_name;
-};
-
-class VulkanExtensionsBase
-{
-public:
-    using container = std::vector<const char*>;
-    using value_type = container::value_type;
-    using iterator = container::iterator;
-    using const_iterator = container::const_iterator;
-    using pointer = container::pointer;
-    using reference = container::reference;
-
-    explicit VulkanExtensionsBase(const std::vector<vk::ExtensionProperties>& available) : m_available{available} {}
-
-    auto data() const { return m_enabled.data(); }
-    auto size() const { return m_enabled.size(); }
-    auto begin() const { return m_enabled.begin(); }
-    auto end() const { return m_enabled.end(); }
-    auto empty() const { return m_enabled.empty(); }
-
-protected:
-    auto IsAvailableImpl(std::string_view extensionName) -> bool;
-
-    void AddRequiredImpl(const char* extensionName);
-    void AddOptionalImpl(const char* extensionName);
-
-    std::vector<const char*> m_enabled; // NOLINT(cppcoreguidelines-non-private-member-variables-in-classes)
-
-private:
-    const std::vector<vk::ExtensionProperties> m_available;
-};
-
-class VulkanInstanceExtensions : public VulkanExtensionsBase
-{
-public:
-    VulkanInstanceExtensions() : VulkanExtensionsBase(vk::enumerateInstanceExtensionProperties()) {}
-
-    explicit VulkanInstanceExtensions(const std::vector<vk::ExtensionProperties>& available) :
-        VulkanExtensionsBase(available)
-    {}
-
-    auto IsAvailable(InstanceExtensionName extensionName) -> bool { return IsAvailableImpl(extensionName.Get()); }
-
-    void AddRequired(InstanceExtensionName extensionName) { AddRequiredImpl(extensionName); }
-    void AddOptional(InstanceExtensionName extensionName) { AddOptionalImpl(extensionName); }
 };
 
 struct InstanceParams

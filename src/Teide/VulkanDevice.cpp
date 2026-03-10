@@ -151,11 +151,6 @@ namespace
         const char* m_name;
     };
 
-    inline std::string_view GetExtensionName(const vk::ExtensionProperties& obj)
-    {
-        return obj.extensionName;
-    }
-
     struct DeviceExtensions
     {
         std::vector<const char*> supported;

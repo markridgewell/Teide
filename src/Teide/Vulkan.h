@@ -34,6 +34,11 @@ class VulkanLoader;
 enum class PrimitiveTopology : uint8;
 enum class VertexClass : uint8;
 
+inline std::string_view GetExtensionName(const vk::ExtensionProperties& obj)
+{
+    return obj.extensionName;
+}
+
 struct QueueFamilies
 {
     uint32 graphicsFamily = 0;

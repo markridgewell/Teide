@@ -22,82 +22,22 @@ namespace
     {
         return obj.layerName;
     }
-    inline std::string_view GetExtensionName(const vk::ExtensionProperties& obj)
+
+    void EnableVulkanLayer(
+        std::vector<const char*>& enabledLayers, const std::vector<vk::LayerProperties>& availableLayers, const char* layerName)
     {
-        return obj.extensionName;
+        if (std::ranges::contains(availableLayers, layerName, GetLayerName))
+        {
+            spdlog::info("Enabling Vulkan layer {}", layerName);
+            enabledLayers.push_back(layerName);
+        }
+        else
+        {
+            throw vk::LayerNotPresentError(layerName);
+        }
     }
 
 } // namespace
-
-void EnableVulkanLayer(
-    std::vector<const char*>& enabledLayers, const std::vector<vk::LayerProperties>& availableLayers,
-    const char* layerName, Required required)
-{
-    if (std::ranges::contains(availableLayers, std::string_view(layerName), GetLayerName))
-    {
-        spdlog::info("Enabling Vulkan layer {}", layerName);
-        enabledLayers.push_back(layerName);
-    }
-    else if (required == Required::True)
-    {
-        throw vk::LayerNotPresentError(layerName);
-    }
-    else
-    {
-        spdlog::warn("Vulkan layer {} not enabled!", layerName);
-    }
-}
-
-void EnableVulkanExtension(
-    std::vector<const char*>& enabledExtensions, const std::vector<vk::ExtensionProperties>& availableExtensions,
-    const char* extensionName, Required required)
-{
-    if (std::ranges::contains(availableExtensions, std::string_view(extensionName), GetExtensionName))
-    {
-        spdlog::info("Enabling Vulkan extension {}", extensionName);
-        enabledExtensions.push_back(extensionName);
-    }
-    else if (required == Required::True)
-    {
-        throw vk::ExtensionNotPresentError(extensionName);
-    }
-    else
-    {
-        spdlog::warn("Vulkan extension {} not enabled!", extensionName);
-    }
-}
-
-auto VulkanExtensionsBase::IsAvailableImpl(std::string_view extensionName) -> bool
-{
-    return std::ranges::contains(m_available, extensionName, GetExtensionName);
-}
-
-void VulkanExtensionsBase::AddRequiredImpl(const char* extensionName)
-{
-    if (IsAvailableImpl(extensionName))
-    {
-        spdlog::info("Enabling Vulkan extension {}", extensionName);
-        m_enabled.push_back(extensionName);
-    }
-    else
-    {
-        throw vk::ExtensionNotPresentError(extensionName);
-    }
-}
-
-void VulkanExtensionsBase::AddOptionalImpl(const char* extensionName)
-{
-    if (IsAvailableImpl(extensionName))
-    {
-        spdlog::info("Enabling Vulkan extension {}", extensionName);
-        m_enabled.push_back(extensionName);
-    }
-    else
-    {
-        spdlog::warn("Vulkan extension {} not enabled!", extensionName);
-    }
-}
-
 auto GetInstanceExtensions(const InstanceParams& params) -> InstanceExtensions
 {
     auto ret = InstanceExtensions{};
@@ -156,7 +96,7 @@ vk::UniqueInstance CreateInstance(VulkanLoader& loader, const InstanceParams& pa
     vk::UniqueInstance instance;
     if constexpr (IsDebugBuild)
     {
-        EnableVulkanLayer(layers, availableLayers, "VK_LAYER_KHRONOS_validation", Required::False);
+        EnableVulkanLayer(layers, availableLayers, "VK_LAYER_KHRONOS_validation");
 
         const std::array enabledFeatures = {
             vk::ValidationFeatureEnableEXT::eSynchronizationValidation,
