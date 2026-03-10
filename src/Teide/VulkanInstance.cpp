@@ -23,26 +23,25 @@ namespace
         return obj.layerName;
     }
 
-    void EnableVulkanLayer(
-        std::vector<const char*>& enabledLayers, const std::vector<vk::LayerProperties>& availableLayers, const char* layerName)
-    {
-        if (std::ranges::contains(availableLayers, layerName, GetLayerName))
-        {
-            spdlog::info("Enabling Vulkan layer {}", layerName);
-            enabledLayers.push_back(layerName);
-        }
-        else
-        {
-            throw vk::LayerNotPresentError(layerName);
-        }
-    }
-
 } // namespace
-auto GetInstanceExtensions(const InstanceParams& params) -> InstanceExtensions
+
+void EnableVulkanLayer(
+    std::vector<const char*>& enabledLayers, const std::vector<vk::LayerProperties>& availableLayers, const char* layerName)
+{
+    if (std::ranges::contains(availableLayers, layerName, GetLayerName))
+    {
+        spdlog::info("Enabling Vulkan layer {}", layerName);
+        enabledLayers.push_back(layerName);
+    }
+    else
+    {
+        throw vk::LayerNotPresentError(layerName);
+    }
+}
+
+auto GetInstanceExtensions(const InstanceParams& params, std::span<const vk::ExtensionProperties> available) -> InstanceExtensions
 {
     auto ret = InstanceExtensions{};
-
-    const auto available = vk::enumerateInstanceExtensionProperties();
 
     for (const char* extension : params.requiredExtensions)
     {
@@ -69,6 +68,11 @@ auto GetInstanceExtensions(const InstanceParams& params) -> InstanceExtensions
     }
 
     return ret;
+}
+
+auto GetInstanceExtensions(const InstanceParams& params) -> InstanceExtensions
+{
+    return GetInstanceExtensions(params, vk::enumerateInstanceExtensionProperties());
 }
 
 vk::UniqueInstance CreateInstance(VulkanLoader& loader, const InstanceParams& params)

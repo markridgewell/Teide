@@ -45,7 +45,12 @@ struct InstanceExtensions
     std::vector<const char*> missingOptional;
 };
 
+void EnableVulkanLayer(
+    std::vector<const char*>& enabledLayers, const std::vector<vk::LayerProperties>& availableLayers, const char* layerName);
+
 auto GetInstanceExtensions(const InstanceParams& params) -> InstanceExtensions;
+auto GetInstanceExtensions(const InstanceParams& params, std::span<const vk::ExtensionProperties> available)
+    -> InstanceExtensions;
 
 vk::UniqueInstance CreateInstance(VulkanLoader& loader, const InstanceParams& params);
 
