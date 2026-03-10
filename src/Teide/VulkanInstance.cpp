@@ -121,7 +121,7 @@ vk::UniqueInstance CreateInstance(VulkanLoader& loader, const InstanceParams& pa
             GetDebugCreateInfo(),
         };
 
-        if (std::ranges::contains(extensions, "VK_EXT_validation_features"))
+        if (not std::ranges::contains(extensions, "VK_EXT_validation_features"))
         {
             createInfo.unlink<vk::ValidationFeaturesEXT>();
         }
