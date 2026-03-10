@@ -14,7 +14,6 @@
 #include <vulkan/vulkan_to_string.hpp>
 
 #include <cctype>
-#include <exception>
 #include <ranges>
 #include <source_location>
 
@@ -307,6 +306,7 @@ int TracedMain(int argc, char** argv)
     }
 
     testing::FLAGS_gtest_break_on_failure = Teide::IsDebuggerAttached();
+    testing::FLAGS_gtest_catch_exceptions = false; // Don't catch exceptions because cpptrace will do that for us.
 
     return RUN_ALL_TESTS();
 }
