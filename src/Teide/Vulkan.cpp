@@ -9,7 +9,6 @@
 #include "Teide/VulkanLoader.h"
 
 #include <SDL_vulkan.h>
-#include <fmt/ranges.h>
 #include <spdlog/spdlog.h>
 #include <vkex/vkex.hpp>
 #include <vulkan/vulkan_enums.hpp>
@@ -152,76 +151,6 @@ namespace
         return VK_FALSE;
     }
 
-    class DeviceExtensionName
-    {
-    public:
-        template <usize N>
-        consteval DeviceExtensionName(const char (&name)[N]) : // cppcheck-suppress noExplicitConstructor
-            m_name{&name[0]}
-        {
-#if (201907 <= __cpp_constexpr) && (!defined(__GNUC__) || (110400 < GCC_VERSION))
-            if (not vk::isDeviceExtension(std::string(&name[0])))
-            {
-                throw std::runtime_error("Unknown device extension name");
-            }
-#endif
-        }
-
-        constexpr std::string_view Get() const { return m_name; }
-        constexpr operator const char*() const { return m_name; }
-
-    private:
-        const char* m_name;
-    };
-
-    inline std::string_view GetExtensionName(const vk::ExtensionProperties& obj)
-    {
-        return obj.extensionName;
-    }
-
-    struct DeviceExtensions
-    {
-        std::vector<const char*> supported;
-        std::vector<const char*> missingRequired;
-        std::vector<const char*> missingOptional;
-    };
-
-    auto GetDeviceExtensions(
-        vk::PhysicalDevice physicalDevice, std::span<const DeviceExtensionName> requiredExtensions,
-        std::span<const DeviceExtensionName> optionalExtensions) -> DeviceExtensions
-    {
-        auto ret = DeviceExtensions{};
-
-        const auto available = physicalDevice.enumerateDeviceExtensionProperties();
-
-        for (const char* extension : requiredExtensions)
-        {
-            if (std::ranges::contains(available, extension, GetExtensionName))
-            {
-                ret.supported.push_back(extension);
-            }
-            else
-            {
-                ret.missingRequired.push_back(extension);
-            }
-        }
-
-        for (const char* extension : optionalExtensions)
-        {
-            if (std::ranges::contains(available, extension, GetExtensionName))
-            {
-                ret.supported.push_back(extension);
-            }
-            else
-            {
-                ret.missingOptional.push_back(extension);
-            }
-        }
-
-        return ret;
-    }
-
-
     struct TransitionAccessMasks
     {
         vk::AccessFlags source;
@@ -315,83 +244,6 @@ vk::DebugUtilsMessengerCreateInfoEXT GetDebugCreateInfo()
         .messageType = MessageType::eGeneral | MessageType::eValidation | MessageType::ePerformance,
         .pfnUserCallback = DebugCallback,
     };
-}
-
-PhysicalDevice::PhysicalDevice(vk::PhysicalDevice pd, const QueueFamilies& qf) : physicalDevice{pd}, queueFamilies{qf}
-{
-    const auto props = pd.getProperties2<vk::PhysicalDeviceProperties2, vk::PhysicalDeviceDepthStencilResolveProperties>();
-
-    properties = props.get<vk::PhysicalDeviceProperties2>().properties;
-    depthStencilResolveProperties = props.get<vk::PhysicalDeviceDepthStencilResolveProperties>();
-}
-
-vk::UniqueDevice CreateDevice(VulkanLoader& loader, const PhysicalDevice& physicalDevice)
-{
-    // Make a list of create infos for each unique queue we wish to create
-    const float queuePriority = 1.0f;
-    std::vector<vk::DeviceQueueCreateInfo> queueCreateInfos;
-    for (const uint32_t index : physicalDevice.queueFamilyIndices)
-    {
-        if (not contains(queueCreateInfos, index, &vk::DeviceQueueCreateInfo::queueFamilyIndex))
-        {
-            queueCreateInfos.push_back({.queueFamilyIndex = index, .queueCount = 1, .pQueuePriorities = &queuePriority});
-        }
-    }
-
-    const vk::PhysicalDeviceFeatures deviceFeatures = {
-        .samplerAnisotropy = true,
-    };
-
-    const auto availableLayers = physicalDevice.physicalDevice.enumerateDeviceLayerProperties();
-    const auto availableExtensions = physicalDevice.physicalDevice.enumerateDeviceExtensionProperties();
-
-    std::vector<DeviceExtensionName> requiredExtensions;
-    requiredExtensions.push_back("VK_EXT_descriptor_indexing");
-    requiredExtensions.push_back("VK_KHR_depth_stencil_resolve");
-    requiredExtensions.push_back("VK_KHR_create_renderpass2");
-
-    std::vector<DeviceExtensionName> optionalExtensions = {};
-
-    const auto [extensions, missingReq, missingOpt]
-        = GetDeviceExtensions(physicalDevice.physicalDevice, requiredExtensions, optionalExtensions);
-    if (not missingReq.empty())
-    {
-        throw vk::ExtensionNotPresentError(fmt::format("{}", missingReq));
-    }
-    if (not missingOpt.empty())
-    {
-        spdlog::warn("Device extension(s) not supported: ", fmt::format("{}", missingReq));
-    }
-
-    const vk::StructureChain createInfo = {
-        vk::DeviceCreateInfo{
-            .queueCreateInfoCount = size32(queueCreateInfos),
-            .pQueueCreateInfos = data(queueCreateInfos),
-            .enabledExtensionCount = size32(extensions),
-            .ppEnabledExtensionNames = data(extensions),
-            .pEnabledFeatures = &deviceFeatures,
-        },
-        vk::PhysicalDeviceDescriptorIndexingFeatures{
-            // Enable non uniform array indexing
-            // (#extension GL_EXT_nonuniform_qualifier : require)
-            .shaderSampledImageArrayNonUniformIndexing = true,
-            .shaderStorageBufferArrayNonUniformIndexing = true,
-            .shaderStorageImageArrayNonUniformIndexing = true,
-            // All of these enables to update after the
-            // commandbuffer used the bindDescriptorsSet
-            .descriptorBindingSampledImageUpdateAfterBind = true,
-            .descriptorBindingStorageImageUpdateAfterBind = true,
-            .descriptorBindingStorageBufferUpdateAfterBind = true,
-            // Enable non bound descriptors slots
-            .descriptorBindingPartiallyBound = true,
-            // Enable non sized arrays
-            .runtimeDescriptorArray = true,
-        },
-    };
-
-    auto ret = physicalDevice.physicalDevice.createDeviceUnique(createInfo.get<vk::DeviceCreateInfo>(), s_allocator);
-    loader.LoadDeviceFunctions(ret.get());
-    return ret;
 }
 
 vma::UniqueAllocator CreateAllocator(VulkanLoader& loader, vk::Instance instance, vk::Device device, vk::PhysicalDevice physicalDevice)

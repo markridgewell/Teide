@@ -41,19 +41,6 @@ struct QueueFamilies
     std::optional<uint32> presentFamily;
 };
 
-struct PhysicalDevice
-{
-    explicit PhysicalDevice(vk::PhysicalDevice pd, const QueueFamilies& qf);
-
-    vk::PhysicalDevice physicalDevice;
-    vk::PhysicalDeviceProperties properties;
-    vk::PhysicalDeviceDepthStencilResolveProperties depthStencilResolveProperties;
-    std::vector<const char*> requiredExtensions;
-
-    QueueFamilies queueFamilies;
-    std::vector<uint32> queueFamilyIndices;
-};
-
 struct RenderPassInfo
 {
     vk::AttachmentLoadOp colorLoadOp = vk::AttachmentLoadOp::eDontCare;
@@ -86,7 +73,6 @@ enum class FramebufferUsage : uint8
 
 vk::DebugUtilsMessengerCreateInfoEXT GetDebugCreateInfo();
 
-vk::UniqueDevice CreateDevice(VulkanLoader& loader, const PhysicalDevice& physicalDevice);
 vma::UniqueAllocator
 CreateAllocator(VulkanLoader& loader, vk::Instance instance, vk::Device device, vk::PhysicalDevice physicalDevice);
 

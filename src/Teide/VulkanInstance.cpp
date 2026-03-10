@@ -142,7 +142,7 @@ vk::UniqueInstance CreateInstance(VulkanLoader& loader, const InstanceParams& pa
     }
     if (not missingOpt.empty())
     {
-        spdlog::warn("Instance extension(s) not supported: ", fmt::format("{}", missingReq));
+        spdlog::warn("Instance extension(s) not supported: {}", missingOpt);
     }
 
     const vk::ApplicationInfo applicationInfo{

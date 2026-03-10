@@ -47,36 +47,6 @@ std::optional<std::uint32_t> GetTransferQueueIndex(vk::PhysicalDevice physicalDe
     return std::nullopt;
 }
 
-Teide::PhysicalDevice FindPhysicalDevice(vk::Instance instance)
-{
-    // Look for a discrete GPU
-    auto physicalDevices = instance.enumeratePhysicalDevices();
-    TEIDE_ASSERT(!physicalDevices.empty());
-
-    // Prefer discrete GPUs to integrated GPUs
-    std::ranges::sort(physicalDevices, [](vk::PhysicalDevice a, vk::PhysicalDevice b) {
-        return (a.getProperties().deviceType == vk::PhysicalDeviceType::eDiscreteGpu)
-            > (b.getProperties().deviceType == vk::PhysicalDeviceType::eIntegratedGpu);
-    });
-
-    // Find the first device that supports all the queue families we need
-    const auto it = std::ranges::find_if(physicalDevices, [&](vk::PhysicalDevice device) {
-        // Check that all required queue families are supported
-        return GetTransferQueueIndex(device).has_value();
-    });
-    TEIDE_ASSERT(it != physicalDevices.end());
-
-    const uint32_t transferQueueIndex = GetTransferQueueIndex(*it).value();
-
-    // Call getFeatures to satisfy validation layer best practices warning
-    // (only do this for tests!)
-    auto _ [[maybe_unused]] = it->getFeatures();
-
-    auto ret = Teide::PhysicalDevice(*it, {.transferFamily = transferQueueIndex});
-    ret.queueFamilyIndices = {transferQueueIndex};
-    return ret;
-}
-
 std::vector<std::byte> HexToBytes(std::string_view hexString)
 {
     std::vector<std::byte> ret;
