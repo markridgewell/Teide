@@ -299,6 +299,7 @@ jobs:
         path: build/${{matrix.preset}}/coverage/output
 
     - name: Delete old caches
+      if: matrix.ccache && inputs.ccache!='false'
       shell: bash
       env:
         GH_TOKEN: ${{ github.token }}
