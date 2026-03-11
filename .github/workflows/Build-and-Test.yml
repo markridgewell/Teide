@@ -100,8 +100,8 @@ jobs:
 
     env:
       job_name: ${{startsWith(matrix.runner, 'windows') && 'Windows' || 'Linux'}}-${{matrix.buildtype}}-${{matrix.toolchain}}${{matrix.name-suffix}}
-      coverage: ${{ matrix.coverage && inputs.coverage }}
-      use_ccache: ${{ (inputs.ccache || github.event_name != 'workflow_dispatch') && !(matrix.preset == 'msvc2022' && matrix.coverage) }}
+      coverage: ${{ matrix.coverage && inputs.coverage!='false' }}
+      use_ccache: ${{ matrix.ccache && inputs.ccache!='false' }}
       CMAKE_BUILD_TYPE: ${{matrix.buildtype}}
       RT_OUTPUT_DIR: build/${{matrix.preset}}/tests/RenderTest/RenderTestOutput
       CXX: ${{matrix.compiler}}
@@ -208,23 +208,27 @@ jobs:
     - name: Build
       shell: bash
       run: |
-        mkdir -p ${{ env.CCACHE_DIR }}
-        ccache --zero-stats
+        if ${{ env.use_ccache }}; then
+          mkdir -p ${{ env.CCACHE_DIR }}
+          ccache --zero-stats
+        fi
 
         cmake --build --preset ${{matrix.preset}} --config ${{matrix.buildtype}}
 
-        echo "::group::Ccache stats"
-        ccache -sv
-        echo "::endgroup::"
+        if ${{ env.use_ccache }}; then
+          echo "::group::Ccache stats"
+          ccache -sv
+          echo "::endgroup::"
 
-        echo "::group::Ccache config"
-        ccache -p
-        echo "::endgroup::"
+          echo "::group::Ccache config"
+          ccache -p
+          echo "::endgroup::"
 
-        echo "::group::Ccache log"
-        ls $CCACHE_LOGFILE
-        cat $CCACHE_LOGFILE
-        echo "::endgroup::"
+          echo "::group::Ccache log"
+          ls $CCACHE_LOGFILE
+          cat $CCACHE_LOGFILE
+          echo "::endgroup::"
+        fi
 
     - name: Save ccache dir
       if: matrix.ccache && inputs.ccache!='false'
