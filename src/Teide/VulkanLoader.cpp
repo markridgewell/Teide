@@ -5,7 +5,7 @@
 
 #include "Teide/Device.h"
 
-#include <SDL2/SDL_filesystem.h>
+#include <SDL3/SDL_filesystem.h>
 #include <spdlog/spdlog.h>
 
 #include <atomic>
@@ -28,9 +28,7 @@ namespace
 {
     std::filesystem::path FindSwiftShaderConfig()
     {
-        auto* const basePath = SDL_GetBasePath();
-        const auto applicationDir = std::filesystem::path(basePath);
-        SDL_free(basePath);
+        const auto applicationDir = std::filesystem::path(SDL_GetBasePath());
         auto swiftshaderConfigPath = applicationDir / "vk_swiftshader_icd.json";
         if (!std::filesystem::exists(swiftshaderConfigPath))
         {
@@ -80,7 +78,7 @@ void EnableSoftwareRendering()
 
         // The VK_ICD_FILENAMES environment variable must be set loading the Vulkan library.
         const auto icdConfig = FindSwiftShaderConfig().string();
-        if (SDL_setenv("VK_ADD_DRIVER_FILES", icdConfig.c_str(), true) == 0)
+        if (SDL_setenv_unsafe("VK_ADD_DRIVER_FILES", icdConfig.c_str(), true) == 0)
         {
             spdlog::debug("Setting environment variable {}={}", "VK_ADD_DRIVER_FILES", icdConfig);
         }
@@ -88,7 +86,7 @@ void EnableSoftwareRendering()
         // The SDL_VULKAN_PATH environment variable must be set before creating any SDL_Windows
         // with the SDL_WINDOW_VULKAN flag set.
         s_vulkanLibraryName = GetSoftwareVulkanLibraryName();
-        if (!s_vulkanLibraryName.empty() && SDL_setenv("SDL_VULKAN_LIBRARY", s_vulkanLibraryName.c_str(), true) == 0)
+        if (!s_vulkanLibraryName.empty() && SDL_setenv_unsafe("SDL_VULKAN_LIBRARY", s_vulkanLibraryName.c_str(), true) == 0)
         {
             spdlog::debug("Setting environment variable {}={}", "SDL_VULKAN_LIBRARY", s_vulkanLibraryName);
         }

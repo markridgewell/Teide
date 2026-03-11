@@ -5,7 +5,6 @@
 #include "Teide/Vulkan.h"
 #include "Teide/VulkanLoader.h"
 
-#include <SDL_vulkan.h>
 #include <fmt/ranges.h>
 #include <spdlog/spdlog.h>
 

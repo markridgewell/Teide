@@ -25,7 +25,7 @@ td_add_test(
         GTest::gmock
         spdlog::spdlog
         RenderDoc::RenderDoc
-        SDL2::SDL2
-        SDL2_image::SDL2_image
+        SDL3::SDL3
+        SDL3_image::SDL3_image
         ${extra_deps}
     TEST_ARGS -r "${TEIDE_RENDER_TEST_REFERENCE_DIR}" ${extra_args})

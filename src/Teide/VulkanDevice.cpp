@@ -20,9 +20,9 @@
 #include "Teide/TextureData.h"
 #include "vkex/vkex.hpp"
 
-#include <SDL.h>
-#include <SDL2/SDL_video.h>
-#include <SDL_vulkan.h>
+#include <SDL3/SDL.h>
+#include <SDL3/SDL_video.h>
+#include <SDL3/SDL_vulkan.h>
 #include <fmt/ranges.h>
 #include <spdlog/spdlog.h>
 #include <vulkan/vulkan_enums.hpp>
@@ -58,7 +58,7 @@ namespace
     {
         spdlog::info("Creating a Vulkan surface for a window");
         VkSurfaceKHR surfaceTmp = {};
-        if (!SDL_Vulkan_CreateSurface(window, instance, &surfaceTmp))
+        if (!SDL_Vulkan_CreateSurface(window, instance, s_allocator, &surfaceTmp))
         {
             throw VulkanError("Failed to create Vulkan surface for window");
         }
@@ -644,7 +644,7 @@ DeviceAndSurface CreateDeviceAndSurface(SDL_Window* window, bool multisampled, c
 
     int width = 0;
     int height = 0;
-    SDL_Vulkan_GetDrawableSize(window, &width, &height);
+    SDL_GetWindowSizeInPixels(window, &width, &height);
     const Geo::Size2i windowExtent = {static_cast<uint32_t>(width), static_cast<uint32_t>(height)};
 
     vk::UniqueSurfaceKHR vksurface = CreateVulkanSurface(window, instance.get());

@@ -1,8 +1,8 @@
 
 #include "RenderTest.h"
 
-#include <SDL.h>
-#include <SDL_image.h>
+#include <SDL3/SDL_surface.h>
+#include <SDL3_image/SDL_image.h>
 
 #include <cstring>
 #include <utility>
@@ -14,11 +14,10 @@ namespace
 
 void WritePng(const std::filesystem::path& path, Geo::Size2i size, Teide::BytesView pixels)
 {
-    SDL_Surface* surface
-        = SDL_CreateRGBSurfaceWithFormat(0, static_cast<int>(size.x), static_cast<int>(size.y), 32, SDL_PIXELFORMAT_RGBA32);
+    SDL_Surface* surface = SDL_CreateSurface(static_cast<int>(size.x), static_cast<int>(size.y), SDL_PIXELFORMAT_RGBA32);
     std::memcpy(surface->pixels, pixels.data(), pixels.size());
     IMG_SavePNG(surface, path.string().c_str());
-    SDL_FreeSurface(surface);
+    SDL_DestroySurface(surface);
 }
 
 struct ReadPngResult
@@ -37,7 +36,7 @@ ReadPngResult ReadPng(const std::filesystem::path& path)
             std::span{
                 static_cast<const Teide::uint8*>(image->pixels),
                 Teide::usize{result.size.x} * Teide::usize{result.size.y} * 4});
-        SDL_FreeSurface(image);
+        SDL_DestroySurface(image);
     }
     return result;
 }

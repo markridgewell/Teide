@@ -8,7 +8,6 @@
 #include "Teide/Util/StaticMap.h"
 #include "Teide/VulkanLoader.h"
 
-#include <SDL_vulkan.h>
 #include <spdlog/spdlog.h>
 #include <vkex/vkex.hpp>
 #include <vulkan/vulkan_enums.hpp>
