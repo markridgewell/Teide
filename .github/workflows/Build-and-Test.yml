@@ -47,30 +47,34 @@ jobs:
         toolchain: [CL, ClangCL, GCC, Clang]
         buildtype: [Debug, Release]
         sanitizer: [OFF]
-        include:
 
+        include:
         # Overrides
         - toolchain: CL
           runner: windows-2022
           preset: msvc2022
           coverage: true
+          ccache: false
 
         - toolchain: ClangCL
           runner: windows-2022
           preset: msvc2022-clang
           coverage: false
+          ccache: true
 
         - toolchain: GCC
           runner: ubuntu-24.04
           preset: make
           compiler: g++-14
           coverage: false
+          ccache: true
 
         - toolchain: Clang
           runner: ubuntu-24.04
           preset: make
           compiler: clang++-18
           coverage: true
+          ccache: true
 
         # Additional jobs
         - toolchain: Clang
@@ -80,6 +84,7 @@ jobs:
           compiler: clang++-18
           sanitizer: ASAN
           name-suffix: -ASan
+          ccache: true
 
         - preset: make
           toolchain: Clang
@@ -88,6 +93,7 @@ jobs:
           compiler: clang++-18
           sanitizer: UBSAN
           name-suffix: -UBSan
+          ccache: true
 
     name: ${{startsWith(matrix.runner, 'windows') && 'Windows' || 'Linux'}}-${{matrix.buildtype}}-${{matrix.toolchain}}${{matrix.name-suffix}}
     runs-on: ${{matrix.runner}}
@@ -131,8 +137,8 @@ jobs:
       with:
         extra-packages: >
           ${{ matrix.compiler }}
-          ${{ env.use_ccache && 'ccache' || '' }}
-          ${{ (env.coverage && runner.os == 'Windows') && 'OpenCppCoverage' || '' }}
+          ${{ matrix.ccache && (inputs.ccache!='false') && 'ccache' || '' }}
+          ${{ matrix.coverage && !!inputs.coverage && runner.os == 'Windows' && 'OpenCppCoverage' || '' }}
           ${{ runner.os == 'Linux' && 'vulkan-validationlayers' || '' }}
       env:
         GH_TOKEN: ${{ github.token }}
