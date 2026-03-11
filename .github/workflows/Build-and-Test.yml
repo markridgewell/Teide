@@ -146,7 +146,7 @@ jobs:
 
     - name: Setup ccache
       id: ccache
-      if: env.use_ccache
+      if: ${{ !!env.use_ccache }}
       shell: bash
       run: |
         if [ ${{ runner.debug || inputs.debug }} ]; then
@@ -221,7 +221,7 @@ jobs:
         echo "::endgroup::"
 
     - name: Save ccache dir
-      if: env.use_ccache
+      if: ${{ !!env.use_ccache }}
       uses: actions/cache/save@v5.0.3
       with:
         path: ${{ env.CCACHE_DIR }}
@@ -273,7 +273,7 @@ jobs:
         path: build/${{matrix.preset}}/Testing/Temporary/LastTest.log
 
     - name: Upload coverage report
-      if: env.coverage
+      if: ${{ !!env.coverage }}
       uses: codecov/codecov-action@v5.5.2
       with:
         directory: build/${{matrix.preset}}/coverage/output
@@ -282,7 +282,7 @@ jobs:
         token: ${{ secrets.CODECOV_TOKEN }}
 
     - name: Save coverage report
-      if: env.coverage
+      if: ${{ !!env.coverage }}
       uses: actions/upload-artifact@v7.0.0
       with:
         name: CoverageReport-${{env.job_name}}
