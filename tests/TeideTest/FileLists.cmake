@@ -26,7 +26,7 @@ set(sources
     src/Teide/TextureTest.cpp
     src/Teide/Util/ListenSenderTest.cpp
     src/Teide/VulkanGraphTest.cpp
-    src/Teide/VulkanTest.cpp
+    src/Teide/VulkanInstanceTest.cpp
     src/Trace.cpp
     src/Trace.h
     src/vkex/vkex_utils_test.cpp)

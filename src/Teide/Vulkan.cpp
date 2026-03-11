@@ -1,22 +1,19 @@
 
 #include "Vulkan.h"
 
-#include "VulkanLoader.h"
-
 #include "Teide/Assert.h"
 #include "Teide/Definitions.h"
 #include "Teide/Format.h"
-#include "Teide/Pipeline.h"
-#include "Teide/Renderer.h"
 #include "Teide/TextureData.h"
 #include "Teide/Util/StaticMap.h"
+#include "Teide/VulkanLoader.h"
 
 #include <SDL_vulkan.h>
 #include <spdlog/spdlog.h>
 #include <vkex/vkex.hpp>
 #include <vulkan/vulkan_enums.hpp>
+#include <vulkan/vulkan_extension_inspection.hpp>
 
-#include <memory>
 #include <unordered_map>
 
 namespace Teide
@@ -24,8 +21,6 @@ namespace Teide
 
 namespace
 {
-    constexpr auto VulkanApiVersion = VK_API_VERSION_1_1;
-
     constexpr vk::DebugUtilsMessageSeverityFlagsEXT BreakOnVulkanMessage = vk::DebugUtilsMessageSeverityFlagBitsEXT::eError;
 
     const vk::Optional<const vk::AllocationCallbacks> s_allocator = nullptr;
@@ -249,176 +244,6 @@ vk::DebugUtilsMessengerCreateInfoEXT GetDebugCreateInfo()
         .messageType = MessageType::eGeneral | MessageType::eValidation | MessageType::ePerformance,
         .pfnUserCallback = DebugCallback,
     };
-}
-
-PhysicalDevice::PhysicalDevice(vk::PhysicalDevice pd, const QueueFamilies& qf) : physicalDevice{pd}, queueFamilies{qf}
-{
-    const auto props = pd.getProperties2<vk::PhysicalDeviceProperties2, vk::PhysicalDeviceDepthStencilResolveProperties>();
-
-    properties = props.get<vk::PhysicalDeviceProperties2>().properties;
-    depthStencilResolveProperties = props.get<vk::PhysicalDeviceDepthStencilResolveProperties>();
-}
-
-void EnableVulkanLayer(
-    std::vector<const char*>& enabledLayers, const std::vector<vk::LayerProperties>& availableLayers,
-    const char* layerName, Required required)
-{
-    if (contains(availableLayers, std::string_view(layerName), GetLayerName))
-    {
-        spdlog::info("Enabling Vulkan layer {}", layerName);
-        enabledLayers.push_back(layerName);
-    }
-    else if (required == Required::True)
-    {
-        throw vk::LayerNotPresentError(layerName);
-    }
-    else
-    {
-        spdlog::warn("Vulkan layer {} not enabled!", layerName);
-    }
-}
-
-void EnableVulkanExtension(
-    std::vector<const char*>& enabledExtensions, const std::vector<vk::ExtensionProperties>& availableExtensions,
-    const char* extensionName, Required required)
-{
-    if (contains(availableExtensions, std::string_view(extensionName), GetExtensionName))
-    {
-        spdlog::info("Enabling Vulkan extension {}", extensionName);
-        enabledExtensions.push_back(extensionName);
-    }
-    else if (required == Required::True)
-    {
-        throw vk::ExtensionNotPresentError(extensionName);
-    }
-    else
-    {
-        spdlog::warn("Vulkan extension {} not enabled!", extensionName);
-    }
-}
-
-vk::UniqueInstance CreateInstance(VulkanLoader& loader, SDL_Window* window)
-{
-    std::vector<const char*> extensions;
-    if (window)
-    {
-        uint32_t extensionCount = 0;
-        SDL_Vulkan_GetInstanceExtensions(window, &extensionCount, nullptr);
-        extensions.resize(extensionCount);
-        SDL_Vulkan_GetInstanceExtensions(window, &extensionCount, extensions.data());
-    }
-
-    const vk::ApplicationInfo applicationInfo{
-        .apiVersion = VulkanApiVersion,
-    };
-
-    const auto availableLayers = vk::enumerateInstanceLayerProperties();
-    const auto availableExtensions = vk::enumerateInstanceExtensionProperties();
-    EnableVulkanExtension(extensions, availableExtensions, "VK_KHR_surface", Required::False);
-    EnableVulkanExtension(extensions, availableExtensions, "VK_EXT_headless_surface", Required::False);
-
-    std::vector<const char*> layers;
-
-    vk::UniqueInstance instance;
-    if constexpr (IsDebugBuild)
-    {
-        EnableVulkanLayer(layers, availableLayers, "VK_LAYER_KHRONOS_validation", Required::False);
-        EnableVulkanExtension(extensions, availableExtensions, "VK_EXT_debug_utils", Required::False);
-
-        const std::array enabledFeatures = {
-            vk::ValidationFeatureEnableEXT::eSynchronizationValidation,
-            vk::ValidationFeatureEnableEXT::eBestPractices,
-        };
-
-        const vk::StructureChain createInfo = {
-            vk::InstanceCreateInfo{
-                .pApplicationInfo = &applicationInfo,
-                .enabledLayerCount = size32(layers),
-                .ppEnabledLayerNames = data(layers),
-                .enabledExtensionCount = size32(extensions),
-                .ppEnabledExtensionNames = data(extensions)},
-            vk::ValidationFeaturesEXT{
-                .enabledValidationFeatureCount = size32(enabledFeatures),
-                .pEnabledValidationFeatures = data(enabledFeatures),
-            },
-            GetDebugCreateInfo(),
-        };
-
-        instance = vk::createInstanceUnique(createInfo.get<vk::InstanceCreateInfo>(), s_allocator);
-    }
-    else
-    {
-        const vk::InstanceCreateInfo createInfo = {
-            .pApplicationInfo = &applicationInfo,
-            .enabledLayerCount = size32(layers),
-            .ppEnabledLayerNames = data(layers),
-            .enabledExtensionCount = size32(extensions),
-            .ppEnabledExtensionNames = data(extensions),
-        };
-
-        instance = vk::createInstanceUnique(createInfo, s_allocator);
-    }
-
-    loader.LoadInstanceFunctions(instance.get());
-    return instance;
-}
-
-vk::UniqueDevice CreateDevice(VulkanLoader& loader, const PhysicalDevice& physicalDevice)
-{
-    // Make a list of create infos for each unique queue we wish to create
-    const float queuePriority = 1.0f;
-    std::vector<vk::DeviceQueueCreateInfo> queueCreateInfos;
-    for (const uint32_t index : physicalDevice.queueFamilyIndices)
-    {
-        if (not contains(queueCreateInfos, index, &vk::DeviceQueueCreateInfo::queueFamilyIndex))
-        {
-            queueCreateInfos.push_back({.queueFamilyIndex = index, .queueCount = 1, .pQueuePriorities = &queuePriority});
-        }
-    }
-
-    const vk::PhysicalDeviceFeatures deviceFeatures = {
-        .samplerAnisotropy = true,
-    };
-
-    const auto availableLayers = physicalDevice.physicalDevice.enumerateDeviceLayerProperties();
-    const auto availableExtensions = physicalDevice.physicalDevice.enumerateDeviceExtensionProperties();
-
-    std::vector<const char*> extensions = physicalDevice.requiredExtensions;
-    EnableVulkanExtension(extensions, availableExtensions, "VK_EXT_descriptor_indexing", Required::True);
-    EnableVulkanExtension(extensions, availableExtensions, "VK_KHR_depth_stencil_resolve", Required::True);
-    EnableVulkanExtension(
-        extensions, availableExtensions, "VK_KHR_create_renderpass2",
-        Required::True); // required by "VK_KHR_depth_stencil_resolve"
-
-    const vk::StructureChain createInfo = {
-        vk::DeviceCreateInfo{
-            .queueCreateInfoCount = size32(queueCreateInfos),
-            .pQueueCreateInfos = data(queueCreateInfos),
-            .enabledExtensionCount = size32(extensions),
-            .ppEnabledExtensionNames = data(extensions),
-            .pEnabledFeatures = &deviceFeatures,
-        },
-        vk::PhysicalDeviceDescriptorIndexingFeatures{
-            // Enable non uniform array indexing
-            // (#extension GL_EXT_nonuniform_qualifier : require)
-            .shaderSampledImageArrayNonUniformIndexing = true,
-            .shaderStorageBufferArrayNonUniformIndexing = true,
-            .shaderStorageImageArrayNonUniformIndexing = true,
-            // All of these enables to update after the
-            // commandbuffer used the bindDescriptorsSet
-            .descriptorBindingSampledImageUpdateAfterBind = true,
-            .descriptorBindingStorageImageUpdateAfterBind = true,
-            .descriptorBindingStorageBufferUpdateAfterBind = true,
-            // Enable non bound descriptors slots
-            .descriptorBindingPartiallyBound = true,
-            // Enable non sized arrays
-            .runtimeDescriptorArray = true,
-        },
-    };
-
-    auto ret = physicalDevice.physicalDevice.createDeviceUnique(createInfo.get<vk::DeviceCreateInfo>(), s_allocator);
-    loader.LoadDeviceFunctions(ret.get());
-    return ret;
 }
 
 vma::UniqueAllocator CreateAllocator(VulkanLoader& loader, vk::Instance instance, vk::Device device, vk::PhysicalDevice physicalDevice)

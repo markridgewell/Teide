@@ -27,30 +27,23 @@ struct fmt::formatter<vk::ArrayWrapper1D<char, N>> : formatter<std::string_view>
 
 namespace Teide
 {
+constexpr auto VulkanApiVersion = VK_API_VERSION_1_1;
 
 struct FramebufferLayout;
 class VulkanLoader;
 enum class PrimitiveTopology : uint8;
 enum class VertexClass : uint8;
 
+inline std::string_view GetExtensionName(const vk::ExtensionProperties& obj)
+{
+    return obj.extensionName;
+}
+
 struct QueueFamilies
 {
     uint32 graphicsFamily = 0;
     uint32 transferFamily = 0;
     std::optional<uint32> presentFamily;
-};
-
-struct PhysicalDevice
-{
-    explicit PhysicalDevice(vk::PhysicalDevice pd, const QueueFamilies& qf);
-
-    vk::PhysicalDevice physicalDevice;
-    vk::PhysicalDeviceProperties properties;
-    vk::PhysicalDeviceDepthStencilResolveProperties depthStencilResolveProperties;
-    std::vector<const char*> requiredExtensions;
-
-    QueueFamilies queueFamilies;
-    std::vector<uint32> queueFamilyIndices;
 };
 
 struct RenderPassInfo
@@ -83,31 +76,15 @@ enum class FramebufferUsage : uint8
     PresentSrc
 };
 
-enum class Required : bool
-{
-    False = false,
-    True = true
-};
-
-void EnableVulkanLayer(
-    std::vector<const char*>& enabledLayers, const std::vector<vk::LayerProperties>& availableLayers,
-    const char* layerName, Required required);
-void EnableVulkanExtension(
-    std::vector<const char*>& enabledExtensions, const std::vector<vk::ExtensionProperties>& availableExtensions,
-    const char* extensionName, Required required);
-
 vk::DebugUtilsMessengerCreateInfoEXT GetDebugCreateInfo();
 
-vk::UniqueInstance CreateInstance(VulkanLoader& loader, SDL_Window* window = nullptr);
-vk::UniqueDevice CreateDevice(VulkanLoader& loader, const PhysicalDevice& physicalDevice);
 vma::UniqueAllocator
 CreateAllocator(VulkanLoader& loader, vk::Instance instance, vk::Device device, vk::PhysicalDevice physicalDevice);
 
 template <class T>
 inline uint32_t size32(const T& cont)
 {
-    using std::size;
-    return static_cast<uint32_t>(size(cont));
+    return static_cast<uint32_t>(std::ranges::size(cont));
 }
 
 void TransitionImageLayout(
@@ -237,15 +214,6 @@ template <class T>
 auto MakeHandle(T&& object)
 {
     return std::make_shared<typename std::remove_const_t<T>>(std::forward<T>(object));
-}
-
-inline std::string_view GetLayerName(const vk::LayerProperties& obj)
-{
-    return obj.layerName;
-}
-inline std::string_view GetExtensionName(const vk::ExtensionProperties& obj)
-{
-    return obj.extensionName;
 }
 
 } // namespace Teide

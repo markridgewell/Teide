@@ -1,7 +1,7 @@
 
 #pragma once
 
-#include "Vulkan.h"
+#include "VulkanDevice.h"
 
 #include "GeoLib/Vector.h"
 #include "Teide/Surface.h"
