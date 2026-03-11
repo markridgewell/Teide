@@ -80,9 +80,9 @@ void EnableSoftwareRendering()
 
         // The VK_ICD_FILENAMES environment variable must be set loading the Vulkan library.
         const auto icdConfig = FindSwiftShaderConfig().string();
-        if (SDL_setenv("VK_ICD_FILENAMES", icdConfig.c_str(), true) == 0)
+        if (SDL_setenv("VK_ADD_DRIVER_FILES", icdConfig.c_str(), true) == 0)
         {
-            spdlog::debug("Setting environment variable {}={}", "VK_ICD_FILENAMES", icdConfig);
+            spdlog::debug("Setting environment variable {}={}", "VK_ADD_DRIVER_FILES", icdConfig);
         }
 
         // The SDL_VULKAN_PATH environment variable must be set before creating any SDL_Windows

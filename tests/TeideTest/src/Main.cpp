@@ -224,11 +224,12 @@ private:
 std::string GetVendorName(std::uint32_t id)
 {
     // from PCI-ID database at https://admin.pci-ids.ucw.cz/read/PC?restrict=
-    if (id == 0x1ae0)
+    switch (id)
     {
-        return "Google, Inc.";
+        case 0x1ae0: return "Google, Inc.";
+        case 0x10de: return "NVIDIA Corporation";
+        default: return to_string(vk::VendorId(id));
     }
-    return to_string(vk::VendorId(id));
 }
 
 std::string GetVersionString(std::uint32_t v)
@@ -266,11 +267,12 @@ int TracedMain(int argc, char** argv)
 {
     spdlog::flush_on(spdlog::level::err);
 
+    bool softwareRender = false;
     for (const std::string_view arg : std::span(argv, static_cast<std::size_t>(argc)).subspan<1>())
     {
         if (arg == "-s" || arg == "--sw-render")
         {
-            Teide::EnableSoftwareRendering();
+            softwareRender = true;
         }
         else if (arg == "-v" || arg == "--verbose")
         {
@@ -282,6 +284,11 @@ int TracedMain(int argc, char** argv)
             g_windowless = true;
             spdlog::info("Windowless environment indicated: skipping surface tests");
         }
+    }
+
+    if (softwareRender)
+    {
+        Teide::EnableSoftwareRendering();
     }
 
     DumpVulkanInfo();

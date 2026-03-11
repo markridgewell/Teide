@@ -8,9 +8,6 @@
 
 #include <gmock/gmock.h>
 
-#include <algorithm>
-#include <memory>
-
 using namespace testing;
 using namespace std::chrono_literals;
 using namespace Teide;
@@ -21,7 +18,9 @@ namespace
 class SchedulerTest : public testing::Test
 {
 public:
-    SchedulerTest() : m_instance{CreateInstance(m_loader)}, m_physicalDevice{FindPhysicalDevice(m_instance.get())} {}
+    SchedulerTest() :
+        m_instance{CreateTestVulkanInstance(m_loader)}, m_physicalDevice{FindPhysicalDevice(m_instance.get())}
+    {}
 
     void SetUp() override
     {

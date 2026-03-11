@@ -19,10 +19,11 @@
 
 inline bool g_windowless = false;
 
+vk::UniqueInstance CreateTestVulkanInstance(Teide::VulkanLoader& loader);
+
 Teide::VulkanDevicePtr CreateTestDevice();
 
 std::optional<std::uint32_t> GetTransferQueueIndex(vk::PhysicalDevice physicalDevice);
-Teide::PhysicalDevice FindPhysicalDevice(vk::Instance instance);
 
 std::vector<std::byte> HexToBytes(std::string_view hexString);
 
