@@ -94,7 +94,7 @@ jobs:
 
     env:
       job_name: ${{startsWith(matrix.runner, 'windows') && 'Windows' || 'Linux'}}-${{matrix.buildtype}}-${{matrix.toolchain}}${{matrix.name-suffix}}
-      coverage: ${{ matrix.coverage && (inputs.coverage == 'true') }}
+      coverage: ${{ matrix.coverage && inputs.coverage }}
       use_ccache: ${{ (inputs.ccache || github.event_name != 'workflow_dispatch') && !(matrix.preset == 'msvc2022' && matrix.coverage) }}
       CMAKE_BUILD_TYPE: ${{matrix.buildtype}}
       RT_OUTPUT_DIR: build/${{matrix.preset}}/tests/RenderTest/RenderTestOutput
@@ -273,7 +273,7 @@ jobs:
         path: build/${{matrix.preset}}/Testing/Temporary/LastTest.log
 
     - name: Upload coverage report
-      if: ${{ !!env.coverage }}
+      if: matrix.coverage && inputs.coverage
       uses: codecov/codecov-action@v5.5.2
       with:
         directory: build/${{matrix.preset}}/coverage/output
@@ -282,7 +282,7 @@ jobs:
         token: ${{ secrets.CODECOV_TOKEN }}
 
     - name: Save coverage report
-      if: ${{ !!env.coverage }}
+      if: matrix.coverage && inputs.coverage
       uses: actions/upload-artifact@v7.0.0
       with:
         name: CoverageReport-${{env.job_name}}
