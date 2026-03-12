@@ -5,7 +5,7 @@
 #include "ShaderCompiler/ShaderCompiler.h"
 #include "Teide/Device.h"
 
-#include <SDL.h>
+#include <SDL3/SDL_video.h>
 #include <gmock/gmock.h>
 
 using namespace testing;
@@ -32,7 +32,7 @@ public:
             GTEST_SKIP();
         }
 
-        m_window = UniqueSDLWindow(SDL_CreateWindow("Test", 0, 0, 800, 600, SDL_WINDOW_VULKAN | SDL_WINDOW_HIDDEN));
+        m_window = UniqueSDLWindow(SDL_CreateWindow("Test", 800, 600, SDL_WINDOW_VULKAN | SDL_WINDOW_HIDDEN));
         ASSERT_THAT(m_window, NotNull()) << SDL_GetError();
 
         m_objects = CreateDeviceAndSurface(m_window.get());

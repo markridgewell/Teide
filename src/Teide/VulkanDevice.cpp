@@ -20,7 +20,6 @@
 #include "Teide/TextureData.h"
 #include "vkex/vkex.hpp"
 
-#include <SDL3/SDL.h>
 #include <SDL3/SDL_video.h>
 #include <SDL3/SDL_vulkan.h>
 #include <fmt/ranges.h>
@@ -58,7 +57,7 @@ namespace
     {
         spdlog::info("Creating a Vulkan surface for a window");
         VkSurfaceKHR surfaceTmp = {};
-        if (!SDL_Vulkan_CreateSurface(window, instance, s_allocator, &surfaceTmp))
+        if (!SDL_Vulkan_CreateSurface(window, instance, nullptr, &surfaceTmp))
         {
             throw VulkanError("Failed to create Vulkan surface for window");
         }
