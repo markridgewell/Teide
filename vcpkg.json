@@ -23,7 +23,13 @@
       "default-features": false,
       "platform": "linux"
     },
-    "sdl3-image",
+    {
+      "name": "sdl3-image",
+      "features": [
+        "png",
+        "jpeg"
+      ]
+    },
     "spdlog",
     "taskflow",
     "vulkan",

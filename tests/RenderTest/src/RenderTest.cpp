@@ -5,6 +5,7 @@
 #include <SDL3_image/SDL_image.h>
 
 #include <cstring>
+#include <expected>
 #include <utility>
 
 using namespace Teide::BasicTypes;
@@ -20,25 +21,28 @@ void WritePng(const std::filesystem::path& path, Geo::Size2i size, Teide::BytesV
     SDL_DestroySurface(surface);
 }
 
-struct ReadPngResult
+struct Png
 {
     Geo::Size2i size;
     std::vector<Teide::byte> pixels;
 };
 
+using ReadPngResult = std::expected<Png, std::string>;
+
 ReadPngResult ReadPng(const std::filesystem::path& path)
 {
-    ReadPngResult result;
     if (SDL_Surface* image = IMG_Load(path.string().c_str()))
     {
+        Png result;
         result.size = {static_cast<Teide::uint32>(image->w), static_cast<Teide::uint32>(image->h)};
         result.pixels = Teide::ToBytes(
             std::span{
                 static_cast<const Teide::uint8*>(image->pixels),
                 Teide::usize{result.size.x} * Teide::usize{result.size.y} * 4});
         SDL_DestroySurface(image);
+        return result;
     }
-    return result;
+    return std::unexpected(SDL_GetError());
 }
 
 
@@ -381,11 +385,13 @@ void RenderTest::CompareImageToReference(const Teide::TextureData& image, const 
         FAIL() << "Reference image missing: " << referenceFile;
     }
 
-    const auto [referenceSize, referenceData] = ReadPng(referenceFile);
-    if (referenceData.empty())
+    const auto result = ReadPng(referenceFile);
+    if (!result.has_value())
     {
-        FAIL() << "Reference image could not be loaded: " << referenceFile;
+        FAIL() << "Reference image not loaded (" << result.error() << "): " << referenceFile;
     }
+
+    const auto [referenceSize, referenceData] = result.value();
 
     if (image.size != referenceSize || image.pixels != referenceData)
     {
