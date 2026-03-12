@@ -14,8 +14,7 @@
     {
       "name": "sdl3",
       "features": [
-        "vulkan",
-        "x11"
+        "vulkan"
       ]
     },
     {
