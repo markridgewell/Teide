@@ -1,10 +1,11 @@
 
 #include "RenderTest.h"
 
-#include <SDL.h>
-#include <SDL_image.h>
+#include <SDL3/SDL_surface.h>
+#include <SDL3_image/SDL_image.h>
 
 #include <cstring>
+#include <expected>
 #include <utility>
 
 using namespace Teide::BasicTypes;
@@ -14,32 +15,34 @@ namespace
 
 void WritePng(const std::filesystem::path& path, Geo::Size2i size, Teide::BytesView pixels)
 {
-    SDL_Surface* surface
-        = SDL_CreateRGBSurfaceWithFormat(0, static_cast<int>(size.x), static_cast<int>(size.y), 32, SDL_PIXELFORMAT_RGBA32);
+    SDL_Surface* surface = SDL_CreateSurface(static_cast<int>(size.x), static_cast<int>(size.y), SDL_PIXELFORMAT_RGBA32);
     std::memcpy(surface->pixels, pixels.data(), pixels.size());
     IMG_SavePNG(surface, path.string().c_str());
-    SDL_FreeSurface(surface);
+    SDL_DestroySurface(surface);
 }
 
-struct ReadPngResult
+struct Png
 {
     Geo::Size2i size;
     std::vector<Teide::byte> pixels;
 };
 
+using ReadPngResult = std::expected<Png, std::string>;
+
 ReadPngResult ReadPng(const std::filesystem::path& path)
 {
-    ReadPngResult result;
     if (SDL_Surface* image = IMG_Load(path.string().c_str()))
     {
+        Png result;
         result.size = {static_cast<Teide::uint32>(image->w), static_cast<Teide::uint32>(image->h)};
         result.pixels = Teide::ToBytes(
             std::span{
                 static_cast<const Teide::uint8*>(image->pixels),
                 Teide::usize{result.size.x} * Teide::usize{result.size.y} * 4});
-        SDL_FreeSurface(image);
+        SDL_DestroySurface(image);
+        return result;
     }
-    return result;
+    return std::unexpected(SDL_GetError());
 }
 
 
@@ -382,11 +385,13 @@ void RenderTest::CompareImageToReference(const Teide::TextureData& image, const 
         FAIL() << "Reference image missing: " << referenceFile;
     }
 
-    const auto [referenceSize, referenceData] = ReadPng(referenceFile);
-    if (referenceData.empty())
+    const auto result = ReadPng(referenceFile);
+    if (!result.has_value())
     {
-        FAIL() << "Reference image could not be loaded: " << referenceFile;
+        FAIL() << "Reference image not loaded (" << result.error() << "): " << referenceFile;
     }
+
+    const auto [referenceSize, referenceData] = result.value();
 
     if (image.size != referenceSize || image.pixels != referenceData)
     {

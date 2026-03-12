@@ -11,7 +11,6 @@
 #include "Teide/Texture.h"
 #include "Teide/TextureData.h"
 
-#include <SDL.h>
 #include <gmock/gmock.h>
 
 using namespace testing;

@@ -6,8 +6,8 @@
 
 #include "Teide/Buffer.h"
 
-#include <SDL.h>
-#include <SDL_image.h>
+#include <SDL3/SDL_surface.h>
+#include <SDL3_image/SDL_image.h>
 #include <assimp/Importer.hpp>
 #include <assimp/mesh.h>
 #include <assimp/postprocess.h>
@@ -18,7 +18,7 @@ namespace
 {
 struct SurfaceDeleter
 {
-    void operator()(SDL_Surface* p) { SDL_FreeSurface(p); }
+    void operator()(SDL_Surface* p) { SDL_DestroySurface(p); }
 };
 using SurfacePtr = std::unique_ptr<SDL_Surface, SurfaceDeleter>;
 
@@ -139,11 +139,11 @@ Teide::TextureData LoadTexture(const char* filename)
     }
 
     const auto targetFormatEnum = SDL_PIXELFORMAT_ABGR8888;
-    if (image->format->format != targetFormatEnum)
+    if (image->format != targetFormatEnum)
     {
-        image.reset(SDL_ConvertSurfaceFormat(image.get(), SDL_PIXELFORMAT_ABGR8888, 0));
+        image.reset(SDL_ConvertSurface(image.get(), SDL_PIXELFORMAT_ABGR8888));
     }
-    TEIDE_ASSERT(image->format->format == targetFormatEnum);
+    TEIDE_ASSERT(image->format == targetFormatEnum);
 
     return {
         .size = {static_cast<uint32>(image->w), static_cast<uint32>(image->h)},

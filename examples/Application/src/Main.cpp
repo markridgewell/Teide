@@ -1,8 +1,8 @@
 
 #include "Application.h"
 
-#include <SDL2/SDL.h>
-#include <SDL2/SDL_main.h>
+#include <SDL3/SDL.h>
+#include <SDL3/SDL_main.h>
 #include <spdlog/sinks/msvc_sink.h>
 #include <spdlog/spdlog.h>
 
@@ -31,9 +31,8 @@ int Run(std::span<const char* const> args)
     const char* const imageFilename = (args.size() >= 2) ? args[1] : nullptr;
     const char* const modelFilename = (args.size() >= 3) ? args[2] : nullptr;
 
-    const auto windowFlags = SDL_WINDOW_VULKAN | SDL_WINDOW_ALLOW_HIGHDPI | SDL_WINDOW_RESIZABLE;
-    const auto window = UniqueSDLWindow(
-        SDL_CreateWindow("Teide", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 1280, 768, windowFlags), {});
+    const auto windowFlags = SDL_WINDOW_VULKAN | SDL_WINDOW_HIGH_PIXEL_DENSITY | SDL_WINDOW_RESIZABLE;
+    const auto window = UniqueSDLWindow(SDL_CreateWindow("Teide", 1280, 768, windowFlags), {});
     if (!window)
     {
         spdlog::critical("SDL error: {}", SDL_GetError());
@@ -73,7 +72,7 @@ int main(int argc, char* argv[])
 
     spdlog::set_pattern("[%Y-%m-%D %H:%M:%S.%e] [%l] %v");
 
-    if (SDL_Init(SDL_INIT_VIDEO) < 0)
+    if (!SDL_Init(SDL_INIT_VIDEO))
     {
         spdlog::critical("Couldn't initialise SDL: {}", SDL_GetError());
         return 1;

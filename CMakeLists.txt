@@ -59,8 +59,8 @@ set(SCRIPTS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/tools/cmake/scripts)
 find_package(Vulkan REQUIRED)
 find_package(VulkanMemoryAllocator REQUIRED)
 find_package(VulkanMemoryAllocator-Hpp REQUIRED)
-find_package(SDL2 REQUIRED)
-find_package(SDL2_image REQUIRED)
+find_package(SDL3 REQUIRED)
+find_package(SDL3_image REQUIRED)
 find_package(fmt REQUIRED)
 find_package(spdlog REQUIRED)
 find_package(glslang REQUIRED)
@@ -68,10 +68,6 @@ find_package(Taskflow REQUIRED)
 find_package(function2 REQUIRED)
 find_package(stdexec REQUIRED)
 find_package(RenderDoc)
-
-if(NOT TARGET SDL2_image::SDL2_image)
-    add_library(SDL2_image::SDL2_image ALIAS SDL2_image::SDL2_image-static)
-endif()
 
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
@@ -111,7 +107,7 @@ td_add_library(
         Vulkan::Vulkan
         GPUOpen::VulkanMemoryAllocator
         VulkanMemoryAllocator-Hpp::VulkanMemoryAllocator-Hpp
-        SDL2::SDL2
+        SDL3::SDL3
         fmt::fmt
         Taskflow::Taskflow
         function2::function2

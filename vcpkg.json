@@ -12,7 +12,7 @@
       ]
     },
     {
-      "name": "sdl2",
+      "name": "sdl3",
       "features": [
         "vulkan"
       ]
@@ -22,7 +22,13 @@
       "default-features": false,
       "platform": "linux"
     },
-    "sdl2-image",
+    {
+      "name": "sdl3-image",
+      "features": [
+        "png",
+        "jpeg"
+      ]
+    },
     "spdlog",
     "taskflow",
     "vulkan",
