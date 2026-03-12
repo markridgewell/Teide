@@ -129,7 +129,7 @@ function install-clang() {
   echo Adding repository "${repo}"
   sudo add-apt-repository "${repo}"
   sudo apt-get update
-  sudo apt-get install -y llvm
+  sudo apt-get install -y ${package}
 }
 
 function install_package() {

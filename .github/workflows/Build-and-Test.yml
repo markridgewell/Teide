@@ -72,7 +72,7 @@ jobs:
         - toolchain: Clang
           runner: ubuntu-24.04
           preset: make
-          compiler: clang++-18
+          compiler: clang++-19
           coverage: true
           ccache: true
 
@@ -81,7 +81,7 @@ jobs:
           preset: make
           buildtype: Debug
           runner: ubuntu-24.04
-          compiler: clang++-18
+          compiler: clang++-19
           sanitizer: ASAN
           name-suffix: -ASan
           ccache: true
@@ -90,7 +90,7 @@ jobs:
           toolchain: Clang
           buildtype: Debug
           runner: ubuntu-24.04
-          compiler: clang++-18
+          compiler: clang++-19
           sanitizer: UBSAN
           name-suffix: -UBSan
           ccache: true
