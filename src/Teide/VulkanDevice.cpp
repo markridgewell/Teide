@@ -20,6 +20,7 @@
 #include "Teide/TextureData.h"
 #include "vkex/vkex.hpp"
 
+#include <SDL3/SDL_error.h>
 #include <SDL3/SDL_video.h>
 #include <SDL3/SDL_vulkan.h>
 #include <fmt/ranges.h>
@@ -59,7 +60,7 @@ namespace
         VkSurfaceKHR surfaceTmp = {};
         if (!SDL_Vulkan_CreateSurface(window, instance, nullptr, &surfaceTmp))
         {
-            throw VulkanError("Failed to create Vulkan surface for window");
+            throw VulkanError(fmt::format("Failed to create Vulkan surface for window: {}", SDL_GetError()));
         }
         TEIDE_ASSERT(surfaceTmp);
         spdlog::info("Surface created successfully");
@@ -620,20 +621,14 @@ DeviceAndSurface CreateDeviceAndSurface(SDL_Window* window, bool multisampled, c
     TEIDE_ASSERT(window);
 
     auto optionalExtensions = std::vector<InstanceExtensionName>();
-    optionalExtensions.push_back("VK_KHR_surface");
 
-#if defined(VK_USE_PLATFORM_XLIB_KHR)
-    optionalExtensions.push_back("VK_KHR_xlib_surface");
-#endif
-#if defined(VK_USE_PLATFORM_XCB_KHR)
-    optionalExtensions.push_back("VK_KHR_xcb_surface");
-#endif
-#if defined(VK_USE_PLATFORM_WAYLAND_KHR)
-    optionalExtensions.push_back("VK_KHR_wayland_surface");
-#endif
-#if defined(VK_USE_PLATFORM_WIN32_KHR)
-    optionalExtensions.push_back("VK_KHR_win32_surface");
-#endif
+    // Add surface extensions from SDL
+    uint32 surfaceExtensionsCount{};
+    const auto* surfaceExtensionsPtr = SDL_Vulkan_GetInstanceExtensions(&surfaceExtensionsCount);
+    const auto surfaceExtensions = std::span(surfaceExtensionsPtr, surfaceExtensionsCount);
+    std::ranges::transform(surfaceExtensions, std::back_inserter(optionalExtensions), [](const char* extName) {
+        return InstanceExtensionName(extName);
+    });
 
     AddDebugExtensions(optionalExtensions);
 

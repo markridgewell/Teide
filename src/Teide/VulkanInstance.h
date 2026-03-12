@@ -18,12 +18,19 @@ public:
         m_name{&name[0]}
     {
 #if (201907 <= __cpp_constexpr) && (!defined(__GNUC__) || (110400 < GCC_VERSION))
-        if (not vk::isInstanceExtension(std::string(&name[0])))
+        const std::string extension = name;
+        if (!(vk::isInstanceExtension(extension)
+              || (extension == "VK_KHR_xlib_surface")
+              || (extension == "VK_KHR_xcb_surface")
+              || (extension == "VK_KHR_wayland_surface")
+              || (extension == "VK_KHR_win32_surface")))
         {
             throw std::runtime_error("Unknown instance extension name");
         }
 #endif
     }
+
+    explicit InstanceExtensionName(const char* dynamicName) : m_name{dynamicName} {}
 
     constexpr std::string_view Get() const { return m_name; }
     constexpr operator const char*() const { return m_name; }
