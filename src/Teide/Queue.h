@@ -65,9 +65,9 @@ public:
 
     explicit Queue(vk::Device device, vk::Queue queue);
 
-    std::vector<vk::Fence> GetInFlightFences() const;
+    void Wait() const;
 
-    void Flush();
+    std::vector<vk::Fence> GetInFlightFences() const;
 
     void Submit(CommandsRef commands, OnCompleteFunction callback);
 
@@ -76,6 +76,7 @@ public:
     void WaitForTasks();
 
 private:
+    void Flush();
     vk::UniqueFence GetFence();
 
     struct InFlightSubmit
