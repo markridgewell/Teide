@@ -939,9 +939,10 @@ SurfacePtr VulkanDevice::CreateSurface(vk::UniqueSurfaceKHR surface, Geo::Size2i
     spdlog::info("Creating a new surface for a window");
 
     TEIDE_ASSERT(m_physicalDevice.queueFamilies.presentFamily.has_value());
+    const auto queue = m_device->getQueue(m_physicalDevice.queueFamilies.presentFamily.value(), 0);
 
     return std::make_unique<VulkanSurface>(
-        size, std::move(surface), m_device.get(), m_physicalDevice, m_allocator.get(), m_graphicsQueue, multisampled);
+        size, std::move(surface), m_device.get(), m_physicalDevice, m_allocator.get(), queue, multisampled);
 }
 
 BufferPtr VulkanDevice::CreateBuffer(const BufferData& data, const char* name, CommandBuffer& cmdBuffer)

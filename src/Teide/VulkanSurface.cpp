@@ -3,6 +3,7 @@
 
 #include "GeoLib/Vector.h"
 #include "Teide/Pipeline.h"
+#include "vkex/vkex.hpp"
 
 #include <spdlog/spdlog.h>
 
@@ -90,6 +91,8 @@ namespace
             .oldSwapchain = oldSwapchain,
         };
 
+        TEIDE_ASSERT((createInfo.imageUsage & surfaceCapabilities.supportedUsageFlags) == createInfo.imageUsage);
+
         return device.createSwapchainKHRUnique(createInfo, s_allocator);
     }
 
@@ -174,11 +177,11 @@ namespace
 
 VulkanSurface::VulkanSurface(
     Geo::Size2i extent, vk::UniqueSurfaceKHR surface, vk::Device device, const PhysicalDevice& physicalDevice,
-    vma::Allocator allocator, vk::Queue queue, bool multisampled) :
+    vma::Allocator allocator, vk::Queue presentQueue, bool multisampled) :
     m_device{device},
     m_physicalDevice{physicalDevice},
     m_allocator{allocator},
-    m_queue{queue},
+    m_presentQueue{presentQueue},
     m_surface{std::move(surface)},
     m_surfaceExtent{extent}
 {
@@ -235,11 +238,10 @@ std::optional<SurfaceImage> VulkanSurface::AcquireNextImage(vk::Fence fence)
     m_imagesInFlight[imageIndex] = fence;
 
     const SurfaceImage ret = {
-        .surface = m_surface.get(),
+        .surface = this,
         .swapchain = m_swapchain.get(),
         .imageIndex = imageIndex,
         .imageAvailable = semaphore,
-        .image = m_swapchainImages[imageIndex],
         .framebuffer = {
             .framebuffer = m_swapchainFramebuffers[imageIndex].get(),
             .layout = m_framebufferLayout,
@@ -248,6 +250,20 @@ std::optional<SurfaceImage> VulkanSurface::AcquireNextImage(vk::Fence fence)
     };
 
     return ret;
+}
+
+void VulkanSurface::PresentImage(const SurfaceImage& image, vk::Semaphore waitSemaphore)
+{
+    const vkex::PresentInfoKHR presentInfo = {
+        .waitSemaphores = waitSemaphore,
+        .swapchains = m_swapchain.get(),
+        .imageIndices = image.imageIndex,
+    };
+    const auto presentResult = m_presentQueue.presentKHR(presentInfo);
+    if (presentResult == vk::Result::eSuboptimalKHR)
+    {
+        spdlog::warn("Suboptimal swapchain image");
+    }
 }
 
 vk::Semaphore VulkanSurface::GetNextSemaphore()

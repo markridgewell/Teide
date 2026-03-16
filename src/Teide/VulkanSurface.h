@@ -15,13 +15,14 @@ namespace Teide
 
 constexpr uint32_t MaxFramesInFlight = 2;
 
+class VulkanSurface;
+
 struct SurfaceImage
 {
-    vk::SurfaceKHR surface;
+    VulkanSurface* surface;
     vk::SwapchainKHR swapchain;
     uint32_t imageIndex = 0;
     vk::Semaphore imageAvailable;
-    vk::Image image;
     Framebuffer framebuffer;
 };
 
@@ -30,7 +31,7 @@ class VulkanSurface : public Surface
 public:
     VulkanSurface(
         Geo::Size2i extent, vk::UniqueSurfaceKHR surface, vk::Device device, const PhysicalDevice& physicalDevice,
-        vma::Allocator allocator, vk::Queue queue, bool multisampled);
+        vma::Allocator allocator, vk::Queue presentQueue, bool multisampled);
 
     Geo::Size2i GetExtent() const override { return m_surfaceExtent; }
     Format GetColorFormat() const override { return m_framebufferLayout.colorFormat.value(); }
@@ -42,6 +43,7 @@ public:
 
     // Internal
     std::optional<SurfaceImage> AcquireNextImage(vk::Fence fence);
+    void PresentImage(const SurfaceImage& image, vk::Semaphore waitSemaphore);
 
     vk::SurfaceKHR GetVulkanSurface() const { return m_surface.get(); }
     vk::RenderPass GetVulkanRenderPass() const { return m_renderPass.get(); }
@@ -56,7 +58,7 @@ private:
     vk::Device m_device;
     const PhysicalDevice& m_physicalDevice;
     vma::Allocator m_allocator;
-    vk::Queue m_queue;
+    vk::Queue m_presentQueue;
 
     vk::UniqueSurfaceKHR m_surface;
     Geo::Size2i m_surfaceExtent;
