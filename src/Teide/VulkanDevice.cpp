@@ -676,14 +676,20 @@ DeviceAndSurface CreateHeadlessDeviceAndSurface(Geo::Size2i windowSize, const Gr
 
     auto optionalExtensions = std::vector<InstanceExtensionName>();
     optionalExtensions.push_back("VK_KHR_surface");
-    optionalExtensions.push_back("VK_EXT_headless_surface");
     AddDebugExtensions(optionalExtensions);
 
-    VulkanLoader loader;
-    vk::UniqueInstance instance = CreateInstance(loader, {.optionalExtensions = optionalExtensions});
+    auto requiredExtensions = std::vector<InstanceExtensionName>();
+    requiredExtensions.push_back("VK_EXT_headless_surface");
 
-    vk::UniqueSurfaceKHR vksurface = // CreateVulkanSurface(window, instance.get());
-        instance->createHeadlessSurfaceEXTUnique({}, s_allocator);
+    VulkanLoader loader;
+    vk::UniqueInstance instance = CreateInstance(
+        loader,
+        {
+            .requiredExtensions = requiredExtensions,
+            .optionalExtensions = optionalExtensions,
+        });
+
+    vk::UniqueSurfaceKHR vksurface = instance->createHeadlessSurfaceEXTUnique({}, s_allocator);
 
     std::vector<DeviceExtensionName> requiredDeviceExtensions;
     requiredDeviceExtensions.push_back("VK_KHR_swapchain");
