@@ -331,7 +331,7 @@ jobs:
       ANY_FAILED: "${{needs.build-and-test.outputs.rendertest-failures}}"
 
     steps:
-    - uses: actions/download-artifact@v8.0.0
+    - uses: actions/download-artifact@v8.0.1
       if: needs.build-and-test.outputs.rendertest-failures
       with:
         path: artifacts
