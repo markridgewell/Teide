@@ -77,8 +77,7 @@ struct CompletionState : MoveOnly
         {
             onResult->setValue(std::move(value));
         }
-
-        if (std::holds_alternative<AwaitingResult>(state))
+        else if (std::holds_alternative<AwaitingResult>(state))
         {
             state = ResultValue{std::move(value)};
         }
@@ -92,8 +91,7 @@ struct CompletionState : MoveOnly
         {
             onResult->setStopped();
         }
-
-        if (std::holds_alternative<AwaitingResult>(state))
+        else if (std::holds_alternative<AwaitingResult>(state))
         {
             state = Canceled{};
         }

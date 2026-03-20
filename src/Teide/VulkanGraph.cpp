@@ -449,31 +449,30 @@ namespace
     }
 } // namespace
 
-void ExecuteGraph(VulkanGraph& graph, VulkanDevice& device, Queue& queue)
+void ExecuteGraph(VulkanGraph graph, VulkanDevice& device, Queue& queue)
 {
     BuildGraph(graph, device);
 
-    auto commands = RecordCommands(graph, device);
+    auto [cmdPool, cmdBuffers] = RecordCommands(graph, device);
 
-    const auto snd = queue.LazySubmit(commands.cmdBuffers);
-    ex::sync_wait(snd);
+    queue.Submit(cmdBuffers, [&device, graph = std::move(graph), pool = std::move(cmdPool)] mutable {
+        for (auto& readNode : graph.readNodes)
+        {
+            auto& sourceNode = graph.Get<VulkanGraph::TextureNode>(readNode.source.index);
+            const VulkanTexture& texture = device.GetImpl(sourceNode.texture);
 
-    for (auto& readNode : graph.readNodes)
-    {
-        auto& sourceNode = graph.Get<VulkanGraph::TextureNode>(readNode.source.index);
-        const VulkanTexture& texture = device.GetImpl(sourceNode.texture);
+            const auto& data = readNode.stagingBuffer.mappedData;
 
-        const auto& data = readNode.stagingBuffer.mappedData;
-
-        std::move(readNode.receiver)
-            .set_value({
-                .size = texture.properties.size,
-                .format = texture.properties.format,
-                .mipLevelCount = texture.properties.mipLevelCount,
-                .sampleCount = texture.properties.sampleCount,
-                .pixels = data | std::ranges::to<std::vector>(),
-            });
-    }
+            std::move(readNode.receiver)
+                .set_value({
+                    .size = texture.properties.size,
+                    .format = texture.properties.format,
+                    .mipLevelCount = texture.properties.mipLevelCount,
+                    .sampleCount = texture.properties.sampleCount,
+                    .pixels = data | std::ranges::to<std::vector>(),
+                });
+        }
+    });
 }
 
 } // namespace Teide

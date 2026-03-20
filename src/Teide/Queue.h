@@ -67,8 +67,6 @@ public:
 
     std::vector<vk::Fence> GetInFlightFences() const;
 
-    void Flush();
-
     void Submit(CommandsRef commands, OnCompleteFunction callback);
 
     auto LazySubmit(CommandsRef commands) -> SubmitSender;
@@ -76,6 +74,7 @@ public:
     void WaitForTasks();
 
 private:
+    void Flush();
     vk::UniqueFence GetFence();
 
     struct InFlightSubmit
