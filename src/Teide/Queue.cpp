@@ -55,11 +55,6 @@ Queue::Queue(vk::Device device, vk::Queue queue) :
     })
 {}
 
-void Queue::Wait() const
-{
-    m_queue.waitIdle();
-}
-
 std::vector<vk::Fence> Queue::GetInFlightFences() const
 {
     auto _ = std::unique_lock(m_mutex);

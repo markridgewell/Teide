@@ -65,8 +65,6 @@ public:
 
     explicit Queue(vk::Device device, vk::Queue queue);
 
-    void Wait() const;
-
     std::vector<vk::Fence> GetInFlightFences() const;
 
     void Submit(CommandsRef commands, OnCompleteFunction callback);
