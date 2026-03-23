@@ -614,10 +614,15 @@ TEST_F(VulkanGraphSurfaceTest, ExecutingGraphWithPresentNode)
     spdlog::info(MakeDotURL(VisualizeGraph(graph)));
     auto queue = Queue(m_device->GetVulkanDevice(), m_device->GetGraphicsQueue());
 
-    auto renderer = m_device->CreateRenderer({});
-    renderer->BeginFrame({});
     ExecuteGraph(std::move(graph), *m_device, queue);
-    renderer->EndFrame();
+    queue.WaitForTasks();
+
+    const auto pixels = GetPixelsSync(*m_device, *m_surface);
+    if (!pixels.has_value())
+    {
+        GTEST_SKIP() << "Unable to retrieve pixels from surface, skipping rest of test";
+    }
+    EXPECT_THAT(pixels.value(), Each(0xffff00ff));
 }
 
 } // namespace
