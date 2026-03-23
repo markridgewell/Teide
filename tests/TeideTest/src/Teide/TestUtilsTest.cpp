@@ -3,7 +3,6 @@
 
 #include "Teide/VulkanBuffer.h"
 #include "Teide/VulkanDevice.h"
-#include "vulkan/vulkan.hpp"
 
 #include <gmock/gmock.h>
 

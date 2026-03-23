@@ -9,7 +9,6 @@
 #include "Teide/Vulkan.h"
 #include "Teide/VulkanDevice.h"
 #include "Teide/VulkanSurface.h"
-#include "vulkan/vulkan.hpp"
 
 #include <SDL3/SDL_video.h>
 #include <gmock/gmock.h>
@@ -38,8 +37,8 @@ public:
             GTEST_SKIP();
         }
 
-        m_window = UniqueSDLWindow(
-            SDL_CreateWindow("Test", SurfaceSize.x, SurfaceSize.y, SDL_WINDOW_VULKAN | SDL_WINDOW_HIDDEN));
+        m_window = UniqueSDLWindow(SDL_CreateWindow(
+            "Test", static_cast<int>(SurfaceSize.x), static_cast<int>(SurfaceSize.y), SDL_WINDOW_VULKAN | SDL_WINDOW_HIDDEN));
         ASSERT_THAT(m_window, NotNull()) << SDL_GetError();
 
         m_objects = CreateDeviceAndSurface(m_window.get());
