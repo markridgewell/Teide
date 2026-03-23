@@ -80,7 +80,7 @@ namespace
             .imageColorSpace = surfaceFormat.colorSpace,
             .imageExtent = {.width = surfaceExtent.x, .height = surfaceExtent.y},
             .imageArrayLayers = 1,
-            .imageUsage = vk::ImageUsageFlagBits::eColorAttachment,
+            .imageUsage = vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eTransferSrc,
             .imageSharingMode = sharingMode,
             .queueFamilyIndexCount = size32(queueFamilyIndices),
             .pQueueFamilyIndices = data(queueFamilyIndices),
@@ -264,6 +264,7 @@ void VulkanSurface::PresentImage(const SurfaceImage& image, vk::Semaphore waitSe
     {
         spdlog::warn("Suboptimal swapchain image");
     }
+    m_lastPresentedImage = m_swapchainImages.at(image.imageIndex);
 }
 
 vk::Semaphore VulkanSurface::GetNextSemaphore()

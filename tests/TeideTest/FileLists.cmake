@@ -22,6 +22,7 @@ set(sources
     src/Teide/TestData.h
     src/Teide/TestUtils.cpp
     src/Teide/TestUtils.h
+    src/Teide/TestUtilsTest.cpp
     src/Teide/TextureDataTest.cpp
     src/Teide/TextureTest.cpp
     src/Teide/Util/ListenSenderTest.cpp

@@ -1,10 +1,16 @@
 
 #include "TestUtils.h"
 
+#include "Teide/Util/SafeMemCpy.h"
+#include "Teide/Vulkan.h"
 #include "Teide/VulkanInstance.h"
+#include "Teide/VulkanSurface.h"
+#include "vkex/vkex.hpp"
 
 #include <charconv>
 #include <ranges>
+
+using namespace Teide;
 
 #ifdef _WIN32
 #    define WIN32_LEAN_AND_MEAN
@@ -24,8 +30,6 @@ vk::UniqueInstance CreateTestVulkanInstance(Teide::VulkanLoader& loader)
 
 Teide::VulkanDevicePtr CreateTestDevice()
 {
-    using namespace Teide;
-
     VulkanLoader loader;
     vk::UniqueInstance instance = CreateTestVulkanInstance(loader);
     auto physicalDevice = FindPhysicalDevice(instance.get());
@@ -65,4 +69,72 @@ std::vector<std::byte> HexToBytes(std::string_view hexString)
     }
 
     return ret;
+}
+
+auto GetPixelsSync(vk::Image image, Teide::TextureState state, Geo::Size2i size, Teide::Format format, Teide::VulkanDevice& device)
+    -> std::vector<Teide::uint32>
+{
+    TEIDE_ASSERT(sizeof(uint32) == GetFormatElementSize(format));
+
+    const auto pixelCount = size.x * size.y;
+    const auto byteCount = pixelCount * GetFormatElementSize(format);
+
+    // Create buffer
+    auto [allocation, buffer] = device.GetAllocator().createBufferUnique(
+        vk::BufferCreateInfo{
+            .size = byteCount,
+            .usage = vk::BufferUsageFlagBits::eTransferDst,
+            .sharingMode = vk::SharingMode::eExclusive,
+        },
+        vma::AllocationCreateInfo{
+            .flags = vma::AllocationCreateFlagBits::eMapped | vma::AllocationCreateFlagBits::eHostAccessRandom,
+            .usage = vma::MemoryUsage::eGpuToCpu,
+        });
+
+    const vma::AllocationInfo allocInfo = device.GetAllocator().getAllocationInfo(allocation.get());
+    const std::span<std::byte> mappedData = {static_cast<std::byte*>(allocInfo.pMappedData), byteCount};
+
+    device.ExecCommandsSync([&](vk::CommandBuffer cmd) {
+        // Record pipeline barrier for image -> TransferSrc
+        TransitionImageLayout(
+            cmd, image, format, 1, state.layout, vk::ImageLayout ::eTransferSrcOptimal, state.lastPipelineStageUsage,
+            vk::PipelineStageFlagBits::eTransfer);
+
+        // Record image to buffer copy
+        cmd.copyImageToBuffer(
+        image, vk::ImageLayout::eTransferSrcOptimal, buffer.get(),
+        vk::BufferImageCopy{
+            .imageSubresource = {
+                .aspectMask = vk::ImageAspectFlagBits::eColor,
+                .layerCount = 1,
+            },
+            .imageExtent = {
+                .width = size.x,
+                .height = size.y,
+                .depth = 1,
+            },
+        });
+    });
+
+    // Copy pixels from buffer
+    auto ret = std::vector<uint32>(pixelCount);
+    SafeMemCpy(ret, mappedData);
+    return ret;
+}
+
+auto GetPixelsSync(Device& device, Surface& surface) -> std::optional<std::vector<uint32>>
+{
+    const auto& surfaceImpl = dynamic_cast<const VulkanSurface&>(surface);
+    const auto image = surfaceImpl.GetLastPresentedImage();
+    if (!image)
+    {
+        return std::nullopt;
+    }
+
+    auto& deviceImpl = dynamic_cast<VulkanDevice&>(device);
+    const auto state = TextureState{
+        .layout = vk::ImageLayout::ePresentSrcKHR,
+        .lastPipelineStageUsage = vk::PipelineStageFlagBits::eColorAttachmentOutput,
+    };
+    return GetPixelsSync(image, state, surfaceImpl.GetExtent(), surfaceImpl.GetColorFormat(), deviceImpl);
 }
