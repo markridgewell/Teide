@@ -593,6 +593,9 @@ vk::UniqueDevice CreateDevice(VulkanLoader& loader, const PhysicalDevice& physic
             .ppEnabledExtensionNames = data(physicalDevice.extensions),
             .pEnabledFeatures = &deviceFeatures,
         },
+        vk::PhysicalDeviceVulkan13Features{
+            .synchronization2 = true,
+        },
         vk::PhysicalDeviceDescriptorIndexingFeatures{
             // Enable non uniform array indexing
             // (#extension GL_EXT_nonuniform_qualifier : require)
@@ -1324,6 +1327,49 @@ vk::DescriptorSet VulkanDevice::GetDescriptorSet(const ParameterBlock& parameter
     auto& parameterBlockImpl = GetImpl(parameterBlock);
     InitParameterBlock(parameterBlockImpl);
     return parameterBlockImpl.descriptorSet.get();
+}
+
+void VulkanDevice::ExecCommandsSync(const std::function<void(vk::CommandBuffer)>& f)
+{
+    GetScheduler().WaitForCpu();
+
+    // Create command pool
+    const auto pool = m_device->createCommandPoolUnique({
+        .flags = vk::CommandPoolCreateFlagBits::eTransient,
+        .queueFamilyIndex = m_physicalDevice.queueFamilies.graphicsFamily,
+    });
+
+    // Create command buffer
+    const auto cmdBuffers = m_device->allocateCommandBuffers({
+        .commandPool = pool.get(),
+        .commandBufferCount = 1,
+    });
+    const auto cmd = cmdBuffers.front();
+
+    cmd.begin(vk::CommandBufferBeginInfo{.flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit});
+
+    f(cmd);
+
+    cmd.end();
+
+    // Create fence
+    const auto fence = m_device->createFenceUnique({});
+
+    // Submit command buffer to queue and signal fence
+    m_graphicsQueue.submit(
+        vkex::SubmitInfo{
+            .commandBuffers = {cmd},
+        }
+            .map(),
+        fence.get());
+
+    // Wait for fence
+    using namespace std::chrono_literals;
+    const auto result = m_device->waitForFences(fence.get(), true, Timeout(1s));
+    if (result == vk::Result::eTimeout)
+    {
+        spdlog::warn("Timeout reached while waiting for fences");
+    }
 }
 
 vk::RenderPass VulkanDevice::CreateRenderPassLayout(const FramebufferLayout& framebufferLayout)

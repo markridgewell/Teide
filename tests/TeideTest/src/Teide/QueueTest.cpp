@@ -125,8 +125,8 @@ TEST_F(QueueTest, TwoCommandBuffers)
         vk::BufferMemoryBarrier{
             .srcAccessMask = vk::AccessFlagBits::eTransferWrite,
             .dstAccessMask = vk::AccessFlagBits::eTransferWrite,
-            .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-            .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            .srcQueueFamilyIndex = vk::QueueFamilyIgnored,
+            .dstQueueFamilyIndex = vk::QueueFamilyIgnored,
             .buffer = buffer.buffer.get(),
             .offset = 0,
             .size = VK_WHOLE_SIZE,

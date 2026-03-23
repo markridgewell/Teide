@@ -19,6 +19,7 @@
 
 #include <vulkan/vulkan_hash.hpp>
 
+#include <functional>
 #include <type_traits>
 #include <unordered_map>
 
@@ -151,6 +152,13 @@ public:
     VulkanParameterBlockLayoutPtr CreateParameterBlockLayout(const ParameterBlockDesc& desc, int set);
 
     vk::DescriptorSet GetDescriptorSet(const ParameterBlock& parameterBlock);
+
+    /**
+     * Record a one-shot command buffer, submit it immediately, and wait for the GPU to finish executing it.
+     *
+     * @note For debugging and testing only! This will block on both the CPU and GPU, effectively flushing the entire rendering pipeline.
+     */
+    void ExecCommandsSync(const std::function<void(vk::CommandBuffer)>& f);
 
 private:
     struct RenderPassDesc

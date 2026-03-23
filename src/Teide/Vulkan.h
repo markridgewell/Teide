@@ -27,7 +27,7 @@ struct fmt::formatter<vk::ArrayWrapper1D<char, N>> : formatter<std::string_view>
 
 namespace Teide
 {
-constexpr auto VulkanApiVersion = VK_API_VERSION_1_1;
+constexpr auto VulkanApiVersion = VK_API_VERSION_1_3;
 
 struct FramebufferLayout;
 class VulkanLoader;

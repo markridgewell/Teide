@@ -48,6 +48,8 @@ public:
     vk::SurfaceKHR GetVulkanSurface() const { return m_surface.get(); }
     vk::RenderPass GetVulkanRenderPass() const { return m_renderPass.get(); }
 
+    vk::Image GetLastPresentedImage() const { return m_lastPresentedImage; }
+
 private:
     vk::Semaphore GetNextSemaphore();
     void CreateColorBuffer(vk::Format format);
@@ -79,6 +81,7 @@ private:
     std::array<vk::UniqueSemaphore, MaxFramesInFlight> m_imageAvailable;
     uint32_t m_nextSemaphoreIndex = 0;
     std::vector<vk::Fence> m_imagesInFlight;
+    vk::Image m_lastPresentedImage;
 };
 
 template <>

@@ -4,6 +4,11 @@
 
 #include "ShaderCompiler/ShaderCompiler.h"
 #include "Teide/Device.h"
+#include "Teide/Format.h"
+#include "Teide/TextureData.h"
+#include "Teide/Vulkan.h"
+#include "Teide/VulkanDevice.h"
+#include "Teide/VulkanSurface.h"
 
 #include <SDL3/SDL_video.h>
 #include <gmock/gmock.h>
@@ -13,7 +18,7 @@ using namespace Teide;
 
 namespace
 {
-constexpr auto SurfaceSize = Geo::Size2i{800, 600};
+constexpr auto SurfaceSize = Geo::Size2i{8, 8};
 
 struct SDLWindowDeleter
 {
@@ -32,7 +37,8 @@ public:
             GTEST_SKIP();
         }
 
-        m_window = UniqueSDLWindow(SDL_CreateWindow("Test", 800, 600, SDL_WINDOW_VULKAN | SDL_WINDOW_HIDDEN));
+        m_window = UniqueSDLWindow(SDL_CreateWindow(
+            "Test", static_cast<int>(SurfaceSize.x), static_cast<int>(SurfaceSize.y), SDL_WINDOW_VULKAN | SDL_WINDOW_HIDDEN));
         ASSERT_THAT(m_window, NotNull()) << SDL_GetError();
 
         m_objects = CreateDeviceAndSurface(m_window.get());
@@ -58,10 +64,15 @@ private:
     DeviceAndSurface m_objects;
 };
 
+
 template <class T>
 class SurfaceTest : public T
 {
 public:
+    auto GetPixels() const -> std::optional<std::vector<uint32>>
+    {
+        return GetPixelsSync(this->GetDevice(), this->GetSurface());
+    }
 };
 
 using TestTypes = ::testing::Types<WindowSurfaceTest, HeadlessSurfaceTest>;
@@ -109,11 +120,18 @@ TYPED_TEST(SurfaceTest, RenderToSurface)
 
     renderer->BeginFrame({});
     const RenderList renderList = {
-        .clearState = {.colorValue = Color{1.0f, 0.0f, 0.0f, 1.0f}},
+        .clearState = {.colorValue = Color{0.0f, 1.0f, 0.0f, 1.0f}},
     };
     renderer->RenderToSurface(surface, renderList);
     renderer->EndFrame();
     renderer->WaitForGpu();
+
+    const auto pixels = this->GetPixels();
+    if (!pixels.has_value())
+    {
+        GTEST_SKIP() << "Unable to retrieve pixels from surface, skipping rest of test";
+    }
+    EXPECT_THAT(pixels.value(), Each(0xff00ff00));
 }
 
 TYPED_TEST(SurfaceTest, RenderToSurfaceWithoutClear)
