@@ -42,7 +42,15 @@ VulkanDeviceAndSurface CreateTestDeviceAndSurface(Geo::Size2i windowSize)
     using namespace Teide;
 
     VulkanLoader loader;
-    vk::UniqueInstance instance = CreateInstance(loader, {.optionalExtensions = OptionalExtensions});
+    constexpr Teide::InstanceExtensionName RequiredExtensions[] = {
+        "VK_EXT_headless_surface",
+    };
+    vk::UniqueInstance instance = CreateInstance(
+        loader,
+        {
+            .requiredExtensions = RequiredExtensions,
+            .optionalExtensions = OptionalExtensions,
+        });
     auto physicalDevice = FindPhysicalDevice(instance.get());
 
     vk::UniqueSurfaceKHR vksurface = instance->createHeadlessSurfaceEXTUnique({});

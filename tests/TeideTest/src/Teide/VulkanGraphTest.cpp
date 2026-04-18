@@ -25,6 +25,18 @@ using namespace Teide;
 
 namespace
 {
+class MockSurface : public Surface
+{
+public:
+    MOCK_METHOD(Geo::Size2i, GetExtent, (), (const));
+    MOCK_METHOD(Format, GetColorFormat, (), (const));
+    MOCK_METHOD(Format, GetDepthFormat, (), (const));
+    MOCK_METHOD(uint32, GetSampleCount, (), (const));
+    MOCK_METHOD(FramebufferLayout, GetFramebufferLayout, (), (const));
+
+    MOCK_METHOD(void, OnResize, ());
+};
+
 std::string MakeDotURL(std::string_view dot)
 {
     std::string ret = "https://quickchart.io/graphviz?graph=";
@@ -315,8 +327,9 @@ TEST_F(VulkanGraphTest, BuildingGraphWithThreeDependentRenderNodesAddsConnection
 TEST_F(VulkanGraphTest, BuildingGraphWithOnePresentNodeHasNoEffect)
 {
     VulkanGraph graph;
+    StrictMock<MockSurface> surface;
     const auto tex = graph.AddTextureNode(CreateDummyTexture("tex1"));
-    graph.AddPresentNode(tex);
+    graph.AddPresentNode(surface, tex);
 
     BuildGraph(graph, *m_device);
 
@@ -445,9 +458,10 @@ constexpr auto PresentDot = R"--(strict digraph {
 TEST_F(VulkanGraphTest, VisualizingGraphWithPresentNode)
 {
     VulkanGraph graph;
+    StrictMock<MockSurface> surface;
     const auto tex = graph.AddTextureNode(CreateDummyTexture("tex"));
     graph.AddRenderNode({.name = "render1"}, tex, std::nullopt);
-    graph.AddPresentNode(tex);
+    graph.AddPresentNode(surface, tex);
 
     const auto dot = VisualizeGraph(graph);
 
@@ -609,7 +623,7 @@ TEST_F(VulkanGraphSurfaceTest, ExecutingGraphWithPresentNode)
             .colorValue = Color{1.0f, 0.0f, 1.0f, 1.0f},
         },
     }, tex1, std::nullopt);
-    graph.AddPresentNode(tex1);
+    graph.AddPresentNode(*m_surface, tex1);
     spdlog::info(VisualizeGraph(graph));
     spdlog::info(MakeDotURL(VisualizeGraph(graph)));
     auto queue = Queue(m_device->GetVulkanDevice(), m_device->GetGraphicsQueue());

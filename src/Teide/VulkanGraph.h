@@ -121,6 +121,7 @@ struct VulkanGraph
         static constexpr auto NodeType = CommandType::Present;
 
         std::string name;
+        Surface& surface;
         ResourceNodeRef source;
 
         void Process(VulkanGraph& graph, VulkanDevice& device, vk::CommandBuffer cmdBuffer);
@@ -219,10 +220,10 @@ struct VulkanGraph
         return r;
     }
 
-    auto AddPresentNode(ResourceNodeRef source)
+    auto AddPresentNode(Surface& surface, ResourceNodeRef source)
     {
         auto name = fmt::format("present{}", presentNodes.size() + 1);
-        presentNodes.emplace_back(NewCommandNode(), std::move(name), source);
+        presentNodes.emplace_back(NewCommandNode(), std::move(name), surface, source);
         return PresentRef(presentNodes.size() - 1);
     }
 
@@ -338,6 +339,15 @@ struct VulkanGraph
     {
         return (ref.type == T::NodeType) ? &Get<T>(ref.index) : nullptr;
     }
+
+    struct Commands
+    {
+        vk::UniqueCommandPool pool;
+        std::vector<vk::CommandBuffer> cmdBuffers;
+    };
+
+    auto RecordCommands(VulkanDevice& device) -> Commands;
+    void CreateResources(VulkanDevice& device);
 
 private:
     void AddUsage(ResourceNodeRef ref, vk::ImageUsageFlags usage)

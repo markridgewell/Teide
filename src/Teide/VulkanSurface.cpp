@@ -4,6 +4,7 @@
 #include "GeoLib/Vector.h"
 #include "Teide/Pipeline.h"
 #include "vkex/vkex.hpp"
+#include "vulkan/vulkan.hpp"
 
 #include <spdlog/spdlog.h>
 
@@ -59,7 +60,8 @@ namespace
 
     vk::UniqueSwapchainKHR CreateSwapchain(
         vk::PhysicalDevice physicalDevice, std::span<const uint32_t> queueFamilyIndices, vk::SurfaceKHR surface,
-        vk::SurfaceFormatKHR surfaceFormat, Geo::Size2i surfaceExtent, vk::Device device, vk::SwapchainKHR oldSwapchain)
+        vk::SurfaceFormatKHR surfaceFormat, Geo::Size2i surfaceExtent, vk::ImageUsageFlags usage, vk::Device device,
+        vk::SwapchainKHR oldSwapchain)
     {
         const auto surfaceCapabilities = physicalDevice.getSurfaceCapabilitiesKHR(surface);
 
@@ -80,7 +82,7 @@ namespace
             .imageColorSpace = surfaceFormat.colorSpace,
             .imageExtent = {.width = surfaceExtent.x, .height = surfaceExtent.y},
             .imageArrayLayers = 1,
-            .imageUsage = vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eTransferSrc,
+            .imageUsage = usage,
             .imageSharingMode = sharingMode,
             .queueFamilyIndexCount = size32(queueFamilyIndices),
             .pQueueFamilyIndices = data(queueFamilyIndices),
@@ -183,7 +185,8 @@ VulkanSurface::VulkanSurface(
     m_allocator{allocator},
     m_presentQueue{presentQueue},
     m_surface{std::move(surface)},
-    m_surfaceExtent{extent}
+    m_surfaceExtent{extent},
+    m_imageUsage{vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eTransferSrc}
 {
     std::ranges::generate(m_imageAvailable, [=] { return device.createSemaphoreUnique({}, s_allocator); });
 
@@ -203,12 +206,9 @@ void VulkanSurface::OnResize()
     RecreateSwapchain();
 }
 
-std::optional<SurfaceImage> VulkanSurface::AcquireNextImage(vk::Fence fence)
+std::optional<SurfaceImage> VulkanSurface::AcquireNextImage()
 {
     constexpr uint64_t timeout = std::numeric_limits<uint64_t>::max();
-
-    [[maybe_unused]] const auto waitResult = m_device.waitForFences(fence, true, timeout);
-    TEIDE_ASSERT(waitResult == vk::Result::eSuccess); // TODO check if waitForFences can fail with no timeout
 
     // Acquire an image from the swap chain
     const auto semaphore = GetNextSemaphore();
@@ -229,18 +229,14 @@ std::optional<SurfaceImage> VulkanSurface::AcquireNextImage(vk::Fence fence)
     }
 
     // Check if a previous frame is using this image (i.e. there is its fence to wait on)
-    if (m_imagesInFlight[imageIndex])
-    {
-        [[maybe_unused]] const auto waitResult2 = m_device.waitForFences(m_imagesInFlight[imageIndex], true, timeout);
-        TEIDE_ASSERT(waitResult2 == vk::Result::eSuccess); // TODO check if waitForFences can fail with no timeout
-    }
-    // Mark the image as in flight
-    m_imagesInFlight[imageIndex] = fence;
+    [[maybe_unused]] const auto waitResult2 = m_device.waitForFences(m_imagesInFlight[imageIndex].get(), true, timeout);
+    TEIDE_ASSERT(waitResult2 == vk::Result::eSuccess); // TODO check if waitForFences can fail with no timeout
 
     const SurfaceImage ret = {
         .surface = this,
         .swapchain = m_swapchain.get(),
         .imageIndex = imageIndex,
+        .imageView = m_swapchainImageViews[imageIndex].get(),
         .imageAvailable = semaphore,
         .framebuffer = {
             .framebuffer = m_swapchainFramebuffers[imageIndex].get(),
@@ -375,10 +371,12 @@ void VulkanSurface::CreateSwapchainAndImages()
     m_surfaceExtent = ChooseSwapExtent(surfaceCapabilities, m_surfaceExtent);
     m_swapchain = CreateSwapchain(
         m_physicalDevice.physicalDevice, m_physicalDevice.queueFamilyIndices, m_surface.get(), surfaceFormat,
-        m_surfaceExtent, m_device, m_swapchain.get());
+        m_surfaceExtent, m_imageUsage, m_device, m_swapchain.get());
     m_swapchainImages = m_device.getSwapchainImagesKHR(m_swapchain.get());
     m_swapchainImageViews = CreateSwapchainImageViews(surfaceFormat.format, m_swapchainImages, m_device);
     m_imagesInFlight.resize(m_swapchainImages.size());
+    std::ranges::generate(
+        m_imagesInFlight, [this] { return m_device.createFenceUnique({.flags = vk::FenceCreateFlagBits::eSignaled}); });
 
     if (m_msaaSampleCount != 1)
     {
