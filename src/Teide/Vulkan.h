@@ -93,6 +93,19 @@ void TransitionImageLayout(
 
 vk::UniqueCommandPool CreateCommandPool(uint32_t queueFamilyIndex, vk::Device device, const char* debugName = "");
 
+template <class... Args>
+std::string DebugFormat(fmt::format_string<Args...> fmt [[maybe_unused]], Args&&... args [[maybe_unused]])
+{
+    if constexpr (IsDebugBuild)
+    {
+        return fmt::vformat(fmt.get(), fmt::make_format_args(args...));
+    }
+    else
+    {
+        return "";
+    }
+}
+
 void RegisterDebugName(uint64 handle, const char* debugName);
 const char* GetRegisteredDebugName(uint64 handle);
 
@@ -125,11 +138,11 @@ void SetDebugName(vk::UniqueHandle<Type, Dispatch>& handle [[maybe_unused]], con
 template <class Type, class Dispatch, class... FormatArgs>
 void SetDebugName(
     vk::UniqueHandle<Type, Dispatch>& handle [[maybe_unused]],
-    const fmt::format_string<FormatArgs...>& format [[maybe_unused]], FormatArgs&&... fmtArgs [[maybe_unused]])
+    fmt::format_string<FormatArgs...> format [[maybe_unused]], FormatArgs&&... fmtArgs [[maybe_unused]])
 {
     if constexpr (IsDebugBuild)
     {
-        const auto string = fmt::vformat(format, fmt::make_format_args(std::forward<FormatArgs>(fmtArgs)...));
+        const auto string = DebugFormat(format, std::forward<FormatArgs>(fmtArgs)...);
         SetDebugName(handle, string.c_str());
     }
 }
@@ -141,19 +154,6 @@ void GenerateDebugNames(R& handles, const char* nameBase)
         SetDebugName(elem, "{}{}", nameBase, index);
         index++;
     });
-}
-
-template <class... Args>
-std::string DebugFormat(fmt::format_string<Args...> fmt [[maybe_unused]], Args&&... args [[maybe_unused]])
-{
-    if constexpr (IsDebugBuild)
-    {
-        return fmt::vformat(fmt, fmt::make_format_args(std::forward<Args>(args)...));
-    }
-    else
-    {
-        return "";
-    }
 }
 
 class VulkanError : public vk::Error, public std::exception

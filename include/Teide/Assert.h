@@ -1,7 +1,7 @@
 
 #pragma once
 
-#include <fmt/core.h>
+#include <fmt/format.h>
 
 #include <source_location>
 #include <string_view>
@@ -29,9 +29,9 @@ namespace Internal
     extern AssertHandler* g_handleAssertFail;
 
     template <class... Args>
-    inline std::string AssertFormat(const fmt::format_string<Args...>& format, Args&&... fmtArgs)
+    inline std::string AssertFormat(fmt::format_string<Args...> format, Args&&... fmtArgs)
     {
-        return fmt::format(format, std::forward<Args>(fmtArgs)...);
+        return fmt::vformat(format.get(), fmt::make_format_args(fmtArgs...));
     }
 
     inline std::string AssertFormat()
