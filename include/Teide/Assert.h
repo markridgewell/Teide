@@ -29,7 +29,7 @@ namespace Internal
     extern AssertHandler* g_handleAssertFail;
 
     template <class... Args>
-    inline std::string AssertFormat(fmt::format_string<Args...> format, Args&&... fmtArgs)
+    inline std::string AssertFormat(fmt::format_string<Args...> format, const Args&... fmtArgs)
     {
         return fmt::vformat(format.get(), fmt::make_format_args(fmtArgs...));
     }

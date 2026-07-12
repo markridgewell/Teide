@@ -94,7 +94,7 @@ void TransitionImageLayout(
 vk::UniqueCommandPool CreateCommandPool(uint32_t queueFamilyIndex, vk::Device device, const char* debugName = "");
 
 template <class... Args>
-std::string DebugFormat(fmt::format_string<Args...> fmt [[maybe_unused]], Args&&... args [[maybe_unused]])
+std::string DebugFormat(fmt::format_string<Args...> fmt [[maybe_unused]], const Args&... args [[maybe_unused]])
 {
     if constexpr (IsDebugBuild)
     {
@@ -138,11 +138,11 @@ void SetDebugName(vk::UniqueHandle<Type, Dispatch>& handle [[maybe_unused]], con
 template <class Type, class Dispatch, class... FormatArgs>
 void SetDebugName(
     vk::UniqueHandle<Type, Dispatch>& handle [[maybe_unused]],
-    fmt::format_string<FormatArgs...> format [[maybe_unused]], FormatArgs&&... fmtArgs [[maybe_unused]])
+    fmt::format_string<FormatArgs...> format [[maybe_unused]], const FormatArgs&... fmtArgs [[maybe_unused]])
 {
     if constexpr (IsDebugBuild)
     {
-        const auto string = DebugFormat(format, std::forward<FormatArgs>(fmtArgs)...);
+        const auto string = DebugFormat(format, fmtArgs...);
         SetDebugName(handle, string.c_str());
     }
 }
