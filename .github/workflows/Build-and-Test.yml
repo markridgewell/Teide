@@ -140,6 +140,7 @@ jobs:
           ${{ matrix.ccache && inputs.ccache!='false' && 'ccache' || '' }}
           ${{ matrix.coverage && inputs.coverage!='false' && runner.os == 'Windows' && 'OpenCppCoverage' || '' }}
           ${{ runner.os == 'Linux' && 'vulkan-validationlayers' || '' }}
+          ${{ runner.os == 'Windows' && 'pyparsing' || '' }}
       env:
         GH_TOKEN: ${{ github.token }}
 

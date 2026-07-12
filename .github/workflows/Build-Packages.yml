@@ -78,6 +78,7 @@ jobs:
           ${{ matrix.c-compiler }}
           ${{ matrix.cpp-compiler }}
           ${{ runner.os == 'Linux' && 'mono-complete autoconf autoconf-archive automake libtool' || '' }}
+          ${{ runner.os == 'Windows' && 'pyparsing' || '' }}
 
     - name: Install NuGet (Linux only)
       if: (steps.cache.outputs.cache-hit != 'true' || inputs.ignore-cache) && runner.os == 'Linux'
