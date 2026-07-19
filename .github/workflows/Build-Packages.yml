@@ -165,4 +165,3 @@ jobs:
           echo "Re-running cancelled workflow run $databaseId"
           gh run rerun $databaseId
         fi
-
