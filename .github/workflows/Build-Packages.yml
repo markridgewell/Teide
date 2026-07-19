@@ -148,7 +148,7 @@ jobs:
     needs: [build]
     if: needs.build.outputs.cache-hit != 'true'
     env:
-      GH_TOKEN: ${{ github.token }}
+      GH_TOKEN: ${{ secrets.API_TOKEN_ACTIONS }}
       BRANCH: ${{ github.event_name == 'pull_request' && github.head_ref || github.ref }}
 
     steps:
