@@ -129,3 +129,19 @@ jobs:
       with:
         name: vcpkg-export-${{ steps.cache-key.outputs.cache-key }}
         path: './exports'
+
+    - name: Restart cancelled Build-and-Test jobs
+      shell: 'bash'
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        databaseId=$(gh run list \
+          --branch ${{ github.ref }} \
+          --event ${{ github.event_name }} \
+          --workflow Build-and-Test \
+          --json databaseId,conclusion \
+          --limit 1 \
+          --jq '.[] | select(.conclusion == "cancelled") | .databaseId')
+        if [[ -n "$databaseId" ]]; then
+          gh run rerun $databaseId
+        fi
