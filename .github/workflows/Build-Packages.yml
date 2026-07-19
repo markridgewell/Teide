@@ -165,7 +165,7 @@ jobs:
           --jq '.[] | select(.conclusion == "cancelled") | .databaseId')
         if [[ -n "$databaseId" ]]; then
           echo "Re-running cancelled workflow run $databaseId"
-          gh run rerun $databaseId
+          gh run --repo ${{ github.repository }} rerun $databaseId
         else
           echo "No cancelled runs found"
         fi
