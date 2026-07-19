@@ -514,7 +514,7 @@ TEST_F(VulkanGraphTest, ExecutingGraphWithRenderNodeWithDepthAttachment)
     graph.AddRenderNode({
         .name = "clearDepth",
         .clearState = {
-            .depthValue = 0.5f,
+            .depthValue = 0.0f,
         },
     }, std::nullopt, tex1);
     const auto sndr = graph.AddReadNode(tex1);
@@ -527,7 +527,7 @@ TEST_F(VulkanGraphTest, ExecutingGraphWithRenderNodeWithDepthAttachment)
     const auto expected = TextureData{
         .size = {1, 1},
         .format = Format::Depth16,
-        .pixels = {std::byte{0x00}, std::byte{0x80}},
+        .pixels = {std::byte{0x00}, std::byte{0x00}},
     };
 
     const auto [output] = stdexec::sync_wait(sndr).value();
@@ -543,7 +543,7 @@ TEST_F(VulkanGraphTest, ExecutingGraphWithRenderNodeWithColorAndDepthAttachments
         .name = "clear",
         .clearState = {
             .colorValue = Color{1.0f, 0.0f, 1.0f, 1.0f},
-            .depthValue = 0.5f,
+            .depthValue = 0.0f,
         },
     }, color, depth);
     const auto colorSndr = graph.AddReadNode(color);
@@ -567,7 +567,7 @@ TEST_F(VulkanGraphTest, ExecutingGraphWithRenderNodeWithColorAndDepthAttachments
     const auto depthExpected = TextureData{
         .size = {1, 1},
         .format = Format::Depth16,
-        .pixels = {std::byte{0x00}, std::byte{0x80}},
+        .pixels = {std::byte{0x00}, std::byte{0x00}},
     };
     EXPECT_THAT(depthData, Eq(depthExpected));
 }
