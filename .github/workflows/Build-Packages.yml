@@ -28,7 +28,7 @@ env:
   VCPKG_FEATURE_FLAGS: dependencygraph
 
 jobs:
-  unified:
+  build:
     strategy:
       fail-fast: false
       matrix:
@@ -43,6 +43,9 @@ jobs:
           preset: make
           c-compiler: clang-19
           cpp-compiler: clang++-19
+
+    outputs:
+      cache-hit: ${{ steps.cache.outputs.cache-hit }}
 
     name: ${{startsWith(matrix.runner, 'windows') && 'Windows' || 'Linux'}}
     runs-on: ${{matrix.runner}}
@@ -131,14 +134,30 @@ jobs:
         key: ${{ steps.cache.outputs.cache-primary-key }}
         path: './exports'
 
-    - name: Restart cancelled Build-and-Test jobs
+    - name: Save packages as artifact
       if: steps.cache.outputs.cache-hit != 'true' || inputs.ignore-cache
+      uses: actions/upload-artifact@v7.0.1
+      with:
+        name: vcpkg-export-${{ steps.cache-key.outputs.cache-key }}
+        path: './exports'
+
+
+  rerun-build:
+    name: Rerun-Build
+    runs-on: ubuntu-latest
+    needs: [build]
+    if: needs.build.outputs.cache-hit != 'true'
+    env:
+      GH_TOKEN: ${{ github.token }}
+      BRANCH: ${{ github.event_name == 'pull_request' && github.head_ref || github.ref }}
+
+    steps:
+    - name: Restart cancelled Build-and-Test jobs
       shell: 'bash'
-      env:
-        GH_TOKEN: ${{ github.token }}
       run: |
         databaseId=$(gh run list \
-          --branch ${{ github.ref }} \
+          --repo ${{ github.repository }} \
+          --branch $BRANCH \
           --event ${{ github.event_name }} \
           --workflow Build-and-Test \
           --json databaseId,conclusion \
@@ -147,11 +166,6 @@ jobs:
         if [[ -n "$databaseId" ]]; then
           echo "Re-running cancelled workflow run $databaseId"
           gh run rerun $databaseId
+        else
+          echo "No cancelled runs found"
         fi
-
-    - name: Save packages as artifact
-      if: steps.cache.outputs.cache-hit != 'true' || inputs.ignore-cache
-      uses: actions/upload-artifact@v7.0.1
-      with:
-        name: vcpkg-export-${{ steps.cache-key.outputs.cache-key }}
-        path: './exports'
