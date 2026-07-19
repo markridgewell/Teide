@@ -4,8 +4,7 @@
 #include "Vulkan.h"
 
 #include "Teide/Buffer.h"
-
-#include <vulkan-memory-allocator-hpp/vk_mem_alloc.hpp>
+#include "Teide/VulkanMemAlloc.h"
 
 namespace Teide
 {

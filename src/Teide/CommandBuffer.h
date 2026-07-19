@@ -5,9 +5,9 @@
 #include "Teide/ForwardDeclare.h"
 #include "Teide/Renderer.h"
 #include "Teide/Texture.h"
+#include "Teide/VulkanMemAlloc.h"
 
 #include <fmt/base.h>
-#include <vulkan-memory-allocator-hpp/vk_mem_alloc.hpp>
 #include <vulkan/vulkan.hpp>
 
 #include <unordered_set>

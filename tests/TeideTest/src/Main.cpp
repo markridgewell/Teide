@@ -102,8 +102,11 @@ bool AssertThrow(std::string_view msg, std::string_view expression, std::source_
     const auto* curTest = testing::UnitTest::GetInstance()->current_test_info();
     if (curTest)
     {
-        std::cout << "Current test: " << curTest->name() << "\n";
-        GTEST_NONFATAL_FAILURE_("Assert failed while executing test");
+        const std::string_view desc = msg.empty() ? std::string_view("Assert failed") : msg;
+        const auto message = fmt::format("{} ({}) during test {}", desc, expression, curTest->name());
+        GTEST_MESSAGE_AT_(
+            location.file_name(), static_cast<int>(location.line()), message.c_str(),
+            ::testing::TestPartResult::kNonFatalFailure);
     }
     PrintTrace(trace);
     throw AssertException{};
@@ -172,9 +175,7 @@ public:
         {
             if (result.file_name())
             {
-                fmt::print(
-                    "{}({}): \033[31massertion failed\033[39m: {}", result.file_name(), result.line_number(),
-                    result.message());
+                fmt::print("{}({}): {}", result.file_name(), result.line_number(), result.message());
             }
             else
             {
