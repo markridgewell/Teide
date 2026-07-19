@@ -25,7 +25,7 @@ env:
 jobs:
   cppcheck:
     name: Cppcheck
-    runs-on: windows-2022
+    runs-on: windows-2025
     env: { preset: msvc2022 }
 
     steps:
