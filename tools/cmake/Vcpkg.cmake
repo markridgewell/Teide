@@ -25,7 +25,7 @@ function(vcpkg_determine_triplet)
 
         set(triplet "${arch}-${environment}")
     elseif(WIN32)
-        set(triplet "x64-windows-static-md")
+        set(triplet "x64-windows")
     endif()
 
     set(VCPKG_TARGET_TRIPLET
