@@ -152,11 +152,15 @@ jobs:
       BRANCH: ${{ github.event_name == 'pull_request' && github.head_ref || github.ref }}
 
     steps:
+    - name: Checkout
+      uses: actions/checkout@v7.0.0
+      with:
+        lfs: false
+
     - name: Restart cancelled Build-and-Test jobs
       shell: 'bash'
       run: |
         databaseId=$(gh run list \
-          --repo ${{ github.repository }} \
           --branch $BRANCH \
           --event ${{ github.event_name }} \
           --workflow Build-and-Test \
@@ -165,7 +169,7 @@ jobs:
           --jq '.[] | select(.conclusion == "cancelled") | .databaseId')
         if [[ -n "$databaseId" ]]; then
           echo "Re-running cancelled workflow run $databaseId"
-          gh run --repo ${{ github.repository }} rerun $databaseId
+          gh run rerun $databaseId
         else
           echo "No cancelled runs found"
         fi
