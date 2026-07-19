@@ -13,7 +13,7 @@ runs:
   using: composite
   steps:
     - name: Restore from cache
-      uses: actions/cache/restore@v3
+      uses: actions/cache/restore@v6.1.0
       id: cache
       with:
         key: ${{runner.os}}-${{inputs.package-name}}-${{inputs.package-version}}
@@ -56,7 +56,7 @@ runs:
 
     - name: Save to cache
       if: steps.cache.outputs.cache-hit != 'true'
-      uses: actions/cache/save@v3
+      uses: actions/cache/save@v6.1.0
       with:
         key: ${{steps.cache.outputs.cache-primary-key}}
         path: '~/${{inputs.package-name}}'
