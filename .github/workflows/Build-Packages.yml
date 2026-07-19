@@ -63,9 +63,9 @@ jobs:
       with:
         sanitizer: ${{ matrix.sanitizer }}
 
-    - name: Cache
+    - name: Restore from cache
       id: cache
-      uses: actions/cache@v6.1.0
+      uses: actions/cache/restore@v6.1.0
       with:
         key: ${{ steps.cache-key.outputs.cache-key }}
         path: './exports'
@@ -123,14 +123,15 @@ jobs:
         ls -R exports
         echo "::endgroup::"
 
-    - name: Save packages as artifact
+    - name: Save to cache
       if: steps.cache.outputs.cache-hit != 'true' || inputs.ignore-cache
-      uses: actions/upload-artifact@v7.0.1
+      uses: actions/cache/save@v6.1.0
       with:
-        name: vcpkg-export-${{ steps.cache-key.outputs.cache-key }}
+        key: ${{ steps.cache.outputs.cache-primary-key }}
         path: './exports'
 
     - name: Restart cancelled Build-and-Test jobs
+      if: steps.cache.outputs.cache-hit != 'true' || inputs.ignore-cache
       shell: 'bash'
       env:
         GH_TOKEN: ${{ github.token }}
@@ -143,5 +144,13 @@ jobs:
           --limit 1 \
           --jq '.[] | select(.conclusion == "cancelled") | .databaseId')
         if [[ -n "$databaseId" ]]; then
+          echo "Re-running cancelled workflow run $databaseId"
           gh run rerun $databaseId
         fi
+
+    - name: Save packages as artifact
+      if: steps.cache.outputs.cache-hit != 'true' || inputs.ignore-cache
+      uses: actions/upload-artifact@v7.0.1
+      with:
+        name: vcpkg-export-${{ steps.cache-key.outputs.cache-key }}
+        path: './exports'
