@@ -50,7 +50,7 @@ jobs:
       if: steps.get-changes.outputs.changed-files != ''
       uses: ./.github/actions/install-tools
       with:
-        extra-packages: cppcheck
+        extra-packages: cppcheck pyparsing
 
     - name: Configure CMake
       if: steps.get-changes.outputs.changed-files != ''
