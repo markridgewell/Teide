@@ -155,6 +155,7 @@ jobs:
       shell: 'bash'
       run: |
         databaseId=$(gh run list \
+          --repo ${{ github.repository }} \
           --branch $BRANCH \
           --event ${{ github.event_name }} \
           --workflow Build-and-Test \
