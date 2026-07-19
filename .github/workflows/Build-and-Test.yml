@@ -131,6 +131,7 @@ jobs:
       uses: ./.github/actions/install-packages
       with:
         sanitizer: ${{matrix.sanitizer}}
+        cancel-on-cache-miss: true
 
     - name: Install tools
       uses: ./.github/actions/install-tools
