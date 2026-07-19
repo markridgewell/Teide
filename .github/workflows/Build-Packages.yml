@@ -36,7 +36,7 @@ jobs:
         sanitizer: ['OFF']
 
         include:
-        - runner: windows-2025
+        - runner: windows-2022
           preset: msvc2022
 
         - runner: ubuntu-latest
