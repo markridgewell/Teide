@@ -148,14 +148,14 @@ jobs:
     if: needs.build.outputs.cache-hit
     env:
       GH_TOKEN: ${{ github.token }}
+      BRANCH: ${{ github.event_name == 'pull_request' && github.head_ref || github.ref }}
 
     steps:
     - name: Restart cancelled Build-and-Test jobs
       shell: 'bash'
       run: |
-        branch=${{ github.event_name == 'pull_request' && github.head_ref || github.ref }}
         databaseId=$(gh run list \
-          --branch $branch \
+          --branch $BRANCH \
           --event ${{ github.event_name }} \
           --workflow Build-and-Test \
           --json databaseId,conclusion \
