@@ -32,10 +32,26 @@
       "generator": "Visual Studio 17 2022"
     },
     {
+      "name": "msvc2026",
+      "inherits": "_msvc-common",
+      "displayName": "Visual Studio 2026",
+      "generator": "Visual Studio 18 2026"
+    },
+    {
       "name": "msvc2022-clang",
       "inherits": "_msvc-common",
       "displayName": "Visual Studio 2022 (Clang)",
       "generator": "Visual Studio 17 2022",
+      "toolset": "ClangCL",
+      "cacheVariables": {
+        "CMAKE_CXX_FLAGS": "/Zi /W4 /WX /MP /EHsc -Wno-missing-field-initializers /external:W0 /analyze:external- /external:anglebrackets"
+      }
+    },
+    {
+      "name": "msvc2026-clang",
+      "inherits": "_msvc-common",
+      "displayName": "Visual Studio 2026 (Clang)",
+      "generator": "Visual Studio 18 2026",
       "toolset": "ClangCL",
       "cacheVariables": {
         "CMAKE_CXX_FLAGS": "/Zi /W4 /WX /MP /EHsc -Wno-missing-field-initializers /external:W0 /analyze:external- /external:anglebrackets"

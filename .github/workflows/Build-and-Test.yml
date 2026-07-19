@@ -51,14 +51,14 @@ jobs:
         include:
         # Overrides
         - toolchain: CL
-          runner: windows-2025
-          preset: msvc2022
+          runner: windows-2025-vs2026
+          preset: msvc2026
           coverage: true
           ccache: false
 
         - toolchain: ClangCL
-          runner: windows-2025
-          preset: msvc2022-clang
+          runner: windows-2025-vs2026
+          preset: msvc2026-clang
           coverage: false
           ccache: true
 
