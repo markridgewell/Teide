@@ -141,6 +141,7 @@ jobs:
           ${{ matrix.ccache && inputs.ccache!='false' && 'ccache' || '' }}
           ${{ matrix.coverage && inputs.coverage!='false' && runner.os == 'Windows' && 'OpenCppCoverage' || '' }}
           ${{ runner.os == 'Linux' && 'vulkan-validationlayers' || '' }}
+          ${{ runner.os == 'Windows' && 'pyparsing' || '' }}
       env:
         GH_TOKEN: ${{ github.token }}
 
@@ -188,6 +189,7 @@ jobs:
         -DTEIDE_USE_VCPKG=${{!steps.packages.outputs.success}}
         -DCMAKE_PREFIX_PATH=${{steps.packages.outputs.install-dir}}
         -DCMAKE_LIBRARY_PATH=${{steps.packages.outputs.install-dir}}/lib
+        -DCMAKE_FIND_PACKAGE_PREFER_CONFIG=TRUE
         -DTEIDE_CCACHE=${{env.use_ccache}}
         -DTEIDE_PRECOMPILED_HEADERS=${{!env.use_ccache}}
         -DTEIDE_UNIT_TEST_SW_RENDER=ON

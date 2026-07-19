@@ -81,6 +81,7 @@ jobs:
           ${{ matrix.c-compiler }}
           ${{ matrix.cpp-compiler }}
           ${{ runner.os == 'Linux' && 'mono-complete autoconf autoconf-archive automake libtool' || '' }}
+          ${{ runner.os == 'Windows' && 'pyparsing' || '' }}
 
     - name: Install NuGet (Linux only)
       if: (steps.cache.outputs.cache-hit != 'true' || inputs.ignore-cache) && runner.os == 'Linux'
@@ -147,15 +148,19 @@ jobs:
     needs: [build]
     if: needs.build.outputs.cache-hit != 'true'
     env:
-      GH_TOKEN: ${{ github.token }}
+      GH_TOKEN: ${{ secrets.API_TOKEN_ACTIONS }}
       BRANCH: ${{ github.event_name == 'pull_request' && github.head_ref || github.ref }}
 
     steps:
+    - name: Checkout
+      uses: actions/checkout@v7.0.0
+      with:
+        lfs: false
+
     - name: Restart cancelled Build-and-Test jobs
       shell: 'bash'
       run: |
         databaseId=$(gh run list \
-          --repo ${{ github.repository }} \
           --branch $BRANCH \
           --event ${{ github.event_name }} \
           --workflow Build-and-Test \

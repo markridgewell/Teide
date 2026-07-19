@@ -2,6 +2,7 @@
 #include "Teide/Assert.h"
 
 #include <cstdlib>
+#include <cstring>
 #include <stack>
 
 #ifdef _WIN32
