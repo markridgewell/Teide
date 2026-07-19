@@ -186,7 +186,7 @@ jobs:
     - name: Configure CMake
       run: >
         cmake --preset ${{matrix.preset}}
-        -DTEIDE_USE_VCPKG=${{!steps.packages.outputs.success}}
+        -DTEIDE_USE_VCPKG=FALSE
         -DCMAKE_PREFIX_PATH=${{steps.packages.outputs.install-dir}}
         -DCMAKE_LIBRARY_PATH=${{steps.packages.outputs.install-dir}}/lib
         -DCMAKE_FIND_PACKAGE_PREFER_CONFIG=TRUE
