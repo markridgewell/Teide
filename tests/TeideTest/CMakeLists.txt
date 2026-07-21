@@ -36,7 +36,6 @@ if(TEIDE_PRECOMPILED_HEADERS)
         <gtest/gtest.h>
         <spdlog/spdlog.h>
         <vulkan/vulkan.hpp>
-        <vulkan-memory-allocator-hpp/vk_mem_alloc.hpp>
         <vulkan/vulkan_extension_inspection.hpp>
         <algorithm>
         <bitset>
