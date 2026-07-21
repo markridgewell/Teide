@@ -56,6 +56,11 @@ enable_testing()
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/tools/cmake/modules)
 set(SCRIPTS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/tools/cmake/scripts)
 
+find_package(ZLIB REQUIRED)
+if(NOT TARGET ZLIB::ZLIB)
+    add_library(ZLIB::ZLIB ALIAS ZLIB::ZLIBSTATIC)
+endif()
+
 find_package(Vulkan REQUIRED)
 find_package(VulkanMemoryAllocator REQUIRED)
 find_package(VulkanMemoryAllocator-Hpp REQUIRED)
@@ -128,7 +133,6 @@ if(TEIDE_PRECOMPILED_HEADERS)
         <fmt/format.h>
         <spdlog/spdlog.h>
         <vulkan/vulkan.hpp>
-        <vulkan-memory-allocator-hpp/vk_mem_alloc.hpp>
         <vulkan/vulkan_extension_inspection.hpp>
         <algorithm>
         <bitset>

@@ -50,7 +50,7 @@ jobs:
       if: steps.get-changes.outputs.changed-files != ''
       uses: ./.github/actions/install-tools
       with:
-        extra-packages: cppcheck
+        extra-packages: cppcheck pyparsing
 
     - name: Configure CMake
       if: steps.get-changes.outputs.changed-files != ''
@@ -59,6 +59,8 @@ jobs:
         -DTEIDE_CPPCHECK=ON
         -DTEIDE_USE_VCPKG=OFF
         -DCMAKE_PREFIX_PATH=${{steps.packages.outputs.install-dir}}
+        -DCMAKE_LIBRARY_PATH=${{steps.packages.outputs.install-dir}}/lib
+        -DCMAKE_FIND_PACKAGE_PREFER_CONFIG=TRUE
 
     - name: Run Cppcheck
       if: steps.get-changes.outputs.changed-files != ''
