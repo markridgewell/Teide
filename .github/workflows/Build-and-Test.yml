@@ -44,9 +44,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        toolchain: [CL, ClangCL, GCC, Clang]
+        toolchain: [CL, CLCov, ClangCL, GCC, Clang]
         buildtype: [Debug, Release]
-        coverage:  [false]
         sanitizer: [OFF]
 
         include:
@@ -57,12 +56,11 @@ jobs:
           coverage: false
           ccache: true
 
-        - toolchain: CL
+        - toolchain: CLCov
           runner: windows-2022
           preset: msvc2022
           coverage: true
           ccache: false
-          name-suffix: -Cov
 
         - toolchain: ClangCL
           runner: windows-2022
@@ -92,15 +90,17 @@ jobs:
           compiler: clang++-19
           sanitizer: ASAN
           name-suffix: -ASan
+          coverage: false
           ccache: true
 
-        - preset: make
-          toolchain: Clang
+        - toolchain: Clang
+          preset: make
           buildtype: Debug
           runner: ubuntu-24.04
           compiler: clang++-19
           sanitizer: UBSAN
           name-suffix: -UBSan
+          coverage: false
           ccache: true
 
     name: ${{startsWith(matrix.runner, 'windows') && 'Windows' || 'Linux'}}-${{matrix.buildtype}}-${{matrix.toolchain}}${{matrix.name-suffix}}
