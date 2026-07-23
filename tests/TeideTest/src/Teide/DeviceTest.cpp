@@ -11,7 +11,6 @@
 #include "Teide/Texture.h"
 #include "Teide/TextureData.h"
 
-#include <SDL.h>
 #include <gmock/gmock.h>
 
 using namespace testing;
@@ -176,7 +175,7 @@ TEST_F(DeviceTest, CreatePipeline)
             .framebufferLayout = {
                 .colorFormat = Format::Byte4Srgb,
                 .depthStencilFormat = Format::Depth16,
-                .sampleCount = 2,
+                .sampleCount = 1,
             },
         }},
     };

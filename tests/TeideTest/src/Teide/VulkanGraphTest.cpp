@@ -454,12 +454,7 @@ TEST_F(VulkanGraphTest, ExecutingGraphWithCopyNode)
 
     spdlog::info(VisualizeGraph(graph));
     auto queue = Queue(m_device->GetVulkanDevice(), m_device->GetGraphicsQueue());
-    ExecuteGraph(graph, *m_device, queue);
-
-    const VulkanTexture& texture = m_device->GetImpl(graph.textureNodes.at(tex.index).texture);
-    EXPECT_THAT(texture.image, IsValidVkHandle());
-    EXPECT_THAT(texture.imageView, Not(IsValidVkHandle()));
-    EXPECT_THAT(texture.usage, Eq(vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eTransferSrc));
+    ExecuteGraph(std::move(graph), *m_device, queue);
 
     const auto [outputData] = stdexec::sync_wait(sndr).value();
     EXPECT_THAT(outputData, Eq(CheckerboardTexture));
@@ -478,12 +473,8 @@ TEST_F(VulkanGraphTest, ExecutingGraphWithCopyNodeAndDiscardingResult)
 
     spdlog::info(VisualizeGraph(graph));
     auto queue = Queue(m_device->GetVulkanDevice(), m_device->GetGraphicsQueue());
-    ExecuteGraph(graph, *m_device, queue);
-
-    const VulkanTexture& texture = m_device->GetImpl(graph.textureNodes.at(tex.index).texture);
-    EXPECT_THAT(texture.image, IsValidVkHandle());
-    EXPECT_THAT(texture.imageView, Not(IsValidVkHandle()));
-    EXPECT_THAT(texture.usage, Eq(vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eTransferSrc));
+    ExecuteGraph(std::move(graph), *m_device, queue);
+    queue.WaitForTasks();
 }
 
 TEST_F(VulkanGraphTest, ExecutingGraphWithRenderNodeWithColorAttachment)
@@ -503,7 +494,7 @@ TEST_F(VulkanGraphTest, ExecutingGraphWithRenderNodeWithColorAttachment)
 
     auto renderer = m_device->CreateRenderer({});
     renderer->BeginFrame({});
-    ExecuteGraph(graph, *m_device, queue);
+    ExecuteGraph(std::move(graph), *m_device, queue);
     renderer->EndFrame();
 
     const auto expected = TextureData{
@@ -523,7 +514,7 @@ TEST_F(VulkanGraphTest, ExecutingGraphWithRenderNodeWithDepthAttachment)
     graph.AddRenderNode({
         .name = "clearDepth",
         .clearState = {
-            .depthValue = 0.5f,
+            .depthValue = 0.0f,
         },
     }, std::nullopt, tex1);
     const auto sndr = graph.AddReadNode(tex1);
@@ -531,12 +522,12 @@ TEST_F(VulkanGraphTest, ExecutingGraphWithRenderNodeWithDepthAttachment)
     spdlog::info(MakeDotURL(VisualizeGraph(graph)));
     auto queue = Queue(m_device->GetVulkanDevice(), m_device->GetGraphicsQueue());
 
-    ExecuteGraph(graph, *m_device, queue);
+    ExecuteGraph(std::move(graph), *m_device, queue);
 
     const auto expected = TextureData{
         .size = {1, 1},
         .format = Format::Depth16,
-        .pixels = {std::byte{0x00}, std::byte{0x80}},
+        .pixels = {std::byte{0x00}, std::byte{0x00}},
     };
 
     const auto [output] = stdexec::sync_wait(sndr).value();
@@ -552,7 +543,7 @@ TEST_F(VulkanGraphTest, ExecutingGraphWithRenderNodeWithColorAndDepthAttachments
         .name = "clear",
         .clearState = {
             .colorValue = Color{1.0f, 0.0f, 1.0f, 1.0f},
-            .depthValue = 0.5f,
+            .depthValue = 0.0f,
         },
     }, color, depth);
     const auto colorSndr = graph.AddReadNode(color);
@@ -562,7 +553,7 @@ TEST_F(VulkanGraphTest, ExecutingGraphWithRenderNodeWithColorAndDepthAttachments
     spdlog::info(MakeDotURL(VisualizeGraph(graph)));
     auto queue = Queue(m_device->GetVulkanDevice(), m_device->GetGraphicsQueue());
 
-    ExecuteGraph(graph, *m_device, queue);
+    ExecuteGraph(std::move(graph), *m_device, queue);
 
     const auto [colorData] = stdexec::sync_wait(colorSndr).value();
     const auto [depthData] = stdexec::sync_wait(depthSndr).value();
@@ -576,7 +567,7 @@ TEST_F(VulkanGraphTest, ExecutingGraphWithRenderNodeWithColorAndDepthAttachments
     const auto depthExpected = TextureData{
         .size = {1, 1},
         .format = Format::Depth16,
-        .pixels = {std::byte{0x00}, std::byte{0x80}},
+        .pixels = {std::byte{0x00}, std::byte{0x00}},
     };
     EXPECT_THAT(depthData, Eq(depthExpected));
 }

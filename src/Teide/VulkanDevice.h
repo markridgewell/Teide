@@ -19,11 +19,33 @@
 
 #include <vulkan/vulkan_hash.hpp>
 
+#include <functional>
 #include <type_traits>
 #include <unordered_map>
 
 namespace Teide
 {
+
+struct PhysicalDevice
+{
+    explicit PhysicalDevice(
+        vk::PhysicalDevice pd, const QueueFamilies& qf, std::vector<const char*> extensions,
+        std::vector<const char*> missingExtensions);
+
+    vk::PhysicalDevice physicalDevice;
+    vk::PhysicalDeviceProperties properties;
+    vk::PhysicalDeviceDepthStencilResolveProperties depthStencilResolveProperties;
+
+    QueueFamilies queueFamilies;
+    std::vector<uint32> queueFamilyIndices;
+
+    std::vector<const char*> extensions;
+    std::vector<const char*> missingExtensions;
+};
+
+PhysicalDevice FindPhysicalDevice(vk::Instance instance);
+
+vk::UniqueDevice CreateDevice(VulkanLoader& loader, const PhysicalDevice& physicalDevice);
 
 struct ParameterBlockDesc;
 struct VulkanParameterBlockLayout;
@@ -130,6 +152,13 @@ public:
     VulkanParameterBlockLayoutPtr CreateParameterBlockLayout(const ParameterBlockDesc& desc, int set);
 
     vk::DescriptorSet GetDescriptorSet(const ParameterBlock& parameterBlock);
+
+    /**
+     * Record a one-shot command buffer, submit it immediately, and wait for the GPU to finish executing it.
+     *
+     * @note For debugging and testing only! This will block on both the CPU and GPU, effectively flushing the entire rendering pipeline.
+     */
+    void ExecCommandsSync(const std::function<void(vk::CommandBuffer)>& f);
 
 private:
     struct RenderPassDesc

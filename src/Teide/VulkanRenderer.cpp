@@ -201,16 +201,9 @@ void VulkanRenderer::EndFrame()
     m_graphicsQueue.submit(submitInfo.map(), fenceToSignal);
 
     // Present
-    const vkex::PresentInfoKHR presentInfo = {
-        .waitSemaphores = m_frameResources.Current().renderFinished.get(),
-        .swapchains = transform(images, &SurfaceImage::swapchain),
-        .imageIndices = transform(images, &SurfaceImage::imageIndex),
-    };
-
-    const auto presentResult = m_presentQueue.presentKHR(presentInfo);
-    if (presentResult == vk::Result::eSuboptimalKHR)
+    for (const auto& image : images)
     {
-        spdlog::warn("Suboptimal swapchain image");
+        image.surface->PresentImage(image, m_frameResources.Current().renderFinished.get());
     }
 }
 
@@ -504,7 +497,7 @@ void VulkanRenderer::RecordRenderObjectCommands(
 std::optional<SurfaceImage> VulkanRenderer::AddSurfaceToPresent(VulkanSurface& surface)
 {
     return m_surfacesToPresent.Lock([&](auto& surfacesToPresent) -> std::optional<SurfaceImage> {
-        if (const auto it = std::ranges::find(surfacesToPresent, surface.GetVulkanSurface(), &SurfaceImage::surface);
+        if (const auto it = std::ranges::find(surfacesToPresent, &surface, &SurfaceImage::surface);
             it != surfacesToPresent.end())
         {
             return *it;

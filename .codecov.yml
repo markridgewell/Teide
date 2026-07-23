@@ -1,7 +1,12 @@
 codecov:
-  require_ci_to_pass: yes
+  require_ci_to_pass: true
   notify:
     after_n_builds: 4
-    wait_for_ci: yes
+    wait_for_ci: true
 github_checks:
   annotations: true
+coverage:
+  status:
+    project:
+      default:
+        target: auto  # auto compares coverage to the previous base commit

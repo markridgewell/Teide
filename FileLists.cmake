@@ -59,7 +59,6 @@ set(sources
     src/Teide/Util/ThreadUtils.cpp
     src/Teide/Util/ThreadUtils.h
     src/Teide/Util/TypeHelpers.h
-    src/Teide/VmaImpl.cpp
     src/Teide/Vulkan.cpp
     src/Teide/Vulkan.h
     src/Teide/VulkanBuffer.cpp
@@ -68,9 +67,13 @@ set(sources
     src/Teide/VulkanDevice.h
     src/Teide/VulkanGraph.cpp
     src/Teide/VulkanGraph.h
+    src/Teide/VulkanInstance.cpp
+    src/Teide/VulkanInstance.h
     src/Teide/VulkanKernel.h
     src/Teide/VulkanLoader.cpp
     src/Teide/VulkanLoader.h
+    src/Teide/VulkanMemAlloc.cpp
+    src/Teide/VulkanMemAlloc.h
     src/Teide/VulkanMesh.h
     src/Teide/VulkanParameterBlock.cpp
     src/Teide/VulkanParameterBlock.h

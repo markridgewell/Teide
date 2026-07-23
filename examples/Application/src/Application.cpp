@@ -7,23 +7,19 @@
 #include "GeoLib/Matrix.h"
 #include "GeoLib/Vector.h"
 #include "ShaderCompiler/ShaderCompiler.h"
-#include "Teide/Buffer.h"
-#include "Teide/Definitions.h"
 #include "Teide/Device.h"
-#include "Teide/Mesh.h"
 #include "Teide/Renderer.h"
-#include "Teide/Shader.h"
 #include "Teide/Surface.h"
 #include "Teide/Texture.h"
 #include "Teide/TextureData.h"
 
-#include <SDL.h>
+#include <SDL3/SDL.h>
+#include <SDL3/SDL_events.h>
 #include <spdlog/spdlog.h>
 
 #include <algorithm>
 #include <optional>
 #include <ranges>
-#include <span>
 
 namespace
 {
@@ -284,27 +280,20 @@ bool Application::OnEvent(const SDL_Event& event)
 {
     switch (event.type)
     {
-        case SDL_QUIT: return false;
+        case SDL_EVENT_QUIT: return false;
 
-        case SDL_WINDOWEVENT:
-            switch (event.window.event)
-            {
-                case SDL_WINDOWEVENT_SIZE_CHANGED: {
-                    OnResize();
-                    break;
-                }
-
-                default: break;
-            }
-            break;
-
-        case SDL_MOUSEBUTTONDOWN: {
-            SDL_SetRelativeMouseMode(SDL_TRUE);
+        case SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED: {
+            OnResize();
             break;
         }
 
-        case SDL_MOUSEBUTTONUP: {
-            SDL_SetRelativeMouseMode(SDL_FALSE);
+        case SDL_EVENT_MOUSE_BUTTON_DOWN: {
+            SDL_SetWindowRelativeMouseMode(m_window, true);
+            break;
+        }
+
+        case SDL_EVENT_MOUSE_BUTTON_UP: {
+            SDL_SetWindowRelativeMouseMode(m_window, false);
             break;
         }
 
@@ -316,28 +305,28 @@ bool Application::OnEvent(const SDL_Event& event)
 
 bool Application::OnUpdate()
 {
-    int mouseX = 0;
-    int mouseY = 0;
+    float mouseX = 0.f;
+    float mouseY = 0.f;
     const uint32_t mouseButtonMask = SDL_GetRelativeMouseState(&mouseX, &mouseY);
 
-    if (SDL_GetModState() & KMOD_CTRL)
+    if (SDL_GetModState() & SDL_KMOD_CTRL)
     {
         if (mouseButtonMask & SDL_BUTTON_LMASK)
         {
-            m_lightYaw += static_cast<float>(mouseX) * CameraRotateSpeed;
-            m_lightPitch -= static_cast<float>(mouseY) * CameraRotateSpeed;
+            m_lightYaw += mouseX * CameraRotateSpeed;
+            m_lightPitch -= mouseY * CameraRotateSpeed;
         }
     }
     else
     {
         if (mouseButtonMask & SDL_BUTTON_LMASK)
         {
-            m_cameraYaw += static_cast<float>(mouseX) * CameraRotateSpeed;
-            m_cameraPitch -= static_cast<float>(mouseY) * CameraRotateSpeed;
+            m_cameraYaw += mouseX * CameraRotateSpeed;
+            m_cameraPitch -= mouseY * CameraRotateSpeed;
         }
         if (mouseButtonMask & SDL_BUTTON_RMASK)
         {
-            m_cameraDistance -= static_cast<float>(mouseX) * CameraZoomSpeed;
+            m_cameraDistance -= mouseX * CameraZoomSpeed;
         }
         if (mouseButtonMask & SDL_BUTTON_MMASK)
         {
@@ -346,8 +335,8 @@ bool Application::OnUpdate()
             const auto cameraUp = Geo::Normalise(rotation * Geo::Vector3{0.0f, 0.0f, 1.0f});
             const auto cameraRight = Geo::Normalise(Geo::Cross(cameraUp, cameraDirection));
 
-            m_cameraTarget += cameraRight * static_cast<float>(-mouseX) * CameraMoveSpeed;
-            m_cameraTarget += cameraUp * static_cast<float>(mouseY) * CameraMoveSpeed;
+            m_cameraTarget += cameraRight * (-mouseX) * CameraMoveSpeed;
+            m_cameraTarget += cameraUp * mouseY * CameraMoveSpeed;
         }
     }
     return true;

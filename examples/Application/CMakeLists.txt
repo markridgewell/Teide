@@ -6,9 +6,8 @@ td_add_application(
     SOURCES "${sources}"
     DEPENDENCIES
         Teide
-        SDL2::SDL2
-        SDL2::SDL2main
-        SDL2_image::SDL2_image
+        SDL3::SDL3
+        SDL3_image::SDL3_image
         fmt::fmt
         spdlog::spdlog
         assimp::assimp)

@@ -359,6 +359,6 @@ private:
 
 void BuildGraph(VulkanGraph& graph, VulkanDevice& device);
 std::string VisualizeGraph(VulkanGraph& graph);
-void ExecuteGraph(VulkanGraph& graph, VulkanDevice& device, Queue& queue);
+void ExecuteGraph(VulkanGraph graph, VulkanDevice& device, Queue& queue);
 
 } // namespace Teide

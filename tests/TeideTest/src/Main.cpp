@@ -102,8 +102,11 @@ bool AssertThrow(std::string_view msg, std::string_view expression, std::source_
     const auto* curTest = testing::UnitTest::GetInstance()->current_test_info();
     if (curTest)
     {
-        std::cout << "Current test: " << curTest->name() << "\n";
-        GTEST_NONFATAL_FAILURE_("Assert failed while executing test");
+        const std::string_view desc = msg.empty() ? std::string_view("Assert failed") : msg;
+        const auto message = fmt::format("{} ({}) during test {}", desc, expression, curTest->name());
+        GTEST_MESSAGE_AT_(
+            location.file_name(), static_cast<int>(location.line()), message.c_str(),
+            ::testing::TestPartResult::kNonFatalFailure);
     }
     PrintTrace(trace);
     throw AssertException{};
@@ -172,9 +175,7 @@ public:
         {
             if (result.file_name())
             {
-                fmt::print(
-                    "{}({}): \033[31massertion failed\033[39m: {}", result.file_name(), result.line_number(),
-                    result.message());
+                fmt::print("{}({}): {}", result.file_name(), result.line_number(), result.message());
             }
             else
             {
@@ -224,11 +225,12 @@ private:
 std::string GetVendorName(std::uint32_t id)
 {
     // from PCI-ID database at https://admin.pci-ids.ucw.cz/read/PC?restrict=
-    if (id == 0x1ae0)
+    switch (id)
     {
-        return "Google, Inc.";
+        case 0x1ae0: return "Google, Inc.";
+        case 0x10de: return "NVIDIA Corporation";
+        default: return to_string(vk::VendorId(id));
     }
-    return to_string(vk::VendorId(id));
 }
 
 std::string GetVersionString(std::uint32_t v)
@@ -266,11 +268,12 @@ int TracedMain(int argc, char** argv)
 {
     spdlog::flush_on(spdlog::level::err);
 
+    bool softwareRender = false;
     for (const std::string_view arg : std::span(argv, static_cast<std::size_t>(argc)).subspan<1>())
     {
         if (arg == "-s" || arg == "--sw-render")
         {
-            Teide::EnableSoftwareRendering();
+            softwareRender = true;
         }
         else if (arg == "-v" || arg == "--verbose")
         {
@@ -282,6 +285,11 @@ int TracedMain(int argc, char** argv)
             g_windowless = true;
             spdlog::info("Windowless environment indicated: skipping surface tests");
         }
+    }
+
+    if (softwareRender)
+    {
+        Teide::EnableSoftwareRendering();
     }
 
     DumpVulkanInfo();

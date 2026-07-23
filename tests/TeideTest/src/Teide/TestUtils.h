@@ -19,12 +19,18 @@
 
 inline bool g_windowless = false;
 
+vk::UniqueInstance CreateTestVulkanInstance(Teide::VulkanLoader& loader);
+
 Teide::VulkanDevicePtr CreateTestDevice();
 
 std::optional<std::uint32_t> GetTransferQueueIndex(vk::PhysicalDevice physicalDevice);
-Teide::PhysicalDevice FindPhysicalDevice(vk::Instance instance);
 
 std::vector<std::byte> HexToBytes(std::string_view hexString);
+
+auto GetPixelsSync(vk::Image image, Teide::TextureState state, Geo::Size2i size, Teide::Format format, Teide::VulkanDevice& device)
+    -> std::vector<Teide::uint32>;
+
+auto GetPixelsSync(Teide::Device& device, Teide::Surface& surface) -> std::optional<std::vector<Teide::uint32>>;
 
 namespace Teide
 {

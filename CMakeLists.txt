@@ -56,11 +56,16 @@ enable_testing()
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/tools/cmake/modules)
 set(SCRIPTS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/tools/cmake/scripts)
 
+find_package(ZLIB REQUIRED)
+if(NOT TARGET ZLIB::ZLIB)
+    add_library(ZLIB::ZLIB ALIAS ZLIB::ZLIBSTATIC)
+endif()
+
 find_package(Vulkan REQUIRED)
 find_package(VulkanMemoryAllocator REQUIRED)
 find_package(VulkanMemoryAllocator-Hpp REQUIRED)
-find_package(SDL2 REQUIRED)
-find_package(SDL2_image REQUIRED)
+find_package(SDL3 REQUIRED)
+find_package(SDL3_image REQUIRED)
 find_package(fmt REQUIRED)
 find_package(spdlog REQUIRED)
 find_package(glslang REQUIRED)
@@ -68,10 +73,6 @@ find_package(Taskflow REQUIRED)
 find_package(function2 REQUIRED)
 find_package(stdexec REQUIRED)
 find_package(RenderDoc)
-
-if(NOT TARGET SDL2_image::SDL2_image)
-    add_library(SDL2_image::SDL2_image ALIAS SDL2_image::SDL2_image-static)
-endif()
 
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
@@ -88,6 +89,10 @@ if("${VK_XML_PATH}" IS_NEWER_THAN "${GENERATED_INCLUDE_DIR}/vkex/vkex.hpp")
             "${Python_EXECUTABLE}" "${CMAKE_SOURCE_DIR}/tools/vkex/genvkex.py" -registry "${VK_XML_PATH}" -o
             "${GENERATED_INCLUDE_DIR}/vkex"
         COMMAND_ERROR_IS_FATAL ANY)
+endif()
+
+if(CMAKE_GENERATOR MATCHES "Ninja")
+    set_property(GLOBAL PROPERTY JOB_POOLS "mem_heavy=2")
 endif()
 
 add_compile_options("$<$<C_COMPILER_ID:MSVC>:/utf-8>")
@@ -111,7 +116,7 @@ td_add_library(
         Vulkan::Vulkan
         GPUOpen::VulkanMemoryAllocator
         VulkanMemoryAllocator-Hpp::VulkanMemoryAllocator-Hpp
-        SDL2::SDL2
+        SDL3::SDL3
         fmt::fmt
         Taskflow::Taskflow
         function2::function2
@@ -128,7 +133,6 @@ if(TEIDE_PRECOMPILED_HEADERS)
         <fmt/format.h>
         <spdlog/spdlog.h>
         <vulkan/vulkan.hpp>
-        <vulkan-memory-allocator-hpp/vk_mem_alloc.hpp>
         <vulkan/vulkan_extension_inspection.hpp>
         <algorithm>
         <bitset>
