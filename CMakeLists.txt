@@ -56,6 +56,11 @@ enable_testing()
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/tools/cmake/modules)
 set(SCRIPTS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/tools/cmake/scripts)
 
+find_package(ZLIB REQUIRED)
+if(NOT TARGET ZLIB::ZLIB)
+    add_library(ZLIB::ZLIB ALIAS ZLIB::ZLIBSTATIC)
+endif()
+
 find_package(Vulkan REQUIRED)
 find_package(VulkanMemoryAllocator REQUIRED)
 find_package(VulkanMemoryAllocator-Hpp REQUIRED)
@@ -84,6 +89,10 @@ if("${VK_XML_PATH}" IS_NEWER_THAN "${GENERATED_INCLUDE_DIR}/vkex/vkex.hpp")
             "${Python_EXECUTABLE}" "${CMAKE_SOURCE_DIR}/tools/vkex/genvkex.py" -registry "${VK_XML_PATH}" -o
             "${GENERATED_INCLUDE_DIR}/vkex"
         COMMAND_ERROR_IS_FATAL ANY)
+endif()
+
+if(CMAKE_GENERATOR MATCHES "Ninja")
+    set_property(GLOBAL PROPERTY JOB_POOLS "mem_heavy=2")
 endif()
 
 add_compile_options("$<$<C_COMPILER_ID:MSVC>:/utf-8>")
@@ -124,7 +133,6 @@ if(TEIDE_PRECOMPILED_HEADERS)
         <fmt/format.h>
         <spdlog/spdlog.h>
         <vulkan/vulkan.hpp>
-        <vulkan-memory-allocator-hpp/vk_mem_alloc.hpp>
         <vulkan/vulkan_extension_inspection.hpp>
         <algorithm>
         <bitset>

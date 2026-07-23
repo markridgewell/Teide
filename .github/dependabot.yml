@@ -1,22 +1,20 @@
-
 # Set update schedule for GitHub Actions
 
 version: 2
 updates:
-
-  - package-ecosystem: "github-actions"
-    directory: "/"
+  - package-ecosystem: 'github-actions'
+    directory: '/'
     schedule:
-      interval: "weekly"
+      interval: 'monthly'
     groups:
       github-actions:
         applies-to: version-updates
         dependency-type: production
 
-  - package-ecosystem: "vcpkg"
-    directory: "/"
+  - package-ecosystem: 'vcpkg'
+    directory: '/'
     schedule:
-      interval: "weekly"
+      interval: 'monthly'
     groups:
       vcpkg:
         applies-to: version-updates

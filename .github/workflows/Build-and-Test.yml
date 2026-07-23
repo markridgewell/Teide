@@ -44,13 +44,19 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        toolchain: [CL, ClangCL, GCC, Clang]
+        toolchain: [CL, CLCov, ClangCL, GCC, Clang]
         buildtype: [Debug, Release]
         sanitizer: [OFF]
 
         include:
         # Overrides
         - toolchain: CL
+          runner: windows-2022
+          preset: msvc2022
+          coverage: false
+          ccache: true
+
+        - toolchain: CLCov
           runner: windows-2022
           preset: msvc2022
           coverage: true
@@ -84,15 +90,17 @@ jobs:
           compiler: clang++-19
           sanitizer: ASAN
           name-suffix: -ASan
+          coverage: false
           ccache: true
 
-        - preset: make
-          toolchain: Clang
+        - toolchain: Clang
+          preset: make
           buildtype: Debug
           runner: ubuntu-24.04
           compiler: clang++-19
           sanitizer: UBSAN
           name-suffix: -UBSan
+          coverage: false
           ccache: true
 
     name: ${{startsWith(matrix.runner, 'windows') && 'Windows' || 'Linux'}}-${{matrix.buildtype}}-${{matrix.toolchain}}${{matrix.name-suffix}}
@@ -121,7 +129,7 @@ jobs:
         echo "inputs: $INPUTS_CONTEXT"
 
     - name: Checkout
-      uses: actions/checkout@v6.0.2
+      uses: actions/checkout@v7.0.1
       with:
         lfs: true
         submodules: false
@@ -131,6 +139,7 @@ jobs:
       uses: ./.github/actions/install-packages
       with:
         sanitizer: ${{matrix.sanitizer}}
+        cancel-on-cache-miss: true
 
     - name: Install tools
       uses: ./.github/actions/install-tools
@@ -140,13 +149,14 @@ jobs:
           ${{ matrix.ccache && inputs.ccache!='false' && 'ccache' || '' }}
           ${{ matrix.coverage && inputs.coverage!='false' && runner.os == 'Windows' && 'OpenCppCoverage' || '' }}
           ${{ runner.os == 'Linux' && 'vulkan-validationlayers' || '' }}
+          ${{ runner.os == 'Windows' && 'pyparsing' || '' }}
       env:
         GH_TOKEN: ${{ github.token }}
 
     - name: Install Vulkan SDK
       uses: humbletim/setup-vulkan-sdk@v1.2.1
       with:
-        vulkan-query-version: 1.3.243.0
+        vulkan-query-version: 1.4.350.0
         vulkan-components: Vulkan-Headers, Vulkan-Loader
         vulkan-use-cache: true
 
@@ -175,7 +185,7 @@ jobs:
       # I heard you like caches, so I put some caches in your caches
       id: ccache-restore
       if: matrix.ccache && inputs.ccache!='false'
-      uses: actions/cache/restore@v5.0.3
+      uses: actions/cache/restore@v6.1.0
       with:
         path: ${{ env.CCACHE_DIR }}
         key: ${{ steps.ccache.outputs.key }}
@@ -184,9 +194,10 @@ jobs:
     - name: Configure CMake
       run: >
         cmake --preset ${{matrix.preset}}
-        -DTEIDE_USE_VCPKG=${{!steps.packages.outputs.success}}
+        -DTEIDE_USE_VCPKG=FALSE
         -DCMAKE_PREFIX_PATH=${{steps.packages.outputs.install-dir}}
         -DCMAKE_LIBRARY_PATH=${{steps.packages.outputs.install-dir}}/lib
+        -DCMAKE_FIND_PACKAGE_PREFER_CONFIG=TRUE
         -DTEIDE_CCACHE=${{env.use_ccache}}
         -DTEIDE_PRECOMPILED_HEADERS=${{!env.use_ccache}}
         -DTEIDE_UNIT_TEST_SW_RENDER=ON
@@ -200,7 +211,7 @@ jobs:
 
     - name: Save CMake trace
       if: always() && inputs.profile-cmake
-      uses: actions/upload-artifact@v7.0.0
+      uses: actions/upload-artifact@v7.0.1
       with:
         name: CMakeTrace-${{env.job_name}}
         path: ./CMakeTrace.json
@@ -232,7 +243,7 @@ jobs:
 
     - name: Save ccache dir
       if: matrix.ccache && inputs.ccache!='false'
-      uses: actions/cache/save@v5.0.3
+      uses: actions/cache/save@v6.1.0
       with:
         path: ${{ env.CCACHE_DIR }}
         key: ${{ steps.ccache-restore.outputs.cache-primary-key }}
@@ -258,7 +269,7 @@ jobs:
 
     - name: Save render test output
       if: failure() && steps.test.outcome == 'failure'
-      uses: actions/upload-artifact@v7.0.0
+      uses: actions/upload-artifact@v7.0.1
       with:
         name: RenderTestOutput-${{env.job_name}}
         path: ${{env.RT_OUTPUT_DIR}}
@@ -277,14 +288,14 @@ jobs:
 
     - name: Save test log
       if: failure() && steps.test.outcome == 'failure'
-      uses: actions/upload-artifact@v7.0.0
+      uses: actions/upload-artifact@v7.0.1
       with:
         name: TestLog-${{env.job_name}}
         path: build/${{matrix.preset}}/Testing/Temporary/LastTest.log
 
     - name: Upload coverage report
       if: matrix.coverage && inputs.coverage != 'false'
-      uses: codecov/codecov-action@v5.5.2
+      uses: codecov/codecov-action@v7.0.0
       with:
         directory: build/${{matrix.preset}}/coverage/output
         fail_ci_if_error: false
@@ -293,7 +304,7 @@ jobs:
 
     - name: Save coverage report
       if: matrix.coverage && inputs.coverage != 'false'
-      uses: actions/upload-artifact@v7.0.0
+      uses: actions/upload-artifact@v7.0.1
       with:
         name: CoverageReport-${{env.job_name}}
         path: build/${{matrix.preset}}/coverage/output
