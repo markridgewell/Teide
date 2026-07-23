@@ -129,7 +129,7 @@ jobs:
         echo "inputs: $INPUTS_CONTEXT"
 
     - name: Checkout
-      uses: actions/checkout@v7.0.0
+      uses: actions/checkout@v7.0.1
       with:
         lfs: true
         submodules: false
