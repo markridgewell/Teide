@@ -25,6 +25,18 @@ using namespace Teide;
 
 namespace
 {
+class MockSurface : public Surface
+{
+public:
+    MOCK_METHOD(Geo::Size2i, GetExtent, (), (const));
+    MOCK_METHOD(Format, GetColorFormat, (), (const));
+    MOCK_METHOD(Format, GetDepthFormat, (), (const));
+    MOCK_METHOD(uint32, GetSampleCount, (), (const));
+    MOCK_METHOD(FramebufferLayout, GetFramebufferLayout, (), (const));
+
+    MOCK_METHOD(void, OnResize, ());
+};
+
 std::string MakeDotURL(std::string_view dot)
 {
     std::string ret = "https://quickchart.io/graphviz?graph=";
@@ -51,11 +63,11 @@ std::string FormatDot(const std::string& dot)
     return dot + "\nGraph: " + MakeDotURL(dot);
 }
 
-class VulkanGraphTest : public testing::Test
+class Base : public testing::Test
 {
 public:
-    VulkanGraphTest() :
-        m_device{CreateTestDevice()}, m_emptyParameters{m_device->CreateParameterBlock({}, "EmptyParams")}
+    explicit Base(VulkanDevicePtr device) :
+        m_device{std::move(device)}, m_emptyParameters{m_device->CreateParameterBlock({}, "EmptyParams")}
     {}
 
 protected:
@@ -137,6 +149,12 @@ private:
     ParameterBlock m_emptyParameters;
 };
 
+class VulkanGraphTest : public Base
+{
+public:
+    VulkanGraphTest() : Base(CreateTestDevice()) {}
+};
+
 void PrintDependencies(testing::MatchResultListener& os, std::span<const VulkanGraph::ResourceNodeRef> dependencies)
 {
     os << '(';
@@ -158,6 +176,13 @@ MATCHER(HasNoDependencies, "")
     *result_listener << "where dependencies are: ";
     PrintDependencies(*result_listener, arg.dependencies);
     return arg.dependencies.empty();
+}
+
+MATCHER(HasNoInputs, "")
+{
+    *result_listener << "where inputs are: ";
+    PrintDependencies(*result_listener, arg.inputs);
+    return arg.inputs.empty();
 }
 
 MATCHER_P(HasDependency, dep, "")
@@ -240,8 +265,7 @@ TEST_F(VulkanGraphTest, BuildingGraphWithOneDispatchNodeHasNoEffect)
 
     BuildGraph(graph, *m_device);
 
-    ASSERT_THAT(graph.dispatchNodes, ElementsAre(HasNoDependencies()));
-    EXPECT_THAT(graph.dispatchNodes[0].index, Eq(0));
+    ASSERT_THAT(graph.dispatchNodes, ElementsAre(HasNoInputs()));
     ASSERT_THAT(graph.textureNodes, ElementsAre(HasSource(dispatchNode1)));
 }
 
@@ -303,8 +327,9 @@ TEST_F(VulkanGraphTest, BuildingGraphWithThreeDependentRenderNodesAddsConnection
 TEST_F(VulkanGraphTest, BuildingGraphWithOnePresentNodeHasNoEffect)
 {
     VulkanGraph graph;
+    StrictMock<MockSurface> surface;
     const auto tex = graph.AddTextureNode(CreateDummyTexture("tex1"));
-    graph.AddPresentNode(tex);
+    graph.AddPresentNode(surface, tex);
 
     BuildGraph(graph, *m_device);
 
@@ -433,9 +458,10 @@ constexpr auto PresentDot = R"--(strict digraph {
 TEST_F(VulkanGraphTest, VisualizingGraphWithPresentNode)
 {
     VulkanGraph graph;
+    StrictMock<MockSurface> surface;
     const auto tex = graph.AddTextureNode(CreateDummyTexture("tex"));
     graph.AddRenderNode({.name = "render1"}, tex, std::nullopt);
-    graph.AddPresentNode(tex);
+    graph.AddPresentNode(surface, tex);
 
     const auto dot = VisualizeGraph(graph);
 
@@ -570,6 +596,47 @@ TEST_F(VulkanGraphTest, ExecutingGraphWithRenderNodeWithColorAndDepthAttachments
         .pixels = {std::byte{0x00}, std::byte{0x00}},
     };
     EXPECT_THAT(depthData, Eq(depthExpected));
+}
+
+class VulkanGraphSurfaceTest : public Base
+{
+public:
+    static constexpr auto SurfaceSize = Geo::Size2i{800, 600};
+
+    VulkanGraphSurfaceTest() : VulkanGraphSurfaceTest(CreateTestDeviceAndSurface(SurfaceSize)) {}
+
+    explicit VulkanGraphSurfaceTest(VulkanDeviceAndSurface ds) :
+        Base(std::move(ds.device)), m_surface{std::move(ds.surface)}
+    {}
+
+protected:
+    SurfacePtr m_surface; // NOLINT(cppcoreguidelines-non-private-member-variables-in-classes)
+};
+
+TEST_F(VulkanGraphSurfaceTest, ExecutingGraphWithPresentNode)
+{
+    VulkanGraph graph;
+    const auto tex1 = graph.AddTextureNode(CreateDummyTexture("tex1"));
+    graph.AddRenderNode({
+        .name = "clearMagenta",
+        .clearState = {
+            .colorValue = Color{1.0f, 0.0f, 1.0f, 1.0f},
+        },
+    }, tex1, std::nullopt);
+    graph.AddPresentNode(*m_surface, tex1);
+    spdlog::info(VisualizeGraph(graph));
+    spdlog::info(MakeDotURL(VisualizeGraph(graph)));
+    auto queue = Queue(m_device->GetVulkanDevice(), m_device->GetGraphicsQueue());
+
+    ExecuteGraph(std::move(graph), *m_device, queue);
+    queue.WaitForTasks();
+
+    const auto pixels = GetPixelsSync(*m_device, *m_surface);
+    if (!pixels.has_value())
+    {
+        GTEST_SKIP() << "Unable to retrieve pixels from surface, skipping rest of test";
+    }
+    EXPECT_THAT(pixels.value(), Each(0xffff00ff));
 }
 
 } // namespace

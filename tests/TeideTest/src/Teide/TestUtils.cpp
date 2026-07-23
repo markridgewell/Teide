@@ -37,6 +37,31 @@ Teide::VulkanDevicePtr CreateTestDevice()
     return std::make_unique<VulkanDevice>(std::move(loader), std::move(instance), std::move(physicalDevice));
 }
 
+VulkanDeviceAndSurface CreateTestDeviceAndSurface(Geo::Size2i windowSize)
+{
+    using namespace Teide;
+
+    VulkanLoader loader;
+    constexpr Teide::InstanceExtensionName RequiredExtensions[] = {
+        "VK_EXT_headless_surface",
+    };
+    vk::UniqueInstance instance = CreateInstance(
+        loader,
+        {
+            .requiredExtensions = RequiredExtensions,
+            .optionalExtensions = OptionalExtensions,
+        });
+    auto physicalDevice = FindPhysicalDevice(instance.get());
+
+    vk::UniqueSurfaceKHR vksurface = instance->createHeadlessSurfaceEXTUnique({});
+
+    auto device = std::make_unique<VulkanDevice>(std::move(loader), std::move(instance), std::move(physicalDevice));
+
+    auto surface = device->CreateSurface(std::move(vksurface), windowSize, false);
+
+    return {.device = std::move(device), .surface = std::move(surface)};
+}
+
 std::optional<std::uint32_t> GetTransferQueueIndex(vk::PhysicalDevice physicalDevice)
 {
     std::uint32_t i = 0;

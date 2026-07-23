@@ -5,6 +5,7 @@
 
 #include "GeoLib/Vector.h"
 #include "Teide/Surface.h"
+#include "vulkan/vulkan.hpp"
 
 #include <array>
 #include <optional>
@@ -22,6 +23,7 @@ struct SurfaceImage
     VulkanSurface* surface;
     vk::SwapchainKHR swapchain;
     uint32_t imageIndex = 0;
+    vk::ImageView imageView;
     vk::Semaphore imageAvailable;
     Framebuffer framebuffer;
 };
@@ -42,12 +44,13 @@ public:
     void OnResize() override;
 
     // Internal
-    std::optional<SurfaceImage> AcquireNextImage(vk::Fence fence);
+    std::optional<SurfaceImage> AcquireNextImage();
     void PresentImage(const SurfaceImage& image, vk::Semaphore waitSemaphore);
 
     vk::SurfaceKHR GetVulkanSurface() const { return m_surface.get(); }
     vk::RenderPass GetVulkanRenderPass() const { return m_renderPass.get(); }
 
+    vk::ImageUsageFlags GetSupportedImageUsage() const { return m_imageUsage; }
     vk::Image GetLastPresentedImage() const { return m_lastPresentedImage; }
 
 private:
@@ -65,6 +68,7 @@ private:
     vk::UniqueSurfaceKHR m_surface;
     Geo::Size2i m_surfaceExtent;
     vk::UniqueSwapchainKHR m_swapchain;
+    vk::ImageUsageFlags m_imageUsage;
     std::vector<vk::Image> m_swapchainImages;
     std::vector<vk::UniqueImageView> m_swapchainImageViews;
     FramebufferLayout m_framebufferLayout;
@@ -80,7 +84,7 @@ private:
 
     std::array<vk::UniqueSemaphore, MaxFramesInFlight> m_imageAvailable;
     uint32_t m_nextSemaphoreIndex = 0;
-    std::vector<vk::Fence> m_imagesInFlight;
+    std::vector<vk::UniqueFence> m_imagesInFlight;
     vk::Image m_lastPresentedImage;
 };
 

@@ -503,7 +503,7 @@ std::optional<SurfaceImage> VulkanRenderer::AddSurfaceToPresent(VulkanSurface& s
             return *it;
         }
 
-        if (const auto result = surface.AcquireNextImage(m_frameResources.Current().inFlightFence.get()))
+        if (const auto result = surface.AcquireNextImage())
         {
             return surfacesToPresent.emplace_back(*result);
         }

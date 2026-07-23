@@ -21,7 +21,14 @@ inline bool g_windowless = false;
 
 vk::UniqueInstance CreateTestVulkanInstance(Teide::VulkanLoader& loader);
 
+struct VulkanDeviceAndSurface
+{
+    Teide::VulkanDevicePtr device;
+    Teide::SurfacePtr surface;
+};
+
 Teide::VulkanDevicePtr CreateTestDevice();
+VulkanDeviceAndSurface CreateTestDeviceAndSurface(Geo::Size2i windowSize);
 
 std::optional<std::uint32_t> GetTransferQueueIndex(vk::PhysicalDevice physicalDevice);
 

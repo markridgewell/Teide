@@ -11,6 +11,7 @@
 #include <fmt/core.h>
 #include <fmt/format.h>
 #include <vkex/vkex.hpp>
+#include <vulkan/vulkan_core.h>
 #include <vulkan/vulkan_enums.hpp>
 #include <vulkan/vulkan_handles.hpp>
 
@@ -305,7 +306,7 @@ void BuildGraph(VulkanGraph& graph, VulkanDevice& device)
 
     for (const auto& node : graph.dispatchNodes)
     {
-        for (const auto dep : node.dependencies)
+        for (const auto dep : node.inputs)
         {
             const auto state = TextureState{
                 .layout = vk::ImageLayout::eShaderReadOnlyOptimal,
@@ -381,7 +382,7 @@ std::string VisualizeGraph(VulkanGraph& graph)
         {
             fmt::format_to(out, "    {} -> {}\n", node.name, graph.GetNodeName(input));
         }
-        for (const auto& dep : node.dependencies)
+        for (const auto& dep : node.inputs)
         {
             fmt::format_to(out, "    {} -> {}\n", graph.GetNodeName(dep), node.name);
         }
@@ -396,64 +397,88 @@ std::string VisualizeGraph(VulkanGraph& graph)
     return ret;
 }
 
-struct Commands
+void VulkanGraph::CreateResources(VulkanDevice& device)
 {
-    vk::UniqueCommandPool pool;
-    std::vector<vk::CommandBuffer> cmdBuffers;
+    // Set correct texture properties for write node targets
+    for (const auto& writeNode : writeNodes)
+    {
+        auto& targetNode = Get<VulkanGraph::TextureNode>(writeNode.target);
+        auto& targetProps = device.GetImpl(targetNode.texture).properties;
+        const auto& sourceData = Get<VulkanGraph::TextureDataNode>(writeNode.source).data;
+        targetProps.size = sourceData.size;
+        targetProps.format = sourceData.format;
+        targetProps.mipLevelCount = sourceData.mipLevelCount;
+        targetProps.sampleCount = sourceData.sampleCount;
+    }
+
+    for (const auto& presentNode : presentNodes)
+    {
+        const auto& surface = presentNode.surface;
+        auto& surfaceImpl = device.GetImpl(presentNode.surface);
+        const auto surfaceImage = surfaceImpl.AcquireNextImage();
+        if (!surfaceImage.has_value())
+        {
+            continue;
+        }
+
+        const auto surfaceUsage = surfaceImpl.GetSupportedImageUsage();
+        auto& sourceNode = Get<VulkanGraph::TextureNode>(presentNode.source);
+
+        // Node can be aliased to acquired swapchain image if it:
+        //  * has no external references (i.e. is transient)
+        //  * has the same dimensions as the swapchain
+        //  * has a compatible format with the swapchain
+        //  * has no usages that are not supported by the swapchain
+
+        if ((sourceNode.texture.GetSize() == surface.GetExtent())
+            && (sourceNode.texture.GetFormat() == surface.GetColorFormat())
+            && ((sourceNode.usage & surfaceUsage) == surfaceUsage))
+        {
+            auto& textureImpl = device.GetImpl(sourceNode.texture);
+            textureImpl.image.release();
+            // textureImpl.imageView = surfaceImage->imageView;
+        }
+    }
+
+    for (VulkanGraph::TextureNode& node : textureNodes)
+    {
+        VulkanTexture& texture = device.GetImpl(node.texture);
+        texture.usage = node.usage;
+        device.CreateTextureImpl(texture);
+    }
 };
 
-namespace
+auto VulkanGraph::RecordCommands(VulkanDevice& device) -> Commands
 {
-    auto RecordCommands(VulkanGraph& graph, VulkanDevice& device) -> Commands
-    {
-        Commands ret;
+    Commands ret;
 
-        // Set correct texture properties for write node targets
-        for (const auto& writeNode : graph.writeNodes)
-        {
-            auto& targetNode = graph.Get<VulkanGraph::TextureNode>(writeNode.target);
-            auto& targetProps = device.GetImpl(targetNode.texture).properties;
-            const auto& sourceData = graph.Get<VulkanGraph::TextureDataNode>(writeNode.source).data;
-            targetProps.size = sourceData.size;
-            targetProps.format = sourceData.format;
-            targetProps.mipLevelCount = sourceData.mipLevelCount;
-            targetProps.sampleCount = sourceData.sampleCount;
-        }
+    // Record command buffers
+    auto vkdevice = device.GetVulkanDevice();
+    ret.pool = vkdevice.createCommandPoolUnique({
+        .flags = vk::CommandPoolCreateFlagBits::eTransient,
+        .queueFamilyIndex = device.GetQueueFamilies().graphicsFamily,
+    });
 
-        // Create transient textures
-        for (VulkanGraph::TextureNode& node : graph.textureNodes)
-        {
-            VulkanTexture& texture = device.GetImpl(node.texture);
-            texture.usage = node.usage;
-            device.CreateTextureImpl(texture);
-        }
+    ret.cmdBuffers
+        = vkdevice.allocateCommandBuffers({.commandPool = ret.pool.get(), .commandBufferCount = commandNodeCount});
 
-        // Record command buffers
-        auto vkdevice = device.GetVulkanDevice();
-        ret.pool = vkdevice.createCommandPoolUnique({
-            .flags = vk::CommandPoolCreateFlagBits::eTransient,
-            .queueFamilyIndex = device.GetQueueFamilies().graphicsFamily,
-        });
+    ForEachCommandNode([&](auto& node) {
+        auto& cmdBuffer = ret.cmdBuffers[node.index];
+        cmdBuffer.begin({.flags = {vk::CommandBufferUsageFlagBits::eOneTimeSubmit}});
+        node.Process(*this, device, cmdBuffer);
+        cmdBuffer.end();
+    });
 
-        ret.cmdBuffers = vkdevice.allocateCommandBuffers(
-            {.commandPool = ret.pool.get(), .commandBufferCount = graph.commandNodeCount});
-
-        graph.ForEachCommandNode([&](auto& node) {
-            auto& cmdBuffer = ret.cmdBuffers[node.index];
-            cmdBuffer.begin({.flags = {vk::CommandBufferUsageFlagBits::eOneTimeSubmit}});
-            node.Process(graph, device, cmdBuffer);
-            cmdBuffer.end();
-        });
-
-        return ret;
-    }
-} // namespace
+    return ret;
+}
 
 void ExecuteGraph(VulkanGraph graph, VulkanDevice& device, Queue& queue)
 {
     BuildGraph(graph, device);
 
-    auto [cmdPool, cmdBuffers] = RecordCommands(graph, device);
+    graph.CreateResources(device);
+
+    auto [cmdPool, cmdBuffers] = graph.RecordCommands(device);
 
     queue.Submit(cmdBuffers, [&device, graph = std::move(graph), pool = std::move(cmdPool)] mutable {
         for (auto& readNode : graph.readNodes)
