@@ -294,6 +294,9 @@ int TracedMain(int argc, char** argv)
 
     DumpVulkanInfo();
 
+    testing::FLAGS_gtest_break_on_failure = Teide::IsDebuggerAttached();
+    testing::FLAGS_gtest_catch_exceptions = false; // Don't catch exceptions because cpptrace will do that for us.
+
     testing::InitGoogleTest(&argc, argv);
 
     if (spdlog::get_level() > spdlog::level::debug)
@@ -312,9 +315,6 @@ int TracedMain(int argc, char** argv)
     {
         Teide::SetAssertHandler(&AssertThrow);
     }
-
-    testing::FLAGS_gtest_break_on_failure = Teide::IsDebuggerAttached();
-    testing::FLAGS_gtest_catch_exceptions = false; // Don't catch exceptions because cpptrace will do that for us.
 
     return RUN_ALL_TESTS();
 }

@@ -23,6 +23,12 @@ class DeviceTest : public testing::Test
 public:
     DeviceTest() : m_device{CreateTestDevice()} {}
 
+    void SetUp() override
+    {
+        int* p = nullptr;
+        *p = 1;
+    }
+
 protected:
     ShaderData CompileShader(const ShaderSourceData& data) { return m_shaderCompiler.Compile(data); }
     KernelData CompileKernel(const KernelSourceData& data) { return m_shaderCompiler.Compile(data); }
