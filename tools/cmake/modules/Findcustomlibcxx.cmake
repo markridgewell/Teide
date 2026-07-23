@@ -91,8 +91,8 @@ if(NOT customlibcxx_POPULATED)
     # message("## TEST ##") execute_process(COMMAND ninja -C "${BINARY_DIR}" check-cxx check-cxxabi check-unwind
     # COMMAND_ERROR_IS_FATAL ANY)
     message("## INSTALL ##")
-    execute_process(COMMAND ninja -C "${BINARY_DIR}" install-cxx install-cxxabi install-unwind
-                    COMMAND_ERROR_IS_FATAL ANY)
+    execute_process(
+        COMMAND ninja -C "${BINARY_DIR}" install-cxx install-cxxabi install-unwind COMMAND_ERROR_IS_FATAL ANY)
 endif()
 
 set(LIBCXX_DIR

@@ -29,5 +29,7 @@ string(
     CMAKE_CXX_FLAGS
     " -fsanitize=memory -fsanitize-memory-track-origins -ggdb -fno-omit-frame-pointer -D_LIBCPP_ENABLE_EXPERIMENTAL ${EXTRA_CXX_FLAGS}"
 )
-string(APPEND CMAKE_LINKER_FLAGS
-       " -fsanitize=memory -fsanitize-memory-track-origins -ggdb -fno-omit-frame-pointer ${EXTRA_CXX_FLAGS}")
+string(
+    APPEND
+    CMAKE_LINKER_FLAGS
+    " -fsanitize=memory -fsanitize-memory-track-origins -ggdb -fno-omit-frame-pointer ${EXTRA_CXX_FLAGS}")
