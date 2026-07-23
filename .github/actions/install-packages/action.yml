@@ -29,7 +29,7 @@ runs:
       id: get-key
       uses: ./.github/actions/get-packages-cache-key
       with:
-        sanitizer: ${{ matrix.sanitizer }}
+        sanitizer: ${{ inputs.sanitizer }}
 
     - name: Restore packages from cache
       id: cache
@@ -51,6 +51,11 @@ runs:
           https://api.github.com/repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/cancel
         echo "Workflow run cancelled because fail-on-cache-miss was set to true"
         sleep inf
+
+    - name: Cache libc++
+      uses: ./.github/actions/cache-libc++
+      with:
+        sanitizer: ${{ inputs.sanitizer }}
 
     - name: Determine install directory
       if: steps.cache.outputs.cache-hit

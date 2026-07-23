@@ -44,10 +44,16 @@ jobs:
           c-compiler: clang-19
           cpp-compiler: clang++-19
 
+        - runner: ubuntu-latest
+          preset: make
+          c-compiler: clang-18
+          cpp-compiler: clang++-18
+          sanitizer: MSAN
+
     outputs:
       cache-hit: ${{ steps.cache.outputs.cache-hit }}
 
-    name: ${{startsWith(matrix.runner, 'windows') && 'Windows' || 'Linux'}}
+    name: ${{startsWith(matrix.runner, 'windows') && 'Windows' || 'Linux'}}${{matrix.sanitizer != 'OFF' && matrix.sanitizer || ''}}
     runs-on: ${{matrix.runner}}
 
     env:
@@ -106,6 +112,12 @@ jobs:
           -password "${{ secrets.GITHUB_TOKEN }}"
         nuget setapikey "${{ secrets.GITHUB_TOKEN }}" \
           -source "${{ env.FEED_URL }}"
+
+    - name: Cache libc++
+      if: steps.cache.outputs.cache-hit != 'true' || inputs.ignore-cache
+      uses: ./.github/actions/cache-libc++
+      with:
+        sanitizer: ${{ matrix.sanitizer }}
 
     - name: Configure CMake
       if: steps.cache.outputs.cache-hit != 'true' || inputs.ignore-cache

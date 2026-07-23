@@ -35,6 +35,7 @@ runs:
         config_hash=$(cat $config_files | sha256sum | cut -f1 -d" ")
         echo "config_hash = $config_hash"
 
-        key="vcpkg-export-$vcpkg_triplet-$config_hash"
+        suffix="${{matrix.sanitizer != 'OFF' && format('-{0}', matrix.sanitizer) || ''}}"
+        key="vcpkg-export-${vcpkg_triplet}${suffix,,}-$config_hash"
         echo "key = $key"
         echo "cache-key=$key" >> $GITHUB_OUTPUT
