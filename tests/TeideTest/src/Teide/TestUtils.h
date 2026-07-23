@@ -1,13 +1,13 @@
 
 #pragma once
 
+#include "Teide/Assert.h"
 #include "Teide/Visitable.h"
 #include "Teide/Vulkan.h"
 #include "Teide/VulkanDevice.h"
 
 #include <gtest/gtest.h>
 
-#include <concepts>
 #include <cstddef>
 #include <cstdint>
 #include <optional>
@@ -19,12 +19,18 @@
 
 inline bool g_windowless = false;
 
+vk::UniqueInstance CreateTestVulkanInstance(Teide::VulkanLoader& loader);
+
 Teide::VulkanDevicePtr CreateTestDevice();
 
 std::optional<std::uint32_t> GetTransferQueueIndex(vk::PhysicalDevice physicalDevice);
-Teide::PhysicalDevice FindPhysicalDevice(vk::Instance instance);
 
 std::vector<std::byte> HexToBytes(std::string_view hexString);
+
+auto GetPixelsSync(vk::Image image, Teide::TextureState state, Geo::Size2i size, Teide::Format format, Teide::VulkanDevice& device)
+    -> std::vector<Teide::uint32>;
+
+auto GetPixelsSync(Teide::Device& device, Teide::Surface& surface) -> std::optional<std::vector<Teide::uint32>>;
 
 namespace Teide
 {
@@ -162,14 +168,48 @@ void PrintTo(const std::span<T, N>& span, std::ostream* os)
 }
 } // namespace std
 
+#define NOP(statement)                                                                                                 \
+    while (false)                                                                                                      \
+    {                                                                                                                  \
+        statement;                                                                                                     \
+    }
+
 #ifdef NDEBUG
-#    define EXPECT_UNREACHABLE(statement)                                                                              \
-        if (false)                                                                                                     \
-        {                                                                                                              \
-            statement;                                                                                                 \
-        }
+#    define EXPECT_UNREACHABLE(statement) NOP(statement)
 #else
 #    define EXPECT_UNREACHABLE(statement) EXPECT_THROW(statement, UnreachableError)
+#endif
+
+#if !defined(TEIDE_ASSERTS_ENABLED)
+#    define EXPECT_ASSERTION(statement) NOP(statement)
+#else
+namespace Teide::detail
+{
+struct ExpectedAssertException
+{
+    std::string_view msg;
+    std::string_view expression;
+    std::source_location location;
+};
+
+inline bool AssertThrow(std::string_view msg, std::string_view expression, std::source_location location)
+{
+    throw ExpectedAssertException{
+        .msg = msg,
+        .expression = expression,
+        .location = location,
+    };
+}
+
+} // namespace Teide::detail
+
+#    define EXPECT_ASSERTION(statement)                                                                                \
+        do /*NOLINT*/                                                                                                  \
+        {                                                                                                              \
+            ::Teide::PushAssertHandler(&::Teide::detail::AssertThrow);                                                 \
+            EXPECT_THROW(statement, ::Teide::detail::ExpectedAssertException);                                         \
+            ::Teide::PopAssertHandler();                                                                               \
+        } while (false)
 #endif
 
 #define CONSTEXPR_EXPECT_EQ(a, b)                                                                                      \
@@ -179,6 +219,7 @@ void PrintTo(const std::span<T, N>& span, std::ostream* os)
 #define CONSTEXPR_EXPECT_NE(a, b)                                                                                      \
     static_assert((a) != (b));                                                                                         \
     EXPECT_NE(a, b);
+
 
 // Implements the polymorphic NotNull() matcher, which matches any raw or smart
 // pointer that is not NULL.

@@ -1,20 +1,18 @@
 
 #pragma once
 
-#include "VulkanConfig.h"
-
 #include "GeoLib/Vector.h"
 #include "Teide/Definitions.h"
 #include "Teide/PipelineData.h"
 #include "Teide/ShaderData.h"
 #include "Teide/TextureData.h"
+#include "Teide/VulkanMemAlloc.h"
 
 #include <fmt/format.h>
 
 #include <chrono>
 #include <span>
 #include <string_view>
-#include <unordered_set>
 
 struct SDL_Window;
 
@@ -29,30 +27,23 @@ struct fmt::formatter<vk::ArrayWrapper1D<char, N>> : formatter<std::string_view>
 
 namespace Teide
 {
+constexpr auto VulkanApiVersion = VK_API_VERSION_1_3;
 
 struct FramebufferLayout;
 class VulkanLoader;
 enum class PrimitiveTopology : uint8;
 enum class VertexClass : uint8;
 
+inline std::string_view GetExtensionName(const vk::ExtensionProperties& obj)
+{
+    return obj.extensionName;
+}
+
 struct QueueFamilies
 {
     uint32 graphicsFamily = 0;
     uint32 transferFamily = 0;
     std::optional<uint32> presentFamily;
-};
-
-struct PhysicalDevice
-{
-    explicit PhysicalDevice(vk::PhysicalDevice pd, const QueueFamilies& qf);
-
-    vk::PhysicalDevice physicalDevice;
-    vk::PhysicalDeviceProperties properties;
-    vk::PhysicalDeviceDepthStencilResolveProperties depthStencilResolveProperties;
-    std::vector<const char*> requiredExtensions;
-
-    QueueFamilies queueFamilies;
-    std::vector<uint32> queueFamilyIndices;
 };
 
 struct RenderPassInfo
@@ -80,35 +71,20 @@ struct Framebuffer
 
 enum class FramebufferUsage : uint8
 {
+    Attachment,
     ShaderInput,
     PresentSrc
 };
 
-enum class Required : bool
-{
-    False = false,
-    True = true
-};
-
-void EnableVulkanLayer(
-    std::vector<const char*>& enabledLayers, const std::vector<vk::LayerProperties>& availableLayers,
-    const char* layerName, Required required);
-void EnableVulkanExtension(
-    std::vector<const char*>& enabledExtensions, const std::vector<vk::ExtensionProperties>& availableExtensions,
-    const char* extensionName, Required required);
-
 vk::DebugUtilsMessengerCreateInfoEXT GetDebugCreateInfo();
 
-vk::UniqueInstance CreateInstance(VulkanLoader& loader, SDL_Window* window = nullptr);
-vk::UniqueDevice CreateDevice(VulkanLoader& loader, const PhysicalDevice& physicalDevice);
 vma::UniqueAllocator
 CreateAllocator(VulkanLoader& loader, vk::Instance instance, vk::Device device, vk::PhysicalDevice physicalDevice);
 
 template <class T>
 inline uint32_t size32(const T& cont)
 {
-    using std::size;
-    return static_cast<uint32_t>(size(cont));
+    return static_cast<uint32_t>(std::ranges::size(cont));
 }
 
 void TransitionImageLayout(
@@ -116,6 +92,19 @@ void TransitionImageLayout(
     vk::ImageLayout newLayout, vk::PipelineStageFlags srcStageMask, vk::PipelineStageFlags dstStageMask);
 
 vk::UniqueCommandPool CreateCommandPool(uint32_t queueFamilyIndex, vk::Device device, const char* debugName = "");
+
+template <class... Args>
+std::string DebugFormat(fmt::format_string<Args...> fmt [[maybe_unused]], const Args&... args [[maybe_unused]])
+{
+    if constexpr (IsDebugBuild)
+    {
+        return fmt::vformat(fmt.get(), fmt::make_format_args(args...));
+    }
+    else
+    {
+        return "";
+    }
+}
 
 void RegisterDebugName(uint64 handle, const char* debugName);
 const char* GetRegisteredDebugName(uint64 handle);
@@ -149,11 +138,11 @@ void SetDebugName(vk::UniqueHandle<Type, Dispatch>& handle [[maybe_unused]], con
 template <class Type, class Dispatch, class... FormatArgs>
 void SetDebugName(
     vk::UniqueHandle<Type, Dispatch>& handle [[maybe_unused]],
-    const fmt::format_string<FormatArgs...>& format [[maybe_unused]], FormatArgs&&... fmtArgs [[maybe_unused]])
+    fmt::format_string<FormatArgs...> format [[maybe_unused]], const FormatArgs&... fmtArgs [[maybe_unused]])
 {
     if constexpr (IsDebugBuild)
     {
-        const auto string = fmt::vformat(format, fmt::make_format_args(std::forward<FormatArgs>(fmtArgs)...));
+        const auto string = DebugFormat(format, fmtArgs...);
         SetDebugName(handle, string.c_str());
     }
 }
@@ -165,19 +154,6 @@ void GenerateDebugNames(R& handles, const char* nameBase)
         SetDebugName(elem, "{}{}", nameBase, index);
         index++;
     });
-}
-
-template <class... Args>
-std::string DebugFormat(fmt::format_string<Args...> fmt [[maybe_unused]], Args&&... args [[maybe_unused]])
-{
-    if constexpr (IsDebugBuild)
-    {
-        return fmt::vformat(fmt, fmt::make_format_args(std::forward<Args>(args)...));
-    }
-    else
-    {
-        return "";
-    }
 }
 
 class VulkanError : public vk::Error, public std::exception
@@ -238,15 +214,6 @@ template <class T>
 auto MakeHandle(T&& object)
 {
     return std::make_shared<typename std::remove_const_t<T>>(std::forward<T>(object));
-}
-
-inline std::string_view GetLayerName(const vk::LayerProperties& obj)
-{
-    return obj.layerName;
-}
-inline std::string_view GetExtensionName(const vk::ExtensionProperties& obj)
-{
-    return obj.extensionName;
 }
 
 } // namespace Teide

@@ -25,12 +25,12 @@ env:
 jobs:
   cppcheck:
     name: Cppcheck
-    runs-on: windows-latest
+    runs-on: windows-2022
     env: { preset: msvc2022 }
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v6.0.2
+      uses: actions/checkout@v7.0.0
       with:
         fetch-depth: ${{ github.event_name == 'pull_request' && 2 || 0 }}
         submodules: true
@@ -50,7 +50,7 @@ jobs:
       if: steps.get-changes.outputs.changed-files != ''
       uses: ./.github/actions/install-tools
       with:
-        extra-packages: cppcheck
+        extra-packages: cppcheck pyparsing
 
     - name: Configure CMake
       if: steps.get-changes.outputs.changed-files != ''
@@ -59,6 +59,8 @@ jobs:
         -DTEIDE_CPPCHECK=ON
         -DTEIDE_USE_VCPKG=OFF
         -DCMAKE_PREFIX_PATH=${{steps.packages.outputs.install-dir}}
+        -DCMAKE_LIBRARY_PATH=${{steps.packages.outputs.install-dir}}/lib
+        -DCMAKE_FIND_PACKAGE_PREFER_CONFIG=TRUE
 
     - name: Run Cppcheck
       if: steps.get-changes.outputs.changed-files != ''
@@ -79,7 +81,7 @@ jobs:
 
     - name: Upload SARIF files
       if: always() && steps.get-changes.outputs.changed-files != ''
-      uses: github/codeql-action/upload-sarif@v4.32.1
+      uses: github/codeql-action/upload-sarif@v4.37.0
       with:
         sarif_file: sarif
         checkout_path: ${{ github.workspace }}
@@ -87,14 +89,14 @@ jobs:
 
   clang-tidy:
     name: ClangTidy
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       preset: make
       GH_TOKEN: ${{ github.token }}
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v6.0.2
+      uses: actions/checkout@v7.0.0
       with:
         fetch-depth: ${{ github.event_name == 'pull_request' && 2 || 0 }}
         submodules: true
@@ -136,7 +138,7 @@ jobs:
 
     - name: Report issues as PR comments
       if: failure() && github.event_name == 'pull_request'
-      uses: reviewdog/action-suggester@v1.24.0
+      uses: reviewdog/action-suggester@v1.24.3
       with:
         tool_name: clang-tidy
 
@@ -152,11 +154,11 @@ jobs:
 
     - name: Push changes
       if: failure() && inputs.commit-fixes
-      uses: ad-m/github-push-action@v1.0.0
+      uses: ad-m/github-push-action@v1.3.0
 
     - name: Save fixes as build artifact
       if: failure()
-      uses: actions/upload-artifact@v6.0.0
+      uses: actions/upload-artifact@v7.0.1
       with:
         name: clang-tidy-fixes
         path: ${{github.workspace}}/build/${{env.preset}}/clang-tidy-fixes.yaml

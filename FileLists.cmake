@@ -54,25 +54,28 @@ set(sources
     src/Teide/TextureData.cpp
     src/Teide/Util/FrameArray.h
     src/Teide/Util/RenderDocHooks.cpp
+    src/Teide/Util/ListenSender.h
     src/Teide/Util/ResourceMap.h
     src/Teide/Util/SafeMemCpy.h
     src/Teide/Util/StaticMap.h
     src/Teide/Util/ThreadUtils.cpp
     src/Teide/Util/ThreadUtils.h
     src/Teide/Util/TypeHelpers.h
-    src/Teide/VmaImpl.cpp
     src/Teide/Vulkan.cpp
     src/Teide/Vulkan.h
     src/Teide/VulkanBuffer.cpp
     src/Teide/VulkanBuffer.h
-    src/Teide/VulkanConfig.h
     src/Teide/VulkanDevice.cpp
     src/Teide/VulkanDevice.h
     src/Teide/VulkanGraph.cpp
     src/Teide/VulkanGraph.h
+    src/Teide/VulkanInstance.cpp
+    src/Teide/VulkanInstance.h
     src/Teide/VulkanKernel.h
     src/Teide/VulkanLoader.cpp
     src/Teide/VulkanLoader.h
+    src/Teide/VulkanMemAlloc.cpp
+    src/Teide/VulkanMemAlloc.h
     src/Teide/VulkanMesh.h
     src/Teide/VulkanParameterBlock.cpp
     src/Teide/VulkanParameterBlock.h

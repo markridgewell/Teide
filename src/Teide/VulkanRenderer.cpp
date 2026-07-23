@@ -201,16 +201,9 @@ void VulkanRenderer::EndFrame()
     m_graphicsQueue.submit(submitInfo.map(), fenceToSignal);
 
     // Present
-    const vkex::PresentInfoKHR presentInfo = {
-        .waitSemaphores = m_frameResources.Current().renderFinished.get(),
-        .swapchains = transform(images, &SurfaceImage::swapchain),
-        .imageIndices = transform(images, &SurfaceImage::imageIndex),
-    };
-
-    const auto presentResult = m_presentQueue.presentKHR(presentInfo);
-    if (presentResult == vk::Result::eSuboptimalKHR)
+    for (const auto& image : images)
     {
-        spdlog::warn("Suboptimal swapchain image");
+        image.surface->PresentImage(image, m_frameResources.Current().renderFinished.get());
     }
 }
 
@@ -275,7 +268,36 @@ RenderToTextureResult VulkanRenderer::RenderToTexture(const RenderTargetInfo& re
 
         const auto sceneParameters = GetSceneParameterBlock().descriptorSet;
 
-        CreateRenderCommandBuffer(m_device, commandBuffer, renderList, renderTarget, rt, sceneParameters, viewParameters);
+        std::vector<vk::ImageView> attachments;
+
+        const auto addAttachment = [&](const std::optional<Texture>& texture) {
+            spdlog::debug("texture: {}", texture ? texture->GetName() : "null");
+            if (texture.has_value())
+            {
+                const auto& textureImpl = m_device.GetImpl(*texture);
+                TextureState textureState{};
+                textureImpl.TransitionToRenderTarget(textureState, commandBuffer);
+                attachments.push_back(textureImpl.imageView.get());
+            }
+        };
+
+        addAttachment(rt.color);
+        addAttachment(rt.depthStencil);
+        addAttachment(rt.colorResolved);
+        addAttachment(rt.depthStencilResolved);
+
+        const RenderPassDesc renderPassDesc = {
+            .framebufferLayout = renderTarget.framebufferLayout,
+            .renderOverrides = renderList.renderOverrides,
+        };
+
+        const auto renderPass = m_device.CreateRenderPass(
+            renderTarget.framebufferLayout, renderList.clearState, FramebufferUsage::ShaderInput);
+        const auto framebuffer
+            = m_device.CreateFramebuffer(renderPass, renderTarget.framebufferLayout, renderTarget.size, attachments);
+
+        RecordRenderListCommands(
+            m_device, commandBuffer, renderList, renderPass, renderPassDesc, framebuffer, sceneParameters, viewParameters);
 
         commandBuffer.TakeOwnership(std::move(renderList));
     });
@@ -371,42 +393,6 @@ Task<TextureData> VulkanRenderer::CopyTextureData(Texture texture)
         std::ranges::copy(data, ret.pixels.data());
         return ret;
     });
-}
-
-void VulkanRenderer::CreateRenderCommandBuffer(
-    VulkanDevice& device, vk::CommandBuffer commandBuffer, const RenderList& renderList, const RenderTargetInfo& renderTarget,
-    const RenderTarget& rt, vk::DescriptorSet sceneParameters, vk::DescriptorSet viewParameters)
-{
-    std::vector<vk::ImageView> attachments;
-
-    const auto addAttachment = [&](const std::optional<Texture>& texture) {
-        spdlog::debug("texture: {}", texture ? texture->GetName() : "null");
-        if (texture.has_value())
-        {
-            const auto& textureImpl = device.GetImpl(*texture);
-            TextureState textureState{};
-            textureImpl.TransitionToRenderTarget(textureState, commandBuffer);
-            attachments.push_back(textureImpl.imageView.get());
-        }
-    };
-
-    addAttachment(rt.color);
-    addAttachment(rt.depthStencil);
-    addAttachment(rt.colorResolved);
-    addAttachment(rt.depthStencilResolved);
-
-    const RenderPassDesc renderPassDesc = {
-        .framebufferLayout = renderTarget.framebufferLayout,
-        .renderOverrides = renderList.renderOverrides,
-    };
-
-    const auto renderPass
-        = device.CreateRenderPass(renderTarget.framebufferLayout, renderList.clearState, FramebufferUsage::ShaderInput);
-    const auto framebuffer
-        = device.CreateFramebuffer(renderPass, renderTarget.framebufferLayout, renderTarget.size, attachments);
-
-    RecordRenderListCommands(
-        device, commandBuffer, renderList, renderPass, renderPassDesc, framebuffer, sceneParameters, viewParameters);
 }
 
 auto VulkanRenderer::CreateViewParameters(const RenderList& renderList) -> vk::DescriptorSet
@@ -511,7 +497,7 @@ void VulkanRenderer::RecordRenderObjectCommands(
 std::optional<SurfaceImage> VulkanRenderer::AddSurfaceToPresent(VulkanSurface& surface)
 {
     return m_surfacesToPresent.Lock([&](auto& surfacesToPresent) -> std::optional<SurfaceImage> {
-        if (const auto it = std::ranges::find(surfacesToPresent, surface.GetVulkanSurface(), &SurfaceImage::surface);
+        if (const auto it = std::ranges::find(surfacesToPresent, &surface, &SurfaceImage::surface);
             it != surfacesToPresent.end())
         {
             return *it;

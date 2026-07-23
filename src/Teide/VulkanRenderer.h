@@ -9,16 +9,12 @@
 #include "VulkanSurface.h"
 
 #include "Teide/BasicTypes.h"
-#include "Teide/BytesView.h"
 #include "Teide/ForwardDeclare.h"
-#include "Teide/Pipeline.h"
 #include "Teide/Surface.h"
 #include "Teide/Util/FrameArray.h"
 #include "Teide/Util/ThreadUtils.h"
 
-#include <array>
-#include <deque>
-#include <mutex>
+#include <optional>
 #include <vector>
 
 namespace Teide
@@ -55,9 +51,9 @@ public:
 
     Task<TextureData> CopyTextureData(Texture texture) override;
 
-    static void CreateRenderCommandBuffer(
-        VulkanDevice& device, vk::CommandBuffer commandBuffer, const RenderList& renderList,
-        const RenderTargetInfo& renderTarget, const RenderTarget& rt, vk::DescriptorSet sceneParameters = {},
+    static void RecordRenderListCommands(
+        VulkanDevice& device, vk::CommandBuffer commandBuffer, const RenderList& renderList, vk::RenderPass renderPass,
+        const RenderPassDesc& renderPassDesc, const Framebuffer& framebuffer, vk::DescriptorSet sceneParameters = {},
         vk::DescriptorSet viewParameters = {});
 
 private:
@@ -69,11 +65,6 @@ private:
 
     const TransientParameterBlock& GetSceneParameterBlock() const { return m_frameResources.Current().sceneParameters; }
     auto CreateViewParameters(const RenderList& renderList) -> vk::DescriptorSet;
-
-    static void RecordRenderListCommands(
-        VulkanDevice& device, vk::CommandBuffer commandBuffer, const RenderList& renderList, vk::RenderPass renderPass,
-        const RenderPassDesc& renderPassDesc, const Framebuffer& framebuffer, vk::DescriptorSet sceneParameters,
-        vk::DescriptorSet viewParameters);
 
     static void RecordRenderObjectCommands(
         VulkanDevice& device, vk::CommandBuffer commandBuffer, const RenderObject& obj, const RenderPassDesc& renderPassDesc);

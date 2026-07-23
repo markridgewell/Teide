@@ -54,5 +54,6 @@ endif()
 
 # Run the command and propogate error code
 execute_process(COMMAND "${cppcheck}" --version)
-execute_process(COMMAND "${cppcheck}" "--template=${template}" "--template-location=${template_location}"
-                        ${cppcheck_args} COMMAND_ERROR_IS_FATAL ANY)
+execute_process(
+    COMMAND "${cppcheck}" "--template=${template}" "--template-location=${template_location}" ${cppcheck_args}
+    COMMAND_ERROR_IS_FATAL ANY)

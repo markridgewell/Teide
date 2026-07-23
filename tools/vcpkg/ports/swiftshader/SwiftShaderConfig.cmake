@@ -7,5 +7,6 @@ else()
 endif()
 set_property(
     TARGET SwiftShader::SwiftShader #
-    PROPERTY INSTALL_FILES "${LIBRARY_DIR}/${CMAKE_SHARED_LIBRARY_PREFIX}vk_swiftshader${CMAKE_SHARED_LIBRARY_SUFFIX}"
+    PROPERTY INSTALL_FILES
+             "${LIBRARY_DIR}/${CMAKE_SHARED_LIBRARY_PREFIX}vk_swiftshader${CMAKE_SHARED_LIBRARY_SUFFIX}"
              "${CMAKE_CURRENT_LIST_DIR}/vk_swiftshader_icd.json")

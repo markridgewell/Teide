@@ -11,6 +11,7 @@ list(FILTER SOURCES INCLUDE REGEX ".+")
 list(FILTER INCLUDE_DIRS INCLUDE REGEX ".+")
 list(FILTER SYSTEM_INCLUDE_DIRS INCLUDE REGEX ".+")
 list(FILTER CLANG_TIDY_ARGS INCLUDE REGEX ".+")
+list(FILTER DEFINITIONS INCLUDE REGEX ".+")
 # cmake-format: on
 
 # Build clang-tidy command
@@ -36,6 +37,14 @@ endforeach()
 
 # Add the rest of the command-line arguments
 list(APPEND clang_tidy_args ${COMPILER_ARGS})
+
+# Add the preproccessor definitions
+foreach(def IN LISTS DEFINITIONS)
+    if(NOT "${def}" STREQUAL "")
+        list(APPEND clang_tidy_args "-D${def}")
+    endif()
+endforeach()
+message(STATUS "clang_tidy_args: ${clang_tidy_args}")
 
 # Run the command and propogate error code
 list(JOIN clang_tidy_args "\" \"" clang_tidy_arg_str)

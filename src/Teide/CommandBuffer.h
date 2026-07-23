@@ -1,12 +1,16 @@
 
 #pragma once
 
-#include "Vulkan.h"
-
+#include "Teide/Definitions.h"
 #include "Teide/ForwardDeclare.h"
-#include "Teide/ParameterBlock.h"
 #include "Teide/Renderer.h"
 #include "Teide/Texture.h"
+#include "Teide/VulkanMemAlloc.h"
+
+#include <fmt/base.h>
+#include <vulkan/vulkan.hpp>
+
+#include <unordered_set>
 
 namespace Teide
 {

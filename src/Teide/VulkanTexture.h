@@ -13,6 +13,14 @@ struct TextureState
 {
     vk::ImageLayout layout = vk::ImageLayout::eUndefined;
     vk::PipelineStageFlags lastPipelineStageUsage = vk::PipelineStageFlagBits::eTopOfPipe;
+
+    constexpr bool operator==(const TextureState&) const noexcept = default;
+};
+
+struct TextureStateTransition
+{
+    TextureState from;
+    TextureState to;
 };
 
 struct VulkanTexture
@@ -21,9 +29,12 @@ struct VulkanTexture
     vma::UniqueAllocation allocation;
     vk::UniqueImageView imageView;
     vk::UniqueSampler sampler;
+    vk::ImageUsageFlags usage;
     TextureProperties properties;
 
     void GenerateMipmaps(TextureState& state, vk::CommandBuffer cmdBuffer);
+
+    void Transition(vk::CommandBuffer cmdBuffer, TextureStateTransition transition) const;
 
     void TransitionToShaderInput(TextureState& state, vk::CommandBuffer cmdBuffer) const;
     void TransitionToTransferSrc(TextureState& state, vk::CommandBuffer cmdBuffer) const;

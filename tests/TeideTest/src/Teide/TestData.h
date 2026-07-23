@@ -5,6 +5,11 @@
 
 #include <string>
 
+consteval std::byte operator""_b(unsigned long long i)
+{
+    return static_cast<std::byte>(i);
+}
+
 inline const std::string SimpleVertexShader = R"--(
 void main() {
     gl_Position = inPosition;
@@ -147,5 +152,18 @@ inline const Teide::TextureData OnePixelWhiteTexture = {
     .format = Teide::Format::Byte4Norm,
     .mipLevelCount = 1,
     .sampleCount = 1,
-    .pixels = {std::byte{0xff}, std::byte{0xff}, std::byte{0xff}, std::byte{0xff}},
+    .pixels = {0xff_b, 0xff_b, 0xff_b, 0xff_b},
+};
+
+inline const Teide::TextureData CheckerboardTexture = {
+    .size = {2, 2},
+    .format = Teide::Format::Byte4Norm,
+    .mipLevelCount = 1,
+    .sampleCount = 1,
+    .pixels = { //
+        0xff_b, 0x00_b, 0x00_b, 0xff_b, //
+        0xff_b, 0xff_b, 0xff_b, 0xff_b, //
+        0xff_b, 0xff_b, 0xff_b, 0xff_b, //
+        0xff_b, 0x00_b, 0x00_b, 0xff_b, //
+    },
 };

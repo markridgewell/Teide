@@ -18,8 +18,8 @@ void VulkanTexture::GenerateMipmaps(TextureState& state, vk::CommandBuffer cmdBu
             .dstAccessMask = dstAccessMask,
             .oldLayout = oldLayout,
             .newLayout = newLayout,
-            .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-            .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            .srcQueueFamilyIndex = vk::QueueFamilyIgnored,
+            .dstQueueFamilyIndex = vk::QueueFamilyIgnored,
             .image = image.get(),
             .subresourceRange = {
                 .aspectMask = vk::ImageAspectFlagBits::eColor,
@@ -116,6 +116,17 @@ void VulkanTexture::TransitionToTransferSrc(TextureState& state, vk::CommandBuff
 void VulkanTexture::TransitionToTransferDst(TextureState& state, vk::CommandBuffer cmdBuffer) const
 {
     DoTransition(state, cmdBuffer, vk::ImageLayout::eTransferDstOptimal, vk::PipelineStageFlagBits::eTransfer);
+}
+
+void VulkanTexture::Transition(vk::CommandBuffer cmdBuffer, TextureStateTransition transition) const
+{
+    const auto [oldState, newState] = transition;
+    if (newState != oldState)
+    {
+        TransitionImageLayout(
+            cmdBuffer, image.get(), properties.format, properties.mipLevelCount, oldState.layout, newState.layout,
+            oldState.lastPipelineStageUsage, newState.lastPipelineStageUsage);
+    }
 }
 
 void VulkanTexture::DoTransition(

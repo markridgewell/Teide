@@ -1,16 +1,13 @@
 
 #pragma once
 
-#include <fmt/core.h>
+#include <fmt/format.h>
 
 #include <source_location>
 #include <string_view>
 
 #ifndef _WIN32
-extern "C" {
-extern int raise(int) __THROW;
-constexpr int SIGTRAP = 5;
-}
+#    include <csignal>
 #endif
 
 namespace Teide
@@ -32,9 +29,9 @@ namespace Internal
     extern AssertHandler* g_handleAssertFail;
 
     template <class... Args>
-    inline std::string AssertFormat(const fmt::format_string<Args...>& format, Args&&... fmtArgs)
+    inline std::string AssertFormat(fmt::format_string<Args...> format, const Args&... fmtArgs)
     {
-        return fmt::format(format, std::forward<Args>(fmtArgs)...);
+        return fmt::vformat(format.get(), fmt::make_format_args(fmtArgs...));
     }
 
     inline std::string AssertFormat()
@@ -47,7 +44,7 @@ namespace Internal
 #    ifdef _WIN32
 #        define TEIDE_BREAK_IMPL() (::Teide::IsDebuggerAttached() ? (__debugbreak(), 1) : (std::abort(), 0))
 #    else
-#        define TEIDE_BREAK_IMPL() raise(SIGTRAP)
+#        define TEIDE_BREAK_IMPL() std::raise(SIGTRAP)
 #    endif
 
 // Break program execution with message

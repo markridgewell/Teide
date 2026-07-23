@@ -2,6 +2,7 @@
 #include "CommandBuffer.h"
 
 #include "Teide/Assert.h"
+#include "Teide/Vulkan.h"
 
 namespace Teide
 {
