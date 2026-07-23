@@ -1,3 +1,3 @@
 
 #define VMA_IMPLEMENTATION
-#include "VulkanConfig.h"
+#include "VulkanMemAlloc.h"

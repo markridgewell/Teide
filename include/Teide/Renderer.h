@@ -4,20 +4,13 @@
 #include "GeoLib/Box.h"
 #include "GeoLib/Vector.h"
 #include "Teide/BasicTypes.h"
-#include "Teide/BytesView.h"
 #include "Teide/ForwardDeclare.h"
-#include "Teide/Kernel.h"
 #include "Teide/ParameterBlock.h"
-#include "Teide/Pipeline.h"
-#include "Teide/Shader.h"
 #include "Teide/Surface.h"
 #include "Teide/Task.h"
 #include "Teide/Texture.h"
 
 #include <array>
-#include <compare>
-#include <deque>
-#include <mutex>
 #include <optional>
 
 namespace Teide

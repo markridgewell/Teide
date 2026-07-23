@@ -1,9 +1,10 @@
 
 #pragma once
 
-#include "VulkanConfig.h"
 
 #include "Teide/BasicTypes.h"
+
+#include <vulkan/vulkan.hpp>
 
 #include <vector>
 

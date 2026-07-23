@@ -8,10 +8,10 @@ inputs:
     default: 'OFF'
 outputs:
   triplet:
-    description: "Triplet to be used for vcpkg"
+    description: 'Triplet to be used for vcpkg'
     value: ${{ steps.determine-cache-key.outputs.triplet }}
   cache-key:
-    description: "Cache key to use for packages"
+    description: 'Cache key to use for packages'
     value: ${{ steps.determine-cache-key.outputs.cache-key }}
 
 runs:
@@ -21,7 +21,7 @@ runs:
       id: determine-cache-key
       shell: bash
       env:
-        PATTERNS: vcpkg.json vcpkg-configuration.json tools/vcpkg/**
+        PATTERNS: vcpkg.json vcpkg-configuration.json tools/vcpkg/** .github/workflows/Build-Packages.yml
       run: |
         vcpkg_triplet=$(cmake \
           -DTEIDE_SANITIZER=${{inputs.sanitizer}} \

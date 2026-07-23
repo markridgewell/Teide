@@ -3,13 +3,11 @@
 
 #include "GeoLib/Vector.h"
 #include "Teide/BasicTypes.h"
+#include "Teide/Format.h"
 #include "Teide/Handle.h"
-#include "Teide/TextureData.h"
 
-#include <functional>
 #include <string>
 #include <string_view>
-#include <utility>
 
 namespace Teide
 {

@@ -9,7 +9,7 @@ set(VCPKG_DISABLE_COMPILER_TRACKING ON)
 
 set(undef_android "-U__ANDROID__ -UANDROID")
 
-if(PORT STREQUAL "sdl2")
+if(PORT STREQUAL "sdl3")
     set(VCPKG_C_FLAGS "${undef_android} -DSDL_main=main")
     set(VCPKG_CXX_FLAGS "${VCPKG_C_FLAGS}")
     list(APPEND VCPKG_CMAKE_CONFIGURE_OPTIONS "-DSDL_KMSDRM=OFF")

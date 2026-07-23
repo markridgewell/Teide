@@ -7,8 +7,6 @@
 
 #include "Util/ThreadUtils.h"
 
-#include <vector>
-
 namespace Teide
 {
 

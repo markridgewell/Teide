@@ -14,7 +14,7 @@ if("$ENV{TEST_COVERAGE}")
             ${sources} #
             --cover_children #
             --continue_after_cpp_exception #
-            --verbose --)
+            --)
     elseif(COMPILER STREQUAL "Clang")
         file(APPEND "$ENV{COVERAGE_DIR}/test_binaries.txt" "${TEST_BINARY}\n")
         list(JOIN SOURCES "\n" source_list)

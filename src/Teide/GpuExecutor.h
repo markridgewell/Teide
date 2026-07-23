@@ -7,7 +7,6 @@
 #include "Teide/BasicTypes.h"
 #include "Teide/Util/FrameArray.h"
 #include "Teide/Util/ThreadUtils.h"
-#include "Teide/VulkanConfig.h"
 
 #include <function2/function2.hpp>
 
@@ -55,7 +54,7 @@ private:
 
     struct FrameResources
     {
-        explicit FrameResources(uint32 numThreads, vk::Device device, uint32_t queueFamilyIndex);
+        explicit FrameResources(uint32 numThreads, vk::Device device, uint32 queueFamilyIndex, uint32 index);
 
         ThreadMap<ThreadResources> threadResources;
     };

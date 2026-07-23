@@ -13,8 +13,10 @@ if(COMPILER STREQUAL "MSVC")
     # Combine the coverage data and generate output
     set(output_dir "${COVERAGE_DIR}/output")
     file(MAKE_DIRECTORY "${output_dir}")
-    exec(COMMAND "${OPENCPPCOVERAGE}" --export_type "html:${output_dir}" --export_type
-                 "cobertura:${output_dir}/coverage.xml" ${cov_files})
+    exec(
+        COMMAND
+            "${OPENCPPCOVERAGE}" --export_type "html:${output_dir}" --export_type
+            "cobertura:${output_dir}/coverage.xml" ${cov_files})
 
 elseif(COMPILER STREQUAL "Clang")
     # Gather raw profile data
@@ -39,6 +41,7 @@ elseif(COMPILER STREQUAL "Clang")
     exec(COMMAND ${COV} show -format=html -use-color -Xdemangler c++filt "-output-dir=${output_dir}" ${common_args})
 
     # Add a little extra css to highlight covered lines
-    file(APPEND "${output_dir}/style.css"
-         "td.covered-line + td > pre { background-color: #d0ffd0 }\npre:has(span.red) { background-color: #ffd0d0; }")
+    file(
+        APPEND "${output_dir}/style.css"
+        "td.covered-line + td > pre { background-color: #d0ffd0 }\npre:has(span.red) { background-color: #ffd0d0; }")
 endif()

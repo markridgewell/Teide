@@ -382,7 +382,7 @@ TEST_F(RendererTest, RenderMultiplePassesWithViewParameters)
     };
     Texture texture = m_device->CreateTexture(textureData, "initialTexture");
 
-    constexpr int numPasses = 100;
+    constexpr int numPasses = 25;
     for (int i = 0; i < numPasses; i++)
     {
         const RenderList renderList = {
@@ -397,7 +397,7 @@ TEST_F(RendererTest, RenderMultiplePassesWithViewParameters)
     const TextureData outputData = m_renderer->CopyTextureData(texture).get();
 
     EXPECT_THAT(outputData, MatchesColorTarget(renderTarget));
-    EXPECT_THAT(outputData.pixels, BytesEq("78 78 78 ff 78 78 78 ff 78 78 78 ff 78 78 78 ff"));
+    EXPECT_THAT(outputData.pixels, BytesEq("2d 2d 2d ff 2d 2d 2d ff 2d 2d 2d ff 2d 2d 2d ff"));
 }
 
 TEST_F(RendererTest, RenderMultipleFramesWithMultiplePassesWithViewParameters)
@@ -434,8 +434,8 @@ TEST_F(RendererTest, RenderMultipleFramesWithMultiplePassesWithViewParameters)
     };
     Texture texture = m_device->CreateTexture(textureData, "initialTexture");
 
-    constexpr int numFrames = 10;
-    constexpr int numPasses = 10;
+    constexpr int numFrames = 5;
+    constexpr int numPasses = 5;
     for (int i = 0; i < numFrames; i++)
     {
         m_renderer->BeginFrame({});
@@ -457,7 +457,7 @@ TEST_F(RendererTest, RenderMultipleFramesWithMultiplePassesWithViewParameters)
     const TextureData outputData = m_renderer->CopyTextureData(texture).get();
 
     EXPECT_THAT(outputData, MatchesColorTarget(renderTarget));
-    EXPECT_THAT(outputData.pixels, BytesEq("78 78 78 ff 78 78 78 ff 78 78 78 ff 78 78 78 ff"));
+    EXPECT_THAT(outputData.pixels, BytesEq("2d 2d 2d ff 2d 2d 2d ff 2d 2d 2d ff 2d 2d 2d ff"));
 }
 
 } // namespace

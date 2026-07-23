@@ -1,7 +1,7 @@
 
 #pragma once
 
-#include "Vulkan.h"
+#include "VulkanDevice.h"
 
 #include "GeoLib/Vector.h"
 #include "Teide/Surface.h"
@@ -10,20 +10,19 @@
 #include <optional>
 #include <vector>
 
-struct SDL_Window;
-
 namespace Teide
 {
 
 constexpr uint32_t MaxFramesInFlight = 2;
 
+class VulkanSurface;
+
 struct SurfaceImage
 {
-    vk::SurfaceKHR surface;
+    VulkanSurface* surface;
     vk::SwapchainKHR swapchain;
     uint32_t imageIndex = 0;
     vk::Semaphore imageAvailable;
-    vk::Image image;
     Framebuffer framebuffer;
 };
 
@@ -31,8 +30,8 @@ class VulkanSurface : public Surface
 {
 public:
     VulkanSurface(
-        SDL_Window* window, vk::UniqueSurfaceKHR surface, vk::Device device, const PhysicalDevice& physicalDevice,
-        vma::Allocator allocator, vk::Queue queue, bool multisampled);
+        Geo::Size2i extent, vk::UniqueSurfaceKHR surface, vk::Device device, const PhysicalDevice& physicalDevice,
+        vma::Allocator allocator, vk::Queue presentQueue, bool multisampled);
 
     Geo::Size2i GetExtent() const override { return m_surfaceExtent; }
     Format GetColorFormat() const override { return m_framebufferLayout.colorFormat.value(); }
@@ -44,9 +43,12 @@ public:
 
     // Internal
     std::optional<SurfaceImage> AcquireNextImage(vk::Fence fence);
+    void PresentImage(const SurfaceImage& image, vk::Semaphore waitSemaphore);
 
     vk::SurfaceKHR GetVulkanSurface() const { return m_surface.get(); }
     vk::RenderPass GetVulkanRenderPass() const { return m_renderPass.get(); }
+
+    vk::Image GetLastPresentedImage() const { return m_lastPresentedImage; }
 
 private:
     vk::Semaphore GetNextSemaphore();
@@ -58,9 +60,8 @@ private:
     vk::Device m_device;
     const PhysicalDevice& m_physicalDevice;
     vma::Allocator m_allocator;
-    vk::Queue m_queue;
+    vk::Queue m_presentQueue;
 
-    SDL_Window* m_window;
     vk::UniqueSurfaceKHR m_surface;
     Geo::Size2i m_surfaceExtent;
     vk::UniqueSwapchainKHR m_swapchain;
@@ -80,6 +81,7 @@ private:
     std::array<vk::UniqueSemaphore, MaxFramesInFlight> m_imageAvailable;
     uint32_t m_nextSemaphoreIndex = 0;
     std::vector<vk::Fence> m_imagesInFlight;
+    vk::Image m_lastPresentedImage;
 };
 
 template <>

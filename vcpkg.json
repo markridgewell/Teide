@@ -1,7 +1,7 @@
 {
   "name": "teide",
   "version": "0.0.0",
-  "builtin-baseline": "84bab45d415d22042bd0b9081aea57f362da3f35",
+  "builtin-baseline": "bc8353e09fc8c4ce9936be7446c773df7a0967f4",
   "dependencies": [
     "fmt",
     "function2",
@@ -12,8 +12,7 @@
       ]
     },
     {
-      "name": "sdl2",
-      "default-features": false,
+      "name": "sdl3",
       "features": [
         "vulkan"
       ]
@@ -23,7 +22,13 @@
       "default-features": false,
       "platform": "linux"
     },
-    "sdl2-image",
+    {
+      "name": "sdl3-image",
+      "features": [
+        "png",
+        "jpeg"
+      ]
+    },
     "spdlog",
     "taskflow",
     "vulkan",
@@ -62,8 +67,8 @@
         "gtest",
         "cpptrace",
         {
-          "name": "stackwalker",
-          "platform": "windows & !uwp"
+          "name": "libunwind",
+          "platform": "linux"
         }
       ]
     }

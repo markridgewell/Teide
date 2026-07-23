@@ -3,8 +3,8 @@
 
 #include "GeoLib/Vector.h"
 #include "Teide/Pipeline.h"
+#include "vkex/vkex.hpp"
 
-#include <SDL_vulkan.h>
 #include <spdlog/spdlog.h>
 
 #include <algorithm>
@@ -45,25 +45,16 @@ namespace
         return vk::PresentModeKHR::eFifo;
     }
 
-    Geo::Size2i ChooseSwapExtent(const vk::SurfaceCapabilitiesKHR& capabilities, SDL_Window* window)
+    Geo::Size2i ChooseSwapExtent(const vk::SurfaceCapabilitiesKHR& capabilities, Geo::Size2i windowSize)
     {
-        if (capabilities.currentExtent.width != std::numeric_limits<uint32_t>::max())
-        {
-            return {capabilities.currentExtent.width, capabilities.currentExtent.height};
-        }
+        // if (capabilities.currentExtent.width != std::numeric_limits<uint32_t>::max())
+        // {
+        //     return {capabilities.currentExtent.width, capabilities.currentExtent.height};
+        // }
 
-
-        int width = 0;
-        int height = 0;
-        SDL_Vulkan_GetDrawableSize(window, &width, &height);
-
-        const Geo::Size2i windowExtent = {static_cast<uint32_t>(width), static_cast<uint32_t>(height)};
-
-        const Geo::Size2i actualExtent
-            = {std::clamp(windowExtent.x, capabilities.minImageExtent.width, capabilities.maxImageExtent.width),
-               std::clamp(windowExtent.y, capabilities.minImageExtent.height, capabilities.maxImageExtent.height)};
-
-        return actualExtent;
+        return Geo::Size2i{
+            std::clamp(windowSize.x, capabilities.minImageExtent.width, capabilities.maxImageExtent.width),
+            std::clamp(windowSize.y, capabilities.minImageExtent.height, capabilities.maxImageExtent.height)};
     }
 
     vk::UniqueSwapchainKHR CreateSwapchain(
@@ -89,7 +80,7 @@ namespace
             .imageColorSpace = surfaceFormat.colorSpace,
             .imageExtent = {.width = surfaceExtent.x, .height = surfaceExtent.y},
             .imageArrayLayers = 1,
-            .imageUsage = vk::ImageUsageFlagBits::eColorAttachment,
+            .imageUsage = vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eTransferSrc,
             .imageSharingMode = sharingMode,
             .queueFamilyIndexCount = size32(queueFamilyIndices),
             .pQueueFamilyIndices = data(queueFamilyIndices),
@@ -99,6 +90,8 @@ namespace
             .clipped = true,
             .oldSwapchain = oldSwapchain,
         };
+
+        TEIDE_ASSERT((createInfo.imageUsage & surfaceCapabilities.supportedUsageFlags) == createInfo.imageUsage);
 
         return device.createSwapchainKHRUnique(createInfo, s_allocator);
     }
@@ -124,7 +117,7 @@ namespace
             };
 
             imageViews[i] = device.createImageViewUnique(createInfo, s_allocator);
-            SetDebugName(imageViews[i], "SwapchainImageView[{}]", i);
+            SetDebugName(imageViews[i], "SwapchainImageView{}", i);
         }
 
         return imageViews;
@@ -174,7 +167,7 @@ namespace
             };
 
             framebuffers[i] = device.createFramebufferUnique(createInfo, s_allocator);
-            SetDebugName(framebuffers[i], "SwapchainFramebuffer[{}]", i);
+            SetDebugName(framebuffers[i], "SwapchainFramebuffer{}", i);
         }
 
         return framebuffers;
@@ -183,14 +176,14 @@ namespace
 } // namespace
 
 VulkanSurface::VulkanSurface(
-    SDL_Window* window, vk::UniqueSurfaceKHR surface, vk::Device device, const PhysicalDevice& physicalDevice,
-    vma::Allocator allocator, vk::Queue queue, bool multisampled) :
+    Geo::Size2i extent, vk::UniqueSurfaceKHR surface, vk::Device device, const PhysicalDevice& physicalDevice,
+    vma::Allocator allocator, vk::Queue presentQueue, bool multisampled) :
     m_device{device},
     m_physicalDevice{physicalDevice},
     m_allocator{allocator},
-    m_queue{queue},
-    m_window{window},
-    m_surface{std::move(surface)}
+    m_presentQueue{presentQueue},
+    m_surface{std::move(surface)},
+    m_surfaceExtent{extent}
 {
     std::ranges::generate(m_imageAvailable, [=] { return device.createSemaphoreUnique({}, s_allocator); });
 
@@ -245,11 +238,10 @@ std::optional<SurfaceImage> VulkanSurface::AcquireNextImage(vk::Fence fence)
     m_imagesInFlight[imageIndex] = fence;
 
     const SurfaceImage ret = {
-        .surface = m_surface.get(),
+        .surface = this,
         .swapchain = m_swapchain.get(),
         .imageIndex = imageIndex,
         .imageAvailable = semaphore,
-        .image = m_swapchainImages[imageIndex],
         .framebuffer = {
             .framebuffer = m_swapchainFramebuffers[imageIndex].get(),
             .layout = m_framebufferLayout,
@@ -258,6 +250,21 @@ std::optional<SurfaceImage> VulkanSurface::AcquireNextImage(vk::Fence fence)
     };
 
     return ret;
+}
+
+void VulkanSurface::PresentImage(const SurfaceImage& image, vk::Semaphore waitSemaphore)
+{
+    const vkex::PresentInfoKHR presentInfo = {
+        .waitSemaphores = waitSemaphore,
+        .swapchains = m_swapchain.get(),
+        .imageIndices = image.imageIndex,
+    };
+    const auto presentResult = m_presentQueue.presentKHR(presentInfo);
+    if (presentResult == vk::Result::eSuboptimalKHR)
+    {
+        spdlog::warn("Suboptimal swapchain image");
+    }
+    m_lastPresentedImage = m_swapchainImages.at(image.imageIndex);
 }
 
 vk::Semaphore VulkanSurface::GetNextSemaphore()
@@ -270,7 +277,7 @@ vk::Semaphore VulkanSurface::GetNextSemaphore()
 void VulkanSurface::CreateColorBuffer(vk::Format format)
 {
     // Create image
-    auto [image, allocation] = m_allocator.createImageUnique(
+    auto [allocation, image] = m_allocator.createImageUnique(
         vk::ImageCreateInfo{
             .imageType = vk::ImageType::e2D,
             .format = format,
@@ -312,7 +319,7 @@ void VulkanSurface::CreateDepthBuffer()
     const auto format = ToVulkan(m_framebufferLayout.depthStencilFormat.value());
 
     // Create image
-    auto [image, allocation] = m_allocator.createImageUnique(
+    auto [allocation, image] = m_allocator.createImageUnique(
         vk::ImageCreateInfo{
             .imageType = vk::ImageType::e2D,
             .format = format,
@@ -365,7 +372,7 @@ void VulkanSurface::CreateSwapchainAndImages()
         .resolveColor = m_msaaSampleCount > 1,
     };
 
-    m_surfaceExtent = ChooseSwapExtent(surfaceCapabilities, m_window);
+    m_surfaceExtent = ChooseSwapExtent(surfaceCapabilities, m_surfaceExtent);
     m_swapchain = CreateSwapchain(
         m_physicalDevice.physicalDevice, m_physicalDevice.queueFamilyIndices, m_surface.get(), surfaceFormat,
         m_surfaceExtent, m_device, m_swapchain.get());

@@ -16,19 +16,36 @@
 #include "Teide/Renderer.h"
 #include "Teide/Surface.h"
 #include "Teide/Util/ResourceMap.h"
-#include "Teide/Util/ThreadUtils.h"
 
 #include <vulkan/vulkan_hash.hpp>
 
-#include <compare>
-#include <concepts>
-#include <optional>
-#include <thread>
+#include <functional>
 #include <type_traits>
 #include <unordered_map>
 
 namespace Teide
 {
+
+struct PhysicalDevice
+{
+    explicit PhysicalDevice(
+        vk::PhysicalDevice pd, const QueueFamilies& qf, std::vector<const char*> extensions,
+        std::vector<const char*> missingExtensions);
+
+    vk::PhysicalDevice physicalDevice;
+    vk::PhysicalDeviceProperties properties;
+    vk::PhysicalDeviceDepthStencilResolveProperties depthStencilResolveProperties;
+
+    QueueFamilies queueFamilies;
+    std::vector<uint32> queueFamilyIndices;
+
+    std::vector<const char*> extensions;
+    std::vector<const char*> missingExtensions;
+};
+
+PhysicalDevice FindPhysicalDevice(vk::Instance instance);
+
+vk::UniqueDevice CreateDevice(VulkanLoader& loader, const PhysicalDevice& physicalDevice);
 
 struct ParameterBlockDesc;
 struct VulkanParameterBlockLayout;
@@ -50,7 +67,6 @@ public:
 
     ~VulkanDevice() override;
 
-    SurfacePtr CreateSurface(SDL_Window* window, bool multisampled) override;
     RendererPtr CreateRenderer(ShaderEnvironmentPtr shaderEnvironment) override;
 
     BufferPtr CreateBuffer(const BufferData& data, const char* name) override;
@@ -101,7 +117,7 @@ public:
         return std::dynamic_pointer_cast<const typename VulkanImpl<std::remove_const_t<T>>::type>(ptr);
     }
 
-    TextureState CreateTextureImpl(VulkanTexture& texture, vk::ImageUsageFlags usage);
+    TextureState CreateTextureImpl(VulkanTexture& texture);
 
     VulkanBufferData CreateBufferUninitialized(
         vk::DeviceSize size, vk::BufferUsageFlags usage, vma::AllocationCreateFlags allocationFlags = {},
@@ -109,7 +125,7 @@ public:
     VulkanBuffer CreateBufferWithData(BytesView data, BufferUsage usage, ResourceLifetime lifetime, CommandBuffer& cmdBuffer);
     void SetBufferData(VulkanBuffer& buffer, BytesView data);
 
-    SurfacePtr CreateSurface(vk::UniqueSurfaceKHR surface, SDL_Window* window, bool multisampled);
+    SurfacePtr CreateSurface(vk::UniqueSurfaceKHR surface, Geo::Size2i size, bool multisampled);
     BufferPtr CreateBuffer(const BufferData& data, const char* name, CommandBuffer& cmdBuffer);
     VulkanBuffer CreateTransientBuffer(const BufferData& data, const char* name);
     Texture AllocateTexture(const TextureProperties& props, const SamplerState& samplerState = {});
@@ -127,14 +143,22 @@ public:
     void UpdateTransientParameterBlock(TransientParameterBlock& pblock, const ParameterBlockData& data);
 
     vk::RenderPass CreateRenderPassLayout(const FramebufferLayout& framebufferLayout);
-    vk::RenderPass
-    CreateRenderPass(const FramebufferLayout& framebufferLayout, const ClearState& clearState, FramebufferUsage usage);
+    vk::RenderPass CreateRenderPass(
+        const FramebufferLayout& framebufferLayout, const ClearState& clearState,
+        FramebufferUsage usage = FramebufferUsage::Attachment);
     Framebuffer CreateFramebuffer(
         vk::RenderPass renderPass, const FramebufferLayout& layout, Geo::Size2i size, std::vector<vk::ImageView> attachments);
 
     VulkanParameterBlockLayoutPtr CreateParameterBlockLayout(const ParameterBlockDesc& desc, int set);
 
     vk::DescriptorSet GetDescriptorSet(const ParameterBlock& parameterBlock);
+
+    /**
+     * Record a one-shot command buffer, submit it immediately, and wait for the GPU to finish executing it.
+     *
+     * @note For debugging and testing only! This will block on both the CPU and GPU, effectively flushing the entire rendering pipeline.
+     */
+    void ExecCommandsSync(const std::function<void(vk::CommandBuffer)>& f);
 
 private:
     struct RenderPassDesc

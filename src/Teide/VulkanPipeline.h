@@ -2,7 +2,6 @@
 #pragma once
 
 #include "Vulkan.h"
-#include "VulkanParameterBlock.h"
 #include "VulkanShader.h"
 
 #include "Teide/Pipeline.h"

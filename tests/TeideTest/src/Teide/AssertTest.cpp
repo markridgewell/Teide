@@ -23,7 +23,7 @@ class TestAssertException
 
 std::string s_lastFailureMessage;
 
-bool TestAssertHandler(std::string_view msg, std::string_view /*expression*/, SourceLocation /*location*/)
+bool TestAssertHandler(std::string_view msg, std::string_view /*expression*/, std::source_location /*location*/)
 {
     spdlog::info("..1");
     s_lastFailureMessage = msg;

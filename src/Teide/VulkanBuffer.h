@@ -4,6 +4,7 @@
 #include "Vulkan.h"
 
 #include "Teide/Buffer.h"
+#include "Teide/VulkanMemAlloc.h"
 
 namespace Teide
 {
