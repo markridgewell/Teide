@@ -44,14 +44,14 @@ jobs:
           c-compiler: clang-19
           cpp-compiler: clang++-19
 
-    outputs:
-      cache-hit: ${{ steps.cache.outputs.cache-hit }}
-
         - runner: ubuntu-latest
           preset: make
           c-compiler: clang-18
           cpp-compiler: clang++-18
           sanitizer: MSAN
+
+    outputs:
+      cache-hit: ${{ steps.cache.outputs.cache-hit }}
 
     name: ${{startsWith(matrix.runner, 'windows') && 'Windows' || 'Linux'}}${{matrix.sanitizer != 'OFF' && matrix.sanitizer || ''}}
     runs-on: ${{matrix.runner}}
