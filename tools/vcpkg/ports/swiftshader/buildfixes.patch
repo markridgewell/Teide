@@ -1,8 +1,8 @@
 diff --git a/CMakeLists.txt b/CMakeLists.txt
-index c5cd16d55..0480120ad 100644
+index 0ef4a68..077d5c7 100644
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
-@@ -707,9 +707,11 @@ set_target_properties(subzero PROPERTIES FOLDER "third_party")
+@@ -721,9 +721,8 @@ set_target_properties(subzero PROPERTIES FOLDER "third_party")
  ###########################################################
  # marl
  ###########################################################
@@ -11,13 +11,10 @@ index c5cd16d55..0480120ad 100644
 -set_target_properties(marl PROPERTIES FOLDER "third_party")
 +find_package(marl CONFIG REQUIRED)
 +add_library(marl ALIAS marl::marl)
-+#set(MARL_THIRD_PARTY_DIR ${THIRD_PARTY_DIR})
-+#add_subdirectory(${THIRD_PARTY_DIR}/marl)
-+#set_target_properties(marl PROPERTIES FOLDER "third_party")
  
  if(MARL_THREAD_SAFETY_ANALYSIS_SUPPORTED)
      list(APPEND SWIFTSHADER_COMPILE_OPTIONS "-Wthread-safety")
-@@ -798,6 +800,9 @@ else()
+@@ -812,6 +811,9 @@ else()
      message(FATAL_ERROR "REACTOR_BACKEND must be 'LLVM', 'LLVM-Submodule' or 'Subzero'")
  endif()
  
@@ -28,24 +25,20 @@ index c5cd16d55..0480120ad 100644
      # This variable is also used by SPIRV-Tools to locate SPIRV-Headers
      set(SPIRV-Headers_SOURCE_DIR "${THIRD_PARTY_DIR}/SPIRV-Headers")
 diff --git a/src/Pipeline/CMakeLists.txt b/src/Pipeline/CMakeLists.txt
-index 374d42467..999d675d0 100644
+index fd2e9e3..6eaa2ac 100644
 --- a/src/Pipeline/CMakeLists.txt
 +++ b/src/Pipeline/CMakeLists.txt
-@@ -71,9 +71,9 @@ if (NOT TARGET SPIRV-Tools)
+@@ -71,8 +71,6 @@ if (NOT TARGET SPIRV-Tools)
      message(FATAL_ERROR "Missing required target: SPIRV-Tools")
  endif()
  
 -set_target_properties(core_tables PROPERTIES FOLDER "SPIRV-Tools build")
--set_target_properties(enum_string_mapping PROPERTIES FOLDER "SPIRV-Tools build")
 -set_target_properties(extinst_tables PROPERTIES FOLDER "SPIRV-Tools build")
-+#set_target_properties(core_tables PROPERTIES FOLDER "SPIRV-Tools build")
-+#set_target_properties(enum_string_mapping PROPERTIES FOLDER "SPIRV-Tools build")
-+#set_target_properties(extinst_tables PROPERTIES FOLDER "SPIRV-Tools build")
  
  set_target_properties(vk_pipeline PROPERTIES
      POSITION_INDEPENDENT_CODE 1
 diff --git a/src/Vulkan/CMakeLists.txt b/src/Vulkan/CMakeLists.txt
-index bd05b0fc8..708b0bb86 100644
+index bd05b0f..708b0bb 100644
 --- a/src/Vulkan/CMakeLists.txt
 +++ b/src/Vulkan/CMakeLists.txt
 @@ -258,3 +258,6 @@ configure_file(
