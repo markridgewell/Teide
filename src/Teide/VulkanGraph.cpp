@@ -411,6 +411,7 @@ void VulkanGraph::CreateResources(VulkanDevice& device)
         targetProps.sampleCount = sourceData.sampleCount;
     }
 
+    /*
     for (const auto& presentNode : presentNodes)
     {
         const auto& surface = presentNode.surface;
@@ -424,6 +425,7 @@ void VulkanGraph::CreateResources(VulkanDevice& device)
         const auto surfaceUsage = surfaceImpl.GetSupportedImageUsage();
         auto& sourceNode = Get<VulkanGraph::TextureNode>(presentNode.source);
 
+        // TODO: Swapchain image aliasing
         // Node can be aliased to acquired swapchain image if it:
         //  * has no external references (i.e. is transient)
         //  * has the same dimensions as the swapchain
@@ -439,6 +441,7 @@ void VulkanGraph::CreateResources(VulkanDevice& device)
             // textureImpl.imageView = surfaceImage->imageView;
         }
     }
+    */
 
     for (VulkanGraph::TextureNode& node : textureNodes)
     {
