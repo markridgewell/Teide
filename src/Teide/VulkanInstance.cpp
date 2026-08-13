@@ -87,6 +87,10 @@ vk::UniqueInstance CreateInstance(VulkanLoader& loader, const InstanceParams& pa
     {
         spdlog::warn("Instance extension(s) not supported: {}", missingOpt);
     }
+    if (not extensions.empty())
+    {
+        spdlog::info("Enabling instance extension(s): {}", extensions);
+    }
 
     const vk::ApplicationInfo applicationInfo{
         .apiVersion = VulkanApiVersion,
