@@ -601,16 +601,19 @@ TEST_F(VulkanGraphTest, ExecutingGraphWithRenderNodeWithColorAndDepthAttachments
 class VulkanGraphSurfaceTest : public Base
 {
 public:
-    static constexpr auto SurfaceSize = Geo::Size2i{800, 600};
+    static constexpr auto SurfaceSize = Geo::Size2i{8, 8};
 
-    VulkanGraphSurfaceTest() : VulkanGraphSurfaceTest(CreateTestDeviceAndSurface(SurfaceSize)) {}
+    VulkanGraphSurfaceTest() : VulkanGraphSurfaceTest(CreateHeadlessVulkanDeviceAndSurface(SurfaceSize)) {}
 
     explicit VulkanGraphSurfaceTest(VulkanDeviceAndSurface ds) :
         Base(std::move(ds.device)), m_surface{std::move(ds.surface)}
     {}
 
-protected:
-    SurfacePtr m_surface; // NOLINT(cppcoreguidelines-non-private-member-variables-in-classes)
+    VulkanDevice& GetDevice() const { return *this->m_device; }
+    Surface& GetSurface() const { return *this->m_surface; }
+
+private:
+    SurfacePtr m_surface;
 };
 
 TEST_F(VulkanGraphSurfaceTest, ExecutingGraphWithPresentNode)
@@ -623,15 +626,15 @@ TEST_F(VulkanGraphSurfaceTest, ExecutingGraphWithPresentNode)
             .colorValue = Color{1.0f, 0.0f, 1.0f, 1.0f},
         },
     }, tex1, std::nullopt);
-    graph.AddPresentNode(*m_surface, tex1);
+    graph.AddPresentNode(GetSurface(), tex1);
     spdlog::info(VisualizeGraph(graph));
     spdlog::info(MakeDotURL(VisualizeGraph(graph)));
     auto queue = Queue(m_device->GetVulkanDevice(), m_device->GetGraphicsQueue());
 
-    ExecuteGraph(std::move(graph), *m_device, queue);
+    ExecuteGraph(std::move(graph), GetDevice(), queue);
     queue.WaitForTasks();
 
-    const auto pixels = GetPixelsSync(*m_device, *m_surface);
+    const auto pixels = GetPixelsSync(GetDevice(), GetSurface());
     if (!pixels.has_value())
     {
         GTEST_SKIP() << "Unable to retrieve pixels from surface, skipping rest of test";

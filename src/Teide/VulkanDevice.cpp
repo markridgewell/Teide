@@ -673,16 +673,16 @@ DevicePtr CreateHeadlessDevice(const GraphicsSettings& settings)
     return std::make_unique<VulkanDevice>(std::move(loader), std::move(instance), std::move(physicalDevice), settings);
 }
 
-DeviceAndSurface CreateHeadlessDeviceAndSurface(Geo::Size2i windowSize, const GraphicsSettings& settings)
+VulkanDeviceAndSurface CreateHeadlessVulkanDeviceAndSurface(Geo::Size2i windowSize, const GraphicsSettings& settings)
 {
     spdlog::info("Creating graphics device and surface");
 
     auto optionalExtensions = std::vector<InstanceExtensionName>();
-    optionalExtensions.push_back("VK_KHR_surface");
     AddDebugExtensions(optionalExtensions);
 
     auto requiredExtensions = std::vector<InstanceExtensionName>();
     requiredExtensions.push_back("VK_EXT_headless_surface");
+    requiredExtensions.push_back("VK_KHR_surface"); // Required by VK_EXT_headless_surface
 
     VulkanLoader loader;
     vk::UniqueInstance instance = CreateInstance(
@@ -703,6 +703,12 @@ DeviceAndSurface CreateHeadlessDeviceAndSurface(Geo::Size2i windowSize, const Gr
         = std::make_unique<VulkanDevice>(std::move(loader), std::move(instance), std::move(physicalDevice), settings);
     auto surface = device->CreateSurface(std::move(vksurface), windowSize, false);
 
+    return {.device = std::move(device), .surface = std::move(surface)};
+}
+
+DeviceAndSurface CreateHeadlessDeviceAndSurface(Geo::Size2i windowSize, const GraphicsSettings& settings)
+{
+    auto [device, surface] = CreateHeadlessVulkanDeviceAndSurface(windowSize, settings);
     return {.device = std::move(device), .surface = std::move(surface)};
 }
 

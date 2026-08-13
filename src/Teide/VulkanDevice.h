@@ -224,4 +224,12 @@ private:
 
 using VulkanDevicePtr = std::unique_ptr<VulkanDevice>;
 
+struct VulkanDeviceAndSurface
+{
+    Teide::VulkanDevicePtr device;
+    Teide::SurfacePtr surface;
+};
+
+VulkanDeviceAndSurface CreateHeadlessVulkanDeviceAndSurface(Geo::Size2i windowSize, const GraphicsSettings& settings = {});
+
 } // namespace Teide
