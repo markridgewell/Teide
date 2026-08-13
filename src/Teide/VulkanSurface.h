@@ -5,7 +5,6 @@
 
 #include "GeoLib/Vector.h"
 #include "Teide/Surface.h"
-#include "vulkan/vulkan.hpp"
 
 #include <array>
 #include <optional>

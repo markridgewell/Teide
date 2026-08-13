@@ -4,7 +4,6 @@
 #include "GeoLib/Vector.h"
 #include "Teide/Pipeline.h"
 #include "vkex/vkex.hpp"
-#include "vulkan/vulkan.hpp"
 
 #include <spdlog/spdlog.h>
 
