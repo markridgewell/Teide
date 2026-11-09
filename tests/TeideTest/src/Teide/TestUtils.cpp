@@ -97,7 +97,7 @@ auto GetPixelsSync(vk::Image image, Teide::TextureState state, Geo::Size2i size,
     device.ExecCommandsSync([&](vk::CommandBuffer cmd) {
         // Record pipeline barrier for image -> TransferSrc
         TransitionImageLayout(
-            cmd, image, format, 1, state.layout, vk::ImageLayout ::eTransferSrcOptimal, state.lastPipelineStageUsage,
+            cmd, image, format, 1, state.layout, vk::ImageLayout::eTransferSrcOptimal, state.lastPipelineStageUsage,
             vk::PipelineStageFlagBits::eTransfer);
 
         // Record image to buffer copy
